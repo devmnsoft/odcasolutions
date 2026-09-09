@@ -27,3 +27,14 @@
 - Depois: OCR/Office, revisão/aprovação, cobrança/adicionais, assinatura, notificações e emissão rastreável.
 
 Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail; storage/scanner; cache compartilhado; integrações comerciais. Nenhuma delas deve ser simulada como produção.
+
+## Pendências após o incremento do prompt 08
+
+- [x] Corrigir contrato Dapper da home e datas do desafio MFA; derivar contagem esperada da versão canônica.
+- [x] Sincronizar renovação MFA entre sessão persistida e token; condicionar inscrição e vincular o segredo confirmado.
+- [x] Validar dígitos de CPF/CNPJ e reservar documento vivo sob concorrência com migração 006.
+- [ ] Implementar transporte/outbox operacional (segredo protegido temporário, lease, retry, deduplicação e descarte), reenvio limitado/auditado e retomada de rascunho expirado.
+- [ ] Substituir versões `pending-legal-approval` por identificadores de textos aprovados e capturar contexto mínimo definido por Privacidade.
+- [ ] Entregar seletor de organização, equipe, perfis delegáveis, convites e assentos com proteção do último administrador.
+- [ ] Configurar cache realmente compartilhado e validar Data Protection/tickets entre duas instâncias.
+- [ ] Depois: suporte temporário e operação de direitos; S02; S03; OCR/Office e sequência comercial, sem antecipar editor.

@@ -17,18 +17,54 @@ public sealed class NpgsqlCustomerOnboardingRepository(NpgsqlDataSource dataSour
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        // Serialize competing registrations for the same normalized contractor before
+        // the unique index is reached, so callers receive a domain conflict rather
+        // than an unhandled constraint exception.
+        await connection.ExecuteAsync(new CommandDefinition(
+            "SELECT pg_advisory_xact_lock(hashtextextended(@documentNormalized, 0));",
+            new { documentNormalized = draft.DocumentNormalized },
+            transaction,
+            cancellationToken: cancellationToken));
+        var belongsToAnotherRegistration = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
+            """
+            SELECT EXISTS
+            (
+                SELECT 1
+                  FROM odca.customer_registration_requests
+                 WHERE document_type = @documentType
+                   AND document_normalized = @documentNormalized
+                   AND status IN ('email_pending', 'confirmed')
+                   AND idempotency_key <> @idempotencyKey
+            );
+            """,
+            new
+            {
+                documentType = draft.DocumentType,
+                documentNormalized = draft.DocumentNormalized,
+                idempotencyKey
+            },
+            transaction,
+            cancellationToken: cancellationToken));
+        if (belongsToAnotherRegistration)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return null;
+        }
+
         var inserted = await connection.QuerySingleOrDefaultAsync<RegistrationInsertRow>(new CommandDefinition(
             """
             INSERT INTO odca.customer_registration_requests
                 (id, idempotency_key, user_id, tenant_id, plan_version_id, plan_code, plan_version,
                  document_type, document_normalized, responsible_name, email, email_normalized,
                  password_hash, marketing_consent, confirmation_token_hash, development_confirmation_token,
-                 expires_at, created_at, updated_at)
+                 expires_at, created_at, updated_at, terms_version, terms_accepted_at,
+                 privacy_notice_version, privacy_notice_acknowledged_at)
             VALUES
                 (@Id, @idempotencyKey, @UserId, @TenantId, @PlanVersionId, @PlanCode, @PlanVersion,
                  @DocumentType, @DocumentNormalized, @ResponsibleName, @Email, @EmailNormalized,
                  @PasswordHash, @MarketingConsent, @confirmationTokenHash, @developmentConfirmationToken,
-                 @ExpiresAt, @now, @now)
+                 @ExpiresAt, @now, @now, 'pending-legal-approval', @now,
+                 'pending-legal-approval', @now)
             ON CONFLICT (idempotency_key) DO UPDATE
                 SET confirmation_token_hash = EXCLUDED.confirmation_token_hash,
                     development_confirmation_token = EXCLUDED.development_confirmation_token,
@@ -70,6 +106,24 @@ public sealed class NpgsqlCustomerOnboardingRepository(NpgsqlDataSource dataSour
 
         if (inserted.Id != draft.Id)
         {
+            await connection.ExecuteAsync(new CommandDefinition(
+                """
+                INSERT INTO odca.customer_registration_outbox
+                    (id, registration_id, message_type, destination, status, payload)
+                VALUES
+                    (gen_random_uuid(), @registrationId, 'email_confirmation', @destination,
+                     CASE WHEN @token IS NULL THEN 'provider_required' ELSE 'local_development' END,
+                     jsonb_build_object('registrationId', @registrationId, 'plan', @planCode));
+                """,
+                new
+                {
+                    registrationId = inserted.Id,
+                    destination = draft.Email,
+                    token = developmentConfirmationToken,
+                    planCode = draft.PlanCode
+                },
+                transaction,
+                cancellationToken: cancellationToken));
             await transaction.CommitAsync(cancellationToken);
             return draft with
             {
@@ -156,6 +210,7 @@ public sealed class NpgsqlCustomerOnboardingRepository(NpgsqlDataSource dataSour
                SET status = 'confirmed',
                    confirmed_at = @confirmedAt,
                    confirmation_token_hash = NULL,
+                   development_confirmation_token = NULL,
                    updated_at = @confirmedAt
              WHERE id = @registrationId
                AND status = 'email_pending'
@@ -221,7 +276,22 @@ public sealed class NpgsqlCustomerOnboardingRepository(NpgsqlDataSource dataSour
             transaction,
             cancellationToken: cancellationToken));
         var row = await connection.QuerySingleOrDefaultAsync<CustomerHomeRow>(new CommandDefinition(
-            "SELECT * FROM odca.customer_home_snapshot(@userId, @tenantId);",
+            """
+            SELECT tenant_id AS "TenantId",
+                   organization_name AS "OrganizationName",
+                   tenant_status AS "TenantStatus",
+                   commercial_state AS "CommercialState",
+                   plan_code AS "PlanCode",
+                   plan_name AS "PlanName",
+                   plan_version AS "PlanVersion",
+                   active_seats AS "ActiveSeats",
+                   storage_bytes AS "StorageBytes",
+                   user_storage_bytes AS "UserStorageBytes",
+                   file_bytes AS "FileBytes",
+                   ocr_pages_monthly AS "OcrPagesMonthly",
+                   signature_envelopes_monthly AS "SignatureEnvelopesMonthly"
+              FROM odca.customer_home_snapshot(@userId, @tenantId);
+            """,
             new { userId, tenantId },
             transaction,
             cancellationToken: cancellationToken));

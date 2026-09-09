@@ -31,12 +31,16 @@ public sealed class MfaService(
         }
 
         var secret = TotpService.GenerateSecret();
-        await repository.SavePendingMfaSecretAsync(
+        var saved = await repository.SavePendingMfaSecretAsync(
             userId,
+            sessionId,
+            securityVersion,
             secretProtector.Protect(secret),
             now,
             cancellationToken);
-        return new MfaEnrollment(secret, TotpService.BuildOtpAuthUri("ODCA Solutions", user.Email, secret));
+        return saved
+            ? new MfaEnrollment(secret, TotpService.BuildOtpAuthUri("ODCA Solutions", user.Email, secret))
+            : null;
     }
 
     public async Task<MfaVerificationOutcome> ConfirmEnrollmentAsync(
@@ -67,11 +71,14 @@ public sealed class MfaService(
         }
 
         var recoveryCodes = GenerateRecoveryCodes();
+        var expiresAt = now.Add(policy.SessionLifetime);
         var confirmed = await repository.ConfirmMfaAsync(
             userId,
             sessionId,
             securityVersion,
             now,
+            expiresAt,
+            protectedSecret,
             verification.TimeStep,
             recoveryCodes.Select(codeValue => HashRecoveryCode(userId, codeValue)).ToArray(),
             cancellationToken);
@@ -81,7 +88,7 @@ public sealed class MfaService(
         }
 
         var updatedUser = user with { MfaConfirmedAt = now };
-        var session = new SessionRecord(sessionId, userId, securityVersion, now.Add(policy.SessionLifetime), "mfa", now);
+        var session = new SessionRecord(sessionId, userId, securityVersion, expiresAt, "mfa", now);
         return new(
             true,
             [],
@@ -134,11 +141,13 @@ public sealed class MfaService(
             return Failed("Código de autenticação já utilizado.");
         }
 
+        var expiresAt = now.Add(policy.SessionLifetime);
         var completed = await repository.CompleteMfaChallengeAsync(
             userId,
             sessionId,
             securityVersion,
             now,
+            expiresAt,
             verification?.TimeStep,
             recoveryCodeHash,
             cancellationToken);
@@ -148,7 +157,7 @@ public sealed class MfaService(
             return Failed("Código de autenticação inválido, expirado ou já utilizado.");
         }
 
-        var session = new SessionRecord(sessionId, userId, securityVersion, now.Add(policy.SessionLifetime), "mfa", now);
+        var session = new SessionRecord(sessionId, userId, securityVersion, expiresAt, "mfa", now);
         return new(true, [], user, session, tokenService.Issue(user, session), []);
     }
 

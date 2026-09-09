@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.DataProtection;
 using Npgsql;
 using Odca.Application.Common;
 using Odca.Application.Dashboard;
@@ -45,7 +46,13 @@ public static class DependencyInjection
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IPasswordService, AspNetPasswordService>();
         services.AddSingleton<ITokenService, JwtTokenService>();
-        services.AddDataProtection();
+        var dataProtection = services.AddDataProtection()
+            .SetApplicationName("ODCA Solutions");
+        var keysPath = configuration["DataProtection:KeysPath"];
+        if (!string.IsNullOrWhiteSpace(keysPath))
+        {
+            dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+        }
         services.AddSingleton<IMfaSecretProtector, DataProtectionMfaSecretProtector>();
         services.AddSingleton<TotpService>();
         services.AddScoped<IIdentityRepository, NpgsqlIdentityRepository>();
