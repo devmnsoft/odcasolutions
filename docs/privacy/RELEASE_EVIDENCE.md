@@ -2,6 +2,8 @@
 
 ## Evolução S00/S01 — 09/09/2026
 
+Atualização do gate no SHA base `c5e5064`: a CI 34352606607 aprovou o secret scan, mas falhou em restore por divergência do `coverlet.collector`; build, assets e testes não executaram. A correção alinha o projeto de integração e seu lock em 10.0.1 e adiciona testes de host, porém ainda aguarda CI. Não reutilizar as contagens do SHA anterior como resultado deste incremento.
+
 | Controle | Evidência | Resultado | Limitação |
 |---|---|---|---|
 | Histórico SQL imutável | runner valida versão, ordem, checksum, lacunas e banco mais novo | 6 testes de parser/checksum/snapshot aprovados | SQL direto/recovery/concurrency aguardam banco autorizado |
@@ -11,7 +13,7 @@
 | Sessão BFF | cookie opaco; ticket protegido atrás de `IDistributedCache` | build aprovado | ambiente local usa memória; produção requer cache compartilhado |
 | Logout degradado | cookie local removido mesmo sem resposta da API | implementação revisada | teste de navegador com API indisponível pendente |
 | Autenticação | duração configurável e bloqueio sem extensão automática | 2 testes novos; 10 testes de domínio aprovados | MFA real permanece pendente |
-| Entrada de direitos | migração 003, função restrita, API/Web, protocolo opaco e resposta neutra | testes unitários aprovados; asserções HTTP bloqueadas pela inicialização na CI 34350222079 | correção preparada neste incremento; triagem, identidade, prazo, exportação e operação permanecem pendentes |
+| Entrada de direitos | migração 003, função restrita, API/Web, protocolo opaco e resposta neutra | cenário HTTP agora independente, ainda não executado no novo SHA | triagem, identidade, prazo, exportação e operação permanecem pendentes |
 | Suíte local sem banco | domínio, assets e validação de migrações | build 0/0, assets, 16 testes aprovados; 3 cenários DB recusados com mensagem segura | suíte PostgreSQL requer configuração explícita |
 
 Esta evidência não declara conformidade LGPD nem conclusão de S00/S01. Textos, prazos, bases legais, canal de titulares e acesso de suporte continuam sujeitos às etapas e validações registradas no backlog.
