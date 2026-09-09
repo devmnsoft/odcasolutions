@@ -27,7 +27,7 @@ Atualização do gate no SHA base `c5e5064`: a CI 34352606607 aprovou o secret s
 | Sessão BFF | cookie opaco; ticket protegido atrás de `IDistributedCache` | build aprovado | ambiente local usa memória; produção requer cache compartilhado |
 | Logout degradado | cookie local removido mesmo sem resposta da API | implementação revisada | teste de navegador com API indisponível pendente |
 | Autenticação | duração configurável e bloqueio sem extensão automática | 2 testes novos; 10 testes de domínio aprovados | MFA real permanece pendente |
-| Entrada de direitos | migração 003, função restrita, API/Web, protocolo opaco e resposta neutra | cenário HTTP agora independente, ainda não executado no novo SHA | triagem, identidade, prazo, exportação e operação permanecem pendentes |
+| Entrada de direitos | migração 003, função restrita, API/Web, protocolo opaco e resposta neutra | testes unitários aprovados; asserções HTTP bloqueadas pela inicialização na CI 34350222079 | correção preparada neste incremento; triagem, identidade, prazo, exportação e operação permanecem pendentes |
 | Suíte local sem banco | domínio, assets e validação de migrações | build 0/0, assets, 16 testes aprovados; 3 cenários DB recusados com mensagem segura | suíte PostgreSQL requer configuração explícita |
 
 Esta evidência não declara conformidade LGPD nem conclusão de S00/S01. Textos, prazos, bases legais, canal de titulares e acesso de suporte continuam sujeitos às etapas e validações registradas no backlog.

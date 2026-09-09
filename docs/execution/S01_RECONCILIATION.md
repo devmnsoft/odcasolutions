@@ -12,18 +12,6 @@ Esta matriz distingue implementação, teste escrito e evidência efetivamente e
 | Privacidade | Entrada pública, protocolo opaco e evento inicial | Testes unitários aprovados; fluxo HTTP ficou bloqueado pela inicialização na CI citada | Identidade, triagem, exportação e conclusão controlada ausentes | Correção de host desbloqueia a execução; operação permanece pendente |
 | BFF distribuído | Cookie protegido com ticket em `IDistributedCache` | Build da CI aprovado | Implementação usa memória e Data Protection não compartilhado | Pendente para produção multi-instância |
 
-## Incremento sobre `c5e5064` — matriz verificável
-
-| Requisito | Implementação deste incremento | Teste/check executado | Próximo passo |
-|---|---|---|---|
-| Restore bloqueado | `coverlet.collector` de IntegrationTests alinhado em 10.0.1 com DomainTests e com o lock já gerado | coerência de csproj/lock inspecionada; execução .NET local indisponível | confirmar `dotnet restore --locked-mode` na CI do commit |
-| Inicialização real | hosted service separado; `WebApplicationFactory` inicia a aplicação e consulta `/health/live` | teste escrito para host válido e seis configurações Production inválidas | executar na CI e preservar logs/TRX |
-| Cenários HTTP legíveis | fluxo agregado separado em privacidade, login inválido, troca inicial, dashboard/planos e logout/revogação | `npm run build` aprovado; suíte .NET não executada neste ambiente | executar contra PostgreSQL descartável com role restrita |
-| MFA e acesso administrativo | nenhuma implementação funcional adicionada | nenhuma evidência de segundo fator | implementar Marco B antes de considerar dashboard administrativo aceito |
-| Onboarding, equipe e privacidade operacional | nenhuma implementação funcional adicionada | nenhuma evidência nova | executar Marcos C–E na ordem do backlog |
-
-Consulta remota da PR/CI não foi autenticada pelo ambiente local (`gh auth status` sem credencial e API retornando 401). A situação da CI acima registra o log fornecido para o SHA `c5e5064`; o resultado do novo commit deve substituí-la quando disponível.
-
 O escopo amplo de S01 não é declarado concluído. O incremento atual fecha o bloqueio reproduzido de composição do host e mantém as demais lacunas explícitas para não confundir código existente com controle aprovado.
 
 ## Incremento local sobre `468dee4` — MFA e primeiro cliente
