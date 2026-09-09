@@ -201,8 +201,10 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
         return new PasswordChangeResult(securityVersion);
     }
 
-    public async Task SavePendingMfaSecretAsync(
+    public async Task<bool> SavePendingMfaSecretAsync(
         Guid userId,
+        Guid sessionId,
+        int securityVersion,
         string protectedSecret,
         DateTimeOffset now,
         CancellationToken cancellationToken)
@@ -214,20 +216,39 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
                    mfa_last_accepted_time_step = NULL,
                    updated_at = @now
              WHERE id = @userId
+               AND security_version = @securityVersion
                AND is_platform_administrator
                AND NOT must_change_password
-               AND NOT is_deleted;
+               AND mfa_confirmed_at IS NULL
+               AND NOT is_deleted
+               AND EXISTS
+               (
+                   SELECT 1 FROM odca.sessions s
+                    WHERE s.id = @sessionId
+                      AND s.user_id = @userId
+                      AND s.security_version = @securityVersion
+                      AND s.revoked_at IS NULL
+                      AND s.expires_at > @now
+               );
 
             INSERT INTO odca.audit_events
                 (scope_type, actor_user_id, action, entity_type, entity_id, occurred_at, result)
-            VALUES ('platform', @userId, 'identity.mfa.enrollment.started', 'user', @userId, @now, 'success');
+            SELECT 'platform', @userId, 'identity.mfa.enrollment.started', 'user', @userId, @now, 'success'
+             WHERE EXISTS
+             (
+                 SELECT 1 FROM odca.users
+                  WHERE id = @userId
+                    AND mfa_secret_protected = @protectedSecret
+                    AND mfa_confirmed_at IS NULL
+             );
             """;
 
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
-        await connection.ExecuteAsync(new CommandDefinition(
+        var affected = await connection.ExecuteAsync(new CommandDefinition(
             sql,
-            new { userId, protectedSecret, now },
+            new { userId, sessionId, securityVersion, protectedSecret, now },
             cancellationToken: cancellationToken));
+        return affected == 2;
     }
 
     public async Task<string?> GetProtectedMfaSecretAsync(Guid userId, CancellationToken cancellationToken)
@@ -244,6 +265,8 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
         Guid sessionId,
         int securityVersion,
         DateTimeOffset verifiedAt,
+        DateTimeOffset expiresAt,
+        string expectedProtectedSecret,
         long acceptedTimeStep,
         IReadOnlyList<string> recoveryCodeHashes,
         CancellationToken cancellationToken)
@@ -255,7 +278,7 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
                    updated_at = @verifiedAt
              WHERE id = @userId
                AND security_version = @securityVersion
-               AND mfa_secret_protected IS NOT NULL
+               AND mfa_secret_protected = @expectedProtectedSecret
                AND mfa_confirmed_at IS NULL
                AND NOT must_change_password
                AND NOT is_deleted;
@@ -264,7 +287,8 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
             UPDATE odca.sessions
                SET authentication_level = 'mfa',
                    mfa_completed_at = @verifiedAt,
-                   mfa_failed_attempts = 0
+                   mfa_failed_attempts = 0,
+                   expires_at = @expiresAt
              WHERE id = @sessionId
                AND user_id = @userId
                AND security_version = @securityVersion
@@ -276,12 +300,12 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         var updated = await connection.ExecuteAsync(new CommandDefinition(
             updateSql,
-            new { userId, securityVersion, verifiedAt, acceptedTimeStep },
+            new { userId, securityVersion, verifiedAt, acceptedTimeStep, expectedProtectedSecret },
             transaction,
             cancellationToken: cancellationToken));
         var sessionUpdated = await connection.ExecuteAsync(new CommandDefinition(
             sessionSql,
-            new { userId, sessionId, securityVersion, verifiedAt },
+            new { userId, sessionId, securityVersion, verifiedAt, expiresAt },
             transaction,
             cancellationToken: cancellationToken));
         if (updated != 1 || sessionUpdated != 1)
@@ -344,10 +368,17 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
             """;
 
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
-        return await connection.QuerySingleOrDefaultAsync<MfaChallengeState>(new CommandDefinition(
+        var row = await connection.QuerySingleOrDefaultAsync<MfaChallengeStateRow>(new CommandDefinition(
             sql,
             new { userId, sessionId, securityVersion, now },
             cancellationToken: cancellationToken));
+        return row is null
+            ? null
+            : new MfaChallengeState(
+                row.ProtectedSecret,
+                AsUtc(row.ConfirmedAt),
+                row.LastAcceptedTimeStep,
+                row.FailedAttempts);
     }
 
     public async Task<bool> CompleteMfaChallengeAsync(
@@ -355,6 +386,7 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
         Guid sessionId,
         int securityVersion,
         DateTimeOffset verifiedAt,
+        DateTimeOffset expiresAt,
         long? acceptedTimeStep,
         string? recoveryCodeHash,
         CancellationToken cancellationToken)
@@ -413,14 +445,15 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
             UPDATE odca.sessions
                SET authentication_level = 'mfa',
                    mfa_completed_at = @verifiedAt,
-                   mfa_failed_attempts = 0
+                   mfa_failed_attempts = 0,
+                   expires_at = @expiresAt
              WHERE id = @sessionId
                AND user_id = @userId
                AND security_version = @securityVersion
                AND revoked_at IS NULL
                AND expires_at > @verifiedAt;
             """,
-            new { userId, sessionId, securityVersion, verifiedAt },
+            new { userId, sessionId, securityVersion, verifiedAt, expiresAt },
             transaction,
             cancellationToken: cancellationToken));
         if (sessionUpdated != 1)
@@ -440,6 +473,21 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
             cancellationToken: cancellationToken));
         await transaction.CommitAsync(cancellationToken);
         return true;
+    }
+
+    private static DateTimeOffset? AsUtc(DateTime? value) => value is null
+        ? null
+        : new DateTimeOffset(DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
+
+    private sealed class MfaChallengeStateRow
+    {
+        public string ProtectedSecret { get; init; } = string.Empty;
+
+        public DateTime? ConfirmedAt { get; init; }
+
+        public long? LastAcceptedTimeStep { get; init; }
+
+        public int FailedAttempts { get; init; }
     }
 
     public async Task RecordFailedMfaChallengeAsync(

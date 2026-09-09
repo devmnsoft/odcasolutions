@@ -37,3 +37,7 @@ O escopo amplo de S01 não é declarado concluído. O incremento atual fecha o b
 | Banco | migrações 004/005 e snapshots `odca-v004.sql`/`odca-v005.sql` | checksums/snapshots aprovados na suíte sem DB | vazio/upgrade/reaplicação/concurrency/recovery em PostgreSQL real |
 
 S01 permanece parcial: equipe, convites, suporte temporário, atendimento autenticado de privacidade, operação comercial real, cobrança e cache/Data Protection compartilhados para múltiplas instâncias continuam no backlog.
+
+## Reconciliação do prompt 08 — 09/09/2026
+
+A referência `a9077f6` continha MFA e onboarding, mas três leituras/testes estavam quebrados. Este incremento corrige esses contratos, adiciona renovação persistida de sessão MFA, proteção concorrente da inscrição, validação de documentos e migração 006 de unicidade/evidência. Código de equipe, convites e seletor ainda não existe; outbox continua sem transporte de produção. Portanto S01 permanece parcial e nenhuma alegação de produção/multi-instância foi feita.

@@ -31,7 +31,7 @@ public sealed class CustomerOnboardingService(
         var now = clock.UtcNow;
         var userId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
-        var document = NormalizeDocument(submission.Document);
+        var document = BrazilianDocument.NormalizeAndValidate(submission.Document);
         var email = submission.Email.Trim().ToLowerInvariant();
         var template = new UserCredential(
             userId,
@@ -113,7 +113,7 @@ public sealed class CustomerOnboardingService(
             errors.Add("Confirme a ciência do aviso de privacidade.");
         }
 
-        if (NormalizeDocument(submission.Document).Type == "invalid")
+        if (BrazilianDocument.NormalizeAndValidate(submission.Document).Type == "invalid")
         {
             errors.Add("Informe CPF ou CNPJ em formato válido.");
         }
@@ -134,14 +134,4 @@ public sealed class CustomerOnboardingService(
 
     private static string NormalizePlanCode(string code) => code.Trim().ToLowerInvariant();
 
-    private static (string Normalized, string Type) NormalizeDocument(string value)
-    {
-        var normalized = new string(value.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
-        return normalized.Length switch
-        {
-            11 when normalized.All(char.IsDigit) => (normalized, "cpf"),
-            14 => (normalized, "cnpj"),
-            _ => (normalized, "invalid")
-        };
-    }
 }

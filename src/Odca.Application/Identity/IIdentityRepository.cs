@@ -31,8 +31,10 @@ public interface IIdentityRepository
         DateTimeOffset changedAt,
         CancellationToken cancellationToken);
 
-    Task SavePendingMfaSecretAsync(
+    Task<bool> SavePendingMfaSecretAsync(
         Guid userId,
+        Guid sessionId,
+        int securityVersion,
         string protectedSecret,
         DateTimeOffset now,
         CancellationToken cancellationToken);
@@ -44,6 +46,8 @@ public interface IIdentityRepository
         Guid sessionId,
         int securityVersion,
         DateTimeOffset verifiedAt,
+        DateTimeOffset expiresAt,
+        string expectedProtectedSecret,
         long acceptedTimeStep,
         IReadOnlyList<string> recoveryCodeHashes,
         CancellationToken cancellationToken);
@@ -60,6 +64,7 @@ public interface IIdentityRepository
         Guid sessionId,
         int securityVersion,
         DateTimeOffset verifiedAt,
+        DateTimeOffset expiresAt,
         long? acceptedTimeStep,
         string? recoveryCodeHash,
         CancellationToken cancellationToken);

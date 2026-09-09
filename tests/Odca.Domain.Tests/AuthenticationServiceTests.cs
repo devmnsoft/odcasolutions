@@ -121,11 +121,13 @@ public sealed class AuthenticationServiceTests
             DateTimeOffset changedAt,
             CancellationToken cancellationToken) => Task.FromResult(new PasswordChangeResult(user.SecurityVersion + 1));
 
-        public Task SavePendingMfaSecretAsync(
+        public Task<bool> SavePendingMfaSecretAsync(
             Guid userId,
+            Guid sessionId,
+            int securityVersion,
             string protectedSecret,
             DateTimeOffset now,
-            CancellationToken cancellationToken) => Task.CompletedTask;
+            CancellationToken cancellationToken) => Task.FromResult(true);
 
         public Task<string?> GetProtectedMfaSecretAsync(Guid userId, CancellationToken cancellationToken) =>
             Task.FromResult<string?>(null);
@@ -135,6 +137,8 @@ public sealed class AuthenticationServiceTests
             Guid sessionId,
             int securityVersion,
             DateTimeOffset verifiedAt,
+            DateTimeOffset expiresAt,
+            string expectedProtectedSecret,
             long acceptedTimeStep,
             IReadOnlyList<string> recoveryCodeHashes,
             CancellationToken cancellationToken) => Task.FromResult(false);
@@ -151,6 +155,7 @@ public sealed class AuthenticationServiceTests
             Guid sessionId,
             int securityVersion,
             DateTimeOffset verifiedAt,
+            DateTimeOffset expiresAt,
             long? acceptedTimeStep,
             string? recoveryCodeHash,
             CancellationToken cancellationToken) => Task.FromResult(false);

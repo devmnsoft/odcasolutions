@@ -10,6 +10,7 @@ artifacts/
 *.suo
 *.pfx
 *.key
+data-protection-keys/
 development-runtime.json
 development-credentials.json
 src/Odca.Web/wwwroot/dist/

@@ -19,7 +19,9 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
     [Fact]
     public async Task CanonicalSqlReappliesWithoutDuplicatingMigration()
     {
-        Assert.Equal(3, await database.MigrationCountAsync());
+        // The expectation comes from the canonical package version compiled with the
+        // application, rather than from whatever history happens to be in the test DB.
+        Assert.Equal(DatabaseSchema.CurrentVersion, await database.MigrationCountAsync());
         Assert.True(await database.IsolationFixesArePresentAsync());
     }
 

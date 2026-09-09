@@ -48,3 +48,7 @@ Esta matriz registra controles técnicos e pendências; não é selo de conformi
 | ODCA-PRIV-010 | senha/troca/logout/revogação cobertos | Domain + `S00FlowTests` | Engenharia/QA | suíte A × B, direitos, suporte, retenção, incidente e IA nas etapas aplicáveis |
 
 Status externo: a CI 34350222079 do SHA `5ab8df3b8585101bae5d2068255c58e74f01ae81` aprovou restore, build, assets, secret scan, 10 testes de domínio e 8 testes da assembleia de integração; 1 teste integrado falhou durante a inicialização por ausência da seção `Jwt`. Este incremento corrige a composição antecipada, mas ainda não possui execução de CI própria. Nenhum provedor, sandbox, prazo legal ou contato real foi validado nesta entrega.
+
+## Evidência do incremento prompt 08 — 09/09/2026
+
+A migração 006 adiciona campos separados para versão/instante de termos e ciência do aviso e unicidade de documento em cadastros vivos. Como os textos ainda aguardam aprovação, novos registros usam explicitamente o marcador `pending-legal-approval`; isso é rastreabilidade técnica, não validação jurídica. Consentimento de marketing permanece separado. Execução local disponível: `npm run build` aprovado. SDK .NET e credenciais PostgreSQL exclusivas não estão presentes neste ambiente; build/testes de aplicação e prova de migração real permanecem para CI. Transporte de e-mail, retenção executável e atendimento autenticado de direitos continuam pendentes.
