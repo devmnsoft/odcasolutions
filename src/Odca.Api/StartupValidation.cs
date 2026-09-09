@@ -1,5 +1,6 @@
 using System.Text;
 using Odca.Infrastructure.Identity;
+using Microsoft.Extensions.Options;
 
 namespace Odca.Api;
 
@@ -36,4 +37,18 @@ public static class StartupValidation
             }
         }
     }
+}
+
+public sealed class StartupValidationService(
+    IConfiguration configuration,
+    IHostEnvironment environment,
+    IOptions<JwtOptions> jwtOptions) : IHostedService
+{
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+        StartupValidation.Validate(configuration, environment, jwtOptions.Value);
+        return Task.CompletedTask;
+    }
+
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }
