@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Dapper;
 using Npgsql;
@@ -26,7 +27,11 @@ public static class BootstrapProgram
                 case "init":
                     Initialize(paths);
                     Console.WriteLine("Configuração local criada ou preservada.");
-                    Console.WriteLine("Próximo passo: docker compose --env-file .env.local up -d");
+                    Console.WriteLine("Use Docker ou execute configure-native para apontar ao PostgreSQL local.");
+                    return 0;
+                case "configure-native":
+                    await ConfigureNativeAsync(paths);
+                    Console.WriteLine("PostgreSQL nativo configurado. Execute migrate para aplicar o schema.");
                     return 0;
                 case "migrate":
                     await MigrateAsync(paths);
@@ -40,7 +45,7 @@ public static class BootstrapProgram
                     Console.WriteLine("Senha inicial redefinida. Execute show-login para recuperá-la localmente.");
                     return 0;
                 default:
-                    Console.WriteLine("Uso: dotnet run --project src/Odca.Bootstrap -- <init|migrate|show-login|reset-password>");
+                    Console.WriteLine("Uso: dotnet run --project src/Odca.Bootstrap -- <init|configure-native|migrate|show-login|reset-password>");
                     return command == "help" ? 0 : 2;
             }
         }
@@ -48,6 +53,97 @@ public static class BootstrapProgram
         {
             Console.Error.WriteLine($"Bootstrap falhou: {exception.Message}");
             return 1;
+        }
+    }
+
+    private static async Task ConfigureNativeAsync(LocalPaths paths)
+    {
+        Initialize(paths);
+        var adminConnection = Environment.GetEnvironmentVariable("ODCA_NATIVE_ADMIN_CONNECTION");
+        if (string.IsNullOrWhiteSpace(adminConnection))
+        {
+            throw new InvalidOperationException(
+                "Defina ODCA_NATIVE_ADMIN_CONNECTION somente nesta sessão com a conexão administrativa do banco ODCA.");
+        }
+
+        var adminBuilder = new NpgsqlConnectionStringBuilder(adminConnection)
+        {
+            IncludeErrorDetail = false,
+            Timeout = 5,
+            CommandTimeout = 30
+        };
+        if (string.IsNullOrWhiteSpace(adminBuilder.Password))
+        {
+            adminBuilder.Password = ReadSecret("Senha administrativa do PostgreSQL: ");
+        }
+        if (string.IsNullOrWhiteSpace(adminBuilder.Host) || string.IsNullOrWhiteSpace(adminBuilder.Database))
+        {
+            throw new InvalidOperationException("A conexão nativa precisa informar Host e Database.");
+        }
+
+        await using (var connection = new NpgsqlConnection(adminBuilder.ConnectionString))
+        {
+            await connection.OpenAsync();
+            await using var command = new NpgsqlCommand("SHOW server_version_num;", connection);
+            var version = Convert.ToInt32(await command.ExecuteScalarAsync(), System.Globalization.CultureInfo.InvariantCulture);
+            if (version < 180000)
+            {
+                throw new InvalidOperationException("ODCA requer PostgreSQL 18 ou superior.");
+            }
+        }
+
+        var credentials = ReadJson<DevelopmentCredentials>(paths.CredentialsFile);
+        var previous = ReadJson<DevelopmentRuntime>(paths.RuntimeFile);
+        var appBuilder = new NpgsqlConnectionStringBuilder(adminBuilder.ConnectionString)
+        {
+            Username = "odca_app_login",
+            Password = credentials.ApplicationDatabasePassword,
+            IncludeErrorDetail = false,
+            Pooling = true,
+            Timeout = 5,
+            CommandTimeout = 30
+        };
+        WriteJson(paths.RuntimeFile, previous with
+        {
+            ConnectionStrings = new ConnectionStrings(adminBuilder.ConnectionString, appBuilder.ConnectionString)
+        });
+    }
+
+    private static string ReadSecret(string prompt)
+    {
+        if (Console.IsInputRedirected)
+        {
+            throw new InvalidOperationException(
+                "A conexão não contém Password e o terminal não permite leitura segura interativa.");
+        }
+
+        Console.Write(prompt);
+        var value = new StringBuilder();
+        while (true)
+        {
+            var key = Console.ReadKey(intercept: true);
+            if (key.Key == ConsoleKey.Enter)
+            {
+                Console.WriteLine();
+                return value.Length > 0
+                    ? value.ToString()
+                    : throw new InvalidOperationException("A senha administrativa não foi informada.");
+            }
+
+            if (key.Key == ConsoleKey.Backspace)
+            {
+                if (value.Length > 0)
+                {
+                    value.Length--;
+                }
+
+                continue;
+            }
+
+            if (!char.IsControl(key.KeyChar))
+            {
+                value.Append(key.KeyChar);
+            }
         }
     }
 

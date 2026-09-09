@@ -29,23 +29,23 @@ jobs:
       ODCA_TEST_ADMIN_CONNECTION: Host=localhost;Port=5432;Database=odca_test;Username=postgres;Password=odca-ci-only-password;Include Error Detail=false
       ODCA_TEST_APP_CONNECTION: Host=localhost;Port=5432;Database=odca_test;Username=odca_app_login;Password=odca-ci-app-only-password;Include Error Detail=false
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v5.2.0
+      - uses: actions/setup-dotnet@v6.0.0
         with:
           global-json-file: global.json
-      - uses: actions/setup-node@v6.0.0
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: "24.18.0"
       - name: Restore
-        run: dotnet restore Odca.slnx --locked-mode
+        run: dotnet restore Odca.sln --locked-mode
       - name: Build
-        run: dotnet build Odca.slnx --configuration Release --no-restore
+        run: dotnet build Odca.sln --configuration Release --no-restore
       - name: Assets
         run: npm run build
       - name: Tests
-        run: dotnet test Odca.slnx --configuration Release --no-build --logger "trx;LogFileName=tests.trx"
+        run: dotnet test Odca.sln --configuration Release --no-build --logger "trx;LogFileName=tests.trx"
       - name: Secret scan
         run: >-
           docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1

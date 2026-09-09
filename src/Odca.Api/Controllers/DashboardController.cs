@@ -14,7 +14,12 @@ public sealed class DashboardController(IPlatformDashboardRepository repository)
     [HttpGet]
     public async Task<ActionResult<DashboardResponse>> Get(CancellationToken cancellationToken)
     {
-        var snapshot = await repository.GetAsync(cancellationToken);
+        if (!Guid.TryParse(User.FindFirstValue("sub"), out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var snapshot = await repository.GetAsync(userId, cancellationToken);
         return Ok(new DashboardResponse(
             User.FindFirstValue(ClaimTypes.Name) ?? "Administrador",
             snapshot.ActiveTenants,

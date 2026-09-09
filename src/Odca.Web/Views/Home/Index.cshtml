@@ -13,6 +13,10 @@
 {
     <div class="success" role="status">@success</div>
 }
+@if (TempData["Error"] is string error)
+{
+    <div class="error" role="alert">@error</div>
+}
 <section class="metrics" aria-label="Indicadores da plataforma">
     <article class="metric"><span>Clientes ativos</span><strong>@Model.ActiveTenants</strong></article>
     <article class="metric"><span>Usuários ativos</span><strong>@Model.ActiveUsers</strong></article>
@@ -20,5 +24,5 @@
 </section>
 <section class="card empty-state">
     <h2>Fundação operacional</h2>
-    <p>A primeira fatia contém identidade, sessões revogáveis, auditoria mínima e inventário inicial de tratamento. Cadastros de clientes e contratos entram nas próximas etapas.</p>
+    <p>A fundação contém identidade, sessões revogáveis, auditoria mínima e inventário inicial de tratamento. O catálogo versionado de planos já está disponível; cadastro completo de clientes e contratos segue em evolução.</p>
 </section>

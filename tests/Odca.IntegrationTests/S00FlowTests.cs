@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Odca.Contracts.Identity;
+using Odca.Contracts.Plans;
 using Odca.Infrastructure.Database;
 
 namespace Odca.IntegrationTests;
@@ -12,7 +13,8 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
     [Fact]
     public async Task CanonicalSqlReappliesWithoutDuplicatingMigration()
     {
-        Assert.Equal(1, await database.MigrationCountAsync());
+        Assert.Equal(2, await database.MigrationCountAsync());
+        Assert.True(await database.IsolationFixesArePresentAsync());
     }
 
     [Fact]
@@ -52,6 +54,17 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
         Assert.NotNull(data);
         Assert.True(data.ActiveUsers >= 1);
         Assert.True(data.PendingPrivacyItems >= 1);
+
+        using var plans = Authorized(HttpMethod.Get, "/api/v1/platform/plans", changed.AccessToken);
+        using var plansResponse = await client.SendAsync(plans);
+        plansResponse.EnsureSuccessStatusCode();
+        var catalog = await plansResponse.Content.ReadFromJsonAsync<PlanCatalogResponse[]>();
+        Assert.NotNull(catalog);
+        Assert.Collection(
+            catalog,
+            basic => Assert.Equal(("basic", 3, 10_000_000_000), (basic.Code, basic.ActiveSeats, basic.StorageBytes)),
+            intermediate => Assert.Equal(("intermediate", 10, 100_000_000_000), (intermediate.Code, intermediate.ActiveSeats, intermediate.StorageBytes)),
+            enterprise => Assert.Equal(("enterprise", 30, 500_000_000_000), (enterprise.Code, enterprise.ActiveSeats, enterprise.StorageBytes)));
 
         using var logout = Authorized(HttpMethod.Post, "/api/v1/auth/logout", changed.AccessToken);
         using var logoutResponse = await client.SendAsync(logout);
