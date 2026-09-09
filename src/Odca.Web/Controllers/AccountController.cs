@@ -65,17 +65,25 @@ public sealed class AccountController(OdcaApiClient apiClient) : Controller
             token,
             new ChangePasswordRequest(model.CurrentPassword, model.NewPassword),
             cancellationToken);
-        if (result.Response is null)
+        if (!result.Succeeded)
         {
-            foreach (var error in result.Errors)
+            if (result.Status == ApiCallStatus.Unauthorized)
             {
-                ModelState.AddModelError(string.Empty, error);
+                await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                return RedirectToAction(nameof(Login));
             }
 
+            ModelState.AddModelError(string.Empty, result.Status switch
+            {
+                ApiCallStatus.Forbidden => "Você não tem permissão para alterar esta senha.",
+                ApiCallStatus.RateLimited => "Muitas tentativas. Aguarde e tente novamente.",
+                ApiCallStatus.Timeout or ApiCallStatus.Unavailable => "O serviço está temporariamente indisponível.",
+                _ => "Não foi possível alterar a senha. Confira a senha atual e os requisitos informados."
+            });
             return View(model);
         }
 
-        await SignInAsync(result.Response);
+        await SignInAsync(result.Value!);
         TempData["Success"] = "Senha alterada com segurança.";
         return RedirectToAction("Index", "Home");
     }
@@ -86,12 +94,18 @@ public sealed class AccountController(OdcaApiClient apiClient) : Controller
     {
         var token = await HttpContext.GetTokenAsync("access_token");
         var remotelyRevoked = token is null;
-        if (token is not null)
+        try
         {
-            remotelyRevoked = await apiClient.LogoutAsync(token, cancellationToken);
+            if (token is not null)
+            {
+                remotelyRevoked = await apiClient.LogoutAsync(token, cancellationToken);
+            }
+        }
+        finally
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         }
 
-        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         if (!remotelyRevoked)
         {
             TempData["LogoutWarning"] = "A sessão local foi encerrada. A revogação remota não pôde ser confirmada e o acesso expirará automaticamente.";

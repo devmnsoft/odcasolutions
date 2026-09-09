@@ -39,10 +39,22 @@ public sealed class MigrationChecksumTests
     }
 
     [Fact]
-    public void ReleaseV002MatchesCanonicalSql()
+    public void ReleaseV002IsAnImmutablePrefixOfCanonicalSql()
     {
         var canonical = FindSql();
         var snapshot = Path.Combine(Path.GetDirectoryName(canonical)!, "releases", "odca-v002.sql");
+
+        var snapshotSql = File.ReadAllText(snapshot);
+        DatabaseMigrator.ValidateChecksums(snapshotSql);
+        Assert.DoesNotContain("ODCA-MIGRATION 003", snapshotSql, StringComparison.Ordinal);
+        Assert.StartsWith(snapshotSql.TrimEnd(), File.ReadAllText(canonical), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReleaseV003MatchesCanonicalSql()
+    {
+        var canonical = FindSql();
+        var snapshot = Path.Combine(Path.GetDirectoryName(canonical)!, "releases", "odca-v003.sql");
 
         Assert.Equal(File.ReadAllBytes(canonical), File.ReadAllBytes(snapshot));
     }

@@ -10,6 +10,13 @@
     </div>
 </section>
 <section class="plan-grid" aria-label="Planos publicados">
+    @if (Model.Count == 0)
+    {
+        <article class="card plan-card">
+            <h2>Nenhum plano publicado</h2>
+            <p class="muted">O catálogo está disponível, mas ainda não há uma versão comercial vigente.</p>
+        </article>
+    }
     @foreach (var plan in Model)
     {
         <article class="card plan-card">

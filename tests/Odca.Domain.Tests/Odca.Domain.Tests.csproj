@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Odca.Domain\Odca.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Odca.Application\Odca.Application.csproj" />
   </ItemGroup>
 
 </Project>

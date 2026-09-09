@@ -1,21 +1,28 @@
 # Backlog
 
-## Fechar S00
+## Fechar S00 com evidência
 
-1. Fornecer ao `configure-native` uma conexão administrativa autorizada para o PostgreSQL 18 já ativo em `localhost:5432`.
-2. Executar upgrade 001→002, reaplicação e `dotnet test` completo.
-3. Confirmar role `odca_app_login` sem `SUPERUSER`, `CREATEDB`, `CREATEROLE` ou `BYPASSRLS`.
-4. Fazer QA visual responsivo e atualizar `STATUS.md`/`RELEASE_EVIDENCE.md`.
-5. Validar CI após push autorizado.
+1. Criar banco descartável `odca_test*`, definir as três variáveis documentadas no README e executar migração vazia, upgrade, reaplicação, concorrência, recovery e suíte completa.
+2. Tornar o pacote SQL direto realmente incremental no pgAdmin sem alterar os snapshots históricos 001/002; provar equivalência com o runner.
+3. Confirmar roles de runtime/teste sem `SUPERUSER`, `CREATEDB`, `CREATEROLE`, propriedade ou `BYPASSRLS`, incluindo comportamento sob pool.
+4. Corrigir qualquer falha do CI do novo SHA e confirmar os dois jobs; depois fazer QA em 360/768/1440 px.
 
-## Próxima fatia: S01 — SaaS e acessos
+## S01 — SaaS e acessos
 
-- [x] Catálogo versionado Basic/Intermediário/Enterprise sem preços inventados, com API e tela de leitura.
-- Cadastro CPF/CNPJ, responsável, termos/aviso separados e confirmação por caixa local.
-- Memberships, convites, perfis padrão/personalizados e seleção pós-login.
-- Tenant context transacional, FKs compostas e testes negativos de RLS/pool A × B.
-- CRUD e inativação/restauração auditados; proteção do último administrador.
-- Canal público de direitos, avisos/preferências e fila que revalida a preferência.
-- Sessão temporária de suporte com MFA, escopo, expiração, revogação e ator real.
+- [x] Catálogo administrativo e catálogo público separados, sem preços inventados.
+- [x] Entrada pública inicial de solicitação de titular com protocolo opaco e resposta neutra.
+- [ ] MFA real de superadmin, recovery codes, reautenticação recente e testes de senha apenas negada.
+- [ ] Cadastro transacional CPF/CNPJ, responsável, termos/aviso/preferências separados e confirmação de e-mail por token com hash/uso único.
+- [ ] Assinatura presa à versão exata do plano e ativação comercial honesta.
+- [ ] Seleção de organização, convites, equipe, perfis delegáveis e proteção concorrente do último administrador.
+- [ ] Operação autenticada do atendimento de direitos, prazos configurados, preferências e exportação revisada.
+- [ ] Sessão temporária de suporte com MFA recente, escopo, expiração, revogação e ator real.
+- [ ] Cache distribuído e Data Protection persistido para produção/múltiplas instâncias.
 
-Dependências externas: validação jurídica dos textos e prazos; contatos de privacidade reais; provedor de e-mail de produção. O desenvolvimento usa somente dados sintéticos e outbox local identificada.
+## Sequência funcional posterior
+
+- S02: contrapartes, contrato, armazenamento privado, quota concorrente e worker persistente.
+- S03: modelo versionado, snapshots, editor e controle de conflito.
+- Depois: OCR/Office, revisão/aprovação, cobrança/adicionais, assinatura, notificações e emissão rastreável.
+
+Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail; storage/scanner; cache compartilhado; integrações comerciais. Nenhuma delas deve ser simulada como produção.

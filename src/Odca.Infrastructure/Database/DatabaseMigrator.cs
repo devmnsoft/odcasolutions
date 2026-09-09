@@ -24,36 +24,26 @@ public sealed class DatabaseMigrator(string sqlPath)
         await connection.OpenAsync(cancellationToken);
         await ExecuteAsync(connection, "SELECT pg_advisory_lock(hashtext('odca.schema.migrations'));", cancellationToken);
 
+        Exception? primaryFailure = null;
         try
         {
             var historyExists = await ScalarAsync<bool>(
                 connection,
                 "SELECT to_regclass('odca.schema_migrations') IS NOT NULL;",
                 cancellationToken);
+            var history = historyExists
+                ? await LoadHistoryAsync(connection, cancellationToken)
+                : [];
+            ValidateHistory(migrations, history);
 
             foreach (var migration in migrations)
             {
-                if (historyExists)
+                if (history.TryGetValue(migration.Version, out _))
                 {
-                    await using var historyCommand = new NpgsqlCommand(
-                        "SELECT checksum FROM odca.schema_migrations WHERE version = @version;",
-                        connection);
-                    historyCommand.Parameters.AddWithValue("version", migration.Version);
-                    var recorded = (string?)await historyCommand.ExecuteScalarAsync(cancellationToken);
-                    if (recorded is not null)
-                    {
-                        if (!string.Equals(recorded.Trim(), migration.Checksum, StringComparison.Ordinal))
-                        {
-                            throw new InvalidDataException(
-                                $"Histórico divergente na migração {migration.Version:000}: banco {recorded.Trim()}, arquivo {migration.Checksum}.");
-                        }
-
-                        continue;
-                    }
+                    continue;
                 }
 
                 await ExecuteAsync(connection, migration.Body, cancellationToken);
-                historyExists = true;
 
                 var stored = await ScalarAsync<string?>(
                     connection,
@@ -64,13 +54,23 @@ public sealed class DatabaseMigrator(string sqlPath)
                     throw new InvalidDataException(
                         $"A migração {migration.Version:000} não registrou o checksum esperado.");
                 }
+
+                history[migration.Version] = migration.Checksum;
             }
         }
-        catch
+        catch (Exception exception)
         {
+            primaryFailure = exception;
             if (connection.FullState.HasFlag(System.Data.ConnectionState.Open))
             {
-                await ExecuteAsync(connection, "ROLLBACK;", CancellationToken.None);
+                try
+                {
+                    await ExecuteAsync(connection, "ROLLBACK;", CancellationToken.None);
+                }
+                catch (Exception rollbackException)
+                {
+                    exception.Data["OdcaMigrationRollbackFailure"] = rollbackException.Message;
+                }
             }
 
             throw;
@@ -79,13 +79,67 @@ public sealed class DatabaseMigrator(string sqlPath)
         {
             if (connection.FullState.HasFlag(System.Data.ConnectionState.Open))
             {
-                await ExecuteAsync(connection, "SELECT pg_advisory_unlock(hashtext('odca.schema.migrations'));", CancellationToken.None);
+                try
+                {
+                    await ExecuteAsync(connection, "SELECT pg_advisory_unlock(hashtext('odca.schema.migrations'));", CancellationToken.None);
+                }
+                catch (Exception unlockException) when (primaryFailure is not null)
+                {
+                    primaryFailure.Data["OdcaMigrationUnlockFailure"] = unlockException.Message;
+                }
             }
         }
     }
 
     public static void ValidateChecksums(string sql)
         => _ = ParseAndValidate(sql);
+
+    private static void ValidateHistory(
+        IReadOnlyList<MigrationBlock> migrations,
+        IReadOnlyDictionary<int, string> history)
+    {
+        var known = migrations.ToDictionary(migration => migration.Version);
+        foreach (var applied in history)
+        {
+            if (!known.TryGetValue(applied.Key, out var migration))
+            {
+                throw new InvalidDataException(
+                    $"O banco contém a migração desconhecida {applied.Key:000}; o código pode estar desatualizado.");
+            }
+
+            if (!string.Equals(applied.Value.Trim(), migration.Checksum, StringComparison.Ordinal))
+            {
+                throw new InvalidDataException(
+                    $"Histórico divergente na migração {applied.Key:000}: banco {applied.Value.Trim()}, arquivo {migration.Checksum}.");
+            }
+        }
+
+        var highestApplied = history.Keys.DefaultIfEmpty(0).Max();
+        var missing = migrations.FirstOrDefault(migration =>
+            migration.Version <= highestApplied && !history.ContainsKey(migration.Version));
+        if (missing is not null)
+        {
+            throw new InvalidDataException(
+                $"O histórico do banco tem uma lacuna na migração {missing.Version:000}.");
+        }
+    }
+
+    private static async Task<Dictionary<int, string>> LoadHistoryAsync(
+        NpgsqlConnection connection,
+        CancellationToken cancellationToken)
+    {
+        await using var command = new NpgsqlCommand(
+            "SELECT version, checksum FROM odca.schema_migrations ORDER BY version;",
+            connection);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        var result = new Dictionary<int, string>();
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            result.Add(reader.GetInt32(0), reader.GetString(1));
+        }
+
+        return result;
+    }
 
     private static List<MigrationBlock> ParseAndValidate(string sql)
     {

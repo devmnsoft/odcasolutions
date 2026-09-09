@@ -48,6 +48,15 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0,
             AutoReplenishment = true
         }));
+    options.AddPolicy("privacy-intake", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(10),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
 });
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

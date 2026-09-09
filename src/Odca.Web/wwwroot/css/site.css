@@ -17,6 +17,8 @@ body { margin: 0; background: var(--ice); color: var(--ink); font: 16px/1.5 Inte
 .brand-mark { width: 36px; height: 36px; display: grid; place-items: center; border: 2px solid var(--white); border-radius: 10px; }
 .account-actions { display: flex; align-items: center; gap: 16px; }
 .account-actions a { color: var(--white); text-underline-offset: 4px; }
+.public-actions { display: flex; gap: 18px; }
+.public-actions a { color: var(--white); text-underline-offset: 4px; }
 .account-actions form { margin: 0; }
 .page-shell { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 48px 0; }
 .auth-layout { min-height: calc(100vh - 168px); display: grid; grid-template-columns: 1.2fr .8fr; align-items: center; gap: clamp(32px, 7vw, 96px); }
@@ -27,8 +29,8 @@ body { margin: 0; background: var(--ice); color: var(--ink); font: 16px/1.5 Inte
 .eyebrow { margin: 0; color: var(--action); font-size: .8rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 800; }
 .muted { color: #526777; }
 label { display: block; margin: 20px 0 6px; font-weight: 700; }
-input { width: 100%; border: 1px solid #9fb3c8; border-radius: 9px; padding: 12px 14px; font: inherit; color: var(--ink); }
-input:focus { outline: 3px solid rgba(36, 91, 219, .2); border-color: var(--action); }
+input, select, textarea { width: 100%; border: 1px solid #9fb3c8; border-radius: 9px; padding: 12px 14px; font: inherit; color: var(--ink); background: var(--white); }
+input:focus, select:focus, textarea:focus { outline: 3px solid rgba(36, 91, 219, .2); border-color: var(--action); }
 .button { border: 0; border-radius: 9px; padding: 12px 18px; font: inherit; font-weight: 750; cursor: pointer; }
 .button-primary { width: 100%; margin-top: 28px; color: var(--white); background: var(--action); }
 .button-primary:hover { background: #1947b0; }
@@ -51,6 +53,8 @@ input:focus { outline: 3px solid rgba(36, 91, 219, .2); border-color: var(--acti
 .plan-card dl div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--border); }
 .plan-card dt { color: var(--ink); }
 .plan-card dd { margin: 0; font-weight: 700; text-align: right; }
+.button-link { display: inline-block; color: var(--action); background: #eaf0ff; text-decoration: none; }
+.privacy-note { margin-top: 28px; font-size: .9rem; }
 .empty-state { box-shadow: none; }
 
 @media (max-width: 768px) {

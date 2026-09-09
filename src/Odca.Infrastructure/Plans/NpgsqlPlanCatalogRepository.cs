@@ -26,8 +26,51 @@ public sealed class NpgsqlPlanCatalogRepository(NpgsqlDataSource dataSource) : I
             """;
 
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
-        var items = await connection.QueryAsync<PlanCatalogItem>(
-            new CommandDefinition(sql, cancellationToken: cancellationToken));
-        return items.AsList();
+        var rows = (await connection.QueryAsync<PlanCatalogRow>(
+            new CommandDefinition(sql, cancellationToken: cancellationToken))).AsList();
+        var items = rows;
+        if (items.GroupBy(item => item.Code, StringComparer.Ordinal).Any(group => group.Count() != 1))
+        {
+            throw new InvalidDataException("O catálogo contém mais de uma versão vigente para o mesmo plano.");
+        }
+
+        if (items.Any(item => item.ActiveSeats is null || item.StorageBytes is null ||
+                              item.UserStorageBytes is null || item.FileBytes is null ||
+                              item.OcrPagesMonthly is null || item.SignatureEnvelopesMonthly is null))
+        {
+            throw new InvalidDataException("Um plano publicado não contém todos os limites obrigatórios.");
+        }
+
+        return items.Select(item => new PlanCatalogItem(
+            item.Code,
+            item.Version,
+            item.DisplayName,
+            item.ActiveSeats!.Value,
+            item.StorageBytes!.Value,
+            item.UserStorageBytes!.Value,
+            item.FileBytes!.Value,
+            item.OcrPagesMonthly!.Value,
+            item.SignatureEnvelopesMonthly!.Value)).ToArray();
+    }
+
+    private sealed class PlanCatalogRow
+    {
+        public string Code { get; init; } = string.Empty;
+
+        public int Version { get; init; }
+
+        public string DisplayName { get; init; } = string.Empty;
+
+        public int? ActiveSeats { get; init; }
+
+        public long? StorageBytes { get; init; }
+
+        public long? UserStorageBytes { get; init; }
+
+        public long? FileBytes { get; init; }
+
+        public int? OcrPagesMonthly { get; init; }
+
+        public int? SignatureEnvelopesMonthly { get; init; }
     }
 }

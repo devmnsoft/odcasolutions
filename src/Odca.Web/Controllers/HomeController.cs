@@ -18,13 +18,29 @@ public sealed class HomeController(OdcaApiClient apiClient) : Controller
         }
 
         var token = await HttpContext.GetTokenAsync("access_token");
-        var dashboard = token is null ? null : await apiClient.GetDashboardAsync(token, cancellationToken);
-        if (dashboard is null)
+        if (token is null)
         {
-            return RedirectToAction("Login", "Account");
+            return Challenge();
         }
 
-        return View(dashboard);
+        var result = await apiClient.GetDashboardAsync(token, cancellationToken);
+        if (result.Status == ApiCallStatus.Unauthorized)
+        {
+            return Challenge();
+        }
+
+        if (result.Status == ApiCallStatus.Forbidden)
+        {
+            return Forbid();
+        }
+
+        if (!result.Succeeded)
+        {
+            Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            return View("ServiceUnavailable");
+        }
+
+        return View(result.Value);
     }
 
     [AllowAnonymous]

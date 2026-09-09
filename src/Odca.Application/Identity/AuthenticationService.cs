@@ -7,10 +7,9 @@ public sealed class AuthenticationService(
     IIdentityRepository repository,
     IPasswordService passwordService,
     ITokenService tokenService,
-    IClock clock)
+    IClock clock,
+    AuthenticationPolicy policy)
 {
-    private static readonly TimeSpan SessionLifetime = TimeSpan.FromMinutes(15);
-
     public async Task<LoginResult> LoginAsync(
         string login,
         string password,
@@ -22,21 +21,26 @@ public sealed class AuthenticationService(
         var user = await repository.FindByLoginAsync(normalizedLogin, cancellationToken);
         var now = clock.UtcNow;
 
-        if (user is null || user.IsDeleted || user.LockedUntil > now ||
-            !passwordService.Verify(user, user.PasswordHash, password))
+        if (user is null || user.IsDeleted)
         {
-            if (user is not null && !user.IsDeleted)
-            {
-                await repository.RecordFailedLoginAsync(user.Id, now, cancellationToken);
-            }
+            return LoginResult.Failed();
+        }
 
+        if (user.LockedUntil > now)
+        {
+            return LoginResult.Failed();
+        }
+
+        if (!passwordService.Verify(user, user.PasswordHash, password))
+        {
+            await repository.RecordFailedLoginAsync(user.Id, now, cancellationToken);
             return LoginResult.Failed();
         }
 
         var session = await repository.CreateSessionAsync(
             user.Id,
             user.SecurityVersion,
-            now.Add(SessionLifetime),
+            now.Add(policy.SessionLifetime),
             ipAddress,
             userAgent,
             cancellationToken);
@@ -79,7 +83,7 @@ public sealed class AuthenticationService(
         var session = await repository.CreateSessionAsync(
             userId,
             changed.SecurityVersion,
-            now.Add(SessionLifetime),
+            now.Add(policy.SessionLifetime),
             ipAddress,
             userAgent,
             cancellationToken);
