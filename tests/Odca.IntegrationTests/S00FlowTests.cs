@@ -1,9 +1,12 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using Dapper;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Npgsql;
 using Odca.Contracts.Identity;
 using Odca.Contracts.Plans;
+using Odca.Contracts.Privacy;
 using Odca.Infrastructure.Database;
 
 namespace Odca.IntegrationTests;
@@ -13,8 +16,56 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
     [Fact]
     public async Task CanonicalSqlReappliesWithoutDuplicatingMigration()
     {
-        Assert.Equal(2, await database.MigrationCountAsync());
+        Assert.Equal(3, await database.MigrationCountAsync());
         Assert.True(await database.IsolationFixesArePresentAsync());
+    }
+
+    [Fact]
+    public async Task RuntimeRoleIsolatesTenantsAndRejectsCrossTenantRole()
+    {
+        await database.SeedTenantIsolationScenarioAsync();
+        await using var connection = new NpgsqlConnection(database.AppConnectionString);
+        await connection.OpenAsync();
+
+        Assert.Equal(0, await connection.ExecuteScalarAsync<int>("SELECT count(*)::integer FROM odca.tenants;"));
+
+        await using (var tenantATransaction = await connection.BeginTransactionAsync())
+        {
+            await connection.ExecuteAsync(
+                "SELECT set_config('odca.tenant_id', @tenantId, true);",
+                new { tenantId = "50000000-0000-0000-0000-000000000001" },
+                tenantATransaction);
+            Assert.Equal("TEST-A", await connection.QuerySingleAsync<string>(
+                "SELECT business_code FROM odca.tenants;",
+                transaction: tenantATransaction));
+            Assert.Equal(1, await connection.ExecuteScalarAsync<int>(
+                "SELECT count(*)::integer FROM odca.role_permissions;",
+                transaction: tenantATransaction));
+            Assert.Equal(1, await connection.ExecuteScalarAsync<int>(
+                "SELECT count(*)::integer FROM odca.audit_events WHERE action = 'test.isolation';",
+                transaction: tenantATransaction));
+            await tenantATransaction.CommitAsync();
+        }
+
+        Assert.Equal(0, await connection.ExecuteScalarAsync<int>("SELECT count(*)::integer FROM odca.tenants;"));
+
+        await using var invalidTransaction = await connection.BeginTransactionAsync();
+        await connection.ExecuteAsync(
+            "SELECT set_config('odca.tenant_id', @tenantId, true);",
+            new { tenantId = "50000000-0000-0000-0000-000000000001" },
+            invalidTransaction);
+        var exception = await Assert.ThrowsAsync<PostgresException>(() => connection.ExecuteAsync(
+            """
+            INSERT INTO odca.member_roles (tenant_id, user_id, role_id, assigned_by)
+            VALUES (
+                '50000000-0000-0000-0000-000000000001',
+                '20000000-0000-0000-0000-000000000001',
+                '60000000-0000-0000-0000-000000000002',
+                '20000000-0000-0000-0000-000000000001');
+            """,
+            transaction: invalidTransaction));
+        Assert.Equal(PostgresErrorCodes.ForeignKeyViolation, exception.SqlState);
+        await invalidTransaction.RollbackAsync();
     }
 
     [Fact]
@@ -22,6 +73,16 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
     {
         await using var factory = database.CreateApi();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        using var privacyResponse = await client.PostAsJsonAsync(
+            "/api/v1/privacy/requests",
+            new CreatePrivacyRequest("subject@example.test", "access", "Synthetic integration request"));
+        Assert.Equal(HttpStatusCode.Accepted, privacyResponse.StatusCode);
+        var privacy = await privacyResponse.Content.ReadFromJsonAsync<PrivacyRequestCreated>();
+        Assert.NotNull(privacy);
+        Assert.Matches("^[A-F0-9]{24}$", privacy.Protocol);
+        Assert.DoesNotContain("subject@example.test", privacy.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.True(await database.PrivacyRequestExistsAsync(privacy.Protocol));
 
         using var wrong = await client.PostAsJsonAsync(
             "/api/v1/auth/login",

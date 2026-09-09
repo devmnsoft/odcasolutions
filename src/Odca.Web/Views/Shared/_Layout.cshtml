@@ -12,6 +12,13 @@
             <span class="brand-mark" aria-hidden="true">O</span>
             <span>ODCA Solutions</span>
         </a>
+        @if (User.Identity?.IsAuthenticated != true)
+        {
+            <nav class="public-actions" aria-label="Navegação pública">
+                <a asp-controller="Catalog" asp-action="Plans">Planos</a>
+                <a asp-controller="Privacy" asp-action="Index">Privacidade</a>
+            </nav>
+        }
         @if (User.Identity?.IsAuthenticated == true)
         {
             <div class="account-actions">

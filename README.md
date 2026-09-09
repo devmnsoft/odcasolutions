@@ -75,7 +75,16 @@ npm run build
 dotnet test Odca.sln --configuration Release --no-build
 ```
 
-Os testes de integração usam a configuração local criada pelo bootstrap. Na CI, usam exclusivamente o serviço PostgreSQL sintético do workflow.
+Os testes de integração nunca usam a configuração de desenvolvimento. Eles exigem um banco descartável cujo nome comece com `odca_test`, a role exclusiva `odca_test_app_login` e o marcador explícito abaixo. A fixture recusa qualquer outra combinação antes de migrar ou alterar dados:
+
+```powershell
+$env:ODCA_TEST_ENVIRONMENT = 'ODCA_INTEGRATION_TESTS'
+$env:ODCA_TEST_ADMIN_CONNECTION = 'Host=localhost;Port=5432;Database=odca_test_local;Username=postgres;Password=<senha-admin>;Include Error Detail=false'
+$env:ODCA_TEST_APP_CONNECTION = 'Host=localhost;Port=5432;Database=odca_test_local;Username=odca_test_app_login;Password=<senha-exclusiva-de-teste>;Include Error Detail=false'
+dotnet test tests/Odca.IntegrationTests --configuration Release
+```
+
+Na CI, essas três variáveis apontam exclusivamente para o PostgreSQL sintético do workflow. Remova as variáveis da sessão quando terminar. As rotas públicas demonstráveis são `GET /conheca-os-planos` e `GET/POST /privacidade`; a segunda registra uma solicitação inicial e devolve protocolo opaco, sem confirmar a existência de contratos ou dados.
 
 ## Estrutura
 

@@ -15,7 +15,7 @@ Data-base: 2026-09-08. Branch: `codex/s00-foundation`. A especificação vincula
 | ODCA-009 | Logs estruturados minimizados | `src/Odca.Api/Program.cs`, docs de segurança | inspeção + testes futuros de captura | parcial |
 | ODCA-PRIV-001 | Inventário versionado inicial | SQL e `docs/privacy/PROCESSING_REGISTER.md` | seed reexecutável | implementado; base legal pendente de validação |
 | ODCA-PRIV-002 | Avisos, preferências e consentimentos | S01 | testes S01 | backlog |
-| ODCA-PRIV-003 | Canal público de direitos | S01 | testes S01 | backlog |
+| ODCA-PRIV-003 | Entrada pública de direitos | migração 003, Privacy Application/API/Web | testes unitários aprovados; integração preparada | parcial: operação do atendimento pendente |
 | ODCA-PRIV-004 | Política/motor de retenção | modelo documental em S00; execução em S02+ | testes de retenção | parcial |
 | ODCA-PRIV-005 | Isolamento base e desenho de suporte | RLS base e threat model; sessões de suporte em S01 | testes negativos S01 | parcial |
 | ODCA-PRIV-006 | Cadastro de fornecedores/transferências | modelo documental; implementação por integração | testes das etapas | parcial |
@@ -24,7 +24,7 @@ Data-base: 2026-09-08. Branch: `codex/s00-foundation`. A especificação vincula
 | ODCA-PRIV-009 | Documentação operacional | `docs/privacy/*` | revisão de presença | concluído para S00 |
 | ODCA-PRIV-010 | Testes obrigatórios aplicáveis | autenticação/revogação; demais acompanham etapas | testes Domain/Integration | parcial |
 | ODCA-010 | Execução local sem Docker | `Odca.sln`, `.slnLaunch`, `scripts/run-local.ps1`, Bootstrap `configure-native` | build Release; banco depende de credencial local autorizada | implementado; integração pendente |
-| ODCA-011 | Migrações históricas incrementais | runner e migração 002 em `database/odca.sql` | 4 testes de parser/checksum; teste real preparado | implementado; PostgreSQL real pendente |
-| ODCA-S01-PLANOS | Catálogo Basic/Intermediário/Enterprise | SQL, Application, Infrastructure, API e Web | build + teste integrado preparado | implementado; execução real pendente |
+| ODCA-011 | Migrações históricas incrementais | runner e migrações 002/003 em `database/odca.sql` | 6 testes de parser/checksum/snapshot; teste real preparado | runner implementado; SQL direto e PostgreSQL real pendentes |
+| ODCA-S01-PLANOS | Catálogo Basic/Intermediário/Enterprise | SQL, Application, Infrastructure, API e Web pública/autenticada | build + teste integrado preparado | parcial; onboarding/assinatura pendentes |
 
 Estados distinguem código implementado, teste local e validação externa. Nenhum provedor, hipótese legal ou contato de privacidade foi tratado como aprovado.

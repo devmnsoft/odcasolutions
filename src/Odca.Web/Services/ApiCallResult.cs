@@ -5,6 +5,7 @@ public enum ApiCallStatus
     Success,
     InvalidCredentials,
     Unauthorized,
+    Forbidden,
     RateLimited,
     Unavailable,
     Timeout,

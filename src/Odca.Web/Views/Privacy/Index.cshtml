@@ -1,0 +1,57 @@
+@model PrivacyRequestViewModel
+@{
+    ViewData["Title"] = "Central de privacidade";
+}
+<section class="narrow">
+    <div class="card">
+        <p class="eyebrow">Canal público</p>
+        <h1>Central de privacidade</h1>
+        <p class="muted">Este canal não depende de conta, plano ou situação financeira. A resposta inicial não confirma se existem dados ou contratos relacionados a você.</p>
+
+        @if (Model.Protocol is not null)
+        {
+            <div class="success" role="status">
+                <strong>Solicitação recebida</strong>
+                <p>@Model.ConfirmationMessage</p>
+                <p>Protocolo: <code>@Model.Protocol</code></p>
+            </div>
+            <a class="button button-link" asp-action="Index">Abrir outra solicitação</a>
+        }
+        else
+        {
+            <form method="post" novalidate>
+                <div asp-validation-summary="ModelOnly" class="validation" role="alert"></div>
+                <label asp-for="Email"></label>
+                <input asp-for="Email" autocomplete="email" />
+                <span asp-validation-for="Email" class="validation"></span>
+
+                <label asp-for="RequestType"></label>
+                <select asp-for="RequestType">
+                    <option value="">Selecione</option>
+                    <option value="access">Confirmação ou acesso</option>
+                    <option value="correction">Correção</option>
+                    <option value="sharing">Informação sobre compartilhamento</option>
+                    <option value="portability">Portabilidade, quando aplicável</option>
+                    <option value="blocking">Bloqueio ou anonimização</option>
+                    <option value="deletion">Eliminação, quando aplicável</option>
+                    <option value="revocation">Revogação de consentimento</option>
+                    <option value="review">Contestação ou revisão</option>
+                </select>
+                <span asp-validation-for="RequestType" class="validation"></span>
+
+                <label asp-for="Details"></label>
+                <textarea asp-for="Details" rows="6"></textarea>
+                <span asp-validation-for="Details" class="validation"></span>
+                <p class="muted">Não envie senha, documento integral ou dados de terceiros neste campo.</p>
+
+                <button class="button button-primary" type="submit">Gerar protocolo</button>
+            </form>
+        }
+
+        <p class="muted privacy-note">O contato alternativo oficial será exibido somente após configuração e validação responsável.</p>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -17,13 +17,23 @@ public sealed class PlansController(OdcaApiClient apiClient) : Controller
             return Challenge();
         }
 
-        var plans = await apiClient.GetPlansAsync(token, cancellationToken);
-        if (plans is null)
+        var result = await apiClient.GetPlansAsync(token, cancellationToken);
+        if (result.Status == ApiCallStatus.Unauthorized)
         {
-            TempData["Error"] = "Não foi possível carregar o catálogo de planos.";
-            return RedirectToAction("Index", "Home");
+            return Challenge();
         }
 
-        return View(plans);
+        if (result.Status == ApiCallStatus.Forbidden)
+        {
+            return Forbid();
+        }
+
+        if (!result.Succeeded)
+        {
+            Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            return View("ServiceUnavailable");
+        }
+
+        return View(result.Value);
     }
 }

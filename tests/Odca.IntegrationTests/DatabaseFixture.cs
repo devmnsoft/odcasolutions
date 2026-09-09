@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Dapper;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -16,6 +15,8 @@ public sealed class DatabaseFixture : IAsyncLifetime
     public const string InitialPassword = "Initial!Password2026";
     public const string ChangedPassword = "Changed!Password2026";
     private const string JwtKey = "test-only-key-with-more-than-thirty-two-bytes-2026";
+    private const string TestMarker = "ODCA_INTEGRATION_TESTS";
+    private const string TestRole = "odca_test_app_login";
 
     public string AdminConnectionString { get; private set; } = string.Empty;
 
@@ -30,7 +31,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
         await migrator.ApplyAsync(AdminConnectionString);
         var appPassword = new NpgsqlConnectionStringBuilder(AppConnectionString).Password
             ?? throw new InvalidOperationException("A conexão de teste da aplicação precisa de senha.");
-        await DatabaseRoleProvisioner.ProvisionApplicationLoginAsync(AdminConnectionString, appPassword);
+        await DatabaseRoleProvisioner.ProvisionApplicationLoginAsync(AdminConnectionString, appPassword, TestRole);
         await ResetTestUserAsync();
     }
 
@@ -38,20 +39,13 @@ public sealed class DatabaseFixture : IAsyncLifetime
 
     public WebApplicationFactory<Program> CreateApi()
     {
-        Environment.SetEnvironmentVariable("ConnectionStrings__Database", AppConnectionString);
-        Environment.SetEnvironmentVariable("Jwt__Issuer", "odca-api-tests");
-        Environment.SetEnvironmentVariable("Jwt__Audience", "odca-api-tests");
-        Environment.SetEnvironmentVariable("Jwt__SigningKey", JwtKey);
-        Environment.SetEnvironmentVariable("Jwt__AccessTokenMinutes", "15");
-        Environment.SetEnvironmentVariable("Security__MfaRequiredForSuperAdmin", "true");
-        Environment.SetEnvironmentVariable("Security__AllowDevelopmentBootstrap", "false");
         return new TestApiFactory(this);
     }
 
     public async Task<int> MigrationCountAsync()
     {
         await using var connection = new NpgsqlConnection(AdminConnectionString);
-        return await connection.ExecuteScalarAsync<int>("SELECT count(*)::int FROM odca.schema_migrations WHERE version IN (1, 2);");
+        return await connection.ExecuteScalarAsync<int>("SELECT count(*)::int FROM odca.schema_migrations WHERE version BETWEEN 1 AND 3;");
     }
 
     public async Task<bool> IsolationFixesArePresentAsync()
@@ -67,6 +61,58 @@ public sealed class DatabaseFixture : IAsyncLifetime
             """;
         await using var connection = new NpgsqlConnection(AdminConnectionString);
         return await connection.ExecuteScalarAsync<bool>(sql);
+    }
+
+    public async Task<bool> PrivacyRequestExistsAsync(string protocol)
+    {
+        await using var connection = new NpgsqlConnection(AdminConnectionString);
+        return await connection.ExecuteScalarAsync<bool>(
+            "SELECT EXISTS (SELECT 1 FROM odca.privacy_requests WHERE public_protocol = @protocol);",
+            new { protocol });
+    }
+
+    public async Task SeedTenantIsolationScenarioAsync()
+    {
+        const string sql = """
+            INSERT INTO odca.tenants (id, business_code, display_name)
+            VALUES
+                ('50000000-0000-0000-0000-000000000001', 'TEST-A', 'Tenant A'),
+                ('50000000-0000-0000-0000-000000000002', 'TEST-B', 'Tenant B')
+            ON CONFLICT (id) DO UPDATE SET display_name = EXCLUDED.display_name;
+
+            INSERT INTO odca.memberships (tenant_id, user_id, status)
+            VALUES
+                ('50000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'active'),
+                ('50000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001', 'active')
+            ON CONFLICT (tenant_id, user_id) DO UPDATE SET status = 'active';
+
+            INSERT INTO odca.permissions (code, description, delegable)
+            VALUES ('tenant.test.read', 'Permissão sintética de teste de isolamento.', true)
+            ON CONFLICT (code) DO NOTHING;
+
+            INSERT INTO odca.roles (id, scope_type, tenant_id, code, display_name)
+            VALUES
+                ('60000000-0000-0000-0000-000000000001', 'tenant', '50000000-0000-0000-0000-000000000001', 'test-reader', 'Leitor A'),
+                ('60000000-0000-0000-0000-000000000002', 'tenant', '50000000-0000-0000-0000-000000000002', 'test-reader', 'Leitor B')
+            ON CONFLICT (id) DO NOTHING;
+
+            INSERT INTO odca.role_permissions (role_id, permission_code)
+            VALUES
+                ('60000000-0000-0000-0000-000000000001', 'tenant.test.read'),
+                ('60000000-0000-0000-0000-000000000002', 'tenant.test.read')
+            ON CONFLICT DO NOTHING;
+
+            INSERT INTO odca.audit_events (scope_type, tenant_id, action, entity_type, result)
+            SELECT 'tenant', tenant_id, 'test.isolation', 'tenant', 'success'
+              FROM (VALUES
+                    ('50000000-0000-0000-0000-000000000001'::uuid),
+                    ('50000000-0000-0000-0000-000000000002'::uuid)) AS source(tenant_id)
+             WHERE NOT EXISTS
+                (SELECT 1 FROM odca.audit_events existing
+                  WHERE existing.tenant_id = source.tenant_id AND existing.action = 'test.isolation');
+            """;
+        await using var connection = new NpgsqlConnection(AdminConnectionString);
+        await connection.ExecuteAsync(sql);
     }
 
     private async Task ResetTestUserAsync()
@@ -117,28 +163,37 @@ public sealed class DatabaseFixture : IAsyncLifetime
 
     private static (string Admin, string App) LoadConnections()
     {
-        var admin = Environment.GetEnvironmentVariable("ODCA_TEST_ADMIN_CONNECTION");
-        var app = Environment.GetEnvironmentVariable("ODCA_TEST_APP_CONNECTION");
-        if (!string.IsNullOrWhiteSpace(admin) && !string.IsNullOrWhiteSpace(app))
-        {
-            return (admin, app);
-        }
-
-        var runtimePath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ODCA Solutions",
-            "development-runtime.json");
-        if (!File.Exists(runtimePath))
+        if (!string.Equals(
+                Environment.GetEnvironmentVariable("ODCA_TEST_ENVIRONMENT"),
+                TestMarker,
+                StringComparison.Ordinal))
         {
             throw new InvalidOperationException(
-                "Banco de teste não configurado. Execute o bootstrap local ou defina ODCA_TEST_ADMIN_CONNECTION e ODCA_TEST_APP_CONNECTION.");
+                $"Defina ODCA_TEST_ENVIRONMENT={TestMarker} para autorizar somente o banco descartável de integração.");
         }
 
-        using var document = JsonDocument.Parse(File.ReadAllText(runtimePath));
-        var connections = document.RootElement.GetProperty("ConnectionStrings");
-        return (
-            connections.GetProperty("DatabaseAdmin").GetString()!,
-            connections.GetProperty("Database").GetString()!);
+        var admin = Environment.GetEnvironmentVariable("ODCA_TEST_ADMIN_CONNECTION");
+        var app = Environment.GetEnvironmentVariable("ODCA_TEST_APP_CONNECTION");
+        if (string.IsNullOrWhiteSpace(admin) || string.IsNullOrWhiteSpace(app))
+        {
+            throw new InvalidOperationException(
+                "Defina ODCA_TEST_ADMIN_CONNECTION e ODCA_TEST_APP_CONNECTION; testes nunca usam development-runtime.json.");
+        }
+
+        var adminBuilder = new NpgsqlConnectionStringBuilder(admin);
+        var appBuilder = new NpgsqlConnectionStringBuilder(app);
+        if (string.IsNullOrWhiteSpace(adminBuilder.Database) ||
+            !adminBuilder.Database.StartsWith("odca_test", StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(appBuilder.Database, adminBuilder.Database, StringComparison.Ordinal) ||
+            !string.Equals(appBuilder.Host, adminBuilder.Host, StringComparison.OrdinalIgnoreCase) ||
+            appBuilder.Port != adminBuilder.Port ||
+            !string.Equals(appBuilder.Username, TestRole, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Configuração recusada: use banco odca_test* e a role exclusiva {TestRole} no mesmo servidor.");
+        }
+
+        return (adminBuilder.ConnectionString, appBuilder.ConnectionString);
     }
 
     private static string FindFile(params string[] segments)
