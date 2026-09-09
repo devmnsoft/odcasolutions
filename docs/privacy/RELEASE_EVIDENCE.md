@@ -1,5 +1,19 @@
 # Evidências de liberação — privacidade
 
+## Incremento local — MFA e onboarding inicial — 09/09/2026
+
+Commit local desta entrega sobre a base remota `468dee4d6a532d58bb154d7b4932fe5511469d34`. CI remota ainda precisa confirmar o SHA efetivo.
+
+| Controle | Evidência | Resultado | Limitação |
+|---|---|---|---|
+| MFA de superadministrador | TOTP, segredo protegido por Data Protection, recovery codes com hash, uso único e bloqueio de replay por time-step | build aprovado; testes HTTP preparados para negar senha sem MFA e autorizar MFA válido | suíte PostgreSQL não executada sem banco descartável autorizado |
+| Cadastro do primeiro cliente | token de e-mail hashado/uso único, outbox transacional, tenant/membership/subscription e plano vinculado por `plan_version_id` | build aprovado; teste HTTP preparado para idempotência, confirmação e home `commercial_pending` | provedor real de e-mail, seleção multi-organização e ativação comercial real pendentes |
+| Dados pessoais | CPF/CNPJ normalizado, consentimento de marketing separado, logs sem token/segredo | inspeção de implementação e build | validação jurídica de textos/finalidades continua pendente |
+| SQL | migrações 004/005 com snapshots históricos | testes sem DB aprovaram checksums/snapshots | execução direta vazia/upgrade/recovery/concurrency ainda precisa PostgreSQL |
+| Evidência automatizada local | `restore --locked-mode`, build Release, assets, domínio 10/10, integração sem DB 21/21 | aprovados | full suite falha nos cenários DB por marcador ausente; Gitleaks local bloqueado por Docker inativo |
+
+Esta atualização não declara S01 ou LGPD completos. Suporte temporário, operação autenticada de direitos, retenção executável, incidentes, equipe/perfis e validação de provedores continuam pendentes.
+
 ## Evolução S00/S01 — 09/09/2026
 
 Atualização do gate no SHA base `c5e5064`: a CI 34352606607 aprovou o secret scan, mas falhou em restore por divergência do `coverlet.collector`; build, assets e testes não executaram. A correção alinha o projeto de integração e seu lock em 10.0.1 e adiciona testes de host, porém ainda aguarda CI. Não reutilizar as contagens do SHA anterior como resultado deste incremento.

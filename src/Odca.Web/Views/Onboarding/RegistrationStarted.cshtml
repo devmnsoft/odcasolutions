@@ -1,0 +1,19 @@
+@model CustomerRegistrationStartedViewModel
+@{
+    ViewData["Title"] = "Cadastro recebido";
+}
+<section class="narrow">
+    <div class="card">
+        <p class="eyebrow">E-mail pendente</p>
+        <h1>Cadastro recebido</h1>
+        <p class="muted">@Model.Message</p>
+        @if (Model.DevelopmentConfirmationToken is not null)
+        {
+            <div class="warning" role="status">
+                <p>Transporte local de desenvolvimento. Use este token para concluir o teste:</p>
+                <code>@Model.DevelopmentConfirmationToken</code>
+            </div>
+            <a class="button button-primary" asp-action="ConfirmEmail" asp-route-registrationId="@Model.RegistrationId" asp-route-token="@Model.DevelopmentConfirmationToken">Confirmar e-mail</a>
+        }
+    </div>
+</section>

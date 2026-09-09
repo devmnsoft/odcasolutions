@@ -8,10 +8,17 @@ public sealed record UserCredential(
     int SecurityVersion,
     bool MustChangePassword,
     bool IsPlatformAdministrator,
+    DateTimeOffset? MfaConfirmedAt,
     bool IsDeleted,
     DateTimeOffset? LockedUntil);
 
-public sealed record SessionRecord(Guid Id, Guid UserId, int SecurityVersion, DateTimeOffset ExpiresAt);
+public sealed record SessionRecord(
+    Guid Id,
+    Guid UserId,
+    int SecurityVersion,
+    DateTimeOffset ExpiresAt,
+    string AuthenticationLevel,
+    DateTimeOffset? MfaCompletedAt);
 
 public sealed record IssuedToken(string AccessToken, DateTimeOffset ExpiresAt);
 
@@ -33,3 +40,13 @@ public sealed record ChangePasswordOutcome(
     UserCredential? User,
     SessionRecord? Session,
     IssuedToken? Token);
+
+public sealed record MfaEnrollment(string ManualKey, string OtpAuthUri);
+
+public sealed record MfaVerificationOutcome(
+    bool Succeeded,
+    IReadOnlyList<string> Errors,
+    UserCredential? User,
+    SessionRecord? Session,
+    IssuedToken? Token,
+    IReadOnlyList<string> RecoveryCodes);

@@ -30,4 +30,49 @@ public interface IIdentityRepository
         string passwordHash,
         DateTimeOffset changedAt,
         CancellationToken cancellationToken);
+
+    Task SavePendingMfaSecretAsync(
+        Guid userId,
+        string protectedSecret,
+        DateTimeOffset now,
+        CancellationToken cancellationToken);
+
+    Task<string?> GetProtectedMfaSecretAsync(Guid userId, CancellationToken cancellationToken);
+
+    Task<bool> ConfirmMfaAsync(
+        Guid userId,
+        Guid sessionId,
+        int securityVersion,
+        DateTimeOffset verifiedAt,
+        long acceptedTimeStep,
+        IReadOnlyList<string> recoveryCodeHashes,
+        CancellationToken cancellationToken);
+
+    Task<MfaChallengeState?> GetMfaChallengeStateAsync(
+        Guid userId,
+        Guid sessionId,
+        int securityVersion,
+        DateTimeOffset now,
+        CancellationToken cancellationToken);
+
+    Task<bool> CompleteMfaChallengeAsync(
+        Guid userId,
+        Guid sessionId,
+        int securityVersion,
+        DateTimeOffset verifiedAt,
+        long? acceptedTimeStep,
+        string? recoveryCodeHash,
+        CancellationToken cancellationToken);
+
+    Task RecordFailedMfaChallengeAsync(
+        Guid userId,
+        Guid sessionId,
+        DateTimeOffset occurredAt,
+        CancellationToken cancellationToken);
 }
+
+public sealed record MfaChallengeState(
+    string ProtectedSecret,
+    DateTimeOffset? ConfirmedAt,
+    long? LastAcceptedTimeStep,
+    int FailedAttempts);

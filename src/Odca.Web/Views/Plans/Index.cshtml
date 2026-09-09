@@ -30,6 +30,7 @@
                 <div><dt>OCR mensal</dt><dd>@plan.OcrPagesMonthly páginas</dd></div>
                 <div><dt>Assinaturas mensais</dt><dd>@plan.SignatureEnvelopesMonthly envelopes</dd></div>
             </dl>
+            <a class="button button-primary" asp-controller="Onboarding" asp-action="Register" asp-route-planCode="@plan.Code">Contratar</a>
         </article>
     }
 </section>

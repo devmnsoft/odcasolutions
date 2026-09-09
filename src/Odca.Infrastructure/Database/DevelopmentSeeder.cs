@@ -21,6 +21,7 @@ public sealed class DevelopmentSeeder(IPasswordService passwordService)
             1,
             true,
             true,
+            null,
             false,
             null);
         var hash = passwordService.Hash(template, password);

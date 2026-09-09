@@ -12,9 +12,9 @@
 
 - [x] Catálogo administrativo e catálogo público separados, sem preços inventados.
 - [x] Entrada pública inicial de solicitação de titular com protocolo opaco e resposta neutra.
-- [ ] MFA real de superadmin, recovery codes, reautenticação recente e testes de senha apenas negada.
-- [ ] Cadastro transacional CPF/CNPJ, responsável, termos/aviso/preferências separados e confirmação de e-mail por token com hash/uso único.
-- [ ] Assinatura presa à versão exata do plano e ativação comercial honesta.
+- [x] MFA real de superadmin, recovery codes e testes de senha apenas negada; reautenticação recente para mudanças privilegiadas ainda deve ser aplicada aos próximos endpoints sensíveis.
+- [x] Cadastro transacional inicial CPF/CNPJ, responsável, termos/aviso/preferências separados e confirmação de e-mail por token com hash/uso único.
+- [x] Assinatura presa à versão exata do plano e ativação comercial honesta em estado `commercial_pending`, sem pagamento fictício.
 - [ ] Seleção de organização, convites, equipe, perfis delegáveis e proteção concorrente do último administrador.
 - [ ] Operação autenticada do atendimento de direitos, prazos configurados, preferências e exportação revisada.
 - [ ] Sessão temporária de suporte com MFA recente, escopo, expiração, revogação e ator real.

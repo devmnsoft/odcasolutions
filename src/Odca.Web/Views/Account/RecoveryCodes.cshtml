@@ -1,0 +1,18 @@
+@model MfaRecoveryCodesViewModel
+@{
+    ViewData["Title"] = "Códigos de recuperação";
+}
+<section class="narrow">
+    <div class="card">
+        <p class="eyebrow">MFA confirmado</p>
+        <h1>Guarde os códigos de recuperação</h1>
+        <p class="muted">Cada código funciona uma única vez. Eles não serão exibidos novamente.</p>
+        <ul class="recovery-codes" aria-label="Códigos de recuperação">
+            @foreach (var code in Model.Codes)
+            {
+                <li><code>@code</code></li>
+            }
+        </ul>
+        <a class="button button-primary" asp-controller="Home" asp-action="Index">Continuar</a>
+    </div>
+</section>

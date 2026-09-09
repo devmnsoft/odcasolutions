@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Odca.Contracts.Identity;
+using Odca.Contracts.Onboarding;
 using Odca.Contracts.Plans;
 using Odca.Contracts.Privacy;
 
@@ -25,6 +26,34 @@ public sealed class OdcaApiClient(HttpClient client)
         using var message = CreateAuthorized(HttpMethod.Post, "api/v1/auth/change-password", accessToken);
         message.Content = JsonContent.Create(request);
         return await SendAsync<LoginResponse>(message, invalidCredentialsOnUnauthorized: false, cancellationToken);
+    }
+
+    public async Task<ApiCallResult<MfaEnrollmentResponse>> StartMfaEnrollmentAsync(
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, "api/v1/auth/mfa/enrollment", accessToken);
+        return await SendAsync<MfaEnrollmentResponse>(message, invalidCredentialsOnUnauthorized: false, cancellationToken);
+    }
+
+    public async Task<ApiCallResult<MfaVerificationResponse>> ConfirmMfaEnrollmentAsync(
+        string accessToken,
+        ConfirmMfaEnrollmentRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, "api/v1/auth/mfa/enrollment/confirm", accessToken);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<MfaVerificationResponse>(message, invalidCredentialsOnUnauthorized: false, cancellationToken);
+    }
+
+    public async Task<ApiCallResult<MfaVerificationResponse>> VerifyMfaChallengeAsync(
+        string accessToken,
+        MfaChallengeRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, "api/v1/auth/mfa/challenge", accessToken);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<MfaVerificationResponse>(message, invalidCredentialsOnUnauthorized: false, cancellationToken);
     }
 
     public async Task<ApiCallResult<DashboardResponse>> GetDashboardAsync(
@@ -58,6 +87,36 @@ public sealed class OdcaApiClient(HttpClient client)
             Content = JsonContent.Create(request)
         };
         return await SendAsync<PrivacyRequestCreated>(message, invalidCredentialsOnUnauthorized: false, cancellationToken);
+    }
+
+    public async Task<ApiCallResult<StartCustomerRegistrationResponse>> StartCustomerRegistrationAsync(
+        StartCustomerRegistrationRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Post, "api/v1/onboarding/registrations")
+        {
+            Content = JsonContent.Create(request)
+        };
+        return await SendAsync<StartCustomerRegistrationResponse>(message, invalidCredentialsOnUnauthorized: false, cancellationToken);
+    }
+
+    public async Task<ApiCallResult<ConfirmCustomerRegistrationResponse>> ConfirmCustomerRegistrationAsync(
+        ConfirmCustomerRegistrationRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Post, "api/v1/onboarding/confirm-email")
+        {
+            Content = JsonContent.Create(request)
+        };
+        return await SendAsync<ConfirmCustomerRegistrationResponse>(message, invalidCredentialsOnUnauthorized: false, cancellationToken);
+    }
+
+    public async Task<ApiCallResult<CustomerHomeResponse>> GetCustomerHomeAsync(
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(HttpMethod.Get, "api/v1/onboarding/customer-home", accessToken);
+        return await SendAsync<CustomerHomeResponse>(message, invalidCredentialsOnUnauthorized: false, cancellationToken);
     }
 
     private async Task<ApiCallResult<T>> SendAsync<T>(

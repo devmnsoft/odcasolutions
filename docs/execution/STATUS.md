@@ -2,7 +2,17 @@
 
 ## Etapa atual
 
-Referência revalidada em 09/09/2026: SHA base `c5e5064`. S00 continua **em validação de banco/navegador**. S01 está **parcial**: catálogo público e entrada pública de solicitações de privacidade existem; onboarding, MFA, equipe e operação do atendimento ainda não.
+Atualização local em 09/09/2026 no commit desta entrega, sobre a base remota `468dee4d6a532d58bb154d7b4932fe5511469d34`:
+
+- CA1859 em `StartupValidationTests.Environment` corrigido com retorno concreto.
+- MFA real de superadministrador implementado para TOTP: inscrição, confirmação, desafio, limitação de tentativas, replay por time-step, recovery codes hashados de uso único, segredo protegido por Data Protection, sessão com `mfa_verified` e policies que negam dashboard sem segundo fator.
+- Cadastro inicial de cliente implementado em fatia S01: plano publicado escolhido, CPF/CNPJ normalizado, responsável, usuário, tenant, membership, assinatura vinculada ao `plan_version_id`, token de confirmação de e-mail hashado/uso único, outbox transacional local e home do cliente com estado comercial `commercial_pending`.
+- Migrações 004 e 005 adicionadas ao SQL canônico e aos snapshots `odca-v004.sql`/`odca-v005.sql`, sem alterar os corpos 001–003.
+- Telas MVC adicionadas para inscrição/desafio MFA, recovery codes, contratação, confirmação de e-mail e home inicial do cliente.
+
+Evidência local desta atualização: `dotnet restore Odca.sln --locked-mode` aprovado; `dotnet build Odca.sln --configuration Release --no-restore` aprovado com 0 avisos/0 erros; `npm run build` aprovado; `dotnet test tests/Odca.Domain.Tests/Odca.Domain.Tests.csproj --configuration Release --no-build` aprovou 10/10; `dotnet test tests/Odca.IntegrationTests/Odca.IntegrationTests.csproj --configuration Release --no-build --filter "FullyQualifiedName!~S00FlowTests"` aprovou 21/21. A suíte completa ainda falha nos 10 cenários PostgreSQL por falta de `ODCA_TEST_ENVIRONMENT=ODCA_INTEGRATION_TESTS`, `ODCA_TEST_ADMIN_CONNECTION` e `ODCA_TEST_APP_CONNECTION`; essa recusa é intencional para impedir fallback em banco de desenvolvimento. Secret scan local não executou porque o Docker Desktop não estava ativo.
+
+Referência revalidada em 09/09/2026: SHA base `c5e5064`. S00 continua **em validação de banco/navegador**. S01 está **parcial**: catálogo público, entrada pública de solicitações de privacidade, MFA de superadministrador e onboarding inicial de cliente existem; equipe, suporte temporário e operação do atendimento de direitos ainda não.
 
 ## Correção posterior às CI 34350222079 e 34352606607
 
