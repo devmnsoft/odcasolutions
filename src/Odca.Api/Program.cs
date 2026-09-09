@@ -4,6 +4,7 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Options;
 using Odca.Application.Identity;
 using Odca.Infrastructure;
 using Odca.Infrastructure.Database;
@@ -21,10 +22,6 @@ if (builder.Environment.IsDevelopment())
     builder.Configuration.AddJsonFile(runtimeConfig, optional: true, reloadOnChange: false);
 }
 
-var jwt = builder.Configuration.GetRequiredSection(JwtOptions.SectionName).Get<JwtOptions>()
-    ?? throw new InvalidOperationException("A seção Jwt não foi configurada.");
-Odca.Api.StartupValidation.Validate(builder.Configuration, builder.Environment, jwt);
-
 builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
 builder.Services.AddProblemDetails(options =>
 {
@@ -34,6 +31,7 @@ builder.Services.AddProblemDetails(options =>
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddOdcaInfrastructure(builder.Configuration);
+builder.Services.AddHostedService<Odca.Api.StartupValidationService>();
 builder.Services.AddHealthChecks()
     .AddCheck<PostgresReadinessHealthCheck>("postgresql", tags: ["ready"]);
 builder.Services.AddRateLimiter(options =>
@@ -59,8 +57,11 @@ builder.Services.AddRateLimiter(options =>
         }));
 });
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+    .AddJwtBearer();
+builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+    .Configure<IOptions<JwtOptions>>((options, jwtOptions) =>
     {
+        var jwt = jwtOptions.Value;
         options.MapInboundClaims = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {

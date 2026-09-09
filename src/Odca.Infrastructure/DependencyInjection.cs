@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Npgsql;
 using Odca.Application.Common;
 using Odca.Application.Dashboard;
@@ -21,13 +22,24 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("Database")
-            ?? throw new InvalidOperationException("ConnectionStrings:Database não foi configurada.");
-
-        services.Configure<JwtOptions>(configuration.GetRequiredSection(JwtOptions.SectionName));
-        var accessTokenMinutes = configuration.GetValue<int>($"{JwtOptions.SectionName}:AccessTokenMinutes");
-        services.AddSingleton(new AuthenticationPolicy(TimeSpan.FromMinutes(accessTokenMinutes)));
-        services.AddSingleton(NpgsqlDataSource.Create(connectionString));
+        // Options and factories are deliberately evaluated when the host starts/resolves
+        // services. WebApplicationFactory adds its isolated configuration after Program's
+        // service-registration phase, so reading values eagerly here bypasses supported
+        // test-host configuration composition.
+        services.AddOptions<JwtOptions>()
+            .Bind(configuration.GetSection(JwtOptions.SectionName));
+        services.AddSingleton(provider =>
+        {
+            var jwt = provider.GetRequiredService<IOptions<JwtOptions>>().Value;
+            return new AuthenticationPolicy(TimeSpan.FromMinutes(jwt.AccessTokenMinutes));
+        });
+        services.AddSingleton(provider =>
+        {
+            var currentConfiguration = provider.GetRequiredService<IConfiguration>();
+            var connectionString = currentConfiguration.GetConnectionString("Database")
+                ?? throw new InvalidOperationException("ConnectionStrings:Database não foi configurada.");
+            return NpgsqlDataSource.Create(connectionString);
+        });
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IPasswordService, AspNetPasswordService>();
         services.AddSingleton<ITokenService, JwtTokenService>();
