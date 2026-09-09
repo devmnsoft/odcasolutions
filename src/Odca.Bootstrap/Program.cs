@@ -221,6 +221,7 @@ public static class BootstrapProgram
             1,
             true,
             true,
+            null,
             false,
             null);
         var hash = new AspNetPasswordService().Hash(template, newPassword);

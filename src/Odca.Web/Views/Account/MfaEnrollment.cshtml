@@ -1,0 +1,30 @@
+@model MfaEnrollmentViewModel
+@{
+    ViewData["Title"] = "Ativar MFA";
+}
+<section class="narrow">
+    <div class="card">
+        <p class="eyebrow">Segundo fator</p>
+        <h1>Ative o autenticador</h1>
+        <p class="muted">Cadastre a chave no seu aplicativo autenticador e confirme com o código de 6 dígitos.</p>
+        <dl class="secret-list">
+            <dt>Chave manual</dt>
+            <dd><code>@Model.ManualKey</code></dd>
+            <dt>URI TOTP</dt>
+            <dd><code>@Model.OtpAuthUri</code></dd>
+        </dl>
+        <form method="post" novalidate>
+            <input asp-for="ManualKey" type="hidden" />
+            <input asp-for="OtpAuthUri" type="hidden" />
+            <div asp-validation-summary="ModelOnly" class="validation" role="alert"></div>
+            <label asp-for="Code"></label>
+            <input asp-for="Code" inputmode="numeric" autocomplete="one-time-code" autofocus />
+            <span asp-validation-for="Code" class="validation"></span>
+            <button class="button button-primary" type="submit">Confirmar MFA</button>
+        </form>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

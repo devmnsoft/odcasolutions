@@ -1,0 +1,22 @@
+@model MfaChallengeViewModel
+@{
+    ViewData["Title"] = "Confirmar MFA";
+}
+<section class="narrow">
+    <div class="card">
+        <p class="eyebrow">Acesso privilegiado</p>
+        <h1>Confirme o segundo fator</h1>
+        <p class="muted">Use o código do autenticador ou um código de recuperação ainda não utilizado.</p>
+        <form method="post" novalidate>
+            <div asp-validation-summary="ModelOnly" class="validation" role="alert"></div>
+            <label asp-for="Code"></label>
+            <input asp-for="Code" inputmode="numeric" autocomplete="one-time-code" autofocus />
+            <span asp-validation-for="Code" class="validation"></span>
+            <button class="button button-primary" type="submit">Verificar</button>
+        </form>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

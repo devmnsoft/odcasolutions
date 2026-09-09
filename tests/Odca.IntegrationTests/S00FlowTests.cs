@@ -4,10 +4,13 @@ using System.Net.Http.Json;
 using Dapper;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Npgsql;
+using Odca.Application.Identity;
 using Odca.Contracts.Identity;
+using Odca.Contracts.Onboarding;
 using Odca.Contracts.Plans;
 using Odca.Contracts.Privacy;
 using Odca.Infrastructure.Database;
+using Odca.Infrastructure.Common;
 
 namespace Odca.IntegrationTests;
 
@@ -16,7 +19,9 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
     [Fact]
     public async Task CanonicalSqlReappliesWithoutDuplicatingMigration()
     {
-        Assert.Equal(3, await database.MigrationCountAsync());
+        // The expectation comes from the canonical package version compiled with the
+        // application, rather than from whatever history happens to be in the test DB.
+        Assert.Equal(DatabaseSchema.CurrentVersion, await database.MigrationCountAsync());
         Assert.True(await database.IsolationFixesArePresentAsync());
     }
 
@@ -86,6 +91,56 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
     }
 
     [Fact]
+    public async Task CustomerRegistrationConfirmsEmailAndShowsCommercialPendingHome()
+    {
+        await using var factory = database.CreateApi();
+        using var client = factory.CreateClient();
+        var request = new StartCustomerRegistrationRequest(
+            "basic",
+            "12.345.678/0001-90",
+            "Cliente Sintético",
+            "cliente.sintetico@example.test",
+            "Cliente!Password2026",
+            true,
+            true,
+            false);
+
+        using var firstResponse = await client.PostAsJsonAsync("/api/v1/onboarding/registrations", request);
+        Assert.Equal(HttpStatusCode.Accepted, firstResponse.StatusCode);
+        var first = await firstResponse.Content.ReadFromJsonAsync<StartCustomerRegistrationResponse>();
+        Assert.NotNull(first);
+        Assert.NotNull(first.DevelopmentConfirmationToken);
+
+        using var repeatedResponse = await client.PostAsJsonAsync("/api/v1/onboarding/registrations", request);
+        Assert.Equal(HttpStatusCode.Accepted, repeatedResponse.StatusCode);
+        var repeated = await repeatedResponse.Content.ReadFromJsonAsync<StartCustomerRegistrationResponse>();
+        Assert.NotNull(repeated);
+        Assert.Equal(first.RegistrationId, repeated.RegistrationId);
+        Assert.NotEqual(first.DevelopmentConfirmationToken, repeated.DevelopmentConfirmationToken);
+
+        using var confirmResponse = await client.PostAsJsonAsync(
+            "/api/v1/onboarding/confirm-email",
+            new ConfirmCustomerRegistrationRequest(repeated.RegistrationId, repeated.DevelopmentConfirmationToken!));
+        confirmResponse.EnsureSuccessStatusCode();
+
+        using var reusedConfirmResponse = await client.PostAsJsonAsync(
+            "/api/v1/onboarding/confirm-email",
+            new ConfirmCustomerRegistrationRequest(repeated.RegistrationId, repeated.DevelopmentConfirmationToken!));
+        Assert.Equal(HttpStatusCode.BadRequest, reusedConfirmResponse.StatusCode);
+
+        var login = await LoginAsync(client, "Cliente!Password2026", "cliente.sintetico@example.test");
+        Assert.False(login.MustChangePassword);
+        Assert.False(login.RequiresMfaChallenge);
+
+        using var home = Authorized(HttpMethod.Get, "/api/v1/onboarding/customer-home", login.AccessToken);
+        using var homeResponse = await client.SendAsync(home);
+        homeResponse.EnsureSuccessStatusCode();
+        var data = await homeResponse.Content.ReadFromJsonAsync<CustomerHomeResponse>();
+        Assert.NotNull(data);
+        Assert.Equal(("basic", 1, "commercial_pending"), (data.PlanCode, data.PlanVersion, data.CommercialState));
+    }
+
+    [Fact]
     public async Task InvalidPasswordIsRejected()
     {
         await database.ResetAuthenticationScenarioAsync();
@@ -123,10 +178,12 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
         var changed = await changeResponse.Content.ReadFromJsonAsync<LoginResponse>();
         Assert.NotNull(changed);
         Assert.False(changed.MustChangePassword);
+        Assert.True(changed.RequiresMfaEnrollment);
+        Assert.False(changed.MfaVerified);
     }
 
     [Fact]
-    public async Task PasswordChangedSessionCanReadDashboardAndPlans()
+    public async Task PasswordChangedSessionCannotReadDashboardWithoutMfa()
     {
         await database.ResetAuthenticationScenarioAsync();
         await using var factory = database.CreateApi();
@@ -135,13 +192,26 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
 
         using var dashboard = Authorized(HttpMethod.Get, "/api/v1/platform/dashboard", changed.AccessToken);
         using var dashboardResponse = await client.SendAsync(dashboard);
+        Assert.Equal(HttpStatusCode.Forbidden, dashboardResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task SuperAdministratorCanReadDashboardAndPlansAfterMfaEnrollment()
+    {
+        await database.ResetAuthenticationScenarioAsync();
+        await using var factory = database.CreateApi();
+        using var client = factory.CreateClient();
+        var verified = await EnrollMfaAsync(client);
+
+        using var dashboard = Authorized(HttpMethod.Get, "/api/v1/platform/dashboard", verified.AccessToken);
+        using var dashboardResponse = await client.SendAsync(dashboard);
         dashboardResponse.EnsureSuccessStatusCode();
         var data = await dashboardResponse.Content.ReadFromJsonAsync<DashboardResponse>();
         Assert.NotNull(data);
         Assert.True(data.ActiveUsers >= 1);
         Assert.True(data.PendingPrivacyItems >= 1);
 
-        using var plans = Authorized(HttpMethod.Get, "/api/v1/platform/plans", changed.AccessToken);
+        using var plans = Authorized(HttpMethod.Get, "/api/v1/platform/plans", verified.AccessToken);
         using var plansResponse = await client.SendAsync(plans);
         plansResponse.EnsureSuccessStatusCode();
         var catalog = await plansResponse.Content.ReadFromJsonAsync<PlanCatalogResponse[]>();
@@ -154,12 +224,41 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
     }
 
     [Fact]
+    public async Task InvalidAndReusedMfaCodesAreRejected()
+    {
+        await database.ResetAuthenticationScenarioAsync();
+        await using var factory = database.CreateApi();
+        using var client = factory.CreateClient();
+        var verified = await EnrollMfaAsync(client);
+        var recoveryCode = verified.RecoveryCodes[0];
+
+        var passwordOnly = await LoginAsync(client, DatabaseFixture.ChangedPassword);
+        Assert.True(passwordOnly.RequiresMfaChallenge);
+
+        using var reusedTotp = Authorized(HttpMethod.Post, "/api/v1/auth/mfa/challenge", passwordOnly.AccessToken);
+        reusedTotp.Content = JsonContent.Create(new MfaChallengeRequest(verified.LastTotpCode));
+        using var reusedTotpResponse = await client.SendAsync(reusedTotp);
+        Assert.Equal(HttpStatusCode.BadRequest, reusedTotpResponse.StatusCode);
+
+        using var recovery = Authorized(HttpMethod.Post, "/api/v1/auth/mfa/challenge", passwordOnly.AccessToken);
+        recovery.Content = JsonContent.Create(new MfaChallengeRequest(recoveryCode));
+        using var recoveryResponse = await client.SendAsync(recovery);
+        recoveryResponse.EnsureSuccessStatusCode();
+
+        var secondPasswordOnly = await LoginAsync(client, DatabaseFixture.ChangedPassword);
+        using var reusedRecovery = Authorized(HttpMethod.Post, "/api/v1/auth/mfa/challenge", secondPasswordOnly.AccessToken);
+        reusedRecovery.Content = JsonContent.Create(new MfaChallengeRequest(recoveryCode));
+        using var reusedRecoveryResponse = await client.SendAsync(reusedRecovery);
+        Assert.Equal(HttpStatusCode.BadRequest, reusedRecoveryResponse.StatusCode);
+    }
+
+    [Fact]
     public async Task LogoutRevokesPasswordChangedSession()
     {
         await database.ResetAuthenticationScenarioAsync();
         await using var factory = database.CreateApi();
         using var client = factory.CreateClient();
-        var changed = await ChangeInitialPasswordAsync(client);
+        var changed = await EnrollMfaAsync(client);
 
         using var logout = Authorized(HttpMethod.Post, "/api/v1/auth/logout", changed.AccessToken);
         using var logoutResponse = await client.SendAsync(logout);
@@ -182,11 +281,36 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
         return (await response.Content.ReadFromJsonAsync<LoginResponse>())!;
     }
 
+    private static async Task<MfaTestSession> EnrollMfaAsync(HttpClient client)
+    {
+        var changed = await ChangeInitialPasswordAsync(client);
+        using var start = Authorized(HttpMethod.Post, "/api/v1/auth/mfa/enrollment", changed.AccessToken);
+        using var startResponse = await client.SendAsync(start);
+        startResponse.EnsureSuccessStatusCode();
+        var enrollment = await startResponse.Content.ReadFromJsonAsync<MfaEnrollmentResponse>();
+        Assert.NotNull(enrollment);
+        var code = new TotpService(new SystemClock()).GenerateCode(enrollment.ManualKey);
+
+        using var confirm = Authorized(HttpMethod.Post, "/api/v1/auth/mfa/enrollment/confirm", changed.AccessToken);
+        confirm.Content = JsonContent.Create(new ConfirmMfaEnrollmentRequest(code));
+        using var confirmResponse = await client.SendAsync(confirm);
+        confirmResponse.EnsureSuccessStatusCode();
+        var verified = await confirmResponse.Content.ReadFromJsonAsync<MfaVerificationResponse>();
+        Assert.NotNull(verified);
+        Assert.True(verified.MfaVerified);
+        Assert.NotNull(verified.RecoveryCodes);
+        Assert.Equal(8, verified.RecoveryCodes.Length);
+        return new MfaTestSession(verified.AccessToken, verified.RecoveryCodes, code);
+    }
+
     private static async Task<LoginResponse> LoginAsync(HttpClient client, string password)
+        => await LoginAsync(client, password, DatabaseFixture.Email);
+
+    private static async Task<LoginResponse> LoginAsync(HttpClient client, string password, string login)
     {
         using var response = await client.PostAsJsonAsync(
             "/api/v1/auth/login",
-            new LoginRequest(DatabaseFixture.Email, password));
+            new LoginRequest(login, password));
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<LoginResponse>())!;
     }
@@ -198,4 +322,5 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
         return request;
     }
 
+    private sealed record MfaTestSession(string AccessToken, string[] RecoveryCodes, string LastTotpCode);
 }

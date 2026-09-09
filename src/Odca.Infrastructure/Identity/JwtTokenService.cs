@@ -21,6 +21,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : ITokenServic
             new("sid", session.Id.ToString()),
             new("security_version", session.SecurityVersion.ToString(CultureInfo.InvariantCulture)),
             new("must_change_password", user.MustChangePassword ? "true" : "false"),
+            new("mfa_verified", session.AuthenticationLevel == "mfa" ? "true" : "false"),
             new(ClaimTypes.Name, user.DisplayName),
             new(ClaimTypes.Email, user.Email)
         };

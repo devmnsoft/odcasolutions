@@ -50,6 +50,7 @@ public sealed class AuthenticationServiceTests
         1,
         false,
         false,
+        null,
         false,
         null);
 
@@ -98,7 +99,7 @@ public sealed class AuthenticationServiceTests
             CancellationToken cancellationToken)
         {
             CreatedSessionExpiresAt = expiresAt;
-            return Task.FromResult(new SessionRecord(Guid.NewGuid(), userId, securityVersion, expiresAt));
+            return Task.FromResult(new SessionRecord(Guid.NewGuid(), userId, securityVersion, expiresAt, "password", null));
         }
 
         public Task<bool> IsSessionValidAsync(
@@ -119,5 +120,50 @@ public sealed class AuthenticationServiceTests
             string passwordHash,
             DateTimeOffset changedAt,
             CancellationToken cancellationToken) => Task.FromResult(new PasswordChangeResult(user.SecurityVersion + 1));
+
+        public Task<bool> SavePendingMfaSecretAsync(
+            Guid userId,
+            Guid sessionId,
+            int securityVersion,
+            string protectedSecret,
+            DateTimeOffset now,
+            CancellationToken cancellationToken) => Task.FromResult(true);
+
+        public Task<string?> GetProtectedMfaSecretAsync(Guid userId, CancellationToken cancellationToken) =>
+            Task.FromResult<string?>(null);
+
+        public Task<bool> ConfirmMfaAsync(
+            Guid userId,
+            Guid sessionId,
+            int securityVersion,
+            DateTimeOffset verifiedAt,
+            DateTimeOffset expiresAt,
+            string expectedProtectedSecret,
+            long acceptedTimeStep,
+            IReadOnlyList<string> recoveryCodeHashes,
+            CancellationToken cancellationToken) => Task.FromResult(false);
+
+        public Task<MfaChallengeState?> GetMfaChallengeStateAsync(
+            Guid userId,
+            Guid sessionId,
+            int securityVersion,
+            DateTimeOffset now,
+            CancellationToken cancellationToken) => Task.FromResult<MfaChallengeState?>(null);
+
+        public Task<bool> CompleteMfaChallengeAsync(
+            Guid userId,
+            Guid sessionId,
+            int securityVersion,
+            DateTimeOffset verifiedAt,
+            DateTimeOffset expiresAt,
+            long? acceptedTimeStep,
+            string? recoveryCodeHash,
+            CancellationToken cancellationToken) => Task.FromResult(false);
+
+        public Task RecordFailedMfaChallengeAsync(
+            Guid userId,
+            Guid sessionId,
+            DateTimeOffset occurredAt,
+            CancellationToken cancellationToken) => Task.CompletedTask;
     }
 }

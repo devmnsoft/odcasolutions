@@ -69,7 +69,7 @@ public sealed class StartupValidationTests
         AccessTokenMinutes = 15
     };
 
-    private static IHostEnvironment Environment(string name) => new TestHostEnvironment(name);
+    private static TestHostEnvironment Environment(string name) => new(name);
 
     private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment
     {

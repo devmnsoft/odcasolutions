@@ -113,7 +113,8 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("PlatformAdministrator", policy => policy
         .RequireAuthenticatedUser()
         .RequireRole("SuperAdministrator")
-        .RequireClaim("must_change_password", "false"));
+        .RequireClaim("must_change_password", "false")
+        .RequireClaim("mfa_verified", "true"));
 });
 
 var app = builder.Build();

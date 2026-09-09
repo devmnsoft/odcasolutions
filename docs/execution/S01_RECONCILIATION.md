@@ -13,3 +13,19 @@ Esta matriz distingue implementação, teste escrito e evidência efetivamente e
 | BFF distribuído | Cookie protegido com ticket em `IDistributedCache` | Build da CI aprovado | Implementação usa memória e Data Protection não compartilhado | Pendente para produção multi-instância |
 
 O escopo amplo de S01 não é declarado concluído. O incremento atual fecha o bloqueio reproduzido de composição do host e mantém as demais lacunas explícitas para não confundir código existente com controle aprovado.
+
+## Incremento local sobre `468dee4` — MFA e primeiro cliente
+
+| Requisito | Implementação desta atualização | Teste/check executado | Pendência |
+|---|---|---|---|
+| CA1859 do gate A | `StartupValidationTests.Environment` retorna `TestHostEnvironment` | restore bloqueado e build Release aprovados | confirmar CI do commit final |
+| MFA de superadministrador | TOTP, inscrição, confirmação, desafio, recovery codes hashados, replay por time-step, limite de tentativas e claim `mfa_verified` | testes HTTP escritos em `S00FlowTests`; testes sem DB aprovados; cenários DB aguardam banco descartável | reset/revogação administrativa de autenticador e MFA recente para futuros endpoints sensíveis |
+| Dashboard administrativo | policy `PlatformAdministrator` exige `must_change_password=false` e `mfa_verified=true` | build aprovado; teste DB preparado para negar senha sem MFA e autorizar MFA válido | executar contra PostgreSQL |
+| Cadastro do primeiro cliente | registro idempotente com CPF/CNPJ, responsável, plano vigente, termos/aviso, token hashado, tenant, membership e subscription `commercial_pending` | teste HTTP DB preparado para cadastro idempotente, confirmação uso único, login e home do cliente | provedor real de e-mail, reenvio com quota temporal refinada, seleção explícita entre múltiplas organizações |
+| Banco | migrações 004/005 e snapshots `odca-v004.sql`/`odca-v005.sql` | checksums/snapshots aprovados na suíte sem DB | vazio/upgrade/reaplicação/concurrency/recovery em PostgreSQL real |
+
+S01 permanece parcial: equipe, convites, suporte temporário, atendimento autenticado de privacidade, operação comercial real, cobrança e cache/Data Protection compartilhados para múltiplas instâncias continuam no backlog.
+
+## Reconciliação do prompt 08 — 09/09/2026
+
+A referência `a9077f6` continha MFA e onboarding, mas três leituras/testes estavam quebrados. Este incremento corrige esses contratos, adiciona renovação persistida de sessão MFA, proteção concorrente da inscrição, validação de documentos e migração 006 de unicidade/evidência. Código de equipe, convites e seletor ainda não existe; outbox continua sem transporte de produção. Portanto S01 permanece parcial e nenhuma alegação de produção/multi-instância foi feita.

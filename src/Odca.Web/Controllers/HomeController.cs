@@ -17,6 +17,16 @@ public sealed class HomeController(OdcaApiClient apiClient) : Controller
             return RedirectToAction("ChangePassword", "Account");
         }
 
+        if (User.FindFirst("requires_mfa_enrollment")?.Value == "true")
+        {
+            return RedirectToAction("MfaEnrollment", "Account");
+        }
+
+        if (User.FindFirst("requires_mfa_challenge")?.Value == "true")
+        {
+            return RedirectToAction("MfaChallenge", "Account");
+        }
+
         var token = await HttpContext.GetTokenAsync("access_token");
         if (token is null)
         {
@@ -31,7 +41,10 @@ public sealed class HomeController(OdcaApiClient apiClient) : Controller
 
         if (result.Status == ApiCallStatus.Forbidden)
         {
-            return Forbid();
+            var customerHome = await apiClient.GetCustomerHomeAsync(token, cancellationToken);
+            return customerHome.Succeeded
+                ? RedirectToAction("CustomerHome", "Onboarding")
+                : Forbid();
         }
 
         if (!result.Succeeded)

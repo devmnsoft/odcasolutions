@@ -1,16 +1,19 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.DataProtection;
 using Npgsql;
 using Odca.Application.Common;
 using Odca.Application.Dashboard;
 using Odca.Application.Identity;
+using Odca.Application.Onboarding;
 using Odca.Application.Plans;
 using Odca.Application.Privacy;
 using Odca.Infrastructure.Common;
 using Odca.Infrastructure.Database;
 using Odca.Infrastructure.Dashboard;
 using Odca.Infrastructure.Identity;
+using Odca.Infrastructure.Onboarding;
 using Odca.Infrastructure.Plans;
 using Odca.Infrastructure.Privacy;
 
@@ -43,12 +46,24 @@ public static class DependencyInjection
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IPasswordService, AspNetPasswordService>();
         services.AddSingleton<ITokenService, JwtTokenService>();
+        var dataProtection = services.AddDataProtection()
+            .SetApplicationName("ODCA Solutions");
+        var keysPath = configuration["DataProtection:KeysPath"];
+        if (!string.IsNullOrWhiteSpace(keysPath))
+        {
+            dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+        }
+        services.AddSingleton<IMfaSecretProtector, DataProtectionMfaSecretProtector>();
+        services.AddSingleton<TotpService>();
         services.AddScoped<IIdentityRepository, NpgsqlIdentityRepository>();
         services.AddScoped<IPlatformDashboardRepository, NpgsqlPlatformDashboardRepository>();
+        services.AddScoped<ICustomerOnboardingRepository, NpgsqlCustomerOnboardingRepository>();
         services.AddScoped<IPlanCatalogRepository, NpgsqlPlanCatalogRepository>();
         services.AddScoped<IPrivacyRequestRepository, NpgsqlPrivacyRequestRepository>();
         services.AddScoped<PrivacyRequestService>();
         services.AddScoped<AuthenticationService>();
+        services.AddScoped<MfaService>();
+        services.AddScoped<CustomerOnboardingService>();
         services.AddSingleton<PostgresReadinessHealthCheck>();
         return services;
     }

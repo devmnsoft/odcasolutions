@@ -47,7 +47,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
     public async Task<int> MigrationCountAsync()
     {
         await using var connection = new NpgsqlConnection(AdminConnectionString);
-        return await connection.ExecuteScalarAsync<int>("SELECT count(*)::int FROM odca.schema_migrations WHERE version BETWEEN 1 AND 3;");
+        return await connection.ExecuteScalarAsync<int>("SELECT count(*)::int FROM odca.schema_migrations WHERE version BETWEEN 1 AND 5;");
     }
 
     public async Task<bool> IsolationFixesArePresentAsync()
@@ -127,6 +127,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
             1,
             true,
             true,
+            null,
             false,
             null);
         var hash = new AspNetPasswordService().Hash(user, InitialPassword);
@@ -150,6 +151,12 @@ public sealed class DatabaseFixture : IAsyncLifetime
             UPDATE odca.sessions
                SET revoked_at = COALESCE(revoked_at, now())
              WHERE user_id = @Id;
+            DELETE FROM odca.mfa_recovery_codes WHERE user_id = @Id;
+            UPDATE odca.users
+               SET mfa_secret_protected = NULL,
+                   mfa_confirmed_at = NULL,
+                   mfa_last_accepted_time_step = NULL
+             WHERE id = @Id;
             """;
 
         await using var connection = new NpgsqlConnection(AdminConnectionString);
