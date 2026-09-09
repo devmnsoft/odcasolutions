@@ -39,13 +39,13 @@ jobs:
         with:
           node-version: "24.18.0"
       - name: Restore
-        run: dotnet restore Odca.slnx --locked-mode
+        run: dotnet restore Odca.sln --locked-mode
       - name: Build
-        run: dotnet build Odca.slnx --configuration Release --no-restore
+        run: dotnet build Odca.sln --configuration Release --no-restore
       - name: Assets
         run: npm run build
       - name: Tests
-        run: dotnet test Odca.slnx --configuration Release --no-build --logger "trx;LogFileName=tests.trx"
+        run: dotnet test Odca.sln --configuration Release --no-build --logger "trx;LogFileName=tests.trx"
       - name: Secret scan
         run: >-
           docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1

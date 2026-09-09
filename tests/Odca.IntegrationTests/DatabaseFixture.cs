@@ -51,7 +51,22 @@ public sealed class DatabaseFixture : IAsyncLifetime
     public async Task<int> MigrationCountAsync()
     {
         await using var connection = new NpgsqlConnection(AdminConnectionString);
-        return await connection.ExecuteScalarAsync<int>("SELECT count(*)::int FROM odca.schema_migrations WHERE version = 1;");
+        return await connection.ExecuteScalarAsync<int>("SELECT count(*)::int FROM odca.schema_migrations WHERE version IN (1, 2);");
+    }
+
+    public async Task<bool> IsolationFixesArePresentAsync()
+    {
+        const string sql = """
+            SELECT
+                EXISTS (
+                    SELECT 1 FROM pg_constraint
+                     WHERE conrelid = 'odca.member_roles'::regclass
+                       AND conname = 'member_roles_tenant_role_fk')
+                AND (SELECT relrowsecurity FROM pg_class WHERE oid = 'odca.role_permissions'::regclass)
+                AND (SELECT relrowsecurity FROM pg_class WHERE oid = 'odca.audit_events'::regclass);
+            """;
+        await using var connection = new NpgsqlConnection(AdminConnectionString);
+        return await connection.ExecuteScalarAsync<bool>(sql);
     }
 
     private async Task ResetTestUserAsync()

@@ -19,14 +19,75 @@ public sealed class DatabaseMigrator(string sqlPath)
         }
 
         var sql = await File.ReadAllTextAsync(sqlPath, cancellationToken);
-        ValidateChecksums(sql);
+        var migrations = ParseAndValidate(sql);
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
-        await using var command = new NpgsqlCommand(sql, connection) { CommandTimeout = 120 };
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        await ExecuteAsync(connection, "SELECT pg_advisory_lock(hashtext('odca.schema.migrations'));", cancellationToken);
+
+        try
+        {
+            var historyExists = await ScalarAsync<bool>(
+                connection,
+                "SELECT to_regclass('odca.schema_migrations') IS NOT NULL;",
+                cancellationToken);
+
+            foreach (var migration in migrations)
+            {
+                if (historyExists)
+                {
+                    await using var historyCommand = new NpgsqlCommand(
+                        "SELECT checksum FROM odca.schema_migrations WHERE version = @version;",
+                        connection);
+                    historyCommand.Parameters.AddWithValue("version", migration.Version);
+                    var recorded = (string?)await historyCommand.ExecuteScalarAsync(cancellationToken);
+                    if (recorded is not null)
+                    {
+                        if (!string.Equals(recorded.Trim(), migration.Checksum, StringComparison.Ordinal))
+                        {
+                            throw new InvalidDataException(
+                                $"Histórico divergente na migração {migration.Version:000}: banco {recorded.Trim()}, arquivo {migration.Checksum}.");
+                        }
+
+                        continue;
+                    }
+                }
+
+                await ExecuteAsync(connection, migration.Body, cancellationToken);
+                historyExists = true;
+
+                var stored = await ScalarAsync<string?>(
+                    connection,
+                    $"SELECT checksum FROM odca.schema_migrations WHERE version = {migration.Version};",
+                    cancellationToken);
+                if (!string.Equals(stored?.Trim(), migration.Checksum, StringComparison.Ordinal))
+                {
+                    throw new InvalidDataException(
+                        $"A migração {migration.Version:000} não registrou o checksum esperado.");
+                }
+            }
+        }
+        catch
+        {
+            if (connection.FullState.HasFlag(System.Data.ConnectionState.Open))
+            {
+                await ExecuteAsync(connection, "ROLLBACK;", CancellationToken.None);
+            }
+
+            throw;
+        }
+        finally
+        {
+            if (connection.FullState.HasFlag(System.Data.ConnectionState.Open))
+            {
+                await ExecuteAsync(connection, "SELECT pg_advisory_unlock(hashtext('odca.schema.migrations'));", CancellationToken.None);
+            }
+        }
     }
 
     public static void ValidateChecksums(string sql)
+        => _ = ParseAndValidate(sql);
+
+    private static List<MigrationBlock> ParseAndValidate(string sql)
     {
         var matches = MigrationPattern.Matches(sql);
         if (matches.Count == 0)
@@ -34,8 +95,27 @@ public sealed class DatabaseMigrator(string sqlPath)
             throw new InvalidDataException("Nenhum bloco de migração ODCA foi encontrado.");
         }
 
+        var migrations = new List<MigrationBlock>(matches.Count);
+        var versions = new HashSet<int>();
+        var previousVersion = 0;
+        var cursor = 0;
         foreach (Match match in matches)
         {
+            EnsureOnlyCommentsOutsideBlocks(sql[cursor..match.Index]);
+            cursor = match.Index + match.Length;
+
+            var version = int.Parse(match.Groups["version"].Value, System.Globalization.CultureInfo.InvariantCulture);
+            if (!versions.Add(version))
+            {
+                throw new InvalidDataException($"A versão de migração {version:000} está duplicada.");
+            }
+
+            if (version <= previousVersion)
+            {
+                throw new InvalidDataException("Os blocos de migração devem estar em ordem crescente.");
+            }
+
+            previousVersion = version;
             var declared = match.Groups["checksum"].Value;
             var normalizedBody = match.Groups["body"].Value
                 .Replace("\r\n", "\n", StringComparison.Ordinal)
@@ -51,6 +131,50 @@ public sealed class DatabaseMigrator(string sqlPath)
                 throw new InvalidDataException(
                     $"Checksum inválido na migração {match.Groups["version"].Value}: esperado {declared}, obtido {actual}.");
             }
+
+            migrations.Add(new MigrationBlock(version, declared, match.Groups["body"].Value));
+        }
+
+        EnsureOnlyCommentsOutsideBlocks(sql[cursor..]);
+        return migrations;
+    }
+
+    private static void EnsureOnlyCommentsOutsideBlocks(string value)
+    {
+        var lines = value
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Split('\n');
+        if (lines.Any(line => line.Contains("ODCA-MIGRATION", StringComparison.Ordinal) ||
+                              line.Contains("ODCA-END", StringComparison.Ordinal)))
+        {
+            throw new InvalidDataException("Há um marcador de migração inválido ou incompleto.");
+        }
+
+        var executable = string.Join('\n', lines.Where(line =>
+            !string.IsNullOrWhiteSpace(line) && !line.TrimStart().StartsWith("--", StringComparison.Ordinal)));
+        if (!string.IsNullOrWhiteSpace(executable))
+        {
+            throw new InvalidDataException("Há SQL executável fora de um bloco de migração rastreado.");
         }
     }
+
+    private static async Task ExecuteAsync(
+        NpgsqlConnection connection,
+        string sql,
+        CancellationToken cancellationToken)
+    {
+        await using var command = new NpgsqlCommand(sql, connection) { CommandTimeout = 120 };
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task<T> ScalarAsync<T>(
+        NpgsqlConnection connection,
+        string sql,
+        CancellationToken cancellationToken)
+    {
+        await using var command = new NpgsqlCommand(sql, connection) { CommandTimeout = 30 };
+        return (T)(await command.ExecuteScalarAsync(cancellationToken))!;
+    }
+
+    private sealed record MigrationBlock(int Version, string Checksum, string Body);
 }
