@@ -42,6 +42,8 @@ public sealed class DatabaseFixture : IAsyncLifetime
         return new TestApiFactory(this);
     }
 
+    public Task ResetAuthenticationScenarioAsync() => ResetTestUserAsync();
+
     public async Task<int> MigrationCountAsync()
     {
         await using var connection = new NpgsqlConnection(AdminConnectionString);
