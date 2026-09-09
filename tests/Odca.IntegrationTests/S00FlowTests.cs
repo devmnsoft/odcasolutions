@@ -69,7 +69,7 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
     }
 
     [Fact]
-    public async Task BootstrapLoginRequiresPasswordChangeThenDashboardAndLogoutWork()
+    public async Task PublicPrivacyRequestReturnsOpaqueProtocol()
     {
         await using var factory = database.CreateApi();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
@@ -83,6 +83,14 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
         Assert.Matches("^[A-F0-9]{24}$", privacy.Protocol);
         Assert.DoesNotContain("subject@example.test", privacy.Message, StringComparison.OrdinalIgnoreCase);
         Assert.True(await database.PrivacyRequestExistsAsync(privacy.Protocol));
+    }
+
+    [Fact]
+    public async Task InvalidPasswordIsRejected()
+    {
+        await database.ResetAuthenticationScenarioAsync();
+        await using var factory = database.CreateApi();
+        using var client = factory.CreateClient();
 
         using var wrong = await client.PostAsJsonAsync(
             "/api/v1/auth/login",
@@ -90,6 +98,14 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
         Assert.True(
             wrong.StatusCode == HttpStatusCode.Unauthorized,
             $"Esperado 401; recebido {(int)wrong.StatusCode}: {await wrong.Content.ReadAsStringAsync()}");
+    }
+
+    [Fact]
+    public async Task InitialPasswordOnlyAllowsPasswordChange()
+    {
+        await database.ResetAuthenticationScenarioAsync();
+        await using var factory = database.CreateApi();
+        using var client = factory.CreateClient();
 
         var first = await LoginAsync(client, DatabaseFixture.InitialPassword);
         Assert.True(first.MustChangePassword);
@@ -107,6 +123,15 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
         var changed = await changeResponse.Content.ReadFromJsonAsync<LoginResponse>();
         Assert.NotNull(changed);
         Assert.False(changed.MustChangePassword);
+    }
+
+    [Fact]
+    public async Task PasswordChangedSessionCanReadDashboardAndPlans()
+    {
+        await database.ResetAuthenticationScenarioAsync();
+        await using var factory = database.CreateApi();
+        using var client = factory.CreateClient();
+        var changed = await ChangeInitialPasswordAsync(client);
 
         using var dashboard = Authorized(HttpMethod.Get, "/api/v1/platform/dashboard", changed.AccessToken);
         using var dashboardResponse = await client.SendAsync(dashboard);
@@ -126,6 +151,15 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
             basic => Assert.Equal(("basic", 3, 10_000_000_000), (basic.Code, basic.ActiveSeats, basic.StorageBytes)),
             intermediate => Assert.Equal(("intermediate", 10, 100_000_000_000), (intermediate.Code, intermediate.ActiveSeats, intermediate.StorageBytes)),
             enterprise => Assert.Equal(("enterprise", 30, 500_000_000_000), (enterprise.Code, enterprise.ActiveSeats, enterprise.StorageBytes)));
+    }
+
+    [Fact]
+    public async Task LogoutRevokesPasswordChangedSession()
+    {
+        await database.ResetAuthenticationScenarioAsync();
+        await using var factory = database.CreateApi();
+        using var client = factory.CreateClient();
+        var changed = await ChangeInitialPasswordAsync(client);
 
         using var logout = Authorized(HttpMethod.Post, "/api/v1/auth/logout", changed.AccessToken);
         using var logoutResponse = await client.SendAsync(logout);
@@ -134,6 +168,18 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
         using var revoked = Authorized(HttpMethod.Get, "/api/v1/platform/dashboard", changed.AccessToken);
         using var revokedResponse = await client.SendAsync(revoked);
         Assert.Equal(HttpStatusCode.Unauthorized, revokedResponse.StatusCode);
+    }
+
+    private static async Task<LoginResponse> ChangeInitialPasswordAsync(HttpClient client)
+    {
+        var first = await LoginAsync(client, DatabaseFixture.InitialPassword);
+        using var change = Authorized(HttpMethod.Post, "/api/v1/auth/change-password", first.AccessToken);
+        change.Content = JsonContent.Create(new ChangePasswordRequest(
+            DatabaseFixture.InitialPassword,
+            DatabaseFixture.ChangedPassword));
+        using var response = await client.SendAsync(change);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<LoginResponse>())!;
     }
 
     private static async Task<LoginResponse> LoginAsync(HttpClient client, string password)

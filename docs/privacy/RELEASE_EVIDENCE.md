@@ -2,6 +2,8 @@
 
 ## Evolução S00/S01 — 09/09/2026
 
+Atualização do gate no SHA base `c5e5064`: a CI 34352606607 aprovou o secret scan, mas falhou em restore por divergência do `coverlet.collector`; build, assets e testes não executaram. A correção alinha o projeto de integração e seu lock em 10.0.1 e adiciona testes de host, porém ainda aguarda CI. Não reutilizar as contagens do SHA anterior como resultado deste incremento.
+
 | Controle | Evidência | Resultado | Limitação |
 |---|---|---|---|
 | Histórico SQL imutável | runner valida versão, ordem, checksum, lacunas e banco mais novo | 6 testes de parser/checksum/snapshot aprovados | SQL direto/recovery/concurrency aguardam banco autorizado |

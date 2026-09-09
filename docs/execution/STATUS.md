@@ -23,17 +23,19 @@ Referência revalidada em 09/09/2026: SHA base `5ab8df3`. S00 continua **em vali
 - Migração 003 e fatia ODCA-PRIV-003: formulário `/privacidade`, API pública com rate limit, protocolo opaco, resposta neutra, histórico inicial e gravação por função de privilégio restrito.
 - Teste comportamental preparado para role runtime: ausência de contexto, alternância de tenant, `role_permissions`, auditoria e FK cruzada A × B.
 
-## Verificações do HEAD de trabalho
+## Histórico de verificações (resultados não cumulativos)
 
 | Verificação | Resultado |
 |---|---|
-| `dotnet restore Odca.sln --locked-mode` | sucesso |
-| `dotnet build Odca.sln --configuration Release --no-restore` | sucesso; 0 avisos, 0 erros |
-| `npm run build` | sucesso |
-| testes de domínio | 10 aprovados |
-| parser/checksum/snapshots de migração | 6 aprovados |
-| `dotnet test Odca.sln --configuration Release --no-build` | 16 aprovados; 3 cenários PostgreSQL recusados antes de conexão por ausência do marcador exclusivo |
-| CI remoto do SHA `f710c42` | falhou no restore por NU1004; correção atual ainda não foi enviada/validada remotamente |
+| `dotnet restore Odca.sln --locked-mode` no SHA anterior | sucesso |
+| `dotnet build Odca.sln --configuration Release --no-restore` no SHA anterior | sucesso; 0 avisos, 0 erros |
+| `npm run build` no SHA anterior | sucesso |
+| testes de domínio no SHA anterior | 10 aprovados |
+| parser/checksum/snapshots de migração no SHA anterior | 6 aprovados |
+| `dotnet test Odca.sln --configuration Release --no-build` no SHA anterior | 16 aprovados; 3 cenários PostgreSQL recusados antes de conexão por ausência do marcador exclusivo |
+| CI remoto do SHA `c5e5064` | secret scan aprovado; restore falhou por NU1004 antes de build/assets/testes |
+| `npm run build` nesta correção | sucesso com Node 20.20.2; o projeto declara Node >=24, portanto a CI continua sendo o gate na versão suportada |
+| `dotnet restore Odca.sln --locked-mode` nesta correção | não executado: SDK .NET 10 ausente e download bloqueado por HTTP 403 no ambiente |
 | suíte PostgreSQL atual | não executada: faltam as três variáveis exclusivas de teste e uma credencial administrativa autorizada |
 
 ## Parcial, pendente ou bloqueado
@@ -43,3 +45,4 @@ Referência revalidada em 09/09/2026: SHA base `5ab8df3`. S00 continua **em vali
 - MFA real, cache/Data Protection compartilhados, onboarding de organização, confirmação de e-mail, assinatura, equipe/perfis, suporte temporário, tratamento autenticado de direitos, retenção executável e S02/S03 permanecem pendentes.
 - A página pública de privacidade é um canal de entrada técnico; não publica texto jurídico, prazo ou contato não aprovados e não constitui comprovação de conformidade LGPD.
 - QA visual responsivo e navegador autenticado ainda não foram executados.
+- Marcos B–E não foram implementados por esta correção do gate A; permanecem explicitamente pendentes e não devem ser inferidos dos testes de startup.
