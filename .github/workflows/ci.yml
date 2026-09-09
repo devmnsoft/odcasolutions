@@ -1,0 +1,52 @@
+name: ci
+
+on:
+  push:
+    branches: [main, "codex/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:18.1-alpine
+        env:
+          POSTGRES_DB: odca_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: odca-ci-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d odca_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      ODCA_TEST_ADMIN_CONNECTION: Host=localhost;Port=5432;Database=odca_test;Username=postgres;Password=odca-ci-only-password;Include Error Detail=false
+      ODCA_TEST_APP_CONNECTION: Host=localhost;Port=5432;Database=odca_test;Username=odca_app_login;Password=odca-ci-app-only-password;Include Error Detail=false
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v5.2.0
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@v6.0.0
+        with:
+          node-version: "24.18.0"
+      - name: Restore
+        run: dotnet restore Odca.slnx --locked-mode
+      - name: Build
+        run: dotnet build Odca.slnx --configuration Release --no-restore
+      - name: Assets
+        run: npm run build
+      - name: Tests
+        run: dotnet test Odca.slnx --configuration Release --no-build --logger "trx;LogFileName=tests.trx"
+      - name: Secret scan
+        run: >-
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1
+          detect --source /repo --no-git --redact --exit-code 1

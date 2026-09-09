@@ -1,0 +1,25 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Entrar";
+}
+<section class="auth-layout">
+    <div class="auth-intro">
+        <p class="eyebrow">Gestão do ciclo de vida de contratos</p>
+        <h1>Clareza do primeiro rascunho à evidência final.</h1>
+        <p>Entre com sua identidade individual. O acesso à organização será sempre validado pelas suas permissões.</p>
+    </div>
+    <div class="card auth-card">
+        <h2>Acesse sua conta</h2>
+        <p class="muted">Use seu e-mail ou CPF e sua senha pessoal.</p>
+        <form method="post" novalidate>
+            <div asp-validation-summary="ModelOnly" class="validation" role="alert"></div>
+            <label asp-for="Login"></label>
+            <input asp-for="Login" autocomplete="username" autofocus />
+            <span asp-validation-for="Login" class="validation"></span>
+            <label asp-for="Password"></label>
+            <input asp-for="Password" autocomplete="current-password" />
+            <span asp-validation-for="Password" class="validation"></span>
+            <button class="button button-primary" type="submit">Entrar</button>
+        </form>
+    </div>
+</section>

@@ -1,0 +1,24 @@
+@model Odca.Contracts.Identity.DashboardResponse
+@{
+    ViewData["Title"] = "Visão global";
+}
+<section class="dashboard-heading">
+    <div>
+        <p class="eyebrow">Visão global</p>
+        <h1>Olá, @Model.DisplayName</h1>
+        <p class="muted">Indicadores operacionais mínimos, sem abrir conteúdo de clientes.</p>
+    </div>
+</section>
+@if (TempData["Success"] is string success)
+{
+    <div class="success" role="status">@success</div>
+}
+<section class="metrics" aria-label="Indicadores da plataforma">
+    <article class="metric"><span>Clientes ativos</span><strong>@Model.ActiveTenants</strong></article>
+    <article class="metric"><span>Usuários ativos</span><strong>@Model.ActiveUsers</strong></article>
+    <article class="metric"><span>Pendências de privacidade</span><strong>@Model.PendingPrivacyItems</strong></article>
+</section>
+<section class="card empty-state">
+    <h2>Fundação operacional</h2>
+    <p>A primeira fatia contém identidade, sessões revogáveis, auditoria mínima e inventário inicial de tratamento. Cadastros de clientes e contratos entram nas próximas etapas.</p>
+</section>

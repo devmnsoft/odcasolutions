@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Odca.Api/Odca.Api.csproj" />
+    <Project Path="src/Odca.Application/Odca.Application.csproj" />
+    <Project Path="src/Odca.Bootstrap/Odca.Bootstrap.csproj" />
+    <Project Path="src/Odca.Contracts/Odca.Contracts.csproj" />
+    <Project Path="src/Odca.Domain/Odca.Domain.csproj" />
+    <Project Path="src/Odca.Infrastructure/Odca.Infrastructure.csproj" />
+    <Project Path="src/Odca.Web/Odca.Web.csproj" />
+    <Project Path="src/Odca.Worker/Odca.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Odca.Domain.Tests/Odca.Domain.Tests.csproj" />
+    <Project Path="tests/Odca.IntegrationTests/Odca.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

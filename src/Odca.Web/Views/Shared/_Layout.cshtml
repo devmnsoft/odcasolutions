@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] — ODCA Solutions</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" asp-controller="Home" asp-action="Index" aria-label="ODCA Solutions — início">
+            <span class="brand-mark" aria-hidden="true">O</span>
+            <span>ODCA Solutions</span>
+        </a>
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <div class="account-actions">
+                <span>@User.Identity.Name</span>
+                <form asp-controller="Account" asp-action="Logout" method="post">
+                    <button class="button button-quiet" type="submit">Sair</button>
+                </form>
+            </div>
+        }
+    </header>
+    <main class="page-shell">
+        @RenderBody()
+    </main>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,15 @@
+bin/
+obj/
+.vs/
+.idea/
+.vscode/
+TestResults/
+artifacts/
+.env.local
+*.user
+*.suo
+*.pfx
+*.key
+development-runtime.json
+development-credentials.json
+src/Odca.Web/wwwroot/dist/

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-Odca.Worker-d40fd0c3-e6c9-49c8-ab6f-f3c81c15bc42</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Odca.Application\Odca.Application.csproj" />
+    <ProjectReference Include="..\Odca.Infrastructure\Odca.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
