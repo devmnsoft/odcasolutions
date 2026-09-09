@@ -19,6 +19,34 @@ public sealed class MigrationChecksumTests
         Assert.Throws<InvalidDataException>(() => DatabaseMigrator.ValidateChecksums(tampered));
     }
 
+    [Fact]
+    public void CanonicalSqlRejectsExecutableTextOutsideTrackedBlocks()
+    {
+        var sql = File.ReadAllText(FindSql()) + Environment.NewLine + "SELECT 1;";
+
+        Assert.Throws<InvalidDataException>(() => DatabaseMigrator.ValidateChecksums(sql));
+    }
+
+    [Fact]
+    public void CanonicalSqlRejectsDuplicateVersions()
+    {
+        var sql = File.ReadAllText(FindSql());
+        var firstBlockStart = sql.IndexOf("-- ODCA-MIGRATION", StringComparison.Ordinal);
+        var firstBlockEnd = sql.IndexOf("-- ODCA-END 001", StringComparison.Ordinal) + "-- ODCA-END 001".Length;
+        var duplicate = sql + Environment.NewLine + sql[firstBlockStart..firstBlockEnd];
+
+        Assert.Throws<InvalidDataException>(() => DatabaseMigrator.ValidateChecksums(duplicate));
+    }
+
+    [Fact]
+    public void ReleaseV002MatchesCanonicalSql()
+    {
+        var canonical = FindSql();
+        var snapshot = Path.Combine(Path.GetDirectoryName(canonical)!, "releases", "odca-v002.sql");
+
+        Assert.Equal(File.ReadAllBytes(canonical), File.ReadAllBytes(snapshot));
+    }
+
     private static string FindSql()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

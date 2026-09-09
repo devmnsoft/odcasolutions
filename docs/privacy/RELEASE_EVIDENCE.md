@@ -1,5 +1,21 @@
 # Evidências de liberação — privacidade
 
+## Evolução S00/S01 desta execução
+
+| Controle | Evidência | Resultado | Limitação |
+|---|---|---|---|
+| Histórico SQL imutável | runner valida versão, ordem, checksum e texto fora de blocos | 4 testes aprovados | upgrade real aguarda credencial PostgreSQL autorizada |
+| Isolamento de papéis | migração 002 adiciona FK `(tenant_id, role_id)` | teste PostgreSQL preparado | ainda não executado localmente |
+| Permissões/auditoria | RLS em `role_permissions` e `audit_events` | inspeção + build | testes negativos A×B permanecem obrigatórios |
+| Dashboard administrativo | função agregada exige usuário administrador | teste de fluxo preparado | banco real pendente |
+| Sessão BFF | cookie opaco; ticket protegido atrás de `IDistributedCache` | build aprovado | ambiente local usa memória; produção requer cache compartilhado |
+| Logout degradado | cookie local removido mesmo sem resposta da API | implementação revisada | teste de navegador com API indisponível pendente |
+| Suíte local | domínio e validação de migrações | 11 testes aprovados; 2 integrações não iniciaram por conexão recusada em `localhost:55432` | reconfigurar para o PostgreSQL nativo autorizado |
+| Entrada Web | página de login local | HTTP 200 e token antiforgery renderizado | fluxo autenticado depende do banco |
+| Entrada Web | página de login local | HTTP 200 e antiforgery renderizado | fluxo autenticado depende do banco |
+
+Esta evidência não declara conformidade LGPD nem conclusão de S00/S01. Textos, prazos, bases legais, canal de titulares e acesso de suporte continuam sujeitos às etapas e validações registradas no backlog.
+
 Esta matriz registra controles técnicos e pendências; não é selo de conformidade.
 
 | Requisito | Implementação S00 | Evidência | Responsável | Pendência |

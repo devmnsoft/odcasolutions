@@ -1,11 +1,14 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Odca.Web.Services;
+using Odca.Web.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews(options =>
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSingleton<DistributedCacheTicketStore>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -18,6 +21,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.SlidingExpiration = false;
         options.ExpireTimeSpan = TimeSpan.FromMinutes(15);
     });
+builder.Services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
+    .Configure<DistributedCacheTicketStore>((options, ticketStore) => options.SessionStore = ticketStore);
 builder.Services.AddAuthorization();
 builder.Services.AddHttpClient<OdcaApiClient>(client =>
 {

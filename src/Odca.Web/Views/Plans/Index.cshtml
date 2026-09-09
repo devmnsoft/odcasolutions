@@ -1,0 +1,33 @@
+@model IReadOnlyList<Odca.Contracts.Plans.PlanCatalogResponse>
+@{
+    ViewData["Title"] = "Planos";
+}
+<section class="dashboard-heading">
+    <div>
+        <p class="eyebrow">Catálogo versionado</p>
+        <h1>Planos</h1>
+        <p class="muted">Limites técnicos publicados. Preços e contratação dependem de definição comercial e integração de pagamento.</p>
+    </div>
+</section>
+<section class="plan-grid" aria-label="Planos publicados">
+    @foreach (var plan in Model)
+    {
+        <article class="card plan-card">
+            <p class="eyebrow">Versão @plan.Version</p>
+            <h2>@plan.DisplayName</h2>
+            <dl>
+                <div><dt>Usuários ativos</dt><dd>@plan.ActiveSeats</dd></div>
+                <div><dt>Espaço da organização</dt><dd>@FormatBytes(plan.StorageBytes)</dd></div>
+                <div><dt>Teto por usuário</dt><dd>@FormatBytes(plan.UserStorageBytes)</dd></div>
+                <div><dt>Arquivo máximo</dt><dd>@FormatBytes(plan.FileBytes)</dd></div>
+                <div><dt>OCR mensal</dt><dd>@plan.OcrPagesMonthly páginas</dd></div>
+                <div><dt>Assinaturas mensais</dt><dd>@plan.SignatureEnvelopesMonthly envelopes</dd></div>
+            </dl>
+        </article>
+    }
+</section>
+@functions {
+    private static string FormatBytes(long bytes) => bytes >= 1_000_000_000
+        ? $"{bytes / 1_000_000_000} GB"
+        : $"{bytes / 1_000_000} MB";
+}

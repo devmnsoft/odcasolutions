@@ -9,6 +9,10 @@
         <p>Entre com sua identidade individual. O acesso à organização será sempre validado pelas suas permissões.</p>
     </div>
     <div class="card auth-card">
+        @if (TempData["LogoutWarning"] is string warning)
+        {
+            <div class="warning" role="status">@warning</div>
+        }
         <h2>Acesse sua conta</h2>
         <p class="muted">Use seu e-mail ou CPF e sua senha pessoal.</p>
         <form method="post" novalidate>

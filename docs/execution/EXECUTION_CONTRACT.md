@@ -23,5 +23,8 @@ Data-base: 2026-09-08. Branch: `codex/s00-foundation`. A especificação vincula
 | ODCA-PRIV-008 | Tabelas Privacy incrementais | `processing_activities`, `privacy_contacts` | migração | parcial conforme S00 |
 | ODCA-PRIV-009 | Documentação operacional | `docs/privacy/*` | revisão de presença | concluído para S00 |
 | ODCA-PRIV-010 | Testes obrigatórios aplicáveis | autenticação/revogação; demais acompanham etapas | testes Domain/Integration | parcial |
+| ODCA-010 | Execução local sem Docker | `Odca.sln`, `.slnLaunch`, `scripts/run-local.ps1`, Bootstrap `configure-native` | build Release; banco depende de credencial local autorizada | implementado; integração pendente |
+| ODCA-011 | Migrações históricas incrementais | runner e migração 002 em `database/odca.sql` | 4 testes de parser/checksum; teste real preparado | implementado; PostgreSQL real pendente |
+| ODCA-S01-PLANOS | Catálogo Basic/Intermediário/Enterprise | SQL, Application, Infrastructure, API e Web | build + teste integrado preparado | implementado; execução real pendente |
 
 Estados distinguem código implementado, teste local e validação externa. Nenhum provedor, hipótese legal ou contato de privacidade foi tratado como aprovado.

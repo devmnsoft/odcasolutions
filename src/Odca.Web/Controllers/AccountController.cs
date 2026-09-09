@@ -24,13 +24,20 @@ public sealed class AccountController(OdcaApiClient apiClient) : Controller
             return View(model);
         }
 
-        var response = await apiClient.LoginAsync(new LoginRequest(model.Login, model.Password), cancellationToken);
-        if (response is null)
+        var result = await apiClient.LoginAsync(new LoginRequest(model.Login, model.Password), cancellationToken);
+        if (!result.Succeeded)
         {
-            ModelState.AddModelError(string.Empty, "E-mail/CPF ou senha inválidos.");
+            ModelState.AddModelError(string.Empty, result.Status switch
+            {
+                ApiCallStatus.RateLimited => "Muitas tentativas. Aguarde um minuto e tente novamente.",
+                ApiCallStatus.Timeout => "O serviço demorou para responder. Tente novamente.",
+                ApiCallStatus.Unavailable => "O serviço está temporariamente indisponível.",
+                _ => "E-mail/CPF ou senha inválidos."
+            });
             return View(model);
         }
 
+        var response = result.Value!;
         await SignInAsync(response);
         return RedirectToAction(response.MustChangePassword ? nameof(ChangePassword) : "Index", response.MustChangePassword ? "Account" : "Home");
     }
@@ -78,12 +85,17 @@ public sealed class AccountController(OdcaApiClient apiClient) : Controller
     public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
         var token = await HttpContext.GetTokenAsync("access_token");
+        var remotelyRevoked = token is null;
         if (token is not null)
         {
-            await apiClient.LogoutAsync(token, cancellationToken);
+            remotelyRevoked = await apiClient.LogoutAsync(token, cancellationToken);
         }
 
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        if (!remotelyRevoked)
+        {
+            TempData["LogoutWarning"] = "A sessão local foi encerrada. A revogação remota não pôde ser confirmada e o acesso expirará automaticamente.";
+        }
         return RedirectToAction(nameof(Login));
     }
 
