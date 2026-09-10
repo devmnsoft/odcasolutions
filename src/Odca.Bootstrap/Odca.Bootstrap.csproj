@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Odca.Infrastructure\Odca.Infrastructure.csproj" />
+    <ProjectReference Include="..\Odca.Configuration\Odca.Configuration.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

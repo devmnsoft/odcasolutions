@@ -22,6 +22,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Odca.Domain.Tests", "tests\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Odca.IntegrationTests", "tests\Odca.IntegrationTests\Odca.IntegrationTests.csproj", "{A68B752D-E106-42A0-891C-89229E81D3D5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Odca.Configuration", "src\Odca.Configuration\Odca.Configuration.csproj", "{BC2F0671-4B51-48BC-849A-1625DA2413E2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -68,5 +70,9 @@ Global
 		{A68B752D-E106-42A0-891C-89229E81D3D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A68B752D-E106-42A0-891C-89229E81D3D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A68B752D-E106-42A0-891C-89229E81D3D5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BC2F0671-4B51-48BC-849A-1625DA2413E2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BC2F0671-4B51-48BC-849A-1625DA2413E2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BC2F0671-4B51-48BC-849A-1625DA2413E2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BC2F0671-4B51-48BC-849A-1625DA2413E2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -9,18 +9,12 @@ using Odca.Application.Identity;
 using Odca.Infrastructure;
 using Odca.Infrastructure.Database;
 using Odca.Infrastructure.Identity;
+using Odca.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
-if (builder.Environment.IsDevelopment())
-{
-    var runtimeConfig = Environment.GetEnvironmentVariable("ODCA_RUNTIME_CONFIG")
-        ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ODCA Solutions",
-            "development-runtime.json");
-    builder.Configuration.AddJsonFile(runtimeConfig, optional: true, reloadOnChange: false);
-}
+var localConfiguration = LocalRuntimeConfiguration.Add(builder.Configuration, builder.Environment, args);
+Console.WriteLine($"Configuração: ambiente={localConfiguration.Environment}; caminho={localConfiguration.Path ?? "não utilizado"}.");
 
 builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
 builder.Services.AddProblemDetails(options =>
