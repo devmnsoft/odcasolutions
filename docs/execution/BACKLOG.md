@@ -1,5 +1,16 @@
 # Backlog
 
+## Prompt 10
+
+- [x] Separar visualmente navegação autenticada de plataforma e cliente a partir de informação emitida pelo backend.
+- [x] Impedir shell administrativo durante troca inicial de senha e MFA pendente; implementar sidebar/drawer acessível e preferência local apenas de apresentação.
+- [x] Corrigir `.button-primary`, organizar tokens visuais e melhorar login, cadastro e leitura honesta dos limites do cliente.
+- [ ] Regenerar e validar lockfiles com SDK .NET 10; executar restore bloqueado, build e suítes completas.
+- [ ] Executar QA real e capturas de login, MFA, cadastro e dashboards em 360/768/1440.
+- [ ] Entregar seleção explícita de organização e contexto validado no servidor.
+- [ ] Entregar organização, equipe, convites/outbox, perfis delegáveis, quota concorrente e proteção do último administrador.
+- [ ] Entregar consulta/ficha de clientes ao superadministrador com filtros, autorização e auditoria.
+
 ## Prompt 09
 
 - [x] Corrigir a duplicação de `StartupValidationService` sem desativar validações.

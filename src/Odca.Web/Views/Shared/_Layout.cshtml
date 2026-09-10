@@ -1,3 +1,12 @@
+@{
+    var authenticated = User.Identity?.IsAuthenticated == true;
+    var pendingAccess = authenticated &&
+        (User.FindFirst("must_change_password")?.Value == "true" ||
+         User.FindFirst("requires_mfa_enrollment")?.Value == "true" ||
+         User.FindFirst("requires_mfa_challenge")?.Value == "true");
+    var showApplication = authenticated && !pendingAccess;
+    var isPlatform = User.IsInRole("SuperAdministrator");
+}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -6,34 +15,67 @@
     <title>@ViewData["Title"] — ODCA Solutions</title>
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body>
-    <header class="topbar">
-        <a class="brand" asp-controller="Home" asp-action="Index" aria-label="ODCA Solutions — início">
-            <span class="brand-mark" aria-hidden="true">O</span>
-            <span>ODCA Solutions</span>
-        </a>
-        @if (User.Identity?.IsAuthenticated != true)
-        {
-            <nav class="public-actions" aria-label="Navegação pública">
-                <a asp-controller="Catalog" asp-action="Plans">Planos</a>
-                <a asp-controller="Privacy" asp-action="Index">Privacidade</a>
-            </nav>
-        }
-        @if (User.Identity?.IsAuthenticated == true)
-        {
-            <div class="account-actions">
-                <a asp-controller="Home" asp-action="Index">Visão global</a>
-                <a asp-controller="Plans" asp-action="Index">Planos</a>
-                <span>@User.Identity.Name</span>
-                <form asp-controller="Account" asp-action="Logout" method="post">
-                    <button class="button button-quiet" type="submit">Sair</button>
-                </form>
+<body class="@(showApplication ? "application" : "public")">
+    @if (showApplication)
+    {
+        <a class="skip-link" href="#main-content">Pular para o conteúdo</a>
+        <div class="app-shell" data-app-shell>
+            <div class="drawer-scrim" data-drawer-close></div>
+            <aside class="sidebar" id="application-navigation" aria-label="Navegação principal">
+                <div class="sidebar-brand">
+                    <a class="brand" asp-controller="Home" asp-action="Index"><span class="brand-mark" aria-hidden="true">O</span><span class="brand-name">ODCA Solutions</span></a>
+                    <button class="icon-button sidebar-collapse" type="button" data-sidebar-collapse aria-label="Recolher menu" aria-expanded="true"><span aria-hidden="true">‹</span></button>
+                </div>
+                <div class="context-card">
+                    <span class="context-label">@(isPlatform ? "PLATAFORMA" : "ORGANIZAÇÃO ATIVA")</span>
+                    <strong>@(isPlatform ? "Administração ODCA" : "Meu ambiente")</strong>
+                </div>
+                <nav class="side-nav">
+                    @if (isPlatform)
+                    {
+                        <a class="nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : null)" asp-controller="Home" asp-action="Index"><span aria-hidden="true">⌂</span><span>Visão global</span></a>
+                        <a class="nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Plans" ? "active" : null)" asp-controller="Plans" asp-action="Index"><span aria-hidden="true">▦</span><span>Catálogo de planos</span></a>
+                    }
+                    else
+                    {
+                        <a class="nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Onboarding" ? "active" : null)" asp-controller="Onboarding" asp-action="CustomerHome"><span aria-hidden="true">⌂</span><span>Visão geral</span></a>
+                    }
+                    <a class="nav-item" asp-controller="Privacy" asp-action="Index"><span aria-hidden="true">◇</span><span>Privacidade</span></a>
+                </nav>
+                <div class="sidebar-footer"><span class="status-dot" aria-hidden="true"></span><span>Ambiente seguro</span></div>
+            </aside>
+            <div class="app-content">
+                <header class="app-topbar">
+                    <button class="icon-button mobile-menu" type="button" data-drawer-open aria-controls="application-navigation" aria-expanded="false"><span aria-hidden="true">☰</span><span class="sr-only">Abrir menu</span></button>
+                    <div class="topbar-context"><span>@(isPlatform ? "Plataforma" : "Organização")</span><strong>@ViewData["Title"]</strong></div>
+                    <details class="user-menu">
+                        <summary><span class="avatar" aria-hidden="true">@((User.Identity?.Name ?? "U")[0])</span><span class="user-name">@User.Identity?.Name</span></summary>
+                        <div class="user-menu-panel">
+                            <span class="menu-caption">Conta autenticada</span>
+                            <form asp-controller="Account" asp-action="Logout" method="post"><button class="menu-action" type="submit">Sair com segurança</button></form>
+                        </div>
+                    </details>
+                </header>
+                <main class="page-shell" id="main-content" tabindex="-1">@RenderBody()</main>
             </div>
-        }
-    </header>
-    <main class="page-shell">
-        @RenderBody()
-    </main>
+        </div>
+    }
+    else
+    {
+        <header class="public-topbar">
+            <a class="brand" asp-controller="Home" asp-action="Index" aria-label="ODCA Solutions — início"><span class="brand-mark" aria-hidden="true">O</span><span>ODCA Solutions</span></a>
+            @if (!authenticated)
+            {
+                <nav class="public-actions" aria-label="Navegação pública"><a asp-controller="Catalog" asp-action="Plans">Planos</a><a asp-controller="Privacy" asp-action="Index">Privacidade</a></nav>
+            }
+            else
+            {
+                <form asp-controller="Account" asp-action="Logout" method="post"><button class="button button-quiet" type="submit">Sair</button></form>
+            }
+        </header>
+        <main class="page-shell" id="main-content">@RenderBody()</main>
+    }
+    <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

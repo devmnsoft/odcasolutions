@@ -1,12 +1,12 @@
 @model Odca.Contracts.Onboarding.CustomerHomeResponse
 @{
-    ViewData["Title"] = "Cliente";
+    ViewData["Title"] = "Visão geral";
 }
 <section>
     <div class="dashboard-heading">
         <p class="eyebrow">Organização</p>
         <h1>@Model.OrganizationName</h1>
-        <p class="muted">Estado comercial: @Model.CommercialState. O uso operacional permanece limitado até ativação comercial validada.</p>
+        <p class="muted">Estado comercial: <strong>@Model.CommercialState</strong>. O uso operacional permanece limitado até ativação comercial validada.</p>
     </div>
     <div class="metrics">
         <div class="metric">
@@ -14,12 +14,16 @@
             <strong>@Model.PlanName</strong>
         </div>
         <div class="metric">
-            <span>Usuários incluídos</span>
+            <span>Limite contratado de usuários</span>
             <strong>@Model.ActiveSeats</strong>
         </div>
         <div class="metric">
-            <span>Armazenamento</span>
+            <span>Limite contratado de armazenamento</span>
             <strong>@(Model.StorageBytes / 1_000_000_000) GB</strong>
         </div>
     </div>
+    <section class="card empty-state">
+        <h2>Próximo passo</h2>
+        <p>Confira o estado comercial acima. Os limites exibidos pertencem à versão contratada do plano; eles não representam consumo medido.</p>
+    </section>
 </section>

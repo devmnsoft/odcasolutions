@@ -241,6 +241,7 @@ public sealed class AccountController(OdcaApiClient apiClient) : Controller
         var claims = new List<Claim>
         {
             new(ClaimTypes.Name, response.DisplayName),
+            new(ClaimTypes.Role, response.IsPlatformAdministrator ? "SuperAdministrator" : "Customer"),
             new("must_change_password", response.MustChangePassword ? "true" : "false"),
             new("mfa_verified", response.MfaVerified ? "true" : "false"),
             new("requires_mfa_enrollment", response.RequiresMfaEnrollment ? "true" : "false"),
@@ -265,6 +266,7 @@ public sealed class AccountController(OdcaApiClient apiClient) : Controller
         var claims = new List<Claim>
         {
             new(ClaimTypes.Name, response.DisplayName),
+            new(ClaimTypes.Role, response.IsPlatformAdministrator ? "SuperAdministrator" : "Customer"),
             new("must_change_password", "false"),
             new("mfa_verified", response.MfaVerified ? "true" : "false"),
             new("requires_mfa_enrollment", "false"),

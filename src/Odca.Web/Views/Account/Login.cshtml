@@ -4,9 +4,9 @@
 }
 <section class="auth-layout">
     <div class="auth-intro">
-        <p class="eyebrow">Gestão do ciclo de vida de contratos</p>
-        <h1>Clareza do primeiro rascunho à evidência final.</h1>
-        <p>Entre com sua identidade individual. O acesso à organização será sempre validado pelas suas permissões.</p>
+        <p class="eyebrow">Acesso corporativo</p>
+        <h1>Seu ambiente de contratos, com acesso controlado.</h1>
+        <p>Use sua identidade individual. Organização e permissões são verificadas a cada acesso.</p>
         <p><a asp-controller="Catalog" asp-action="Plans">Conheça os planos publicados</a></p>
     </div>
     <div class="card auth-card">
@@ -16,15 +16,18 @@
         }
         <h2>Acesse sua conta</h2>
         <p class="muted">Use seu e-mail ou CPF e sua senha pessoal.</p>
-        <form method="post" novalidate>
+        <form method="post" novalidate data-processing>
             <div asp-validation-summary="ModelOnly" class="validation" role="alert"></div>
             <label asp-for="Login"></label>
             <input asp-for="Login" autocomplete="username" autofocus />
             <span asp-validation-for="Login" class="validation"></span>
             <label asp-for="Password"></label>
-            <input asp-for="Password" autocomplete="current-password" />
+            <div class="field-with-action">
+                <input asp-for="Password" autocomplete="current-password" />
+                <button class="field-action" type="button" data-password-toggle aria-pressed="false">Mostrar</button>
+            </div>
             <span asp-validation-for="Password" class="validation"></span>
-            <button class="button button-primary" type="submit">Entrar</button>
+            <button class="button button-primary button-block" type="submit" data-processing-label="Entrando…">Entrar</button>
         </form>
     </div>
 </section>

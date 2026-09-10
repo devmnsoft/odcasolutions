@@ -177,7 +177,8 @@ public sealed class AuthController(
             user.MustChangePassword,
             user.IsPlatformAdministrator && !user.MustChangePassword && user.MfaConfirmedAt is null,
             user.IsPlatformAdministrator && !user.MustChangePassword && user.MfaConfirmedAt is not null && !mfaVerified,
-            mfaVerified);
+            mfaVerified,
+            user.IsPlatformAdministrator);
     }
 
     private static MfaVerificationResponse ToMfaResponse(
@@ -189,5 +190,6 @@ public sealed class AuthController(
             token.ExpiresAt,
             user.DisplayName,
             true,
+            user.IsPlatformAdministrator,
             recoveryCodes.Count == 0 ? null : [.. recoveryCodes]);
 }
