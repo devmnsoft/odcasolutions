@@ -82,3 +82,17 @@ Ainda pendentes nesta entrega: transporte de e-mail de produção/worker com lea
 - O BFF ganhou escolha por nome e equipe/perfis sem IDs digitados. O shell usa o nome selecionado, fallback seguro de avatar e melhorias de drawer/localStorage/formulários.
 - `npm run build`, validação local dos sete checksums e `git diff --check` passaram. O SDK 10.0.400 continua ausente e o instalador oficial respondeu HTTP 403; portanto restore forçado/bloqueado, build/testes .NET, PostgreSQL e QA renderizado não foram executados neste ambiente. Os lockfiles não foram editados manualmente.
 - Bloqueio/restauração de membros, reenvio/cancelamento, proteção concorrente do último administrador e transporte de produção permanecem pendentes; esta entrega não declara o módulo integral concluído.
+
+## Estado atual — correção operacional do convite (10/09/2026)
+
+Base inicial: `6ac493b53b68aa9278fd03fa392e40cf8e23f689`. Este incremento corrige a leitura da quota para o contrato real de `plan_entitlements`, resolve a repetição idempotente antes da quota e garante que a outbox referencia o convite persistido. A chave da operação agora sobrevive a erros do formulário. Também foram completados estilos ausentes, nomes acessíveis da navegação recolhida, rótulos móveis e restauração do texto de botões no histórico.
+
+| Requisito | Implementação | Teste escrito | Evidência executada | Estado |
+|---|---|---|---|---|
+| Restore bloqueado/build .NET | referência redundante de Hosting removida do Worker | locks existentes | SDK 10.0.400 indisponível no ambiente | não validado |
+| Quota e idempotência do convite | consulta por `entitlement_code`; repetição anterior à quota e conflito de payload | ainda ausente | inspeção estática e assets | implementado, não aprovado em PostgreSQL |
+| Formulário e acessibilidade | chave estável, valores preservados, estados traduzidos e componentes responsivos | check de assets | `npm run build` | implementado |
+| Ciclo completo de equipe | somente criação/consulta atual | não | não | pendente: paginação, convites, vínculos, último administrador e perfis editáveis |
+| Worker com lease proprietário | não implementado neste incremento | não | não | pendente; não declarar entrega concorrente segura |
+
+Não houve PostgreSQL, navegador ou SDK .NET disponíveis nesta execução. Portanto este registro não declara a central integral concluída, CI aprovada, E2E aprovado ou verificação visual real.

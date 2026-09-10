@@ -51,7 +51,7 @@
   }));
   document.querySelectorAll('form[data-processing]').forEach(form => form.addEventListener('submit', () => {
     const button = form.querySelector('button[type="submit"]'); if (!button || !form.checkValidity()) return;
-    button.disabled = true; button.textContent = button.dataset.processingLabel || 'Processando…';
+    button.dataset.originalLabel ||= button.textContent; button.disabled = true; button.textContent = button.dataset.processingLabel || 'Processando…';
   }));
-  addEventListener('pageshow', () => document.querySelectorAll('form[data-processing] button[type="submit"]').forEach(button => { button.disabled = false; }));
+  addEventListener('pageshow', () => document.querySelectorAll('form[data-processing] button[type="submit"]').forEach(button => { button.disabled = false; if (button.dataset.originalLabel) button.textContent = button.dataset.originalLabel; }));
 })();

@@ -88,14 +88,27 @@ public sealed class NpgsqlTenantAdministrationRepository(NpgsqlDataSource dataSo
         await using var connection=await dataSource.OpenConnectionAsync(cancellationToken);
         await using var transaction=await AuthorizedTransactionAsync(connection,actorId,tenantId,"tenant.team.manage",cancellationToken); if(transaction is null)return null;
         await connection.ExecuteAsync(new CommandDefinition("SELECT pg_advisory_xact_lock(hashtextextended(@key,0));",new{key=tenantId.ToString()},transaction,cancellationToken:cancellationToken));
-        var seatLimit=await connection.ExecuteScalarAsync<int?>(new CommandDefinition("SELECT e.active_seats FROM odca.subscriptions s JOIN odca.plan_entitlements e ON e.plan_version_id=s.plan_version_id WHERE s.tenant_id=@tenantId AND s.status='active' AND s.commercial_state='active';",new{tenantId},transaction,cancellationToken:cancellationToken));
+        var normalized=email.Trim().ToUpperInvariant();
+        var existing=await connection.QuerySingleOrDefaultAsync<ExistingInvitation>(new CommandDefinition(
+            """SELECT id AS "Id",recipient_normalized AS "RecipientNormalized",role_id AS "RoleId",recipient_email AS "Recipient",status AS "State",expires_at AS "ExpiresAt" FROM odca.tenant_invitations WHERE tenant_id=@tenantId AND idempotency_key=@idempotencyKey;""",
+            new{tenantId,idempotencyKey},transaction,cancellationToken:cancellationToken));
+        if(existing is not null)
+        {
+            if(existing.RecipientNormalized!=normalized||existing.RoleId!=roleId){await transaction.RollbackAsync(cancellationToken);return null;}
+            await transaction.CommitAsync(cancellationToken);
+            return new(existing.Id,existing.Recipient,existing.State,existing.ExpiresAt);
+        }
+        var seatLimit=await connection.ExecuteScalarAsync<int?>(new CommandDefinition("SELECT e.limit_value::integer FROM odca.subscriptions s JOIN odca.plan_entitlements e ON e.plan_version_id=s.plan_version_id AND e.entitlement_code='active_seats' AND e.enabled WHERE s.tenant_id=@tenantId AND s.status='active' AND s.commercial_state='active';",new{tenantId},transaction,cancellationToken:cancellationToken));
         var occupied=await connection.ExecuteScalarAsync<long>(new CommandDefinition("SELECT (SELECT count(*) FROM odca.memberships WHERE tenant_id=@tenantId AND status='active')+(SELECT count(*) FROM odca.tenant_invitations WHERE tenant_id=@tenantId AND status IN ('pending','sent') AND expires_at>now());",new{tenantId},transaction,cancellationToken:cancellationToken));
         var validRole=await connection.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.roles WHERE tenant_id=@tenantId AND id=@roleId);",new{tenantId,roleId},transaction,cancellationToken:cancellationToken));
         if(seatLimit is null||occupied>=seatLimit||!validRole){await transaction.RollbackAsync(cancellationToken);return null;}
-        var token=Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant(); var hash=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token))).ToLowerInvariant(); var protectedToken=tokenProtector.Protect(token); var id=Guid.NewGuid(); var expires=DateTimeOffset.UtcNow.AddDays(7); var normalized=email.Trim().ToUpperInvariant();
-        var row=await connection.QuerySingleOrDefaultAsync<InvitationRecord>(new CommandDefinition("""INSERT INTO odca.tenant_invitations(id,tenant_id,recipient_email,recipient_normalized,role_id,token_hash,protected_token,idempotency_key,expires_at,created_by) VALUES(@id,@tenantId,@email,@normalized,@roleId,@hash,@protectedToken,@idempotencyKey,@expires,@actorId) ON CONFLICT(tenant_id,idempotency_key) DO UPDATE SET updated_at=odca.tenant_invitations.updated_at RETURNING id AS "Id",recipient_email AS "Recipient",status AS "State",expires_at AS "ExpiresAt"; INSERT INTO odca.notification_outbox(id,tenant_id,invitation_id,kind,destination,protected_payload) SELECT gen_random_uuid(),@tenantId,@id,'invitation',@email,@protectedToken WHERE NOT EXISTS(SELECT 1 FROM odca.notification_outbox WHERE invitation_id=@id);""",new{id,tenantId,email,normalized,roleId,hash,protectedToken,idempotencyKey,expires,actorId},transaction,cancellationToken:cancellationToken));
+        var token=Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant(); var hash=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token))).ToLowerInvariant(); var protectedToken=tokenProtector.Protect(token); var id=Guid.NewGuid(); var expires=DateTimeOffset.UtcNow.AddDays(7);
+        var row=await connection.QuerySingleAsync<InvitationRecord>(new CommandDefinition("""INSERT INTO odca.tenant_invitations(id,tenant_id,recipient_email,recipient_normalized,role_id,token_hash,protected_token,idempotency_key,expires_at,created_by) VALUES(@id,@tenantId,@email,@normalized,@roleId,@hash,@protectedToken,@idempotencyKey,@expires,@actorId) RETURNING id AS "Id",recipient_email AS "Recipient",status AS "State",expires_at AS "ExpiresAt";""",new{id,tenantId,email,normalized,roleId,hash,protectedToken,idempotencyKey,expires,actorId},transaction,cancellationToken:cancellationToken));
+        await connection.ExecuteAsync(new CommandDefinition("INSERT INTO odca.notification_outbox(id,tenant_id,invitation_id,kind,destination,protected_payload) VALUES(gen_random_uuid(),@tenantId,@invitationId,'invitation',@email,@protectedToken);",new{tenantId,invitationId=row.Id,email,protectedToken},transaction,cancellationToken:cancellationToken));
         await transaction.CommitAsync(cancellationToken); return row;
     }
+
+    private sealed record ExistingInvitation(Guid Id,string RecipientNormalized,Guid RoleId,string Recipient,string State,DateTimeOffset ExpiresAt);
 
     public async Task<bool> AcceptInvitationAsync(Guid actorId,Guid invitationId,string tokenHash,CancellationToken cancellationToken)
     {

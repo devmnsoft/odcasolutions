@@ -67,3 +67,7 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [ ] Completar paginação, bloqueio/inativação/restauração, reenvio/cancelamento, último administrador sob duas transações e testes PostgreSQL A × B.
 - [ ] Configurar adaptador de e-mail de produção, política de expiração/limpeza e fila operacional de falhas.
 - [ ] Executar QA por teclado e capturas 360/768/1440 com PostgreSQL/API/Web reais.
+
+## Próxima fatia após a central operacional
+
+Somente depois de fechar e validar todos os itens de equipe acima: cadastro manual de tipo e contraparte → contrato com vigência → listagem/detalhes → permissões → histórico → alerta interno. Em seguida: upload seguro e revisão da extração; editor e versões; assinatura e créditos; integrações de comunicação e cobrança. Não antecipar essas etapas enquanto a central operacional permanecer parcial.
