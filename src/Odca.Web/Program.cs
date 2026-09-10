@@ -4,8 +4,11 @@ using Microsoft.AspNetCore.DataProtection;
 using System.Threading.RateLimiting;
 using Odca.Web.Services;
 using Odca.Web.Security;
+using Odca.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
+var localConfiguration = LocalRuntimeConfiguration.Add(builder.Configuration, builder.Environment, args);
+Console.WriteLine($"Configuração: ambiente={localConfiguration.Environment}; caminho={localConfiguration.Path ?? "não utilizado"}.");
 
 builder.Services.AddControllersWithViews(options =>
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));

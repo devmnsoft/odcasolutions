@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using Odca.Configuration;
 using Dapper;
 using Npgsql;
 using Odca.Bootstrap;
@@ -30,6 +32,12 @@ public static class BootstrapProgram
                     Console.WriteLine("Configuração local criada ou preservada.");
                     Console.WriteLine("Use Docker ou execute configure-native para apontar ao PostgreSQL local.");
                     return 0;
+                case "diagnose":
+                    Diagnose(paths);
+                    return 0;
+                case "repair":
+                    Repair(paths, args.Contains("--replace-invalid-signing-key", StringComparer.OrdinalIgnoreCase));
+                    return 0;
                 case "configure-native":
                     await ConfigureNativeAsync(paths);
                     Console.WriteLine("PostgreSQL nativo configurado. Execute migrate para aplicar o schema.");
@@ -49,7 +57,7 @@ public static class BootstrapProgram
                     await ProvisionTestAccessAsync(paths, args);
                     return 0;
                 default:
-                    Console.WriteLine("Uso: dotnet run --project src/Odca.Bootstrap -- <init|configure-native|migrate|show-login|reset-password|provision-test-access>");
+                    Console.WriteLine("Uso: dotnet run --project src/Odca.Bootstrap -- <init|diagnose|repair [--replace-invalid-signing-key]|configure-native|migrate|show-login|reset-password|provision-test-access>");
                     return command == "help" ? 0 : 2;
             }
         }
@@ -58,6 +66,101 @@ public static class BootstrapProgram
             Console.Error.WriteLine($"Bootstrap falhou: {exception.Message}");
             return 1;
         }
+    }
+
+    private static void Diagnose(LocalPaths paths)
+    {
+        Console.WriteLine($"Ambiente=Development; caminho={paths.RuntimeFile}");
+        if (!File.Exists(paths.RuntimeFile))
+        {
+            Console.WriteLine("Arquivo não encontrado.");
+            return;
+        }
+
+        JsonObject root;
+        try { root = ReadObject(paths.RuntimeFile); }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
+        {
+            Console.WriteLine($"Arquivo ilegível ou JSON inválido: {exception.Message}");
+            return;
+        }
+
+        var issues = RuntimeIssues(root);
+        Console.WriteLine(issues.Count == 0 ? "Configuração completa." : $"Propriedades ausentes/inválidas: {string.Join(", ", issues)}");
+    }
+
+    private static void Repair(LocalPaths paths, bool replaceInvalidSigningKey)
+    {
+        Directory.CreateDirectory(paths.LocalDirectory);
+        if (!File.Exists(paths.RuntimeFile))
+        {
+            throw new InvalidOperationException("Arquivo não encontrado. Execute init para criar uma configuração nova.");
+        }
+
+        var root = ReadObject(paths.RuntimeFile);
+        var jwt = root["Jwt"] as JsonObject ?? new JsonObject();
+        root["Jwt"] = jwt;
+        SetMissing(jwt, "Issuer", "odca-api");
+        SetMissing(jwt, "Audience", "odca-bff");
+        if (jwt["AccessTokenMinutes"] is null) jwt["AccessTokenMinutes"] = 15;
+
+        var signingKey = jwt["SigningKey"]?.GetValue<string>();
+        if (string.IsNullOrWhiteSpace(signingKey))
+        {
+            jwt["SigningKey"] = GenerateSecret(48);
+        }
+        else if (Encoding.UTF8.GetByteCount(signingKey) < 32)
+        {
+            if (!replaceInvalidSigningKey)
+            {
+                throw new InvalidOperationException(
+                    "Jwt:SigningKey existente tem tamanho insuficiente. Use --replace-invalid-signing-key explicitamente; a troca invalidará todos os tokens já emitidos.");
+            }
+            jwt["SigningKey"] = GenerateSecret(48);
+            Console.WriteLine("Jwt:SigningKey substituída; tokens emitidos anteriormente foram invalidados.");
+        }
+
+        var backup = paths.RuntimeFile + ".backup-" + DateTime.UtcNow.ToString("yyyyMMddHHmmssfff", System.Globalization.CultureInfo.InvariantCulture);
+        File.Copy(paths.RuntimeFile, backup, overwrite: false);
+        ProtectFile(backup);
+        WriteJsonAtomic(paths.RuntimeFile, root);
+        Console.WriteLine($"Backup protegido: {backup}");
+        Console.WriteLine("Reparo concluído sem alterar conexão, credenciais, banco ou migrações.");
+        Diagnose(paths);
+    }
+
+    private static void SetMissing(JsonObject value, string name, string defaultValue)
+    {
+        if (value[name] is null || string.IsNullOrWhiteSpace(value[name]!.GetValue<string>())) value[name] = defaultValue;
+    }
+
+    private static List<string> RuntimeIssues(JsonObject root)
+    {
+        var issues = new List<string>();
+        if (string.IsNullOrWhiteSpace(root["ConnectionStrings"]?["Database"]?.GetValue<string>())) issues.Add("ConnectionStrings:Database (ausente)");
+        if (string.IsNullOrWhiteSpace(root["Jwt"]?["Issuer"]?.GetValue<string>())) issues.Add("Jwt:Issuer (ausente)");
+        if (string.IsNullOrWhiteSpace(root["Jwt"]?["Audience"]?.GetValue<string>())) issues.Add("Jwt:Audience (ausente)");
+        var key = root["Jwt"]?["SigningKey"]?.GetValue<string>();
+        if (string.IsNullOrWhiteSpace(key)) issues.Add("Jwt:SigningKey (ausente)");
+        else if (Encoding.UTF8.GetByteCount(key) < 32) issues.Add("Jwt:SigningKey (tamanho insuficiente)");
+        return issues;
+    }
+
+    private static JsonObject ReadObject(string path) => JsonNode.Parse(File.ReadAllText(path)) as JsonObject
+        ?? throw new InvalidDataException("A raiz da configuração deve ser um objeto JSON.");
+
+    private static void WriteJsonAtomic(string path, JsonObject root)
+    {
+        var temporary = path + ".tmp-" + Guid.NewGuid().ToString("N");
+        File.WriteAllText(temporary, root.ToJsonString(JsonOptions));
+        ProtectFile(temporary);
+        File.Move(temporary, path, overwrite: true);
+        ProtectFile(path);
+    }
+
+    private static void ProtectFile(string path)
+    {
+        if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
     }
 
     private static async Task ConfigureNativeAsync(LocalPaths paths)
@@ -413,7 +516,7 @@ public static class BootstrapProgram
     private static string FindRepositoryRoot()
     {
         var current = new DirectoryInfo(Directory.GetCurrentDirectory());
-        while (current is not null && !File.Exists(Path.Combine(current.FullName, "Odca.slnx")))
+        while (current is not null && !File.Exists(Path.Combine(current.FullName, "Odca.sln")))
         {
             current = current.Parent;
         }
@@ -452,13 +555,15 @@ public static class BootstrapProgram
     {
         public static LocalPaths For(string repositoryRoot)
         {
+            var runtimeOverride = Environment.GetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable);
             var localDirectory = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "ODCA Solutions");
+            var runtimeFile = runtimeOverride ?? Path.Combine(localDirectory, "development-runtime.json");
             return new(
                 repositoryRoot,
                 localDirectory,
-                Path.Combine(localDirectory, "development-runtime.json"),
+                runtimeFile,
                 Path.Combine(localDirectory, "development-credentials.json"),
                 Path.Combine(repositoryRoot, ".env.local"));
         }

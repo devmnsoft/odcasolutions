@@ -22,6 +22,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Odca.Api\Odca.Api.csproj" />
     <ProjectReference Include="..\..\src\Odca.Infrastructure\Odca.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Odca.Configuration\Odca.Configuration.csproj" />
+    <ProjectReference Include="..\..\src\Odca.Bootstrap\Odca.Bootstrap.csproj" />
   </ItemGroup>
 
 </Project>

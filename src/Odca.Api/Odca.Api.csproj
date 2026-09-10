@@ -15,6 +15,7 @@
     <ProjectReference Include="..\Odca.Application\Odca.Application.csproj" />
     <ProjectReference Include="..\Odca.Contracts\Odca.Contracts.csproj" />
     <ProjectReference Include="..\Odca.Infrastructure\Odca.Infrastructure.csproj" />
+    <ProjectReference Include="..\Odca.Configuration\Odca.Configuration.csproj" />
   </ItemGroup>
 
 </Project>

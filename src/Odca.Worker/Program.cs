@@ -1,8 +1,11 @@
 using Odca.Worker;
 using Microsoft.AspNetCore.DataProtection;
 using Npgsql;
+using Odca.Configuration;
 
 var builder = Host.CreateApplicationBuilder(args);
+var localConfiguration = LocalRuntimeConfiguration.Add(builder.Configuration, builder.Environment, args);
+Console.WriteLine($"Configuração: ambiente={localConfiguration.Environment}; caminho={localConfiguration.Path ?? "não utilizado"}.");
 builder.Services.AddHostedService<Worker>();
 var dataProtection = builder.Services.AddDataProtection().SetApplicationName("ODCA Solutions");
 var keysPath = builder.Configuration["DataProtection:KeysPath"];

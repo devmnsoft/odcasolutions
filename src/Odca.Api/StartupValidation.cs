@@ -7,15 +7,15 @@ public static class StartupValidation
 {
     public static void Validate(IConfiguration configuration, IHostEnvironment environment, JwtOptions jwt)
     {
-        if (string.IsNullOrWhiteSpace(configuration.GetConnectionString("Database")))
+        var invalid = new List<string>();
+        if (string.IsNullOrWhiteSpace(configuration.GetConnectionString("Database"))) invalid.Add("ConnectionStrings:Database (ausente)");
+        if (string.IsNullOrWhiteSpace(jwt.Issuer)) invalid.Add("Jwt:Issuer (ausente)");
+        if (string.IsNullOrWhiteSpace(jwt.Audience)) invalid.Add("Jwt:Audience (ausente)");
+        if (string.IsNullOrWhiteSpace(jwt.SigningKey)) invalid.Add("Jwt:SigningKey (ausente)");
+        else if (Encoding.UTF8.GetByteCount(jwt.SigningKey) < 32) invalid.Add("Jwt:SigningKey (tamanho insuficiente; mínimo 32 bytes)");
+        if (invalid.Count > 0)
         {
-            throw new InvalidOperationException("ConnectionStrings:Database não foi configurada.");
-        }
-
-        if (string.IsNullOrWhiteSpace(jwt.Issuer) || string.IsNullOrWhiteSpace(jwt.Audience) ||
-            Encoding.UTF8.GetByteCount(jwt.SigningKey) < 32)
-        {
-            throw new InvalidOperationException("Jwt exige issuer, audience e chave aleatória com pelo menos 32 bytes.");
+            throw new InvalidOperationException($"Configuração inválida no ambiente {environment.EnvironmentName}: {string.Join(", ", invalid)}.");
         }
 
         if (jwt.AccessTokenMinutes is < 5 or > 30)
