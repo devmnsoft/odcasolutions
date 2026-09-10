@@ -18,4 +18,9 @@
     <ProjectReference Include="..\Odca.Configuration\Odca.Configuration.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Update="development-runtime.json" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
+    <Content Remove="development-runtime.json.backup-*;development-runtime.json.tmp-*" />
+  </ItemGroup>
+
 </Project>

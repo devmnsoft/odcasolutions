@@ -1,3 +1,11 @@
+## Configuração de desenvolvimento no projeto principal
+
+API, Web, Worker e Bootstrap usam `src/Odca.Api/development-runtime.json` ao executar dentro do repositório. `ODCA_RUNTIME_CONFIG` continua permitindo um caminho explícito. Produção e Testing não carregam esse arquivo automaticamente.
+
+Execute `dotnet run --project src/Odca.Bootstrap -- init` na raiz para gerar o arquivo com segredos aleatórios. Se houver configuração antiga em LocalApplicationData, `init` copia o conteúdo existente sem sobrescrever um arquivo no projeto; o original é preservado. Depois use `configure-native` para configurar o PostgreSQL nativo conforme as instruções abaixo.
+
+`development-runtime.example.json` é apenas uma referência sem segredos; não o copie como configuração funcional. O arquivo real e seus backups são ignorados pelo Git e não são publicados. As credenciais iniciais continuam no diretório pessoal usado pelo Bootstrap. Não gere novamente uma chave JWT válida para mudar o arquivo de lugar.
+
 # ODCA Solutions
 
 Fundação executável do SaaS corporativo de gestão do ciclo de vida de contratos. Esta entrega implementa a etapa S00; ela não representa o produto comercial completo e não constitui certificação de conformidade com a LGPD.
@@ -27,7 +35,7 @@ dotnet run --project src/Odca.Bootstrap -- provision-test-access --environment D
 dotnet run --project src/Odca.Bootstrap -- show-login
 ```
 
-`configure-native` pede a senha administrativa sem ecoá-la, valida a conexão e exige PostgreSQL 18+. Para automação local controlada, `Password` também pode vir na variável temporária. A string administrativa e a senha aleatória da role de runtime ficam somente em `%LOCALAPPDATA%\ODCA Solutions\development-runtime.json`, que não pertence ao repositório.
+`configure-native` pede a senha administrativa sem ecoá-la, valida a conexão e exige PostgreSQL 18+. Para automação local controlada, `Password` também pode vir na variável temporária. A string administrativa e a senha aleatória da role de runtime ficam somente em `src/Odca.Api/development-runtime.json`, que não pertence ao repositório.
 
 ### Alternativa com Docker
 

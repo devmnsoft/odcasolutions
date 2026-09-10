@@ -1,0 +1,16 @@
+{
+  "ConnectionStrings": {
+    "DatabaseAdmin": "",
+    "Database": ""
+  },
+  "Jwt": {
+    "Issuer": "odca-api",
+    "Audience": "odca-bff",
+    "SigningKey": "",
+    "AccessTokenMinutes": 15
+  },
+  "Security": {
+    "MfaRequiredForSuperAdmin": false,
+    "AllowDevelopmentBootstrap": true
+  }
+}

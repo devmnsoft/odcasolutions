@@ -111,6 +111,21 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
         Assert.Empty(Directory.GetFiles(directory, "*.backup-*"));
     }
 
+    [Fact]
+    public void ApiAndWorkerResolveTheSameProjectConfiguration()
+    {
+        var api = Path.Combine(directory, "src", "Odca.Api");
+        var worker = Path.Combine(directory, "src", "Odca.Worker");
+        Directory.CreateDirectory(api);
+        Directory.CreateDirectory(worker);
+        File.WriteAllText(Path.Combine(api, "Odca.Api.csproj"), "<Project />");
+        var expected = Path.Combine(api, "development-runtime.json");
+
+        Assert.Equal(expected, LocalRuntimeConfiguration.GetDefaultPath(api));
+        Assert.Equal(expected, LocalRuntimeConfiguration.GetDefaultPath(worker));
+        Assert.Equal(expected, LocalRuntimeConfiguration.GetDefaultPath(directory));
+    }
+
     public void Dispose()
     {
         Environment.SetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable, previousPath);
