@@ -13,7 +13,8 @@ public sealed record LoginResponse(
     bool MustChangePassword,
     bool RequiresMfaEnrollment,
     bool RequiresMfaChallenge,
-    bool MfaVerified);
+    bool MfaVerified,
+    bool IsPlatformAdministrator);
 
 public sealed record ChangePasswordRequest(
     [Required] string CurrentPassword,
@@ -34,6 +35,7 @@ public sealed record MfaVerificationResponse(
     DateTimeOffset ExpiresAt,
     string DisplayName,
     bool MfaVerified,
+    bool IsPlatformAdministrator,
     string[]? RecoveryCodes = null);
 
 public sealed record DashboardResponse(

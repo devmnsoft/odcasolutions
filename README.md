@@ -99,6 +99,8 @@ Na CI, essas três variáveis apontam exclusivamente para o PostgreSQL sintétic
 
 ## Estrutura
 
+Após autenticação completa, o BFF apresenta navegação distinta: superadministradores recebem contexto de plataforma e catálogo administrativo; clientes recebem somente a visão geral da organização. Senha inicial e MFA pendentes continuam no layout restrito, sem expor a navegação administrativa. A sidebar é recolhível no desktop e funciona como drawer com foco contido e fechamento por `Escape` no mobile.
+
 - `src/Odca.Domain`: invariantes puras.
 - `src/Odca.Application`: casos de uso e portas.
 - `src/Odca.Contracts`: contratos HTTP versionados.

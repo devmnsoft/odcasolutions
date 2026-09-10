@@ -1,5 +1,11 @@
 # Próxima execução
 
+Antes do avanço funcional, use um ambiente com SDK .NET 10.0.400 para executar `dotnet restore Odca.sln --force-evaluate`, revisar somente as alterações geradas nos lockfiles e confirmar `dotnet restore Odca.sln --locked-mode`. Em seguida execute build e testes. Não edite hashes manualmente.
+
+Inicie API/Web com PostgreSQL 18 descartável e valide o novo contrato de tipo de conta nos três estados: cliente, superadministrador antes do MFA e superadministrador após MFA. Faça QA por teclado e capturas em 360/768/1440; confirme contenção/retorno de foco do drawer, `Escape`, mostrar/ocultar senha e prevenção de duplo envio.
+
+Depois conclua o percurso persistente ainda ausente: seleção explícita de organização, edição com concorrência otimista, equipe/perfis, convites processados pelo outbox, assentos sob concorrência e último administrador. Não adicione links a essas áreas antes de suas rotas e políticas existirem.
+
 Execute primeiro `dotnet run --project src/Odca.Bootstrap -- provision-test-access --environment Development` contra a configuração local autorizada. Registre separadamente as linhas de persistência, conferência de senha, login HTTP e MFA, sem copiar senhas para documentação. Em seguida execute `show-login`, faça a troca inicial e conclua o desafio com autenticador em `https://localhost:7144`. Não use `--rotate-passwords` salvo decisão explícita do operador.
 
 Comece confirmando a CI do commit que corrigiu CA1859 e adicionou MFA/onboarding inicial. Execute restore bloqueado, build, assets, secret scan e os testes HTTP contra PostgreSQL descartável exclusivo. Use as três variáveis documentadas no README; não toque banco de desenvolvimento por fallback.
