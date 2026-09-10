@@ -79,6 +79,9 @@
           "Odca.Domain": "[1.0.0, )"
         }
       },
+      "odca.configuration": {
+        "type": "Project"
+      },
       "odca.domain": {
         "type": "Project"
       },

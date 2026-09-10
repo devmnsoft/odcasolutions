@@ -500,6 +500,7 @@
           "Microsoft.AspNetCore.Authentication.JwtBearer": "[10.0.12, )",
           "Microsoft.AspNetCore.OpenApi": "[10.0.12, )",
           "Odca.Application": "[1.0.0, )",
+          "Odca.Configuration": "[1.0.0, )",
           "Odca.Contracts": "[1.0.0, )",
           "Odca.Infrastructure": "[1.0.0, )"
         }
@@ -509,6 +510,16 @@
         "dependencies": {
           "Odca.Domain": "[1.0.0, )"
         }
+      },
+      "odca.bootstrap": {
+        "type": "Project",
+        "dependencies": {
+          "Odca.Configuration": "[1.0.0, )",
+          "Odca.Infrastructure": "[1.0.0, )"
+        }
+      },
+      "odca.configuration": {
+        "type": "Project"
       },
       "odca.contracts": {
         "type": "Project"

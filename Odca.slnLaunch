@@ -2,9 +2,18 @@
   {
     "Name": "ODCA local",
     "Projects": [
-      { "Path": "src\\Odca.Api\\Odca.Api.csproj", "Action": "Start" },
-      { "Path": "src\\Odca.Web\\Odca.Web.csproj", "Action": "Start" },
-      { "Path": "src\\Odca.Worker\\Odca.Worker.csproj", "Action": "StartWithoutDebugging" }
+      {
+        "Path": "src\\Odca.Api\\Odca.Api.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "src\\Odca.Web\\Odca.Web.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "src\\Odca.Worker\\Odca.Worker.csproj",
+        "Action": "StartWithoutDebugging"
+      }
     ]
   }
 ]
