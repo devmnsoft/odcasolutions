@@ -23,6 +23,7 @@ $env:ODCA_NATIVE_ADMIN_CONNECTION = 'Host=localhost;Port=5432;Database=odca;User
 dotnet run --project src/Odca.Bootstrap -- configure-native
 Remove-Item Env:ODCA_NATIVE_ADMIN_CONNECTION
 dotnet run --project src/Odca.Bootstrap -- migrate
+dotnet run --project src/Odca.Bootstrap -- provision-test-access --environment Development
 dotnet run --project src/Odca.Bootstrap -- show-login
 ```
 
@@ -39,12 +40,22 @@ dotnet run --project src/Odca.Bootstrap -- migrate
 dotnet run --project src/Odca.Bootstrap -- show-login
 ```
 
-`init` cria segredos aleatórios em `%LOCALAPPDATA%\ODCA Solutions` e o `.env.local` ignorado pelo Git. Reexecutar não troca credenciais existentes. `migrate` aplica somente versões ausentes, sob lock e checksum, cria uma role de aplicação sem `SUPERUSER`/`BYPASSRLS` e preserva a senha do superadministrador já criado. `show-login` é a única forma documentada de exibir a credencial local; a senha precisa ser alterada no primeiro acesso. Para recuperação explícita:
+`init` cria segredos aleatórios em `%LOCALAPPDATA%\ODCA Solutions` e o `.env.local` ignorado pelo Git. Em sistemas Unix, os JSON locais são gravados com modo `0600`. Reexecutar não troca credenciais existentes. `migrate` aplica somente versões ausentes, sob lock e checksum, cria uma role de aplicação sem `SUPERUSER`/`BYPASSRLS` e preserva a senha do superadministrador já criado.
+
+`provision-test-access` é deliberadamente restrito a `--environment Development`, recusa a base genérica `postgres` e mostra host, porta e banco sem senha. Ele valida ou cria `admin@odca.local` como superadministrador e `cliente.teste@odca.local` como administrador da organização **ODCA Cliente de Demonstração**, com concessão local auditada do plano Basic vigente. A operação é transacional, relê perfil/vínculo/plano e confere senhas disponíveis pelo mesmo serviço usado no login. Uma conta comum preexistente nunca é promovida silenciosamente. Reexecução preserva senhas; para rotação explícita, use:
+
+```powershell
+dotnet run --project src/Odca.Bootstrap -- provision-test-access --environment Development --rotate-passwords
+```
+
+`show-login` consulta o banco configurado e só exibe uma senha inicial local quando ela confere com o hash persistido. A senha precisa ser alterada no primeiro acesso. Para recuperação explícita somente do superadministrador:
 
 ```powershell
 dotnet run --project src/Odca.Bootstrap -- reset-password
 dotnet run --project src/Odca.Bootstrap -- show-login
 ```
+
+O reset revoga sessões, mas não remove o autenticador MFA. Depois da troca inicial, acesse `https://localhost:7144`, siga a inscrição exibida, adicione a chave no aplicativo autenticador e informe o TOTP. O provisionador distingue persistência, conferência de senha e login HTTP; ele **não** declara login HTTP aprovado nem MFA concluído sem executar esses passos.
 
 Abra `Odca.sln` no Visual Studio e selecione o perfil de vários projetos `ODCA local`, ou inicie API, Web e Worker em um só terminal:
 
