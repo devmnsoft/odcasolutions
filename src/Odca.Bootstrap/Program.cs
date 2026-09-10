@@ -257,6 +257,16 @@ public static class BootstrapProgram
     private static void Initialize(LocalPaths paths)
     {
         Directory.CreateDirectory(paths.LocalDirectory);
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(paths.RuntimeFile))!);
+
+        // Preserve an existing local setup when moving the runtime file into the API project.
+        var legacyRuntime = Path.Combine(paths.LocalDirectory, "development-runtime.json");
+        if (!File.Exists(paths.RuntimeFile) && File.Exists(legacyRuntime) &&
+            Environment.GetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable) is null)
+        {
+            File.Copy(legacyRuntime, paths.RuntimeFile, overwrite: false);
+            ProtectFile(paths.RuntimeFile);
+        }
 
         if (!File.Exists(paths.CredentialsFile))
         {
@@ -559,7 +569,7 @@ public static class BootstrapProgram
             var localDirectory = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "ODCA Solutions");
-            var runtimeFile = runtimeOverride ?? Path.Combine(localDirectory, "development-runtime.json");
+            var runtimeFile = runtimeOverride ?? LocalRuntimeConfiguration.GetDefaultPath(repositoryRoot);
             return new(
                 repositoryRoot,
                 localDirectory,

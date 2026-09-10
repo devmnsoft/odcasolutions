@@ -3,7 +3,10 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
-$runtimeFile = Join-Path $env:LOCALAPPDATA 'ODCA Solutions\development-runtime.json'
+$runtimeFile = $env:ODCA_RUNTIME_CONFIG
+if ([string]::IsNullOrWhiteSpace($runtimeFile)) {
+    $runtimeFile = Join-Path $repositoryRoot 'src\Odca.Api\development-runtime.json'
+}
 $env:ODCA_RUNTIME_CONFIG = $runtimeFile
 $env:DOTNET_ENVIRONMENT = 'Development'
 $env:ASPNETCORE_ENVIRONMENT = 'Development'
