@@ -244,6 +244,20 @@ public sealed class NpgsqlCustomerOnboardingRepository(NpgsqlDataSource dataSour
                    updated_at = @confirmedAt
              WHERE tenant_id = @TenantId AND user_id = @UserId;
 
+            INSERT INTO odca.roles(scope_type,tenant_id,code,display_name,is_system)
+            VALUES('tenant',@TenantId,'tenant-administrator','Administrador da organização',true)
+            ON CONFLICT DO NOTHING;
+
+            INSERT INTO odca.role_permissions(role_id,permission_code)
+            SELECT r.id,p.code FROM odca.roles r CROSS JOIN odca.permissions p
+             WHERE r.tenant_id=@TenantId AND r.code='tenant-administrator' AND p.code LIKE 'tenant.%'
+            ON CONFLICT DO NOTHING;
+
+            INSERT INTO odca.member_roles(tenant_id,user_id,role_id,assigned_by)
+            SELECT @TenantId,@UserId,r.id,@UserId FROM odca.roles r
+             WHERE r.tenant_id=@TenantId AND r.code='tenant-administrator'
+            ON CONFLICT DO NOTHING;
+
             UPDATE odca.subscriptions
                SET commercial_state = 'commercial_pending',
                    updated_at = @confirmedAt

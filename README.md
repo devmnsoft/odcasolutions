@@ -113,3 +113,9 @@ Após autenticação completa, o BFF apresenta navegação distinta: superadmini
 - `docs`: especificação, decisões, execução, segurança e privacidade.
 
 Não adicione contratos reais, CPF/CNPJ, tokens, chaves, `.env.local` ou arquivos de configuração gerados ao repositório público.
+
+### Contexto de organização, equipe e convites
+
+Depois de autenticar, abra `/organizacoes`. O tenant permanece explícito na URL de equipe e também no formulário; a API deriva o usuário do JWT e revalida vínculo e permissão antes de configurar o contexto RLS. Convites reservam um assento enquanto estiverem pendentes/enviados e somente são aceitos pela conta autenticada com o e-mail destinatário já verificado. A aceitação revoga as sessões da identidade para que as permissões sejam renovadas.
+
+Em `Development`, o worker grava mensagens exclusivamente no diretório configurado por `Notifications:DevelopmentPickupDirectory`. Esse transporte é para contas sintéticas locais. Fora de Development, ausência de provedor mantém a mensagem em retry/falha, nunca como enviada.

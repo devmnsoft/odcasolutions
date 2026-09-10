@@ -1,0 +1,7 @@
+@model Odca.Contracts.Tenancy.OrganizationSummary[]
+@{ViewData["Title"]="Escolher organização";}
+<section class="page-heading"><div><span class="eyebrow">Contexto de trabalho</span><h1>Escolha uma organização</h1><p>Cada página mantém a organização no endereço para evitar ações em outro contexto.</p></div></section>
+<div class="card-grid">
+@foreach(var item in Model){<article class="card"><h2>@item.Name</h2><p>Estado: @item.Status</p><a class="button button-primary" asp-action="Team" asp-route-tenantId="@item.Id">Abrir organização</a></article>}
+@if(Model.Length==0){<div class="empty-state"><h2>Nenhum acesso ativo</h2><p>Seu vínculo pode ter sido suspenso, bloqueado ou revogado.</p></div>}
+</div>
