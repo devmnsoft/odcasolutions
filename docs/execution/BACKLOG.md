@@ -1,5 +1,13 @@
 # Backlog
 
+## Prompt 09
+
+- [x] Corrigir a duplicação de `StartupValidationService` sem desativar validações.
+- [x] Implementar provisionamento local explícito e idempotente de superadministrador e cliente demonstrativo com conferência pós-commit.
+- [x] Impedir `show-login` de exibir senha local divergente e tornar o reset de usuário preciso/transacional.
+- [ ] Executar o provisionador contra PostgreSQL local autorizado e completar login HTTP/MFA com autenticador.
+- [ ] Concluir seleção de organização, equipe, convites, perfis, quota e último administrador sob concorrência.
+
 ## Fechar S00 com evidência
 
 0. Executar em CI `restore --locked-mode`, build e os novos testes de host após o alinhamento do `coverlet.collector`; não promover o Marco A até o resultado remoto do SHA entregue.

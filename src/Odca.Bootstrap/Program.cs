@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Dapper;
 using Npgsql;
+using Odca.Bootstrap;
 using Odca.Application.Identity;
 using Odca.Infrastructure.Database;
 using Odca.Infrastructure.Identity;
@@ -38,14 +39,17 @@ public static class BootstrapProgram
                     Console.WriteLine("Migração aplicada e seed de Development verificado.");
                     return 0;
                 case "show-login":
-                    ShowLogin(paths);
+                    await ShowLoginAsync(paths);
                     return 0;
                 case "reset-password":
                     await ResetPasswordAsync(paths);
                     Console.WriteLine("Senha inicial redefinida. Execute show-login para recuperá-la localmente.");
                     return 0;
+                case "provision-test-access":
+                    await ProvisionTestAccessAsync(paths, args);
+                    return 0;
                 default:
-                    Console.WriteLine("Uso: dotnet run --project src/Odca.Bootstrap -- <init|configure-native|migrate|show-login|reset-password>");
+                    Console.WriteLine("Uso: dotnet run --project src/Odca.Bootstrap -- <init|configure-native|migrate|show-login|reset-password|provision-test-access>");
                     return command == "help" ? 0 : 2;
             }
         }
@@ -198,14 +202,115 @@ public static class BootstrapProgram
             credentials.SuperAdministratorPassword);
     }
 
-    private static void ShowLogin(LocalPaths paths)
+    private static async Task ShowLoginAsync(LocalPaths paths)
     {
         EnsureInitialized(paths);
         var credentials = ReadJson<DevelopmentCredentials>(paths.CredentialsFile);
-        Console.WriteLine($"Login: {credentials.SuperAdministratorEmail}");
-        Console.WriteLine($"Senha inicial: {credentials.SuperAdministratorPassword}");
-        Console.WriteLine("A aplicação exigirá a troca no primeiro acesso.");
+        var runtime = ReadJson<DevelopmentRuntime>(paths.RuntimeFile);
+        await ShowCredentialAsync(runtime.ConnectionStrings.DatabaseAdmin, "Superadministrador",
+            credentials.SuperAdministratorEmail, credentials.SuperAdministratorPassword);
+        if (!string.IsNullOrWhiteSpace(credentials.ClientPassword))
+        {
+            await ShowCredentialAsync(runtime.ConnectionStrings.DatabaseAdmin, "Cliente de demonstração",
+                TestAccessProvisioner.ClientEmail, credentials.ClientPassword);
+        }
     }
+
+    private static async Task ShowCredentialAsync(string connectionString, string label, string email, string password)
+    {
+        const string sql = """
+            SELECT id AS Id, email AS Email, display_name AS DisplayName, password_hash AS PasswordHash,
+                   security_version AS SecurityVersion, is_platform_administrator AS IsPlatformAdministrator,
+                   must_change_password AS MustChangePassword, locked_until AS LockedUntil,
+                   is_deleted AS IsDeleted, last_login_at AS LastLoginAt
+              FROM odca.users WHERE email_normalized=@email;
+            """;
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        var user = await connection.QuerySingleOrDefaultAsync<LoginVerification>(sql, new { email = email.Trim().ToUpperInvariant() });
+        Console.WriteLine($"{label}: {email}");
+        if (user is null)
+        {
+            Console.WriteLine("Senha local não exibida: a identidade não foi encontrada no banco configurado.");
+            return;
+        }
+
+        var matches = new AspNetPasswordService().Verify(
+            new UserCredential(user.Id, user.Email, user.DisplayName, user.PasswordHash, user.SecurityVersion,
+                user.MustChangePassword, user.IsPlatformAdministrator, null, user.IsDeleted, ToUtc(user.LockedUntil)),
+            user.PasswordHash, password);
+        if (!matches)
+        {
+            Console.WriteLine("Senha local não exibida: o arquivo está desatualizado em relação ao hash persistido.");
+            Console.WriteLine("Use reset-password ou provision-test-access --rotate-passwords explicitamente.");
+            return;
+        }
+
+        Console.WriteLine($"Senha inicial local (conferida com o banco): {password}");
+        Console.WriteLine($"Perfil: {(user.IsPlatformAdministrator ? "SuperAdministrador" : "Administrador da organização")}");
+        Console.WriteLine($"Troca inicial obrigatória: {(user.MustChangePassword ? "sim" : "não")}");
+    }
+
+    private static async Task ProvisionTestAccessAsync(LocalPaths paths, string[] args)
+    {
+        EnsureInitialized(paths);
+        var environmentIndex = Array.FindIndex(args, value => value.Equals("--environment", StringComparison.OrdinalIgnoreCase));
+        var environment = environmentIndex >= 0 && environmentIndex + 1 < args.Length ? args[environmentIndex + 1] : null;
+        if (!string.Equals(environment, "Development", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Informe --environment Development. A concessão de demonstração é recusada fora de Development.");
+        }
+
+        var rotate = args.Contains("--rotate-passwords", StringComparer.OrdinalIgnoreCase);
+        var runtime = ReadJson<DevelopmentRuntime>(paths.RuntimeFile);
+        if (!runtime.Security.AllowDevelopmentBootstrap)
+        {
+            throw new InvalidOperationException("Security:AllowDevelopmentBootstrap está desabilitado.");
+        }
+
+        var target = new NpgsqlConnectionStringBuilder(runtime.ConnectionStrings.DatabaseAdmin);
+        if (target.Database.Equals("postgres", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Provisionamento recusado na base genérica postgres; configure a base ODCA explicitamente.");
+        }
+
+        Console.WriteLine($"Destino: host={target.Host}; porta={target.Port}; banco={target.Database}; ambiente=Development");
+        var credentials = ReadJson<DevelopmentCredentials>(paths.CredentialsFile);
+        var provisioner = new TestAccessProvisioner(new AspNetPasswordService());
+        var result = await provisioner.ProvisionAsync(runtime.ConnectionStrings.DatabaseAdmin,
+            credentials.SuperAdministratorEmail, credentials.SuperAdministratorPassword,
+            credentials.ClientPassword, rotate, GeneratePassword);
+
+        var updated = credentials with
+        {
+            SuperAdministratorPassword = result.AdministratorPassword,
+            ClientPassword = result.ClientPassword
+        };
+        try
+        {
+            WriteJson(paths.CredentialsFile, updated);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            throw new InvalidOperationException(
+                "O banco foi confirmado, mas o arquivo local de credenciais não pôde ser atualizado. " +
+                "Não considere a recuperação local da senha concluída.", exception);
+        }
+
+        Console.WriteLine($"Persistência verificada: {(AllVerified(result.Verification) ? "sim" : "não")}");
+        Console.WriteLine($"Senha do superadministrador confere: {(result.AdministratorPasswordMatches ? "sim" : "não (arquivo local desatualizado; use --rotate-passwords)")}");
+        Console.WriteLine($"Senha do cliente confere: {(result.ClientPasswordMatches ? "sim" : "não (arquivo local ausente/desatualizado; use --rotate-passwords)")}");
+        Console.WriteLine("Login HTTP aprovado: não executado por este comando.");
+        Console.WriteLine("MFA: superadministrador deve concluir troca inicial e inscrição/desafio; configuração existente foi preservada.");
+        Console.WriteLine("Execute show-login para exibir somente as senhas locais que conferem com o banco.");
+    }
+
+    private static bool AllVerified(TestAccessVerification value) => value.AdministratorPersisted &&
+        value.ClientPersisted && value.MembershipActive && value.TenantAdministrator && value.BasicPlanActive;
+
+    private static DateTimeOffset? ToUtc(DateTime? value) => value is null
+        ? null
+        : new DateTimeOffset(DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
 
     private static async Task ResetPasswordAsync(LocalPaths paths)
     {
@@ -226,7 +331,7 @@ public static class BootstrapProgram
             null);
         var hash = new AspNetPasswordService().Hash(template, newPassword);
 
-        const string sql = """
+        const string updateUserSql = """
             UPDATE odca.users
                SET password_hash = @hash,
                    must_change_password = true,
@@ -235,21 +340,28 @@ public static class BootstrapProgram
                    locked_until = NULL,
                    updated_at = now()
              WHERE email_normalized = @email;
+            """;
+        const string revokeSessionsSql = """
             UPDATE odca.sessions
                SET revoked_at = COALESCE(revoked_at, now())
              WHERE user_id = (SELECT id FROM odca.users WHERE email_normalized = @email);
             """;
         await using var connection = new NpgsqlConnection(runtime.ConnectionStrings.DatabaseAdmin);
         await connection.OpenAsync();
-        var affected = await connection.ExecuteAsync(sql, new
+        await using var transaction = await connection.BeginTransactionAsync();
+        var parameters = new
         {
             hash,
             email = credentials.SuperAdministratorEmail.Trim().ToUpperInvariant()
-        });
-        if (affected == 0)
+        };
+        var userAffected = await connection.ExecuteAsync(updateUserSql, parameters, transaction);
+        if (userAffected != 1)
         {
             throw new InvalidOperationException("A conta superadministradora ainda não existe; execute migrate.");
         }
+
+        await connection.ExecuteAsync(revokeSessionsSql, parameters, transaction);
+        await transaction.CommitAsync();
 
         WriteJson(paths.CredentialsFile, credentials with { SuperAdministratorPassword = newPassword });
     }
@@ -322,8 +434,14 @@ public static class BootstrapProgram
         JsonSerializer.Deserialize<T>(File.ReadAllText(path), JsonOptions)
         ?? throw new InvalidDataException($"Configuração local inválida: {path}");
 
-    private static void WriteJson<T>(string path, T value) =>
+    private static void WriteJson<T>(string path, T value)
+    {
         File.WriteAllText(path, JsonSerializer.Serialize(value, JsonOptions));
+        if (!OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
+    }
 
     private sealed record LocalPaths(
         string RepositoryRoot,
@@ -350,7 +468,12 @@ public static class BootstrapProgram
         string SuperAdministratorEmail,
         string SuperAdministratorPassword,
         string PostgresAdminPassword,
-        string ApplicationDatabasePassword);
+        string ApplicationDatabasePassword,
+        string? ClientPassword = null);
+
+    private sealed record LoginVerification(Guid Id, string Email, string DisplayName, string PasswordHash,
+        int SecurityVersion, bool IsPlatformAdministrator, bool MustChangePassword,
+        DateTime? LockedUntil, bool IsDeleted, DateTime? LastLoginAt);
 
     private sealed record DevelopmentRuntime(
         ConnectionStrings ConnectionStrings,

@@ -1,5 +1,7 @@
 # Próxima execução
 
+Execute primeiro `dotnet run --project src/Odca.Bootstrap -- provision-test-access --environment Development` contra a configuração local autorizada. Registre separadamente as linhas de persistência, conferência de senha, login HTTP e MFA, sem copiar senhas para documentação. Em seguida execute `show-login`, faça a troca inicial e conclua o desafio com autenticador em `https://localhost:7144`. Não use `--rotate-passwords` salvo decisão explícita do operador.
+
 Comece confirmando a CI do commit que corrigiu CA1859 e adicionou MFA/onboarding inicial. Execute restore bloqueado, build, assets, secret scan e os testes HTTP contra PostgreSQL descartável exclusivo. Use as três variáveis documentadas no README; não toque banco de desenvolvimento por fallback.
 
 No banco, registre vazio → 005, upgrade 001/002/003 → 005, reaplicação pelo runner e SQL direto, concorrência, falha/retomada e toda a suíte. Prove os novos cenários: senha de superadmin sem MFA negada, MFA válido autorizado, TOTP reutilizado negado, recovery code de uso único, cadastro de cliente idempotente, confirmação de e-mail de uso único, plano preso à versão e home do cliente em `commercial_pending`.
