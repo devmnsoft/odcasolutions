@@ -157,6 +157,7 @@ public sealed class OdcaApiClient(HttpClient client)
                 System.Net.HttpStatusCode.Unauthorized => ApiCallStatus.Unauthorized,
                 System.Net.HttpStatusCode.Forbidden => ApiCallStatus.Forbidden,
                 System.Net.HttpStatusCode.TooManyRequests => ApiCallStatus.RateLimited,
+                System.Net.HttpStatusCode.Conflict => ApiCallStatus.Conflict,
                 _ when (int)response.StatusCode >= 500 => ApiCallStatus.Unavailable,
                 _ => ApiCallStatus.InvalidRequest
             });

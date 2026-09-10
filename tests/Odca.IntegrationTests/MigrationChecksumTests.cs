@@ -41,69 +41,72 @@ public sealed class MigrationChecksumTests
     [Fact]
     public void ReleaseV002IsAnImmutablePrefixOfCanonicalSql()
     {
-        var canonical = FindSql();
-        var snapshot = Path.Combine(Path.GetDirectoryName(canonical)!, "releases", "odca-v002.sql");
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v002.sql")).Replace("\r\n", "\n");
 
-        var snapshotSql = File.ReadAllText(snapshot);
-        DatabaseMigrator.ValidateChecksums(snapshotSql);
-        Assert.DoesNotContain("ODCA-MIGRATION 003", snapshotSql, StringComparison.Ordinal);
-        Assert.StartsWith(snapshotSql.TrimEnd(), File.ReadAllText(canonical), StringComparison.Ordinal);
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        Assert.DoesNotContain("ODCA-MIGRATION 003", snapshot, StringComparison.Ordinal);
+        Assert.StartsWith(snapshot.TrimEnd(), canonical, StringComparison.Ordinal);
     }
 
     [Fact]
     public void ReleaseV003IsAnImmutablePrefixOfCanonicalSql()
     {
-        var canonical = FindSql();
-        var snapshot = Path.Combine(Path.GetDirectoryName(canonical)!, "releases", "odca-v003.sql");
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v003.sql")).Replace("\r\n", "\n");
 
-        var snapshotSql = File.ReadAllText(snapshot);
-        DatabaseMigrator.ValidateChecksums(snapshotSql);
-        Assert.DoesNotContain("ODCA-MIGRATION 004", snapshotSql, StringComparison.Ordinal);
-        Assert.StartsWith(snapshotSql.TrimEnd(), File.ReadAllText(canonical), StringComparison.Ordinal);
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        Assert.DoesNotContain("ODCA-MIGRATION 004", snapshot, StringComparison.Ordinal);
+        Assert.StartsWith(snapshot.TrimEnd(), canonical, StringComparison.Ordinal);
     }
 
     [Fact]
     public void ReleaseV004IsAnImmutablePrefixOfCanonicalSql()
     {
-        var canonical = FindSql();
-        var snapshot = Path.Combine(Path.GetDirectoryName(canonical)!, "releases", "odca-v004.sql");
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v004.sql")).Replace("\r\n", "\n");
 
-        var snapshotSql = File.ReadAllText(snapshot);
-        DatabaseMigrator.ValidateChecksums(snapshotSql);
-        Assert.DoesNotContain("ODCA-MIGRATION 005", snapshotSql, StringComparison.Ordinal);
-        Assert.StartsWith(snapshotSql.TrimEnd(), File.ReadAllText(canonical), StringComparison.Ordinal);
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        Assert.DoesNotContain("ODCA-MIGRATION 005", snapshot, StringComparison.Ordinal);
+        Assert.StartsWith(snapshot.TrimEnd(), canonical, StringComparison.Ordinal);
     }
 
     [Fact]
     public void ReleaseV005IsAnImmutablePrefixOfCanonicalSql()
     {
-        var canonical = FindSql();
-        var snapshot = Path.Combine(Path.GetDirectoryName(canonical)!, "releases", "odca-v005.sql");
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v005.sql")).Replace("\r\n", "\n");
 
-        var snapshotSql = File.ReadAllText(snapshot);
-        DatabaseMigrator.ValidateChecksums(snapshotSql);
-        Assert.DoesNotContain("ODCA-MIGRATION 006", snapshotSql, StringComparison.Ordinal);
-        Assert.StartsWith(snapshotSql.TrimEnd(), File.ReadAllText(canonical), StringComparison.Ordinal);
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        Assert.DoesNotContain("ODCA-MIGRATION 006", snapshot, StringComparison.Ordinal);
+        Assert.StartsWith(snapshot.TrimEnd(), canonical, StringComparison.Ordinal);
     }
 
     [Fact]
     public void ReleaseV006MatchesCanonicalSql()
     {
-        var canonical = FindSql();
-        var snapshot = Path.Combine(Path.GetDirectoryName(canonical)!, "releases", "odca-v006.sql");
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v006.sql")).Replace("\r\n", "\n");
 
-        var snapshotSql = File.ReadAllText(snapshot);
-        Assert.StartsWith(snapshotSql.TrimEnd(), File.ReadAllText(canonical), StringComparison.Ordinal);
+        Assert.StartsWith(snapshot.TrimEnd(), canonical, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void ReleaseV007MatchesCanonicalSql()
+    public void ReleaseV007IsAnImmutablePrefixOfCanonicalSql()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v007.sql")).Replace("\r\n", "\n");
+        Assert.StartsWith(snapshot, canonical);
+    }
+
+    [Fact]
+    public void ReleaseV008MatchesCanonicalSql()
     {
         var canonical = FindSql();
-        var snapshot = Path.Combine(Path.GetDirectoryName(canonical)!, "releases", "odca-v007.sql");
+        var snapshot = Path.Combine(Path.GetDirectoryName(canonical)!, "releases", "odca-v008.sql");
         Assert.True(File.Exists(snapshot));
         var snapshotSql = File.ReadAllText(snapshot);
-        Assert.Contains("ODCA-MIGRATION 007", snapshotSql, StringComparison.Ordinal);
+        Assert.Contains("ODCA-MIGRATION 008", snapshotSql, StringComparison.Ordinal);
         Assert.Equal(File.ReadAllBytes(canonical), File.ReadAllBytes(snapshot));
     }
 

@@ -13,7 +13,16 @@ public sealed class OrganizationsController(OdcaApiClient api):Controller
  [HttpGet("organizacoes/{tenantId:guid}/equipe")]
  public async Task<IActionResult> Team(Guid tenantId,string? search,string? status,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var orgs=await api.GetOrganizationsAsync(token,ct);var org=orgs.Value?.SingleOrDefault(x=>x.Id==tenantId);if(org is null)return Forbid();var members=await api.GetMembersAsync(token,tenantId,search,status,ct);var roles=await api.GetRolesAsync(token,tenantId,ct);if(!members.Succeeded||!roles.Succeeded)return Forbid();ViewData["OrganizationName"]=org.Name;return View(new TeamPageViewModel(org,members.Value!,roles.Value!,search,status));}
  [HttpPost("organizacoes/{tenantId:guid}/convites")]
- public async Task<IActionResult> Invite(Guid tenantId,InviteViewModel model,CancellationToken ct){if(tenantId!=model.TenantId) return BadRequest();if(!ModelState.IsValid)return RedirectToAction(nameof(Team),new{tenantId});var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var result=await api.InviteAsync(token,tenantId,new CreateInvitationRequest(model.Email,model.RoleId,Guid.NewGuid().ToString("N")),ct);TempData[result.Succeeded?"Success":"Error"]=result.Succeeded?"Convite reservado e enfileirado.":"Não foi possível convidar. Verifique assentos e permissões.";return RedirectToAction(nameof(Team),new{tenantId});}
+ public async Task<IActionResult> Invite(Guid tenantId,InviteViewModel model,CancellationToken ct){
+     if(tenantId!=model.TenantId) return BadRequest();
+     if(!ModelState.IsValid){ TempData["PreservedIdempotencyKey"] = model.IdempotencyKey; return RedirectToAction(nameof(Team),new{tenantId}); }
+     var token=await HttpContext.GetTokenAsync("access_token");
+     if(token is null)return Challenge();
+     var result=await api.InviteAsync(token,tenantId,new CreateInvitationRequest(model.Email,model.RoleId,model.IdempotencyKey),ct);
+     if(!result.Succeeded) TempData["PreservedIdempotencyKey"] = model.IdempotencyKey;
+     TempData[result.Succeeded?"Success":"Error"]=result.Succeeded?"Convite reservado e enfileirado.": result.Status == ApiCallStatus.Conflict ? "Conflito ou limite de assentos excedido." : "Não foi possível convidar. Verifique assentos e permissões.";
+     return RedirectToAction(nameof(Team),new{tenantId});
+ }
  [HttpPost("organizacoes/{tenantId:guid}/perfis")]
  public async Task<IActionResult> CreateRole(Guid tenantId,string name,string[] permissions,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var result=await api.CreateRoleAsync(token,tenantId,new CreateTenantRoleRequest(name,permissions),ct);TempData[result.Succeeded?"Success":"Error"]=result.Succeeded?"Perfil criado.":"O perfil contém uma permissão que você não pode delegar.";return RedirectToAction(nameof(Team),new{tenantId});}
  [HttpGet("convites/aceitar")]

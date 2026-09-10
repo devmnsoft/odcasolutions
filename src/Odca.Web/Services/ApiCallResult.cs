@@ -9,7 +9,8 @@ public enum ApiCallStatus
     RateLimited,
     Unavailable,
     Timeout,
-    InvalidRequest
+    InvalidRequest,
+    Conflict
 }
 
 public sealed record ApiCallResult<T>(ApiCallStatus Status, T? Value = default)

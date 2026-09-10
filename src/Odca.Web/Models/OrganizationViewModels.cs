@@ -7,4 +7,5 @@ public sealed class InviteViewModel
  [Required,EmailAddress] public string Email {get;set;}=string.Empty;
  [Required] public Guid RoleId {get;set;}
  [Required] public Guid TenantId {get;set;}
+ [Required] public string IdempotencyKey {get;set;} = Guid.NewGuid().ToString("N");
 }

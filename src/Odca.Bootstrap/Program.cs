@@ -269,7 +269,7 @@ public static class BootstrapProgram
         }
 
         var target = new NpgsqlConnectionStringBuilder(runtime.ConnectionStrings.DatabaseAdmin);
-        if (target.Database.Equals("postgres", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(target.Database, "postgres", StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("Provisionamento recusado na base genérica postgres; configure a base ODCA explicitamente.");
         }

@@ -64,6 +64,7 @@ public static class DependencyInjection
         services.AddScoped<IPrivacyRequestRepository, NpgsqlPrivacyRequestRepository>();
         services.AddScoped<PrivacyRequestService>();
         services.AddScoped<ITenantAdministrationRepository, NpgsqlTenantAdministrationRepository>();
+        services.AddScoped<TenantAdministrationService>();
         services.AddScoped<AuthenticationService>();
         services.AddScoped<MfaService>();
         services.AddScoped<CustomerOnboardingService>();
