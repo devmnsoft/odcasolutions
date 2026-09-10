@@ -92,6 +92,18 @@ public sealed class MigrationChecksumTests
         var canonical = FindSql();
         var snapshot = Path.Combine(Path.GetDirectoryName(canonical)!, "releases", "odca-v006.sql");
 
+        var snapshotSql = File.ReadAllText(snapshot);
+        Assert.StartsWith(snapshotSql.TrimEnd(), File.ReadAllText(canonical), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReleaseV007MatchesCanonicalSql()
+    {
+        var canonical = FindSql();
+        var snapshot = Path.Combine(Path.GetDirectoryName(canonical)!, "releases", "odca-v007.sql");
+        Assert.True(File.Exists(snapshot));
+        var snapshotSql = File.ReadAllText(snapshot);
+        Assert.Contains("ODCA-MIGRATION 007", snapshotSql, StringComparison.Ordinal);
         Assert.Equal(File.ReadAllBytes(canonical), File.ReadAllBytes(snapshot));
     }
 

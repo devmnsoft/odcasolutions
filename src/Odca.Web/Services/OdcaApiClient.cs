@@ -4,6 +4,7 @@ using Odca.Contracts.Identity;
 using Odca.Contracts.Onboarding;
 using Odca.Contracts.Plans;
 using Odca.Contracts.Privacy;
+using Odca.Contracts.Tenancy;
 
 namespace Odca.Web.Services;
 
@@ -118,6 +119,21 @@ public sealed class OdcaApiClient(HttpClient client)
         using var message = CreateAuthorized(HttpMethod.Get, "api/v1/onboarding/customer-home", accessToken);
         return await SendAsync<CustomerHomeResponse>(message, invalidCredentialsOnUnauthorized: false, cancellationToken);
     }
+
+    public Task<ApiCallResult<OrganizationSummary[]>> GetOrganizationsAsync(string token,CancellationToken cancellationToken)
+        => SendAsync<OrganizationSummary[]>(CreateAuthorized(HttpMethod.Get,"api/v1/organizations",token),false,cancellationToken);
+    public Task<ApiCallResult<OrganizationDetails>> GetOrganizationAsync(string token,Guid tenantId,CancellationToken cancellationToken)
+        => SendAsync<OrganizationDetails>(CreateAuthorized(HttpMethod.Get,$"api/v1/organizations/{tenantId}",token),false,cancellationToken);
+    public Task<ApiCallResult<TeamMemberResponse[]>> GetMembersAsync(string token,Guid tenantId,string? search,string? status,CancellationToken cancellationToken)
+        => SendAsync<TeamMemberResponse[]>(CreateAuthorized(HttpMethod.Get,$"api/v1/organizations/{tenantId}/members?search={Uri.EscapeDataString(search??"")}&status={Uri.EscapeDataString(status??"")}",token),false,cancellationToken);
+    public Task<ApiCallResult<TenantRoleResponse[]>> GetRolesAsync(string token,Guid tenantId,CancellationToken cancellationToken)
+        => SendAsync<TenantRoleResponse[]>(CreateAuthorized(HttpMethod.Get,$"api/v1/organizations/{tenantId}/roles",token),false,cancellationToken);
+    public async Task<ApiCallResult<TenantRoleResponse>> CreateRoleAsync(string token,Guid tenantId,CreateTenantRoleRequest request,CancellationToken cancellationToken)
+    { using var message=CreateAuthorized(HttpMethod.Post,$"api/v1/organizations/{tenantId}/roles",token);message.Content=JsonContent.Create(request);return await SendAsync<TenantRoleResponse>(message,false,cancellationToken); }
+    public async Task<ApiCallResult<InvitationResponse>> InviteAsync(string token,Guid tenantId,CreateInvitationRequest request,CancellationToken cancellationToken)
+    { using var message=CreateAuthorized(HttpMethod.Post,$"api/v1/organizations/{tenantId}/invitations",token);message.Content=JsonContent.Create(request);return await SendAsync<InvitationResponse>(message,false,cancellationToken); }
+    public async Task<ApiCallResult<object>> AcceptInvitationAsync(string token,AcceptInvitationRequest request,CancellationToken cancellationToken)
+    { using var message=CreateAuthorized(HttpMethod.Post,"api/v1/organizations/invitations/accept",token);message.Content=JsonContent.Create(request);return await SendAsync<object>(message,false,cancellationToken); }
 
     private async Task<ApiCallResult<T>> SendAsync<T>(
         HttpRequestMessage message,

@@ -57,3 +57,13 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [ ] Entregar seletor de organização, equipe, perfis delegáveis, convites e assentos com proteção do último administrador.
 - [ ] Configurar cache realmente compartilhado e validar Data Protection/tickets entre duas instâncias.
 - [ ] Depois: suporte temporário e operação de direitos; S02; S03; OCR/Office e sequência comercial, sem antecipar editor.
+
+## Após prompt 11
+
+- [x] Contexto explícito de organização derivado da identidade, com tenant por URL/formulário e revalidação no servidor.
+- [x] Administrador inicial idempotente, catálogo delegável inicial, listagem de equipe/perfis e criação de perfil permitido.
+- [x] Criação de convite com reserva transacional de assento, token hashado/uso único, aceite vinculado a e-mail verificado e outbox com lease/retry local.
+- [ ] Regenerar lockfiles com SDK 10.0.400 (`--force-evaluate`) e confirmar restore locked/build/testes; nunca editar hashes manualmente.
+- [ ] Completar paginação, bloqueio/inativação/restauração, reenvio/cancelamento, último administrador sob duas transações e testes PostgreSQL A × B.
+- [ ] Configurar adaptador de e-mail de produção, política de expiração/limpeza e fila operacional de falhas.
+- [ ] Executar QA por teclado e capturas 360/768/1440 com PostgreSQL/API/Web reais.

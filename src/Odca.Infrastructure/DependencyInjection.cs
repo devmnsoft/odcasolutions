@@ -16,6 +16,8 @@ using Odca.Infrastructure.Identity;
 using Odca.Infrastructure.Onboarding;
 using Odca.Infrastructure.Plans;
 using Odca.Infrastructure.Privacy;
+using Odca.Application.Tenancy;
+using Odca.Infrastructure.Tenancy;
 
 namespace Odca.Infrastructure;
 
@@ -61,6 +63,7 @@ public static class DependencyInjection
         services.AddScoped<IPlanCatalogRepository, NpgsqlPlanCatalogRepository>();
         services.AddScoped<IPrivacyRequestRepository, NpgsqlPrivacyRequestRepository>();
         services.AddScoped<PrivacyRequestService>();
+        services.AddScoped<ITenantAdministrationRepository, NpgsqlTenantAdministrationRepository>();
         services.AddScoped<AuthenticationService>();
         services.AddScoped<MfaService>();
         services.AddScoped<CustomerOnboardingService>();

@@ -6,6 +6,10 @@
          User.FindFirst("requires_mfa_challenge")?.Value == "true");
     var showApplication = authenticated && !pendingAccess;
     var isPlatform = User.IsInRole("SuperAdministrator");
+    var organizationName = ViewData["OrganizationName"] as string;
+    var displayName = User.Identity?.Name;
+    var avatarText = string.IsNullOrWhiteSpace(displayName) ? "?" : displayName.Trim()[0].ToString().ToUpperInvariant();
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString();
 }
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -28,28 +32,29 @@
                 </div>
                 <div class="context-card">
                     <span class="context-label">@(isPlatform ? "PLATAFORMA" : "ORGANIZAÇÃO ATIVA")</span>
-                    <strong>@(isPlatform ? "Administração ODCA" : "Meu ambiente")</strong>
+                    <strong>@(isPlatform ? "Administração ODCA" : organizationName ?? "Escolha uma organização")</strong>
                 </div>
                 <nav class="side-nav">
                     @if (isPlatform)
                     {
-                        <a class="nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : null)" asp-controller="Home" asp-action="Index"><span aria-hidden="true">⌂</span><span>Visão global</span></a>
-                        <a class="nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Plans" ? "active" : null)" asp-controller="Plans" asp-action="Index"><span aria-hidden="true">▦</span><span>Catálogo de planos</span></a>
+                        <a class="nav-item @(controller == "Home" ? "active" : null)" aria-current="@(controller == "Home" ? "page" : null)" asp-controller="Home" asp-action="Index"><span aria-hidden="true">⌂</span><span>Visão global</span></a>
+                        <a class="nav-item @(controller == "Plans" ? "active" : null)" aria-current="@(controller == "Plans" ? "page" : null)" asp-controller="Plans" asp-action="Index"><span aria-hidden="true">▦</span><span>Catálogo de planos</span></a>
                     }
                     else
                     {
-                        <a class="nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Onboarding" ? "active" : null)" asp-controller="Onboarding" asp-action="CustomerHome"><span aria-hidden="true">⌂</span><span>Visão geral</span></a>
+                        <a class="nav-item @(controller == "Onboarding" ? "active" : null)" aria-current="@(controller == "Onboarding" ? "page" : null)" asp-controller="Onboarding" asp-action="CustomerHome"><span aria-hidden="true">⌂</span><span>Visão geral</span></a>
+                        <a class="nav-item @(controller == "Organizations" ? "active" : null)" aria-current="@(controller == "Organizations" ? "page" : null)" asp-controller="Organizations" asp-action="Index"><span aria-hidden="true">◎</span><span>Equipe e perfis</span></a>
                     }
                     <a class="nav-item" asp-controller="Privacy" asp-action="Index"><span aria-hidden="true">◇</span><span>Privacidade</span></a>
                 </nav>
-                <div class="sidebar-footer"><span class="status-dot" aria-hidden="true"></span><span>Ambiente seguro</span></div>
+                <div class="sidebar-footer"><span class="status-dot" aria-hidden="true"></span><span>Sessão autenticada</span></div>
             </aside>
             <div class="app-content">
                 <header class="app-topbar">
                     <button class="icon-button mobile-menu" type="button" data-drawer-open aria-controls="application-navigation" aria-expanded="false"><span aria-hidden="true">☰</span><span class="sr-only">Abrir menu</span></button>
                     <div class="topbar-context"><span>@(isPlatform ? "Plataforma" : "Organização")</span><strong>@ViewData["Title"]</strong></div>
                     <details class="user-menu">
-                        <summary><span class="avatar" aria-hidden="true">@((User.Identity?.Name ?? "U")[0])</span><span class="user-name">@User.Identity?.Name</span></summary>
+                        <summary><span class="avatar" aria-hidden="true">@avatarText</span><span class="user-name">@(string.IsNullOrWhiteSpace(displayName) ? "Usuário" : displayName)</span></summary>
                         <div class="user-menu-panel">
                             <span class="menu-caption">Conta autenticada</span>
                             <form asp-controller="Account" asp-action="Logout" method="post"><button class="menu-action" type="submit">Sair com segurança</button></form>
