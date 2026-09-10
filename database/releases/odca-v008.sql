@@ -1134,6 +1134,6 @@ $$;
 REVOKE ALL ON FUNCTION odca.complete_notification(uuid,uuid,boolean,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION odca.complete_notification(uuid,uuid,boolean,text) TO odca_app;
 
-INSERT INTO odca.schema_migrations(version,name,checksum) VALUES(8,'S01 team management and reliable invitations','REPLACE_WITH_SHA256') ON CONFLICT(version) DO NOTHING;
+INSERT INTO odca.schema_migrations(version,name,checksum) VALUES(8,'S01 team management and reliable invitations','95e93b46aab0cff381e1ca7ea2b7a54223545551b7b87fb3686876e13571d6ab') ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 008

@@ -6,7 +6,7 @@ public sealed class BrazilianDocumentTests
 {
     [Theory]
     [InlineData("529.982.247-25", "cpf", "52998224725")]
-    [InlineData("12.345.678/0001-90", "cnpj", "12345678000190")]
+    [InlineData("12.345.678/0001-95", "cnpj", "12345678000195")]
     public void AcceptsValidCheckDigits(string input, string type, string normalized)
     {
         var result = BrazilianDocument.NormalizeAndValidate(input);

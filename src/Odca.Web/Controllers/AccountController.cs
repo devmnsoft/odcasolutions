@@ -13,12 +13,14 @@ public sealed class AccountController(OdcaApiClient apiClient) : Controller
 {
     [AllowAnonymous]
     [HttpGet("entrar")]
-    public IActionResult Login() => View(new LoginViewModel());
+    public IActionResult Login(string? returnUrl = null) =>
+        View(new LoginViewModel { ReturnUrl = SafeReturnUrl(returnUrl) });
 
     [AllowAnonymous]
     [HttpPost("entrar")]
     public async Task<IActionResult> Login(LoginViewModel model, CancellationToken cancellationToken)
     {
+        model.ReturnUrl = SafeReturnUrl(model.ReturnUrl);
         if (!ModelState.IsValid)
         {
             return View(model);
@@ -39,7 +41,7 @@ public sealed class AccountController(OdcaApiClient apiClient) : Controller
 
         var response = result.Value!;
         await SignInAsync(response);
-        return RedirectAfterAuthentication(response);
+        return RedirectAfterAuthentication(response, model.ReturnUrl);
     }
 
     [Authorize]
@@ -216,7 +218,7 @@ public sealed class AccountController(OdcaApiClient apiClient) : Controller
     [HttpGet("acesso-negado")]
     public IActionResult AccessDenied() => View();
 
-    private RedirectToActionResult RedirectAfterAuthentication(LoginResponse response)
+    private IActionResult RedirectAfterAuthentication(LoginResponse response, string? returnUrl = null)
     {
         if (response.MustChangePassword)
         {
@@ -233,8 +235,16 @@ public sealed class AccountController(OdcaApiClient apiClient) : Controller
             return RedirectToAction(nameof(MfaChallenge));
         }
 
+        if (!string.IsNullOrWhiteSpace(returnUrl))
+        {
+            return Redirect(returnUrl);
+        }
+
         return RedirectToAction("Index", "Home");
     }
+
+    private static string? SafeReturnUrl(string? returnUrl) =>
+        TenancyDisplay.IsSafeLocalUrl(returnUrl) ? returnUrl : null;
 
     private async Task SignInAsync(LoginResponse response)
     {

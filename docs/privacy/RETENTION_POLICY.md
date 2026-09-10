@@ -10,4 +10,6 @@ Valores reais precisam de aprovação antes de produção. O motor futuro será 
 | Auditoria de segurança | ocorrência | a definir por evento | prestação de contas/segurança | minimizar, reter ou eliminar | bloqueado para produção |
 | Backups | criação do backup | janela a definir | continuidade | expirar e reaplicar decisões após restore | bloqueado para produção |
 
-Inativação não equivale a eliminação. Legal hold requer motivo, escopo, autor, revisão e encerramento. Eliminação será em lotes idempotentes, com comprovante minimizado por destino e sem registrar novamente o conteúdo eliminado.
+Inativação e soft delete operacional **não** equivalem a eliminação LGPD. Bloquear acesso ou inativar vínculo registra ator, data UTC, tenant, motivo aplicável e correlationId quando a operação exige motivo; o histórico permanece de acesso restrito e não deve armazenar senhas, tokens, documentos completos ou CPF integral sem necessidade.
+
+Legal hold requer motivo, escopo, autor, revisão e encerramento. Eliminação/anonimização aplicável e tratamento de backups dependem de definição jurídica/operacional ainda pendente e serão em lotes idempotentes, com comprovante minimizado por destino e sem registrar novamente o conteúdo eliminado. A existência de flags e logs **não** constitui certificação ou conformidade integral.

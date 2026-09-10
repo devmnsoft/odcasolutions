@@ -116,6 +116,10 @@ Não adicione contratos reais, CPF/CNPJ, tokens, chaves, `.env.local` ou arquivo
 
 ### Contexto de organização, equipe e convites
 
-Depois de autenticar, abra `/organizacoes`. O tenant permanece explícito na URL de equipe e também no formulário; a API deriva o usuário do JWT e revalida vínculo e permissão antes de configurar o contexto RLS. Convites reservam um assento enquanto estiverem pendentes/enviados e somente são aceitos pela conta autenticada com o e-mail destinatário já verificado. A aceitação revoga as sessões da identidade para que as permissões sejam renovadas.
+Depois de autenticar, abra `/organizacoes` e escolha a organização pelo nome. A central operacional fica em `/organizacoes/{tenantId}/equipe` com abas `pessoas`, `convites` e `perfis` (parâmetro `tab`). O tenant permanece explícito na URL e nos formulários; a API deriva o usuário do JWT e revalida vínculo e permissão antes de configurar o contexto RLS.
 
-Em `Development`, o worker grava mensagens exclusivamente no diretório configurado por `Notifications:DevelopmentPickupDirectory`. Esse transporte é para contas sintéticas locais. Fora de Development, ausência de provedor mantém a mensagem em retry/falha, nunca como enviada.
+Convites reservam um assento enquanto estiverem `pending`/`sent` e não expirados. Aceite exige identidade autenticada com o e-mail destinatário já verificado e **não** reativa vínculo bloqueado ou inativo. Após o aceite, a sessão é encerrada para renovar autorizações no próximo login. Enfileirar um convite **não** significa e-mail entregue.
+
+Em `Development`, o worker grava mensagens exclusivamente no diretório configurado por `Notifications:DevelopmentPickupDirectory`. Fora de Development, ausência de provedor mantém a mensagem em retry/falha com código `notification_provider_missing`, nunca como enviada.
+
+API e Worker devem compartilhar o mesmo `DataProtection:KeysPath` persistente e o mesmo `ApplicationName` (`ODCA Solutions`) para desencriptar o token protegido do convite. Em múltiplas instâncias do BFF, o ticket store também precisa de cache distribuído compartilhado; o desenvolvimento local ainda usa cache em memória.

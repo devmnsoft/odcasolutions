@@ -5,10 +5,10 @@
 - [x] Separar visualmente navegação autenticada de plataforma e cliente a partir de informação emitida pelo backend.
 - [x] Impedir shell administrativo durante troca inicial de senha e MFA pendente; implementar sidebar/drawer acessível e preferência local apenas de apresentação.
 - [x] Corrigir `.button-primary`, organizar tokens visuais e melhorar login, cadastro e leitura honesta dos limites do cliente.
-- [ ] Regenerar e validar lockfiles com SDK .NET 10; executar restore bloqueado, build e suítes completas.
+- [x] Regenerar e validar lockfiles com SDK .NET 10; restore bloqueado e build locais aprovados (suíte PostgreSQL ainda pendente).
 - [ ] Executar QA real e capturas de login, MFA, cadastro e dashboards em 360/768/1440.
-- [ ] Entregar seleção explícita de organização e contexto validado no servidor.
-- [ ] Entregar organização, equipe, convites/outbox, perfis delegáveis, quota concorrente e proteção do último administrador.
+- [x] Entregar seleção explícita de organização e contexto validado no servidor.
+- [x] Entregar organização, equipe, convites/outbox, perfis delegáveis, quota e proteção do último administrador (prova concorrente em PostgreSQL ainda pendente).
 - [ ] Entregar consulta/ficha de clientes ao superadministrador com filtros, autorização e auditoria.
 
 ## Prompt 09
@@ -34,7 +34,7 @@
 - [x] MFA real de superadmin, recovery codes e testes de senha apenas negada; reautenticação recente para mudanças privilegiadas ainda deve ser aplicada aos próximos endpoints sensíveis.
 - [x] Cadastro transacional inicial CPF/CNPJ, responsável, termos/aviso/preferências separados e confirmação de e-mail por token com hash/uso único.
 - [x] Assinatura presa à versão exata do plano e ativação comercial honesta em estado `commercial_pending`, sem pagamento fictício.
-- [ ] Seleção de organização, convites, equipe, perfis delegáveis e proteção concorrente do último administrador.
+- [x] Seleção de organização, convites, equipe, perfis delegáveis e proteção do último administrador (API/SQL); prova concorrente A × B em PostgreSQL ainda pendente.
 - [ ] Operação autenticada do atendimento de direitos, prazos configurados, preferências e exportação revisada.
 - [ ] Sessão temporária de suporte com MFA recente, escopo, expiração, revogação e ator real.
 - [ ] Cache distribuído e Data Protection persistido para produção/múltiplas instâncias.
@@ -54,7 +54,7 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [x] Validar dígitos de CPF/CNPJ e reservar documento vivo sob concorrência com migração 006.
 - [ ] Implementar transporte/outbox operacional (segredo protegido temporário, lease, retry, deduplicação e descarte), reenvio limitado/auditado e retomada de rascunho expirado.
 - [ ] Substituir versões `pending-legal-approval` por identificadores de textos aprovados e capturar contexto mínimo definido por Privacidade.
-- [ ] Entregar seletor de organização, equipe, perfis delegáveis, convites e assentos com proteção do último administrador.
+- [x] Entregar seletor de organização, equipe, perfis delegáveis, convites e assentos com proteção do último administrador (API/SQL; BFF visual em andamento paralelo).
 - [ ] Configurar cache realmente compartilhado e validar Data Protection/tickets entre duas instâncias.
 - [ ] Depois: suporte temporário e operação de direitos; S02; S03; OCR/Office e sequência comercial, sem antecipar editor.
 
@@ -63,7 +63,12 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [x] Contexto explícito de organização derivado da identidade, com tenant por URL/formulário e revalidação no servidor.
 - [x] Administrador inicial idempotente, catálogo delegável inicial, listagem de equipe/perfis e criação de perfil permitido.
 - [x] Criação de convite com reserva transacional de assento, token hashado/uso único, aceite vinculado a e-mail verificado e outbox com lease/retry local.
-- [ ] Regenerar lockfiles com SDK 10.0.400 (`--force-evaluate`) e confirmar restore locked/build/testes; nunca editar hashes manualmente.
-- [ ] Completar paginação, bloqueio/inativação/restauração, reenvio/cancelamento, último administrador sob duas transações e testes PostgreSQL A × B.
-- [ ] Configurar adaptador de e-mail de produção, política de expiração/limpeza e fila operacional de falhas.
+- [x] Lockfiles validados com SDK 10.0.400 (`restore --locked-mode` + build locais).
+- [x] Completar paginação, bloqueio/inativação/restauração, reenvio/cancelamento, BFF com abas e proteção do último administrador; testes PostgreSQL A × B concorrentes ainda pendentes.
+- [ ] Configurar adaptador de e-mail de produção, política de limpeza operacional e fila de falhas com operador humano.
 - [ ] Executar QA por teclado e capturas 360/768/1440 com PostgreSQL/API/Web reais.
+
+## Próxima fatia vertical — contratos (S02)
+
+- [ ] Cadastro manual de tipo + contraparte → contrato com vigência → listagem/detalhe → permissões → histórico → alerta interno.
+- Não antecipar OCR/editor rico nem declarar conformidade LGPD plena.

@@ -97,7 +97,7 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
         using var client = factory.CreateClient();
         var request = new StartCustomerRegistrationRequest(
             "basic",
-            "12.345.678/0001-90",
+            "12.345.678/0001-95",
             "Cliente Sintético",
             "cliente.sintetico@example.test",
             "Cliente!Password2026",

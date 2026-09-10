@@ -1,7 +1,32 @@
 # Próxima execução
 
-Use o SDK 10.0.400 de `global.json`. Execute `dotnet restore Odca.sln --force-evaluate`, revise apenas os lockfiles produzidos e confirme `dotnet restore Odca.sln --locked-mode`; depois rode build e testes. A máquina da evolução 11 não possuía `dotnet` e o download oficial retornou HTTP 403, portanto nenhum lock foi alterado à mão.
+## Fechar evidência do prompt 13
 
-Em PostgreSQL 18 descartável, prove migração vazia/upgrade/reaplicação e os cenários concorrentes de assentos, token único e último administrador. Complete bloqueio/inativação/restauração, reenvio/cancelamento e transporte configurável de produção. Verifique RLS sem contexto, tenant A × B e pool reutilizado.
+1. Com PostgreSQL 18 autorizado, criar/usar `odca` e `odca_test_local`, aplicar migrações até a versão 9 e executar:
 
-Execute API, Web e Worker com contas sintéticas: escolha entre duas organizações, crie perfil, envie/aceite convite e confirme renovação da sessão. Faça QA por teclado e capturas 360/768/1440. Depois prossiga com suporte temporário/privacidade operacional e somente então S02/S03 na sequência do roadmap.
+```powershell
+dotnet run --project src/Odca.Bootstrap -- init
+$env:ODCA_NATIVE_ADMIN_CONNECTION = 'Host=localhost;Port=5432;Database=odca;Username=postgres;Password=<senha>;Include Error Detail=false'
+dotnet run --project src/Odca.Bootstrap -- configure-native
+Remove-Item Env:ODCA_NATIVE_ADMIN_CONNECTION
+dotnet run --project src/Odca.Bootstrap -- migrate
+dotnet run --project src/Odca.Bootstrap -- provision-test-access --environment Development
+dotnet run --project src/Odca.Bootstrap -- show-login
+```
+
+2. Suíte descartável:
+
+```powershell
+$env:ODCA_TEST_ENVIRONMENT = 'ODCA_INTEGRATION_TESTS'
+$env:ODCA_TEST_ADMIN_CONNECTION = 'Host=localhost;Port=5432;Database=odca_test_local;Username=postgres;Password=<senha-admin>;Include Error Detail=false'
+$env:ODCA_TEST_APP_CONNECTION = 'Host=localhost;Port=5432;Database=odca_test_local;Username=odca_test_app_login;Password=<senha-exclusiva-de-teste>;Include Error Detail=false'
+dotnet test tests/Odca.IntegrationTests --configuration Release
+```
+
+3. Jornada E2E: administrador autentica → escolhe organização → cria perfil permitido → convida → verifica fila local → convidado aceita → administrador bloqueia → usuário perde acesso → auditoria registra. Usar duas organizações para tentativa cruzada. Capturas 360/768/1280/1440.
+
+## Próxima fatia vertical — contratos (S02)
+
+Cadastro manual de tipo e contraparte → contrato com vigência → listagem/detalhes → permissões → histórico → alerta interno.
+
+Depois: upload seguro e revisão de extração; editor e versões; assinatura e créditos; integrações de comunicação e cobrança. Não implementar vários módulos pela metade.

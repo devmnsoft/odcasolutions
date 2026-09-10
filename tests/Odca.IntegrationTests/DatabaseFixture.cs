@@ -47,7 +47,9 @@ public sealed class DatabaseFixture : IAsyncLifetime
     public async Task<int> MigrationCountAsync()
     {
         await using var connection = new NpgsqlConnection(AdminConnectionString);
-        return await connection.ExecuteScalarAsync<int>("SELECT count(*)::int FROM odca.schema_migrations WHERE version BETWEEN 1 AND 5;");
+        return await connection.ExecuteScalarAsync<int>(
+            "SELECT count(*)::int FROM odca.schema_migrations WHERE version BETWEEN 1 AND @current;",
+            new { current = DatabaseSchema.CurrentVersion });
     }
 
     public async Task<bool> IsolationFixesArePresentAsync()

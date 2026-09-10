@@ -1,15 +1,442 @@
-@model Odca.Web.Models.TeamPageViewModel
-@{ViewData["Title"]="Equipe e perfis";}
-<section class="page-heading"><div><span class="eyebrow">@Model.Organization.Name</span><h1>Equipe e perfis</h1><p>Vínculos e permissões válidos somente nesta organização.</p></div></section>
-@if(TempData["Success"] is string success){<div class="alert alert-success" role="status">@success</div>}
-@if(TempData["Error"] is string error){<div class="alert alert-error" role="alert">@error</div>}
-<section class="card"><h2>Convidar pessoa</h2><form asp-action="Invite" asp-route-tenantId="@Model.Organization.Id" method="post" data-processing><input type="hidden" name="TenantId" value="@Model.Organization.Id"/><input type="hidden" name="IdempotencyKey" value="@(TempData["PreservedIdempotencyKey"] ?? Guid.NewGuid().ToString("N"))"/><div class="form-grid"><label>E-mail<input name="Email" type="email" required autocomplete="email"/></label><label>Perfil<select name="RoleId" required><option value="">Selecione</option>@foreach(var role in Model.Roles){<option value="@role.Id">@role.Name</option>}</select></label></div><button class="button button-primary" type="submit" data-processing-label="Enfileirando…">Enviar convite</button></form></section>
-<section class="card"><h2>Novo perfil</h2><form asp-action="CreateRole" asp-route-tenantId="@Model.Organization.Id" method="post" data-processing><label>Nome<input name="name" required maxlength="100"/></label><fieldset><legend>Permissões</legend><label><input type="checkbox" name="permissions" value="tenant.organization.read"/> Consultar organização</label><label><input type="checkbox" name="permissions" value="tenant.team.read"/> Consultar equipe</label></fieldset><button class="button" type="submit">Criar perfil</button></form></section>
-<section class="card"><form method="get" class="form-inline"><label>Buscar<input name="search" value="@Model.Search" placeholder="Nome ou e-mail"/></label><label>Estado<select name="status"><option value="">Todos</option><option value="active" selected="@(Model.Status == "active")">Ativo</option><option value="blocked" selected="@(Model.Status == "blocked")">Bloqueado</option><option value="inactive" selected="@(Model.Status == "inactive")">Inativo</option></select></label><button class="button" type="submit">Filtrar</button></form><div class="table-wrap"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Estado</th><th>Perfis</th><th>Ações</th></tr></thead><tbody>@foreach(var member in Model.Members){<tr><td>@member.Name</td><td>@member.Email</td><td>
-    @if(member.Status == "active") { <span class="badge" style="color:green;">Ativo</span> }
-    else if(member.Status == "blocked") { <span class="badge" style="color:red;">Bloqueado</span> }
-    else { <span class="badge" style="color:gray;">@member.Status</span> }
-</td><td>@string.Join(", ",member.Roles)</td><td><button class="button button-small" type="button" disabled title="Ação de edição não implementada nesta etapa">Editar</button></td></tr>}</tbody></table></div>
-<!-- Paginação simulada para evitar truncamento silencioso -->
-<div class="pagination"><button disabled>&laquo; Anterior</button> <span>Página 1</span> <button disabled>Próxima &raquo;</button></div>
+@model TeamPageViewModel
+@{
+    ViewData["Title"] = "Equipe e perfis";
+    var org = Model.Organization;
+    var members = Model.Members;
+    var invitations = Model.Invitations;
+    var totalPages = members is null ? 1 : Math.Max(1, (int)Math.Ceiling(members.TotalCount / (double)members.PageSize));
+    var invitePages = invitations is null ? 1 : Math.Max(1, (int)Math.Ceiling(invitations.TotalCount / (double)invitations.PageSize));
+    var permissionGroups = TenancyDisplay.PermissionCatalog.GroupBy(x => x.Group);
+}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">@org.Name</span>
+        <h1>Central da equipe</h1>
+        <p>Vínculos, convites e perfis válidos somente nesta organização.</p>
+    </div>
+    <div class="toolbar">
+        @if (Model.CanManageOrganization)
+        {
+            <a class="button" asp-action="Edit" asp-route-tenantId="@org.Id">Editar organização</a>
+        }
+        <a class="button" asp-action="Index">Trocar organização</a>
+    </div>
 </section>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success" role="status">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-error" role="alert">@error</div>
+}
+
+@if (Model.Overview is not null)
+{
+    <div class="metrics">
+        <div class="metric"><span>Membros ativos</span><strong>@Model.Overview.ActiveMembers</strong></div>
+        <div class="metric"><span>Convites válidos</span><strong>@Model.Overview.ValidInvitations</strong></div>
+        <div class="metric"><span>Assentos disponíveis</span><strong>@Model.Overview.AvailableSeats</strong></div>
+    </div>
+}
+
+<div class="toolbar">
+    <nav class="tabs" aria-label="Seções da equipe">
+        <a class="tab @(Model.Tab == "pessoas" ? "active" : null)"
+           asp-action="Team" asp-route-tenantId="@org.Id" asp-route-tab="pessoas"
+           asp-route-search="@Model.Search" asp-route-status="@Model.Status" asp-route-page="1"
+           aria-current="@(Model.Tab == "pessoas" ? "page" : null)">Pessoas</a>
+        <a class="tab @(Model.Tab == "convites" ? "active" : null)"
+           asp-action="Team" asp-route-tenantId="@org.Id" asp-route-tab="convites"
+           asp-route-invitationStatus="@Model.InvitationStatus" asp-route-page="1"
+           aria-current="@(Model.Tab == "convites" ? "page" : null)">Convites</a>
+        <a class="tab @(Model.Tab == "perfis" ? "active" : null)"
+           asp-action="Team" asp-route-tenantId="@org.Id" asp-route-tab="perfis"
+           aria-current="@(Model.Tab == "perfis" ? "page" : null)">Perfis</a>
+    </nav>
+    @if (Model.CanManageTeam)
+    {
+        <div class="toolbar">
+            <button class="button button-primary" type="button" data-open-panel="invite">Convidar pessoa</button>
+            <button class="button" type="button" data-open-panel="role">Novo perfil</button>
+        </div>
+    }
+</div>
+
+@if (Model.Tab == "pessoas")
+{
+    <section class="card">
+        <form method="get" class="form-inline toolbar" action="@Url.Action("Team", new { tenantId = org.Id })">
+            <input type="hidden" name="tab" value="pessoas" />
+            <label>Buscar<input name="search" value="@Model.Search" placeholder="Nome ou e-mail" /></label>
+            <label>Estado
+                <select name="status">
+                    <option value="">Todos</option>
+                    <option value="active" selected="@(Model.Status == "active")">Ativo</option>
+                    <option value="blocked" selected="@(Model.Status == "blocked")">Bloqueado</option>
+                    <option value="inactive" selected="@(Model.Status == "inactive")">Inativo</option>
+                </select>
+            </label>
+            <button class="button" type="submit">Filtrar</button>
+        </form>
+        <p class="muted">Bloquear suspende o acesso mantendo o vínculo. Inativar remove o membro da contagem de assentos ativos.</p>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>Nome</th><th>E-mail</th><th>Estado</th><th>Perfis</th><th>Ações</th></tr>
+                </thead>
+                <tbody>
+                @if (members is null || members.Items.Count == 0)
+                {
+                    <tr><td colspan="5"><div class="empty-state"><h2>Nenhuma pessoa encontrada</h2><p>Ajuste a busca ou convide alguém para esta organização.</p></div></td></tr>
+                }
+                else
+                {
+                    foreach (var member in members.Items)
+                    {
+                        <tr>
+                            <td>@member.Name</td>
+                            <td>@member.Email</td>
+                            <td><span class="@TenancyDisplay.MemberStatusClass(member.Status)">@TenancyDisplay.MemberStatus(member.Status)</span></td>
+                            <td>@(member.Roles.Length == 0 ? "—" : string.Join(", ", member.Roles))</td>
+                            <td>
+                                @if (Model.CanManageTeam)
+                                {
+                                    <details class="action-menu">
+                                        <summary class="button button-small">Ações</summary>
+                                        <div class="action-menu-panel">
+                                            <a class="button button-small"
+                                               asp-action="Team"
+                                               asp-route-tenantId="@org.Id"
+                                               asp-route-tab="pessoas"
+                                               asp-route-search="@Model.Search"
+                                               asp-route-status="@Model.Status"
+                                               asp-route-page="@Model.Page"
+                                               asp-route-editMemberId="@member.UserId"
+                                               asp-route-panel="member-roles">Alterar perfis</a>
+                                            @if (member.Status == "active")
+                                            {
+                                                <button class="button button-small" type="button"
+                                                        data-confirm-open
+                                                        data-confirm-title="Bloquear @member.Name?"
+                                                        data-confirm-body="O acesso à organização será suspenso imediatamente. O vínculo permanece e poderá ser desbloqueado depois."
+                                                        data-confirm-action="Bloquear"
+                                                        data-confirm-form="member-action-@member.UserId-block">Bloquear</button>
+                                                <button class="button button-small" type="button"
+                                                        data-confirm-open
+                                                        data-confirm-title="Inativar @member.Name?"
+                                                        data-confirm-body="O membro deixa de contar como assento ativo e perde o acesso operacional."
+                                                        data-confirm-action="Inativar"
+                                                        data-confirm-form="member-action-@member.UserId-inactivate">Inativar</button>
+                                            }
+                                            @if (member.Status == "blocked")
+                                            {
+                                                <button class="button button-small" type="button"
+                                                        data-confirm-open
+                                                        data-confirm-title="Desbloquear @member.Name?"
+                                                        data-confirm-body="O membro poderá voltar a acessar conforme seus perfis."
+                                                        data-confirm-action="Desbloquear"
+                                                        data-confirm-form="member-action-@member.UserId-unblock">Desbloquear</button>
+                                            }
+                                            @if (member.Status == "inactive")
+                                            {
+                                                <button class="button button-small" type="button"
+                                                        data-confirm-open
+                                                        data-confirm-title="Restaurar @member.Name?"
+                                                        data-confirm-body="O membro volta ao estado ativo e passa a consumir um assento."
+                                                        data-confirm-action="Restaurar"
+                                                        data-confirm-form="member-action-@member.UserId-restore">Restaurar</button>
+                                            }
+                                        </div>
+                                    </details>
+                                    @foreach (var action in new[] { "block", "unblock", "inactivate", "restore" })
+                                    {
+                                        <form id="member-action-@member.UserId-@action"
+                                              class="sr-form"
+                                              asp-action="MemberAction"
+                                              asp-route-tenantId="@org.Id"
+                                              asp-route-userId="@member.UserId"
+                                              asp-route-actionName="@action"
+                                              method="post">
+                                            <input type="hidden" name="UserId" value="@member.UserId" />
+                                            <input type="hidden" name="search" value="@Model.Search" />
+                                            <input type="hidden" name="status" value="@Model.Status" />
+                                            <input type="hidden" name="page" value="@Model.Page" />
+                                            <input type="hidden" name="Reason" value="Ação administrativa pela central da equipe." />
+                                        </form>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="muted">Somente leitura</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+        @if (members is not null && members.TotalCount > members.PageSize)
+        {
+            <nav class="pagination" aria-label="Paginação de pessoas">
+                <a class="button button-small @(Model.Page <= 1 ? "disabled" : null)"
+                   asp-action="Team" asp-route-tenantId="@org.Id" asp-route-tab="pessoas"
+                   asp-route-search="@Model.Search" asp-route-status="@Model.Status" asp-route-page="@(Model.Page - 1)">Anterior</a>
+                <span>Página @Model.Page de @totalPages (@members.TotalCount)</span>
+                <a class="button button-small @(Model.Page >= totalPages ? "disabled" : null)"
+                   asp-action="Team" asp-route-tenantId="@org.Id" asp-route-tab="pessoas"
+                   asp-route-search="@Model.Search" asp-route-status="@Model.Status" asp-route-page="@(Model.Page + 1)">Próxima</a>
+            </nav>
+        }
+    </section>
+}
+else if (Model.Tab == "convites")
+{
+    <section class="card">
+        <form method="get" class="form-inline toolbar" action="@Url.Action("Team", new { tenantId = org.Id })">
+            <input type="hidden" name="tab" value="convites" />
+            <label>Estado do convite
+                <select name="invitationStatus">
+                    <option value="">Todos</option>
+                    <option value="pending" selected="@(Model.InvitationStatus == "pending")">Pendente</option>
+                    <option value="sent" selected="@(Model.InvitationStatus == "sent")">Enviado</option>
+                    <option value="failed" selected="@(Model.InvitationStatus == "failed")">Falha</option>
+                    <option value="accepted" selected="@(Model.InvitationStatus == "accepted")">Aceito</option>
+                    <option value="cancelled" selected="@(Model.InvitationStatus == "cancelled")">Cancelado</option>
+                    <option value="expired" selected="@(Model.InvitationStatus == "expired")">Expirado</option>
+                </select>
+            </label>
+            <button class="button" type="submit">Filtrar</button>
+        </form>
+        <p class="muted">Convite na fila ainda não significa entrega confirmada ao destinatário.</p>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>Destinatário</th><th>Perfil</th><th>Criado</th><th>Expira</th><th>Convite</th><th>Entrega</th><th>Ações</th></tr>
+                </thead>
+                <tbody>
+                @if (invitations is null || invitations.Items.Count == 0)
+                {
+                    <tr><td colspan="7"><div class="empty-state"><h2>Nenhum convite</h2><p>Convide pessoas pela ação Convidar pessoa.</p></div></td></tr>
+                }
+                else
+                {
+                    foreach (var invite in invitations.Items)
+                    {
+                        <tr>
+                            <td>@invite.Recipient</td>
+                            <td>@invite.RoleName</td>
+                            <td>@invite.CreatedAt.ToLocalTime().ToString("g")</td>
+                            <td>@invite.ExpiresAt.ToLocalTime().ToString("g")</td>
+                            <td><span class="@TenancyDisplay.InvitationStatusClass(invite.Status)">@TenancyDisplay.InvitationStatus(invite.Status)</span></td>
+                            <td>
+                                <span class="@TenancyDisplay.DeliveryStatusClass(invite.DeliveryStatus)">@TenancyDisplay.DeliveryStatus(invite.DeliveryStatus)</span>
+                                @if (!string.IsNullOrWhiteSpace(invite.DeliveryErrorCode))
+                                {
+                                    <span class="muted">@TenancyDisplay.DeliveryErrorMessage(invite.DeliveryErrorCode)</span>
+                                }
+                            </td>
+                            <td>
+                                @if (Model.CanManageTeam && invite.Status is "pending" or "sent" or "failed")
+                                {
+                                    <div class="toolbar">
+                                        <form asp-action="ResendInvitation" asp-route-tenantId="@org.Id" asp-route-invitationId="@invite.Id" method="post" data-processing>
+                                            <button class="button button-small" type="submit" data-processing-label="Enfileirando…">Reenviar</button>
+                                        </form>
+                                        <button class="button button-small" type="button"
+                                                data-confirm-open
+                                                data-confirm-title="Cancelar convite para @invite.Recipient?"
+                                                data-confirm-body="O destinatário não poderá mais aceitar este convite."
+                                                data-confirm-action="Cancelar convite"
+                                                data-confirm-form="cancel-invite-@invite.Id">Cancelar</button>
+                                        <form id="cancel-invite-@invite.Id" class="sr-form"
+                                              asp-action="CancelInvitation" asp-route-tenantId="@org.Id" asp-route-invitationId="@invite.Id" method="post"></form>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="muted">—</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+        @if (invitations is not null && invitations.TotalCount > invitations.PageSize)
+        {
+            <nav class="pagination" aria-label="Paginação de convites">
+                <a class="button button-small"
+                   asp-action="Team" asp-route-tenantId="@org.Id" asp-route-tab="convites"
+                   asp-route-invitationStatus="@Model.InvitationStatus" asp-route-page="@(Model.Page - 1)">Anterior</a>
+                <span>Página @Model.Page de @invitePages (@invitations.TotalCount)</span>
+                <a class="button button-small"
+                   asp-action="Team" asp-route-tenantId="@org.Id" asp-route-tab="convites"
+                   asp-route-invitationStatus="@Model.InvitationStatus" asp-route-page="@(Model.Page + 1)">Próxima</a>
+            </nav>
+        }
+    </section>
+}
+else
+{
+    <section class="card">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>Perfil</th><th>Tipo</th><th>Permissões</th><th>Ações</th></tr>
+                </thead>
+                <tbody>
+                @if (Model.Roles.Length == 0)
+                {
+                    <tr><td colspan="4"><div class="empty-state"><h2>Nenhum perfil</h2><p>Crie um perfil delegável para organizar permissões.</p></div></td></tr>
+                }
+                else
+                {
+                    foreach (var role in Model.Roles)
+                    {
+                        <tr>
+                            <td>@role.Name</td>
+                            <td>@(role.IsSystem ? "Sistema" : "Personalizado")</td>
+                            <td>@string.Join(", ", role.Permissions.Select(TenancyDisplay.PermissionLabel))</td>
+                            <td>
+                                @if (Model.CanManageTeam && !role.IsSystem)
+                                {
+                                    <a class="button button-small"
+                                       asp-action="Team"
+                                       asp-route-tenantId="@org.Id"
+                                       asp-route-tab="perfis"
+                                       asp-route-editRoleId="@role.Id"
+                                       asp-route-panel="role">Editar</a>
+                                }
+                                else if (role.IsSystem)
+                                {
+                                    <span class="muted">Protegido</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@* Drawers / full-page panels *@
+<div class="drawer-scrim panel-scrim" data-close-panel hidden></div>
+
+<aside class="drawer-panel @(Model.OpenPanel == "invite" ? "is-open" : null)" id="panel-invite" data-panel="invite" aria-hidden="@(Model.OpenPanel == "invite" ? "false" : "true")">
+    <div class="drawer-header">
+        <h2>Convidar pessoa</h2>
+        <button type="button" class="icon-button" data-close-panel aria-label="Fechar"><span aria-hidden="true">×</span></button>
+    </div>
+    <form asp-action="Invite" asp-route-tenantId="@org.Id" method="post" data-processing>
+        <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+        <input type="hidden" name="TenantId" value="@org.Id" />
+        <input type="hidden" name="IdempotencyKey" value="@Model.Invite.IdempotencyKey" />
+        <label>E-mail
+            <input name="Email" type="email" required autocomplete="email" value="@Model.Invite.Email" />
+        </label>
+        <label>Perfil
+            <select name="RoleId" required>
+                <option value="">Selecione</option>
+                @foreach (var role in Model.Roles.Where(r => !r.IsSystem || r.Permissions.Length > 0))
+                {
+                    <option value="@role.Id" selected="@(Model.Invite.RoleId == role.Id ? "selected" : null)">@role.Name</option>
+                }
+            </select>
+        </label>
+        <button class="button button-primary" type="submit" data-processing-label="Enfileirando…">Enviar convite</button>
+    </form>
+</aside>
+
+<aside class="drawer-panel @(Model.OpenPanel == "role" ? "is-open" : null)" id="panel-role" data-panel="role" aria-hidden="@(Model.OpenPanel == "role" ? "false" : "true")">
+    <div class="drawer-header">
+        <h2>@(Model.RoleForm.RoleId is null ? "Novo perfil" : "Editar perfil")</h2>
+        <button type="button" class="icon-button" data-close-panel aria-label="Fechar"><span aria-hidden="true">×</span></button>
+    </div>
+    @if (Model.RoleForm.IsSystem)
+    {
+        <p class="muted">Perfis de sistema são protegidos e não podem ser alterados por esta tela.</p>
+    }
+    else
+    {
+        @if (Model.RoleForm.RoleId is not null && Model.RoleForm.AffectedMemberCount > 0)
+        {
+            <p class="warning" role="status">Esta alteração afeta @Model.RoleForm.AffectedMemberCount membro(s) com o perfil.</p>
+        }
+        <form asp-action="@(Model.RoleForm.RoleId is null ? "CreateRole" : "UpdateRole")"
+              asp-route-tenantId="@org.Id"
+              asp-route-roleId="@Model.RoleForm.RoleId"
+              method="post"
+              data-processing>
+            <label>Nome
+                <input name="Name" required maxlength="100" value="@Model.RoleForm.Name" @(Model.RoleForm.RoleId is null ? null : "readonly") />
+            </label>
+            @if (Model.RoleForm.RoleId is not null)
+            {
+                <p class="muted">A edição altera apenas as permissões delegáveis do perfil.</p>
+            }
+            <fieldset>
+                <legend>Permissões</legend>
+                @foreach (var group in permissionGroups)
+                {
+                    <div class="permission-group">
+                        <strong>@group.Key</strong>
+                        @foreach (var permission in group)
+                        {
+                            <label class="checkbox-line">
+                                <input type="checkbox" name="Permissions" value="@permission.Code"
+                                       checked="@(Model.RoleForm.Permissions.Contains(permission.Code) ? "checked" : null)" />
+                                <span>@permission.Label</span>
+                            </label>
+                        }
+                    </div>
+                }
+            </fieldset>
+            <button class="button button-primary" type="submit" data-processing-label="Salvando…">
+                @(Model.RoleForm.RoleId is null ? "Criar perfil" : "Salvar perfil")
+            </button>
+        </form>
+    }
+</aside>
+
+<aside class="drawer-panel @(Model.OpenPanel == "member-roles" ? "is-open" : null)" id="panel-member-roles" data-panel="member-roles" aria-hidden="@(Model.OpenPanel == "member-roles" ? "false" : "true")">
+    <div class="drawer-header">
+        <h2>Perfis de @Model.MemberRoles.MemberName</h2>
+        <button type="button" class="icon-button" data-close-panel aria-label="Fechar"><span aria-hidden="true">×</span></button>
+    </div>
+    <form asp-action="UpdateMemberRoles" asp-route-tenantId="@org.Id" asp-route-userId="@Model.MemberRoles.UserId" method="post" data-processing>
+        <input type="hidden" name="UserId" value="@Model.MemberRoles.UserId" />
+        <input type="hidden" name="MemberName" value="@Model.MemberRoles.MemberName" />
+        <input type="hidden" name="search" value="@Model.Search" />
+        <input type="hidden" name="status" value="@Model.Status" />
+        <input type="hidden" name="page" value="@Model.Page" />
+        <fieldset>
+            <legend>Perfis</legend>
+            @foreach (var role in Model.Roles)
+            {
+                <label class="checkbox-line">
+                    <input type="checkbox" name="RoleIds" value="@role.Id"
+                           checked="@(Model.MemberRoles.RoleIds.Contains(role.Id) ? "checked" : null)" />
+                    <span>@role.Name @(role.IsSystem ? "(sistema)" : "")</span>
+                </label>
+            }
+        </fieldset>
+        <button class="button button-primary" type="submit" data-processing-label="Salvando…">Salvar perfis</button>
+    </form>
+</aside>
+
+<dialog class="confirm-dialog" data-confirm-dialog aria-labelledby="confirm-title">
+    <form method="dialog" class="confirm-dialog-body">
+        <h2 id="confirm-title" data-confirm-title-target>Confirmar ação</h2>
+        <p data-confirm-body-target></p>
+        <div class="toolbar">
+            <button class="button" value="cancel" type="submit">Voltar</button>
+            <button class="button button-primary" value="confirm" type="submit" data-confirm-action-target>Confirmar</button>
+        </div>
+    </form>
+</dialog>

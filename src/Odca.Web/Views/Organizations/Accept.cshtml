@@ -1,3 +1,46 @@
-@model Odca.Contracts.Tenancy.AcceptInvitationRequest
-@{ViewData["Title"]="Aceitar convite";}
-<section class="auth-card"><span class="eyebrow">Acesso à organização</span><h1>Aceitar convite</h1><p>A conta autenticada deve ter o mesmo e-mail verificado do destinatário. Ao aceitar, sua sessão será renovada.</p><div asp-validation-summary="All" class="validation-summary"></div><form method="post" data-processing><input type="hidden" asp-for="InvitationId"/><input type="hidden" asp-for="Token"/><button class="button button-primary button-block" type="submit">Aceitar convite</button></form></section>
+@model AcceptInvitationViewModel
+@{
+    ViewData["Title"] = "Aceitar convite";
+    var hasToken = !string.IsNullOrWhiteSpace(Model.Token) && Model.InvitationId != Guid.Empty;
+}
+<section class="auth-card card narrow">
+    <span class="eyebrow">Acesso à organização</span>
+    <h1>Aceitar convite</h1>
+
+    @if (Model.Preview is not null)
+    {
+        <p>Você foi convidado para <strong>@Model.Preview.OrganizationName</strong> com o perfil <strong>@Model.Preview.RoleName</strong>.</p>
+        <p class="muted">Destinatário: @Model.Preview.RecipientEmail. Validade até @Model.Preview.ExpiresAt.ToLocalTime().ToString("g").</p>
+    }
+    else if (hasToken)
+    {
+        <p>Não foi possível pré-visualizar o destino do convite neste momento. Ao aceitar, a conta autenticada precisa ser a do e-mail convidado e com e-mail verificado.</p>
+    }
+    else
+    {
+        <p>O link de convite está incompleto. Use o endereço recebido por e-mail.</p>
+    }
+
+    <div asp-validation-summary="All" class="validation-summary" role="alert"></div>
+
+    @if (!Model.IsAuthenticated)
+    {
+        <div class="empty-state">
+            <h2>Entre com a conta convidada</h2>
+            <p>Não é necessário contratar um plano nem criar outra empresa. Use a conta do e-mail convidado ou cadastre-se com esse mesmo e-mail e depois volte a este convite.</p>
+            <div class="toolbar">
+                <a class="button button-primary" asp-controller="Account" asp-action="Login" asp-route-returnUrl="@Model.ReturnUrl">Entrar</a>
+                <a class="button" asp-controller="Catalog" asp-action="Plans">Ver planos (opcional)</a>
+            </div>
+        </div>
+    }
+    else if (hasToken)
+    {
+        <p class="muted">Ao aceitar, você sairá da sessão atual e precisará entrar novamente para carregar as permissões atualizadas.</p>
+        <form asp-action="Accept" method="post" data-processing>
+            <input type="hidden" asp-for="InvitationId" />
+            <input type="hidden" asp-for="Token" />
+            <button class="button button-primary button-block" type="submit" data-processing-label="Aceitando…">Aceitar convite</button>
+        </form>
+    }
+</section>

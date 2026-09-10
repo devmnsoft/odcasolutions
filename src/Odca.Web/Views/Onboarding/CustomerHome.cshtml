@@ -1,29 +1,74 @@
-@model Odca.Contracts.Onboarding.CustomerHomeResponse
+@model CustomerHomePageViewModel
 @{
     ViewData["Title"] = "Visão geral";
+    var home = Model.Home;
+    var overview = Model.Overview;
 }
 <section>
-    <div class="dashboard-heading">
-        <p class="eyebrow">Organização</p>
-        <h1>@Model.OrganizationName</h1>
-        <p class="muted">Estado comercial: <strong>@Model.CommercialState</strong>. O uso operacional permanece limitado até ativação comercial validada.</p>
+    <div class="dashboard-heading page-heading">
+        <div>
+            <p class="eyebrow">Organização</p>
+            <h1>@home.OrganizationName</h1>
+            <p class="muted">Estado comercial: <strong>@home.CommercialState</strong>. O uso operacional permanece limitado até ativação comercial validada.</p>
+        </div>
+        <a class="button" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@home.TenantId">Abrir equipe</a>
     </div>
+
+    <div class="metrics">
+        <a class="metric" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@home.TenantId" asp-route-tab="pessoas" asp-route-status="active">
+            <span>Membros ativos</span>
+            <strong>@(overview?.ActiveMembers.ToString() ?? "—")</strong>
+        </a>
+        <a class="metric" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@home.TenantId" asp-route-tab="convites" asp-route-invitationStatus="pending">
+            <span>Convites válidos</span>
+            <strong>@(overview?.ValidInvitations.ToString() ?? "—")</strong>
+        </a>
+        <a class="metric" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@home.TenantId" asp-route-tab="pessoas">
+            <span>Assentos disponíveis</span>
+            <strong>@(overview?.AvailableSeats.ToString() ?? "—")</strong>
+        </a>
+    </div>
+
     <div class="metrics">
         <div class="metric">
-            <span>Plano</span>
-            <strong>@Model.PlanName</strong>
+            <span>Plano contratado</span>
+            <strong>@home.PlanName</strong>
         </div>
         <div class="metric">
             <span>Limite contratado de usuários</span>
-            <strong>@Model.ActiveSeats</strong>
+            <strong>@(overview?.SeatLimit ?? home.ActiveSeats)</strong>
         </div>
         <div class="metric">
-            <span>Limite contratado de armazenamento</span>
-            <strong>@(Model.StorageBytes / 1_000_000_000) GB</strong>
+            <span>Capacidade contratada de armazenamento</span>
+            <strong>@(home.StorageBytes / 1_000_000_000) GB</strong>
         </div>
     </div>
-    <section class="card empty-state">
-        <h2>Próximo passo</h2>
-        <p>Confira o estado comercial acima. Os limites exibidos pertencem à versão contratada do plano; eles não representam consumo medido.</p>
-    </section>
+
+    @if (overview?.Pendencies is { Count: > 0 })
+    {
+        <section class="card">
+            <h2>Pendências acionáveis</h2>
+            <ul class="pendency-list">
+                @foreach (var item in overview.Pendencies)
+                {
+                    <li>
+                        <span>@item.Message</span>
+                        <a class="button button-small"
+                           asp-controller="Organizations"
+                           asp-action="Team"
+                           asp-route-tenantId="@home.TenantId"
+                           asp-route-tab="@(item.Tab ?? "pessoas")"
+                           asp-route-status="@item.StatusFilter">Abrir</a>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+    else if (overview is null)
+    {
+        <section class="card empty-state">
+            <h2>Próximo passo</h2>
+            <p>Confira o estado comercial acima. Os limites exibidos pertencem à versão contratada do plano. Métricas de uso de assentos aparecerão quando a visão operacional estiver disponível.</p>
+        </section>
+    }
 </section>

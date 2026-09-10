@@ -37,15 +37,15 @@
                 <nav class="side-nav">
                     @if (isPlatform)
                     {
-                        <a class="nav-item @(controller == "Home" ? "active" : null)" aria-current="@(controller == "Home" ? "page" : null)" asp-controller="Home" asp-action="Index"><span aria-hidden="true">⌂</span><span>Visão global</span></a>
-                        <a class="nav-item @(controller == "Plans" ? "active" : null)" aria-current="@(controller == "Plans" ? "page" : null)" asp-controller="Plans" asp-action="Index"><span aria-hidden="true">▦</span><span>Catálogo de planos</span></a>
+                        <a class="nav-item @(controller == "Home" ? "active" : null)" aria-label="Visão global" aria-current="@(controller == "Home" ? "page" : null)" asp-controller="Home" asp-action="Index"><span aria-hidden="true">⌂</span><span>Visão global</span></a>
+                        <a class="nav-item @(controller == "Plans" ? "active" : null)" aria-label="Catálogo de planos" aria-current="@(controller == "Plans" ? "page" : null)" asp-controller="Plans" asp-action="Index"><span aria-hidden="true">▦</span><span>Catálogo de planos</span></a>
                     }
                     else
                     {
-                        <a class="nav-item @(controller == "Onboarding" ? "active" : null)" aria-current="@(controller == "Onboarding" ? "page" : null)" asp-controller="Onboarding" asp-action="CustomerHome"><span aria-hidden="true">⌂</span><span>Visão geral</span></a>
-                        <a class="nav-item @(controller == "Organizations" ? "active" : null)" aria-current="@(controller == "Organizations" ? "page" : null)" asp-controller="Organizations" asp-action="Index"><span aria-hidden="true">◎</span><span>Equipe e perfis</span></a>
+                        <a class="nav-item @(controller == "Onboarding" ? "active" : null)" aria-label="Visão geral" aria-current="@(controller == "Onboarding" ? "page" : null)" asp-controller="Onboarding" asp-action="CustomerHome"><span aria-hidden="true">⌂</span><span>Visão geral</span></a>
+                        <a class="nav-item @(controller == "Organizations" ? "active" : null)" aria-label="Equipe e perfis" aria-current="@(controller == "Organizations" ? "page" : null)" asp-controller="Organizations" asp-action="Index"><span aria-hidden="true">◎</span><span>Equipe e perfis</span></a>
                     }
-                    <a class="nav-item" asp-controller="Privacy" asp-action="Index"><span aria-hidden="true">◇</span><span>Privacidade</span></a>
+                    <a class="nav-item" aria-label="Privacidade" asp-controller="Privacy" asp-action="Index"><span aria-hidden="true">◇</span><span>Privacidade</span></a>
                 </nav>
                 <div class="sidebar-footer"><span class="status-dot" aria-hidden="true"></span><span>Sessão autenticada</span></div>
             </aside>
@@ -80,6 +80,10 @@
         </header>
         <main class="page-shell" id="main-content">@RenderBody()</main>
     }
+    <script src="~/js/navigation.js" asp-append-version="true"></script>
+    <script src="~/js/forms.js" asp-append-version="true"></script>
+    <script src="~/js/dialogs.js" asp-append-version="true"></script>
+    <script src="~/js/team.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Odca.Contracts.Onboarding;
+using Odca.Contracts.Tenancy;
 using Odca.Web.Models;
 using Odca.Web.Services;
 
@@ -98,6 +99,18 @@ public sealed class OnboardingController(OdcaApiClient apiClient) : Controller
                 : RedirectToAction("AccessDenied", "Account");
         }
 
-        return View(result.Value);
+        OrganizationOverviewResponse? overview = null;
+        var overviewResult = await apiClient.GetOrganizationOverviewAsync(token, result.Value!.TenantId, cancellationToken);
+        if (overviewResult.Succeeded)
+        {
+            overview = overviewResult.Value;
+        }
+
+        ViewData["OrganizationName"] = result.Value.OrganizationName;
+        return View(new CustomerHomePageViewModel
+        {
+            Home = result.Value,
+            Overview = overview
+        });
     }
 }

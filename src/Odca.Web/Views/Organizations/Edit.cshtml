@@ -1,0 +1,55 @@
+@model EditOrganizationViewModel
+@{
+    ViewData["Title"] = "Editar organização";
+}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">Cadastro</span>
+        <h1>Editar organização</h1>
+        <p>Alterações usam controle de versão. Se outra sessão salvar antes, será preciso recarregar.</p>
+    </div>
+    <a class="button" asp-action="Team" asp-route-tenantId="@Model.TenantId">Voltar à equipe</a>
+</section>
+
+@if (Model.VersionConflict)
+{
+    <div class="alert alert-error" role="alert">
+        Os dados mudaram em outra sessão.
+        <a asp-action="Edit" asp-route-tenantId="@Model.TenantId">Recarregar cadastro</a>
+    </div>
+}
+
+<section class="card" data-dirty-form>
+    <form asp-action="Edit" asp-route-tenantId="@Model.TenantId" method="post" novalidate data-processing>
+        <div asp-validation-summary="All" class="validation-summary" role="alert"></div>
+        <input type="hidden" asp-for="TenantId" />
+        <input type="hidden" asp-for="Version" />
+        <input type="hidden" asp-for="Status" />
+        <div class="form-grid">
+            <label asp-for="Name">
+                Nome
+                <input asp-for="Name" maxlength="160" autocomplete="organization" />
+                <span asp-validation-for="Name" class="validation"></span>
+            </label>
+            <label asp-for="Timezone">
+                Fuso horário
+                <input asp-for="Timezone" maxlength="80" list="timezone-suggestions" />
+                <span asp-validation-for="Timezone" class="validation"></span>
+            </label>
+        </div>
+        <datalist id="timezone-suggestions">
+            <option value="America/Sao_Paulo"></option>
+            <option value="America/Manaus"></option>
+            <option value="America/Belem"></option>
+            <option value="America/Fortaleza"></option>
+            <option value="America/Recife"></option>
+            <option value="America/Cuiaba"></option>
+            <option value="UTC"></option>
+        </datalist>
+        <p class="muted">Estado atual: @TenancyDisplay.OrganizationStatus(Model.Status)</p>
+        <div class="toolbar">
+            <button class="button button-primary" type="submit" data-processing-label="Salvando…">Salvar</button>
+            <a class="button" asp-action="Team" asp-route-tenantId="@Model.TenantId">Cancelar</a>
+        </div>
+    </form>
+</section>

@@ -16,3 +16,13 @@ Regras mínimas:
 O retorno público é neutro e não permite consultar o protocolo. Isso evita confirmar vínculo ou existência de dados. Rate limit existe nas bordas Web e API; verificação de identidade, prazo, encaminhamento, decisão e exportação não foram implementados e não devem ser inferidos do recebimento.
 
 Prazos serão parametrizados após validação da regra vigente; “15 dias” não será aplicado indistintamente.
+
+## Fluxos de atendimento ainda ausentes
+
+- verificação de identidade autenticada e evidência proporcional;
+- prazo configurável por tipo de solicitação e marco inicial auditável;
+- encaminhamento interno, decisão fundamentada e exportação revisada;
+- canal autenticado do titular distinto do formulário público;
+- escopo e auditoria obrigatórios para suporte administrativo sobre dados de clientes.
+
+Esses itens dependem de definição jurídica/operacional e não devem ser inferidos das flags técnicas atuais.
