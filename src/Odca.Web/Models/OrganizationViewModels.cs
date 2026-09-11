@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Odca.Contracts.Onboarding;
 using Odca.Contracts.Tenancy;
 
 namespace Odca.Web.Models;
@@ -104,8 +103,4 @@ public sealed class AcceptInvitationViewModel
     public string? ReturnUrl { get; set; }
 }
 
-public sealed class CustomerHomePageViewModel
-{
-    public required CustomerHomeResponse Home { get; init; }
-    public OrganizationOverviewResponse? Overview { get; init; }
-}
+

@@ -67,6 +67,7 @@ public sealed class OrganizationsController(OdcaApiClient api) : Controller
         }
 
         ViewData["OrganizationName"] = details.Value!.Name;
+        ViewData["TenantId"] = details.Value.Id;
         return View(new EditOrganizationViewModel
         {
             TenantId = details.Value.Id,
@@ -257,6 +258,7 @@ public sealed class OrganizationsController(OdcaApiClient api) : Controller
         }
 
         ViewData["OrganizationName"] = org.Name;
+        ViewData["TenantId"] = org.Id;
         return View(model);
     }
 

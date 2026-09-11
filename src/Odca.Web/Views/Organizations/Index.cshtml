@@ -30,7 +30,9 @@
                 <h2>@item.Name</h2>
                 <p>Estado: <span class="badge">@TenancyDisplay.OrganizationStatus(item.Status)</span></p>
                 <div class="toolbar">
-                    <a class="button button-primary" asp-action="Team" asp-route-tenantId="@item.Id">Abrir equipe</a>
+                    <a class="button button-primary" asp-controller="Contracts" asp-action="Index" asp-route-tenantId="@item.Id">Abrir contratos</a>
+                    <a class="button" asp-action="Team" asp-route-tenantId="@item.Id">Abrir equipe</a>
+                    <a class="button" asp-controller="ContractTypes" asp-action="Index" asp-route-tenantId="@item.Id">Tipos de contrato</a>
                     @if (item.Permissions.Contains("tenant.organization.manage"))
                     {
                         <a class="button" asp-action="Edit" asp-route-tenantId="@item.Id">Editar cadastro</a>

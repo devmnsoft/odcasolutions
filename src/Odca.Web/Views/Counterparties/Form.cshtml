@@ -1,0 +1,112 @@
+@model CounterpartyFormPageViewModel
+@{
+    ViewData["Title"] = Model.IsEdit ? "Editar contraparte" : "Nova contraparte";
+    var org = Model.Organization;
+    var form = Model.Form;
+}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">@org.Name</span>
+        <h1>@(Model.IsEdit ? "Editar contraparte" : "Nova contraparte")</h1>
+        <p>Informe os dados cadastrais e as classificações comerciais. Documentos são exibidos mascarados na listagem.</p>
+    </div>
+    <a class="button" asp-action="Index" asp-route-tenantId="@org.Id">Voltar</a>
+</section>
+
+@if (form.VersionConflict)
+{
+    <div class="alert alert-error" role="alert">
+        Os dados mudaram em outra sessão.
+        @if (form.Id is Guid id)
+        {
+            <a asp-action="Edit" asp-route-tenantId="@org.Id" asp-route-id="@id">Recarregar cadastro</a>
+        }
+    </div>
+}
+
+<section class="card" data-dirty-form>
+    @if (!Model.CanManage)
+    {
+        <p class="muted">Somente leitura. Você não possui permissão para alterar contrapartes.</p>
+    }
+    <form asp-action="@(Model.IsEdit ? "Edit" : "Create")"
+          asp-route-tenantId="@org.Id"
+          asp-route-id="@form.Id"
+          method="post"
+          novalidate
+          data-processing>
+        <div asp-validation-summary="All" class="validation-summary" role="alert"></div>
+        <input type="hidden" asp-for="Form.Id" />
+        <input type="hidden" asp-for="Form.Version" />
+        <fieldset @(Model.CanManage ? null : "disabled")>
+            <div class="form-grid">
+                <label asp-for="Form.PersonType">
+                    Tipo de pessoa
+                    <select asp-for="Form.PersonType" required>
+                        <option value="organization">Pessoa jurídica</option>
+                        <option value="individual">Pessoa física</option>
+                    </select>
+                </label>
+                <label asp-for="Form.DocumentType">
+                    Documento
+                    <select asp-for="Form.DocumentType" required>
+                        <option value="cnpj">CNPJ</option>
+                        <option value="cpf">CPF</option>
+                        <option value="none">Sem documento</option>
+                    </select>
+                </label>
+                <label asp-for="Form.Document">
+                    Número do documento
+                    <input asp-for="Form.Document" maxlength="32" autocomplete="off" />
+                    @if (!string.IsNullOrWhiteSpace(form.DocumentDisplay))
+                    {
+                        <span class="muted">Exibição mascarada na lista: @ContractsDisplay.MaskDocument(form.DocumentDisplay, form.DocumentType)</span>
+                    }
+                </label>
+                <label asp-for="Form.LegalName">
+                    Razão social / nome completo
+                    <input asp-for="Form.LegalName" maxlength="200" required />
+                    <span asp-validation-for="Form.LegalName" class="validation"></span>
+                </label>
+                <label asp-for="Form.DisplayName">
+                    Nome de exibição
+                    <input asp-for="Form.DisplayName" maxlength="200" required />
+                    <span asp-validation-for="Form.DisplayName" class="validation"></span>
+                </label>
+                <label asp-for="Form.Email">
+                    E-mail
+                    <input asp-for="Form.Email" type="email" maxlength="254" />
+                </label>
+                <label asp-for="Form.Phone">
+                    Telefone
+                    <input asp-for="Form.Phone" maxlength="40" />
+                </label>
+            </div>
+            <fieldset>
+                <legend>Classificações</legend>
+                <div class="checkbox-grid">
+                    <label class="checkbox-line"><input asp-for="Form.IsClient" /><span>Cliente</span></label>
+                    <label class="checkbox-line"><input asp-for="Form.IsSupplier" /><span>Fornecedor</span></label>
+                    <label class="checkbox-line"><input asp-for="Form.IsPartner" /><span>Parceiro</span></label>
+                    <label class="checkbox-line"><input asp-for="Form.IsProvider" /><span>Prestador</span></label>
+                </div>
+            </fieldset>
+            <h2>Endereço</h2>
+            <div class="form-grid">
+                <label asp-for="Form.AddressLine1">Logradouro<input asp-for="Form.AddressLine1" maxlength="200" /></label>
+                <label asp-for="Form.AddressLine2">Complemento<input asp-for="Form.AddressLine2" maxlength="200" /></label>
+                <label asp-for="Form.AddressCity">Cidade<input asp-for="Form.AddressCity" maxlength="120" /></label>
+                <label asp-for="Form.AddressState">UF<input asp-for="Form.AddressState" maxlength="80" /></label>
+                <label asp-for="Form.AddressPostalCode">CEP<input asp-for="Form.AddressPostalCode" maxlength="20" /></label>
+                <label asp-for="Form.AddressCountry">País<input asp-for="Form.AddressCountry" maxlength="80" /></label>
+            </div>
+        </fieldset>
+        @if (Model.CanManage)
+        {
+            <div class="toolbar">
+                <button class="button button-primary" type="submit" data-processing-label="Salvando…">Salvar</button>
+                <a class="button" asp-action="Index" asp-route-tenantId="@org.Id">Cancelar</a>
+            </div>
+        }
+    </form>
+</section>

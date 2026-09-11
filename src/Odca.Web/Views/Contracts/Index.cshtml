@@ -1,0 +1,229 @@
+@model ContractListPageViewModel
+@{
+    ViewData["Title"] = "Contratos";
+    var org = Model.Organization;
+    var items = Model.Items;
+    var totalPages = items is null ? 1 : Math.Max(1, (int)Math.Ceiling(items.TotalCount / (double)items.PageSize));
+    var returnPairs = new List<KeyValuePair<string, string?>>();
+    void AddReturn(string key, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            returnPairs.Add(new(key, value));
+        }
+    }
+    AddReturn("title", Model.Title);
+    AddReturn("counterpartyId", Model.CounterpartyId?.ToString());
+    AddReturn("typeId", Model.TypeId?.ToString());
+    AddReturn("ownerUserId", Model.OwnerUserId?.ToString());
+    AddReturn("operationalStatus", Model.OperationalStatus);
+    AddReturn("temporalStatus", Model.TemporalStatus);
+    AddReturn("endFrom", Model.EndFrom?.ToString("O"));
+    AddReturn("endTo", Model.EndTo?.ToString("O"));
+    if (Model.Mine) AddReturn("mine", "true");
+    if (Model.Approaching) AddReturn("approaching", "true");
+    if (Model.Unassigned) AddReturn("unassigned", "true");
+    if (Model.Page > 1) AddReturn("page", Model.Page.ToString());
+    var returnQuery = QueryString.Create(returnPairs).ToString().TrimStart('?');
+}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">@org.Name</span>
+        <h1>Central de contratos</h1>
+        <p>Acompanhe vigência, responsáveis e situação operacional sem misturar assinatura digital com monitoramento de prazos.</p>
+    </div>
+    <div class="toolbar">
+        @if (Model.CanManage)
+        {
+            <a class="button button-primary" asp-action="Create" asp-route-tenantId="@org.Id" asp-route-returnQuery="@returnQuery">Novo contrato</a>
+        }
+        <a class="button" asp-controller="ContractTypes" asp-action="Index" asp-route-tenantId="@org.Id">Tipos de contrato</a>
+        <a class="button" asp-controller="Organizations" asp-action="Index">Trocar organização</a>
+    </div>
+</section>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success" role="status">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-error" role="alert">@error</div>
+}
+
+@if (Model.Overview is not null)
+{
+    <div class="metrics metrics-dense">
+        <a class="metric" asp-action="Index" asp-route-tenantId="@org.Id" asp-route-operationalStatus="draft"><span>Rascunhos</span><strong>@Model.Overview.Draft</strong></a>
+        <a class="metric" asp-action="Index" asp-route-tenantId="@org.Id" asp-route-operationalStatus="active"><span>Ativos</span><strong>@Model.Overview.Active</strong></a>
+        <a class="metric" asp-action="Index" asp-route-tenantId="@org.Id" asp-route-approaching="true"><span>Próximos do fim</span><strong>@Model.Overview.Approaching</strong></a>
+        <a class="metric" asp-action="Index" asp-route-tenantId="@org.Id" asp-route-temporalStatus="Expired"><span>Vencidos</span><strong>@Model.Overview.Expired</strong></a>
+        <a class="metric" asp-action="Index" asp-route-tenantId="@org.Id" asp-route-temporalStatus="Indefinite"><span>Indeterminados</span><strong>@Model.Overview.Indefinite</strong></a>
+        <a class="metric" asp-action="Index" asp-route-tenantId="@org.Id" asp-route-operationalStatus="closed"><span>Encerrados</span><strong>@Model.Overview.Closed</strong></a>
+        <a class="metric" asp-action="Index" asp-route-tenantId="@org.Id" asp-route-unassigned="true"><span>Sem responsável</span><strong>@Model.Overview.Unassigned</strong></a>
+    </div>
+}
+
+<aside class="howto-callout" aria-label="Como usar">
+    <strong>Como usar</strong>
+    <p>Salve rascunhos a qualquer momento. Ativar um contrato inicia o monitoramento de alertas internos; não equivale a assinatura eletrônica. Use os atalhos Meus, Próximos do fim e Sem responsável para priorizar a fila.</p>
+</aside>
+
+<section class="card">
+    <div class="toolbar">
+        <nav class="chip-row" aria-label="Atalhos">
+            <a class="chip @(Model.Mine ? "active" : null)" asp-action="Index" asp-route-tenantId="@org.Id" asp-route-mine="true">Meus contratos</a>
+            <a class="chip @(Model.Approaching ? "active" : null)" asp-action="Index" asp-route-tenantId="@org.Id" asp-route-approaching="true">Próximos do fim</a>
+            <a class="chip @(Model.Unassigned ? "active" : null)" asp-action="Index" asp-route-tenantId="@org.Id" asp-route-unassigned="true">Sem responsável</a>
+            <a class="chip" asp-action="Index" asp-route-tenantId="@org.Id">Limpar atalhos</a>
+        </nav>
+    </div>
+
+    <form method="get" class="filter-panel" action="@Url.Action("Index", new { tenantId = org.Id })">
+        <div class="form-grid">
+            <label>Título<input name="title" value="@Model.Title" placeholder="Buscar por título" /></label>
+            <label>Contraparte
+                <select name="counterpartyId">
+                    <option value="">Todas</option>
+                    @foreach (var item in Model.Counterparties)
+                    {
+                        <option value="@item.Id" selected="@(Model.CounterpartyId == item.Id)">@item.DisplayName</option>
+                    }
+                </select>
+            </label>
+            <label>Tipo
+                <select name="typeId">
+                    <option value="">Todos</option>
+                    @foreach (var item in Model.Types)
+                    {
+                        <option value="@item.Id" selected="@(Model.TypeId == item.Id)">@item.Name</option>
+                    }
+                </select>
+            </label>
+            <label>Responsável
+                <select name="ownerUserId">
+                    <option value="">Todos</option>
+                    @foreach (var item in Model.Members)
+                    {
+                        <option value="@item.UserId" selected="@(Model.OwnerUserId == item.UserId)">@item.Name</option>
+                    }
+                </select>
+            </label>
+            <label>Situação operacional
+                <select name="operationalStatus">
+                    <option value="">Todas</option>
+                    <option value="draft" selected="@(Model.OperationalStatus == "draft")">Rascunho</option>
+                    <option value="active" selected="@(Model.OperationalStatus == "active")">Ativo</option>
+                    <option value="closed" selected="@(Model.OperationalStatus == "closed")">Encerrado</option>
+                    <option value="cancelled" selected="@(Model.OperationalStatus == "cancelled")">Cancelado</option>
+                    <option value="inactive" selected="@(Model.OperationalStatus == "inactive")">Inativo</option>
+                </select>
+            </label>
+            <label>Situação temporal
+                <select name="temporalStatus">
+                    <option value="">Todas</option>
+                    <option value="Upcoming" selected="@(Model.TemporalStatus == "Upcoming")">A iniciar</option>
+                    <option value="Active" selected="@(Model.TemporalStatus == "Active")">Em vigência</option>
+                    <option value="ApproachingEnd" selected="@(Model.TemporalStatus == "ApproachingEnd")">Próximo do fim</option>
+                    <option value="Expired" selected="@(Model.TemporalStatus == "Expired")">Vencido</option>
+                    <option value="Indefinite" selected="@(Model.TemporalStatus == "Indefinite")">Indeterminado</option>
+                </select>
+            </label>
+            <label>Término de<input type="date" name="endFrom" value="@(Model.EndFrom?.ToString("yyyy-MM-dd"))" /></label>
+            <label>Término até<input type="date" name="endTo" value="@(Model.EndTo?.ToString("yyyy-MM-dd"))" /></label>
+        </div>
+        <input type="hidden" name="mine" value="@(Model.Mine ? "true" : "false")" />
+        <input type="hidden" name="approaching" value="@(Model.Approaching ? "true" : "false")" />
+        <input type="hidden" name="unassigned" value="@(Model.Unassigned ? "true" : "false")" />
+        <div class="toolbar">
+            <button class="button" type="submit">Filtrar</button>
+            <a class="button" asp-action="Index" asp-route-tenantId="@org.Id">Limpar filtros</a>
+        </div>
+    </form>
+
+    @if (Model.LoadError)
+    {
+        <div class="empty-state">
+            <h2>Não foi possível carregar os contratos</h2>
+            <p>Tente novamente em instantes. Se o problema continuar, verifique sua sessão e permissões.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Contrato</th>
+                        <th>Contraparte</th>
+                        <th>Responsável</th>
+                        <th>Vigência</th>
+                        <th>Situação</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (items is null || items.Items.Count == 0)
+                {
+                    <tr>
+                        <td colspan="6">
+                            <div class="empty-state">
+                                <h2>Nenhum contrato encontrado</h2>
+                                <p>Ajuste os filtros ou cadastre um novo contrato para começar o acompanhamento.</p>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in items.Items)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@item.Title</strong>
+                                <div class="muted">@(string.IsNullOrWhiteSpace(item.ReferenceNumber) ? item.TypeName : $"{item.ReferenceNumber} · {item.TypeName}")</div>
+                            </td>
+                            <td>@item.PrimaryCounterpartyName</td>
+                            <td>@(string.IsNullOrWhiteSpace(item.OwnerName) ? "—" : item.OwnerName)</td>
+                            <td>@ContractsDisplay.FormatTerm(item.StartDate, item.EndDate, item.IsIndefinite)</td>
+                            <td>
+                                <span class="@ContractsDisplay.OperationalStatusClass(item.OperationalStatus)">@ContractsDisplay.OperationalStatus(item.OperationalStatus)</span>
+                                <span class="@ContractsDisplay.TemporalStatusClass(item.TemporalStatus)">@ContractsDisplay.TemporalStatus(item.TemporalStatus)</span>
+                            </td>
+                            <td>
+                                <a class="button button-small"
+                                   asp-action="Details"
+                                   asp-route-tenantId="@org.Id"
+                                   asp-route-id="@item.Id"
+                                   asp-route-returnQuery="@returnQuery">Abrir</a>
+                            </td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+        @if (items is not null && items.TotalCount > items.PageSize)
+        {
+            <nav class="pagination" aria-label="Paginação de contratos">
+                <a class="button button-small @(Model.Page <= 1 ? "disabled" : null)"
+                   asp-action="Index" asp-route-tenantId="@org.Id"
+                   asp-route-title="@Model.Title" asp-route-counterpartyId="@Model.CounterpartyId"
+                   asp-route-typeId="@Model.TypeId" asp-route-ownerUserId="@Model.OwnerUserId"
+                   asp-route-operationalStatus="@Model.OperationalStatus" asp-route-temporalStatus="@Model.TemporalStatus"
+                   asp-route-endFrom="@Model.EndFrom" asp-route-endTo="@Model.EndTo"
+                   asp-route-mine="@Model.Mine" asp-route-approaching="@Model.Approaching" asp-route-unassigned="@Model.Unassigned"
+                   asp-route-page="@(Model.Page - 1)">Anterior</a>
+                <span>Página @Model.Page de @totalPages (@items.TotalCount)</span>
+                <a class="button button-small @(Model.Page >= totalPages ? "disabled" : null)"
+                   asp-action="Index" asp-route-tenantId="@org.Id"
+                   asp-route-title="@Model.Title" asp-route-counterpartyId="@Model.CounterpartyId"
+                   asp-route-typeId="@Model.TypeId" asp-route-ownerUserId="@Model.OwnerUserId"
+                   asp-route-operationalStatus="@Model.OperationalStatus" asp-route-temporalStatus="@Model.TemporalStatus"
+                   asp-route-endFrom="@Model.EndFrom" asp-route-endTo="@Model.EndTo"
+                   asp-route-mine="@Model.Mine" asp-route-approaching="@Model.Approaching" asp-route-unassigned="@Model.Unassigned"
+                   asp-route-page="@(Model.Page + 1)">Próxima</a>
+            </nav>
+        }
+    }
+</section>

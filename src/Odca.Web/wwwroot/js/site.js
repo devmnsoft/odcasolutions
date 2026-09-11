@@ -3,4 +3,5 @@
  * forms.js — password toggle, processing state, dirty forms, bfcache restore
  * dialogs.js — accessible confirmations
  * team.js — organization panels and client-side org filter
+ * contracts.js — contract form progressive enhancement
  */

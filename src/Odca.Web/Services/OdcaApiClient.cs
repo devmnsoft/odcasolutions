@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Odca.Contracts.Contracts;
 using Odca.Contracts.Identity;
 using Odca.Contracts.Onboarding;
 using Odca.Contracts.Plans;
@@ -313,6 +314,310 @@ public sealed class OdcaApiClient(HttpClient client)
         using var message = CreateAuthorized(HttpMethod.Post, "api/v1/organizations/invitations/accept", accessToken);
         message.Content = JsonContent.Create(request);
         return await SendAsync<object>(message, false, cancellationToken);
+    }
+
+    public Task<ApiCallResult<PaginatedResponse<ContractListItemResponse>>> GetContractsAsync(
+        string token,
+        Guid tenantId,
+        string? title,
+        Guid? counterpartyId,
+        Guid? typeId,
+        Guid? ownerUserId,
+        string? operationalStatus,
+        string? temporalStatus,
+        DateOnly? endFrom,
+        DateOnly? endTo,
+        bool mine,
+        bool approaching,
+        bool unassigned,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var query =
+            $"title={Uri.EscapeDataString(title ?? string.Empty)}" +
+            $"&counterpartyId={(counterpartyId is Guid c ? c.ToString() : string.Empty)}" +
+            $"&typeId={(typeId is Guid t ? t.ToString() : string.Empty)}" +
+            $"&ownerUserId={(ownerUserId is Guid o ? o.ToString() : string.Empty)}" +
+            $"&operationalStatus={Uri.EscapeDataString(operationalStatus ?? string.Empty)}" +
+            $"&temporalStatus={Uri.EscapeDataString(temporalStatus ?? string.Empty)}" +
+            $"&endFrom={(endFrom is DateOnly ef ? ef.ToString("O", System.Globalization.CultureInfo.InvariantCulture) : string.Empty)}" +
+            $"&endTo={(endTo is DateOnly et ? et.ToString("O", System.Globalization.CultureInfo.InvariantCulture) : string.Empty)}" +
+            $"&mine={mine.ToString().ToLowerInvariant()}" +
+            $"&approaching={approaching.ToString().ToLowerInvariant()}" +
+            $"&unassigned={unassigned.ToString().ToLowerInvariant()}" +
+            $"&page={page}&pageSize={pageSize}";
+        return SendAsync<PaginatedResponse<ContractListItemResponse>>(
+            CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contracts?{query}", token),
+            false,
+            cancellationToken);
+    }
+
+    public Task<ApiCallResult<ContractOverviewResponse>> GetContractOverviewAsync(
+        string token,
+        Guid tenantId,
+        CancellationToken cancellationToken)
+        => SendAsync<ContractOverviewResponse>(
+            CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contracts/overview", token),
+            false,
+            cancellationToken);
+
+    public Task<ApiCallResult<ContractDetailResponse>> GetContractAsync(
+        string token,
+        Guid tenantId,
+        Guid id,
+        CancellationToken cancellationToken)
+        => SendAsync<ContractDetailResponse>(
+            CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contracts/{id}", token),
+            false,
+            cancellationToken);
+
+    public async Task<ApiCallResult<ContractDetailResponse>> CreateContractAsync(
+        string token,
+        Guid tenantId,
+        UpsertContractRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/contracts", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<ContractDetailResponse>(message, false, cancellationToken);
+    }
+
+    public async Task<ApiCallResult<ContractDetailResponse>> UpdateContractAsync(
+        string token,
+        Guid tenantId,
+        Guid id,
+        UpsertContractRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(HttpMethod.Put, $"api/v1/organizations/{tenantId}/contracts/{id}", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<ContractDetailResponse>(message, false, cancellationToken);
+    }
+
+    public async Task<ApiCallResult<bool>> ActivateContractAsync(
+        string token,
+        Guid tenantId,
+        Guid id,
+        ContractVersionRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/contracts/{id}/activate", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<bool>(message, false, cancellationToken, emptyBodyIsSuccess: true);
+    }
+
+    public async Task<ApiCallResult<bool>> RenewContractAsync(
+        string token,
+        Guid tenantId,
+        Guid id,
+        RenewContractRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/contracts/{id}/renew", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<bool>(message, false, cancellationToken, emptyBodyIsSuccess: true);
+    }
+
+    public async Task<ApiCallResult<bool>> CloseContractAsync(
+        string token,
+        Guid tenantId,
+        Guid id,
+        ContractVersionRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/contracts/{id}/close", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<bool>(message, false, cancellationToken, emptyBodyIsSuccess: true);
+    }
+
+    public async Task<ApiCallResult<bool>> CancelContractAsync(
+        string token,
+        Guid tenantId,
+        Guid id,
+        ContractVersionRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/contracts/{id}/cancel", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<bool>(message, false, cancellationToken, emptyBodyIsSuccess: true);
+    }
+
+    public async Task<ApiCallResult<bool>> SoftDeleteContractAsync(
+        string token,
+        Guid tenantId,
+        Guid id,
+        SoftDeleteContractRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/contracts/{id}/delete", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<bool>(message, false, cancellationToken, emptyBodyIsSuccess: true);
+    }
+
+    public Task<ApiCallResult<PaginatedResponse<CounterpartyResponse>>> GetCounterpartiesAsync(
+        string token,
+        Guid tenantId,
+        string? search,
+        string? status,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var query =
+            $"search={Uri.EscapeDataString(search ?? string.Empty)}" +
+            $"&status={Uri.EscapeDataString(status ?? string.Empty)}" +
+            $"&page={page}&pageSize={pageSize}";
+        return SendAsync<PaginatedResponse<CounterpartyResponse>>(
+            CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/counterparties?{query}", token),
+            false,
+            cancellationToken);
+    }
+
+    public Task<ApiCallResult<CounterpartyResponse>> GetCounterpartyAsync(
+        string token,
+        Guid tenantId,
+        Guid id,
+        CancellationToken cancellationToken)
+        => SendAsync<CounterpartyResponse>(
+            CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/counterparties/{id}", token),
+            false,
+            cancellationToken);
+
+    public async Task<ApiCallResult<CounterpartyResponse>> CreateCounterpartyAsync(
+        string token,
+        Guid tenantId,
+        UpsertCounterpartyRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/counterparties", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<CounterpartyResponse>(message, false, cancellationToken);
+    }
+
+    public async Task<ApiCallResult<CounterpartyResponse>> UpdateCounterpartyAsync(
+        string token,
+        Guid tenantId,
+        Guid id,
+        UpsertCounterpartyRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(HttpMethod.Put, $"api/v1/organizations/{tenantId}/counterparties/{id}", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<CounterpartyResponse>(message, false, cancellationToken);
+    }
+
+    public async Task<ApiCallResult<bool>> InactivateCounterpartyAsync(
+        string token,
+        Guid tenantId,
+        Guid id,
+        ContractVersionRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(
+            HttpMethod.Post,
+            $"api/v1/organizations/{tenantId}/counterparties/{id}/inactivate",
+            token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<bool>(message, false, cancellationToken, emptyBodyIsSuccess: true);
+    }
+
+    public Task<ApiCallResult<ContractTypeResponse[]>> GetContractTypesAsync(
+        string token,
+        Guid tenantId,
+        string? status,
+        CancellationToken cancellationToken)
+    {
+        var query = $"status={Uri.EscapeDataString(status ?? string.Empty)}";
+        return SendAsync<ContractTypeResponse[]>(
+            CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contract-types?{query}", token),
+            false,
+            cancellationToken);
+    }
+
+    public Task<ApiCallResult<ContractTypeResponse>> GetContractTypeAsync(
+        string token,
+        Guid tenantId,
+        Guid id,
+        CancellationToken cancellationToken)
+        => SendAsync<ContractTypeResponse>(
+            CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contract-types/{id}", token),
+            false,
+            cancellationToken);
+
+    public async Task<ApiCallResult<ContractTypeResponse>> CreateContractTypeAsync(
+        string token,
+        Guid tenantId,
+        UpsertContractTypeRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/contract-types", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<ContractTypeResponse>(message, false, cancellationToken);
+    }
+
+    public async Task<ApiCallResult<ContractTypeResponse>> UpdateContractTypeAsync(
+        string token,
+        Guid tenantId,
+        Guid id,
+        UpsertContractTypeRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(HttpMethod.Put, $"api/v1/organizations/{tenantId}/contract-types/{id}", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<ContractTypeResponse>(message, false, cancellationToken);
+    }
+
+    public async Task<ApiCallResult<bool>> SetContractTypeStatusAsync(
+        string token,
+        Guid tenantId,
+        Guid id,
+        SetContractTypeStatusRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(
+            HttpMethod.Post,
+            $"api/v1/organizations/{tenantId}/contract-types/{id}/status",
+            token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<bool>(message, false, cancellationToken, emptyBodyIsSuccess: true);
+    }
+
+    public Task<ApiCallResult<PaginatedResponse<UserNotificationResponse>>> GetNotificationsAsync(
+        string token,
+        Guid tenantId,
+        bool unreadOnly,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var query = $"unreadOnly={unreadOnly.ToString().ToLowerInvariant()}&page={page}&pageSize={pageSize}";
+        return SendAsync<PaginatedResponse<UserNotificationResponse>>(
+            CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/notifications?{query}", token),
+            false,
+            cancellationToken);
+    }
+
+    public Task<ApiCallResult<UnreadNotificationsResponse>> GetUnreadNotificationCountAsync(
+        string token,
+        Guid tenantId,
+        CancellationToken cancellationToken)
+        => SendAsync<UnreadNotificationsResponse>(
+            CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/notifications/unread-count", token),
+            false,
+            cancellationToken);
+
+    public async Task<ApiCallResult<bool>> MarkNotificationReadAsync(
+        string token,
+        Guid tenantId,
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(
+            HttpMethod.Post,
+            $"api/v1/organizations/{tenantId}/notifications/{id}/read",
+            token);
+        return await SendAsync<bool>(message, false, cancellationToken, emptyBodyIsSuccess: true);
     }
 
     public async Task<bool> LogoutAsync(string accessToken, CancellationToken cancellationToken)

@@ -1,5 +1,16 @@
 # Status de execução
 
+## Evolução S02 — central de contratos (11/09/2026)
+
+- SHA inicial: `596ffe635e7c2a3276ae52a98192dd838ee7da4a`. Branch de entrega: `codex/s02-contracts-center`.
+- CI da referência falhava por CS9007 em `LocalRuntimeConfigurationTests` (raw string interpolada); corrigido. Também resolvido CS0433 de `Program` global do Bootstrap vs API.
+- Migração 010 (`CurrentVersion=10`): contrapartes, tipos, contratos, partes, renovações, eventos append-only, notificações internas por usuário; permissões delegáveis; RLS FORCE; FKs compostas anti cross-tenant.
+- Domínio: status operacional/temporal, transições, alertas m3/d30/d7 + renewal_notice (meses de calendário), `event_key` idempotente.
+- API + Worker `ContractAlertWorker` + seed explícito `seed-contracts-demo`.
+- Web/BFF: menu por tarefas (Visão geral, Contratos, Contrapartes, Notificações, Administração); central de contratos com filtros/URL; ficha com abas Resumo/Partes/Renovações/Histórico; dashboard com métricas reais de contratos; tipos como configuração contextual.
+- Ativação = acompanhamento no sistema (não assinatura digital). Sem upload/OCR/editor/assinatura nesta fatia.
+- Sem declaração de conformidade LGPD plena.
+
 ## Configuração local consolidada (10/09/2026)
 
 - O setup oficial passou a ser `.\scripts\setup-local.ps1`; ele mantém `Database=postgres`, schema `odca` e separa configuração/conectividade de migration e provisionamento.

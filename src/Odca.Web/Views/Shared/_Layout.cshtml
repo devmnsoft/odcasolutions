@@ -7,6 +7,8 @@
     var showApplication = authenticated && !pendingAccess;
     var isPlatform = User.IsInRole("SuperAdministrator");
     var organizationName = ViewData["OrganizationName"] as string;
+    var tenantId = ViewData["TenantId"] as Guid?;
+    var unreadNotifications = ViewData["UnreadNotifications"] as int?;
     var displayName = User.Identity?.Name;
     var avatarText = string.IsNullOrWhiteSpace(displayName) ? "?" : displayName.Trim()[0].ToString().ToUpperInvariant();
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
@@ -43,7 +45,17 @@
                     else
                     {
                         <a class="nav-item @(controller == "Onboarding" ? "active" : null)" aria-label="Visão geral" aria-current="@(controller == "Onboarding" ? "page" : null)" asp-controller="Onboarding" asp-action="CustomerHome"><span aria-hidden="true">⌂</span><span>Visão geral</span></a>
-                        <a class="nav-item @(controller == "Organizations" ? "active" : null)" aria-label="Equipe e perfis" aria-current="@(controller == "Organizations" ? "page" : null)" asp-controller="Organizations" asp-action="Index"><span aria-hidden="true">◎</span><span>Equipe e perfis</span></a>
+                        <a class="nav-item @(controller == "Contracts" ? "active" : null)" aria-label="Contratos" aria-current="@(controller == "Contracts" ? "page" : null)" asp-controller="Contracts" asp-action="@(tenantId is null ? "IndexEntry" : "Index")" asp-route-tenantId="@tenantId"><span aria-hidden="true">▦</span><span>Contratos</span></a>
+                        <a class="nav-item @(controller == "Counterparties" ? "active" : null)" aria-label="Contrapartes" aria-current="@(controller == "Counterparties" ? "page" : null)" asp-controller="Counterparties" asp-action="@(tenantId is null ? "IndexEntry" : "Index")" asp-route-tenantId="@tenantId"><span aria-hidden="true">◎</span><span>Contrapartes</span></a>
+                        <a class="nav-item @(controller == "Notifications" ? "active" : null)" aria-label="Notificações" aria-current="@(controller == "Notifications" ? "page" : null)" asp-controller="Notifications" asp-action="@(tenantId is null ? "IndexEntry" : "Index")" asp-route-tenantId="@tenantId">
+                            <span aria-hidden="true">◉</span>
+                            <span>Notificações</span>
+                            @if (unreadNotifications is > 0)
+                            {
+                                <span class="nav-badge" aria-label="@unreadNotifications notificações não lidas">@unreadNotifications</span>
+                            }
+                        </a>
+                        <a class="nav-item @(controller is "Organizations" or "ContractTypes" ? "active" : null)" aria-label="Administração da organização" aria-current="@(controller is "Organizations" or "ContractTypes" ? "page" : null)" asp-controller="Organizations" asp-action="Index"><span aria-hidden="true">⚙</span><span>Administração</span></a>
                     }
                     <a class="nav-item" aria-label="Privacidade" asp-controller="Privacy" asp-action="Index"><span aria-hidden="true">◇</span><span>Privacidade</span></a>
                 </nav>

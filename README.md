@@ -133,10 +133,22 @@ Não adicione contratos reais, CPF/CNPJ, tokens, chaves, `.env.local` ou arquivo
 
 ### Contexto de organização, equipe e convites
 
-Depois de autenticar, abra `/organizacoes` e escolha a organização pelo nome. A central operacional fica em `/organizacoes/{tenantId}/equipe` com abas `pessoas`, `convites` e `perfis` (parâmetro `tab`). O tenant permanece explícito na URL e nos formulários; a API deriva o usuário do JWT e revalida vínculo e permissão antes de configurar o contexto RLS.
+Depois de autenticar, abra `/organizacoes` e escolha a organização pelo nome. A central de equipe fica em `/organizacoes/{tenantId}/equipe` com abas `pessoas`, `convites` e `perfis`. O tenant permanece explícito na URL; a API deriva o usuário do JWT e revalida vínculo/permissão antes do contexto RLS.
 
-Convites reservam um assento enquanto estiverem `pending`/`sent` e não expirados. Aceite exige identidade autenticada com o e-mail destinatário já verificado e **não** reativa vínculo bloqueado ou inativo. Após o aceite, a sessão é encerrada para renovar autorizações no próximo login. Enfileirar um convite **não** significa e-mail entregue.
+Convites reservam assento enquanto `pending`/`sent` e não expirados. Aceite exige e-mail verificado e **não** reativa vínculo bloqueado/inativo. Após o aceite a sessão é encerrada. Enfileirar convite **não** significa e-mail entregue.
 
-Em `Development`, o worker grava mensagens exclusivamente no diretório configurado por `Notifications:DevelopmentPickupDirectory`. Fora de Development, ausência de provedor mantém a mensagem em retry/falha com código `notification_provider_missing`, nunca como enviada.
+### Contratos, contrapartes e alertas internos
 
-API e Worker devem compartilhar o mesmo `DataProtection:KeysPath` persistente e o mesmo `ApplicationName` (`ODCA Solutions`) para desencriptar o token protegido do convite. Em múltiplas instâncias do BFF, o ticket store também precisa de cache distribuído compartilhado; o desenvolvimento local ainda usa cache em memória.
+Menu do cliente: Visão geral, Contratos, Contrapartes, Notificações e Administração. Tipos de contrato ficam em `/organizacoes/{tenantId}/tipos-contrato` (configuração contextual).
+
+Jornada suportada: contraparte → tipo → contrato em rascunho → ativar **acompanhamento** (não assinatura digital) → vigência no dashboard → alerta interno → renovação/encerramento → histórico. Datas de vigência usam `date`/`DateOnly`; eventos de auditoria usam UTC. O primeiro alerta de término usa **três meses de calendário** antes da data final (além de 30 e 7 dias).
+
+Seed sintético explícito (Development):
+
+```powershell
+dotnet run --project src/Odca.Bootstrap -- seed-contracts-demo --reference-date=2026-09-11
+```
+
+Em `Development`, o worker de convites grava no diretório `Notifications:DevelopmentPickupDirectory`. Fora de Development, ausência de provedor de e-mail falha com `notification_provider_missing`. Alertas de contrato são **notificações internas** na aplicação; WhatsApp/e-mail de vencimento não estão implementados nesta etapa.
+
+API e Worker devem compartilhar `DataProtection:KeysPath` e `ApplicationName` (`ODCA Solutions`). Múltiplas instâncias do BFF exigem cache distribuído; o desenvolvimento local ainda usa memória.

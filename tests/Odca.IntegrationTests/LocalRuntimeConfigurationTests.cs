@@ -1,13 +1,14 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Odca.Bootstrap;
 using Odca.Configuration;
 using System.Text.Json.Nodes;
 
 namespace Odca.IntegrationTests;
 
 [CollectionDefinition("Environment", DisableParallelization = true)]
-public sealed class EnvironmentCollection { }
+public sealed class EnvironmentParallelizationGate { }
 
 [Collection("Environment")]
 public sealed class LocalRuntimeConfigurationTests : IDisposable
@@ -152,7 +153,10 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
         Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, "runtime.json");
         const string validKey = "this-existing-signing-key-is-long-enough-to-preserve";
-        File.WriteAllText(path, $$"""{"ConnectionStrings":{"Database":"Host=private;Password=secret"},"Jwt":{"SigningKey":"{{validKey}}"},"Unknown":{"Keep":true}}""");
+        File.WriteAllText(
+            path,
+            """{"ConnectionStrings":{"Database":"Host=private;Password=secret"},"Jwt":{"SigningKey":"__KEY__"},"Unknown":{"Keep":true}}"""
+                .Replace("__KEY__", validKey, StringComparison.Ordinal));
         Environment.SetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable, path);
 
         Assert.Equal(0, await BootstrapProgram.RunAsync(["repair"]));
@@ -250,7 +254,7 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
         if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
     }
 
-    private static IHostEnvironment EnvironmentNamed(string name) => new FakeEnvironment { EnvironmentName = name };
+    private static FakeEnvironment EnvironmentNamed(string name) => new() { EnvironmentName = name };
 
     private sealed class FakeEnvironment : IHostEnvironment
     {
