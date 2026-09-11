@@ -33,7 +33,7 @@ public static class BootstrapProgram
                     Console.WriteLine("Use Docker ou execute configure-native para apontar ao PostgreSQL local.");
                     return 0;
                 case "diagnose":
-                    Diagnose(paths);
+                    await DiagnoseAsync(paths, args.Contains("--connection", StringComparer.OrdinalIgnoreCase));
                     return 0;
                 case "repair":
                     Repair(paths, args.Contains("--replace-invalid-signing-key", StringComparer.OrdinalIgnoreCase));
@@ -68,7 +68,7 @@ public static class BootstrapProgram
         }
     }
 
-    private static void Diagnose(LocalPaths paths)
+    private static async Task DiagnoseAsync(LocalPaths paths, bool testConnection)
     {
         Console.WriteLine($"Ambiente=Development; caminho={paths.RuntimeFile}");
         if (!File.Exists(paths.RuntimeFile))
@@ -86,7 +86,38 @@ public static class BootstrapProgram
         }
 
         var issues = RuntimeIssues(root);
-        Console.WriteLine(issues.Count == 0 ? "Configuração completa." : $"Propriedades ausentes/inválidas: {string.Join(", ", issues)}");
+        if (issues.Count != 0)
+        {
+            Console.WriteLine($"Propriedades ausentes/inválidas: {string.Join(", ", issues)}");
+            return;
+        }
+
+        Console.WriteLine("Configuração sintaticamente válida; conectividade não testada.");
+        if (!testConnection) return;
+
+        var connectionString = root["ConnectionStrings"]?["Database"]!.GetValue<string>()!;
+        var target = new NpgsqlConnectionStringBuilder(connectionString);
+        Console.WriteLine($"Teste: ambiente=Development; caminho={paths.RuntimeFile}; host={target.Host}; porta={target.Port}; banco={target.Database}; schema=odca");
+        try
+        {
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
+            var schemaExists = await connection.ExecuteScalarAsync<bool>("SELECT to_regnamespace('odca') IS NOT NULL;");
+            if (!schemaExists)
+            {
+                Console.WriteLine("Conexão aprovada; schema odca ausente.");
+                return;
+            }
+            var version = await connection.ExecuteScalarAsync<int?>("SELECT max(version) FROM odca.schema_migrations;");
+            Console.WriteLine(version == 9
+                ? "Conexão aprovada; schema odca compatível (versão 009)."
+                : $"Conexão aprovada; schema odca incompatível (versão encontrada: {version?.ToString() ?? "nenhuma"}; esperada: 009).");
+        }
+        catch (Exception exception) when (exception is NpgsqlException or TimeoutException)
+        {
+            Console.WriteLine($"Conexão recusada ou indisponível: {exception.Message}");
+            throw;
+        }
     }
 
     private static void Repair(LocalPaths paths, bool replaceInvalidSigningKey)
@@ -120,13 +151,18 @@ public static class BootstrapProgram
             Console.WriteLine("Jwt:SigningKey substituída; tokens emitidos anteriormente foram invalidados.");
         }
 
+        var dataProtection = root["DataProtection"] as JsonObject ?? new JsonObject();
+        root["DataProtection"] = dataProtection;
+        SetMissing(dataProtection, "KeysPath", Path.Combine(paths.LocalDirectory, "data-protection-keys"));
+        SetMissing(dataProtection, "ApplicationName", "ODCA Solutions");
+
         var backup = paths.RuntimeFile + ".backup-" + DateTime.UtcNow.ToString("yyyyMMddHHmmssfff", System.Globalization.CultureInfo.InvariantCulture);
         File.Copy(paths.RuntimeFile, backup, overwrite: false);
         ProtectFile(backup);
         WriteJsonAtomic(paths.RuntimeFile, root);
         Console.WriteLine($"Backup protegido: {backup}");
         Console.WriteLine("Reparo concluído sem alterar conexão, credenciais, banco ou migrações.");
-        Diagnose(paths);
+        DiagnoseAsync(paths, false).GetAwaiter().GetResult();
     }
 
     private static void SetMissing(JsonObject value, string name, string defaultValue)
@@ -140,9 +176,12 @@ public static class BootstrapProgram
         if (string.IsNullOrWhiteSpace(root["ConnectionStrings"]?["Database"]?.GetValue<string>())) issues.Add("ConnectionStrings:Database (ausente)");
         if (string.IsNullOrWhiteSpace(root["Jwt"]?["Issuer"]?.GetValue<string>())) issues.Add("Jwt:Issuer (ausente)");
         if (string.IsNullOrWhiteSpace(root["Jwt"]?["Audience"]?.GetValue<string>())) issues.Add("Jwt:Audience (ausente)");
+        var accessTokenMinutes = root["Jwt"]?["AccessTokenMinutes"]?.GetValue<int>();
+        if (accessTokenMinutes is < 5 or > 30 or null) issues.Add("Jwt:AccessTokenMinutes (ausente/inválido)");
         var key = root["Jwt"]?["SigningKey"]?.GetValue<string>();
         if (string.IsNullOrWhiteSpace(key)) issues.Add("Jwt:SigningKey (ausente)");
         else if (Encoding.UTF8.GetByteCount(key) < 32) issues.Add("Jwt:SigningKey (tamanho insuficiente)");
+        if (string.IsNullOrWhiteSpace(root["DataProtection"]?["KeysPath"]?.GetValue<string>())) issues.Add("DataProtection:KeysPath (ausente)");
         return issues;
     }
 
@@ -173,15 +212,11 @@ public static class BootstrapProgram
                 "Defina ODCA_NATIVE_ADMIN_CONNECTION somente nesta sessão com a conexão administrativa do banco ODCA.");
         }
 
-        var adminBuilder = new NpgsqlConnectionStringBuilder(adminConnection)
-        {
-            IncludeErrorDetail = false,
-            Timeout = 5,
-            CommandTimeout = 30
-        };
+        var adminBuilder = new NpgsqlConnectionStringBuilder(adminConnection) { IncludeErrorDetail = false };
         if (string.IsNullOrWhiteSpace(adminBuilder.Password))
         {
-            adminBuilder.Password = ReadSecret("Senha administrativa do PostgreSQL: ");
+            adminBuilder.Password = Environment.GetEnvironmentVariable("ODCA_NATIVE_PASSWORD")
+                ?? ReadSecret("Senha administrativa do PostgreSQL: ");
         }
         if (string.IsNullOrWhiteSpace(adminBuilder.Host) || string.IsNullOrWhiteSpace(adminBuilder.Database))
         {
@@ -199,21 +234,19 @@ public static class BootstrapProgram
             }
         }
 
-        var credentials = ReadJson<DevelopmentCredentials>(paths.CredentialsFile);
-        var previous = ReadJson<DevelopmentRuntime>(paths.RuntimeFile);
-        var appBuilder = new NpgsqlConnectionStringBuilder(adminBuilder.ConnectionString)
+        var applicationConnection = Environment.GetEnvironmentVariable("ODCA_NATIVE_APPLICATION_CONNECTION");
+        if (string.IsNullOrWhiteSpace(applicationConnection))
         {
-            Username = "odca_app_login",
-            Password = credentials.ApplicationDatabasePassword,
-            IncludeErrorDetail = false,
-            Pooling = true,
-            Timeout = 5,
-            CommandTimeout = 30
-        };
-        WriteJson(paths.RuntimeFile, previous with
-        {
-            ConnectionStrings = new ConnectionStrings(adminBuilder.ConnectionString, appBuilder.ConnectionString)
-        });
+            throw new InvalidOperationException("Defina ODCA_NATIVE_APPLICATION_CONNECTION explicitamente; configure-native não troca a conexão da aplicação por outra role.");
+        }
+        var appBuilder = new NpgsqlConnectionStringBuilder(applicationConnection) { IncludeErrorDetail = false };
+        if (string.IsNullOrWhiteSpace(appBuilder.Password)) appBuilder.Password = adminBuilder.Password;
+        var root = ReadObject(paths.RuntimeFile);
+        var connections = root["ConnectionStrings"] as JsonObject ?? new JsonObject();
+        root["ConnectionStrings"] = connections;
+        connections["DatabaseAdmin"] = adminBuilder.ConnectionString;
+        connections["Database"] = appBuilder.ConnectionString;
+        WriteJsonAtomic(paths.RuntimeFile, root);
     }
 
     private static string ReadSecret(string prompt)
@@ -286,7 +319,8 @@ public static class BootstrapProgram
                     BuildConnectionString("postgres", stored.PostgresAdminPassword),
                     BuildConnectionString("odca_app_login", stored.ApplicationDatabasePassword)),
                 new JwtSettings("odca-api", "odca-bff", GenerateSecret(48), 15),
-                new SecuritySettings(false, true));
+                new SecuritySettings(false, true),
+                new DataProtectionSettings(Path.Combine(paths.LocalDirectory, "data-protection-keys"), "ODCA Solutions"));
             WriteJson(paths.RuntimeFile, runtime);
         }
 
@@ -382,9 +416,10 @@ public static class BootstrapProgram
         }
 
         var target = new NpgsqlConnectionStringBuilder(runtime.ConnectionStrings.DatabaseAdmin);
-        if (string.Equals(target.Database, "postgres", StringComparison.OrdinalIgnoreCase))
+        if (!IsProvisionTargetAllowed(environment!, target.Database,
+                args.Contains("--allow-postgres-development", StringComparer.OrdinalIgnoreCase)))
         {
-            throw new InvalidOperationException("Provisionamento recusado na base genérica postgres; configure a base ODCA explicitamente.");
+            throw new InvalidOperationException("Provisionamento na base postgres exige --environment Development e --allow-postgres-development explícitos.");
         }
 
         Console.WriteLine($"Destino: host={target.Host}; porta={target.Port}; banco={target.Database}; ambiente=Development");
@@ -420,6 +455,10 @@ public static class BootstrapProgram
 
     private static bool AllVerified(TestAccessVerification value) => value.AdministratorPersisted &&
         value.ClientPersisted && value.MembershipActive && value.TenantAdministrator && value.BasicPlanActive;
+
+    public static bool IsProvisionTargetAllowed(string environment, string? database, bool allowPostgresDevelopment) =>
+        !string.Equals(database, "postgres", StringComparison.OrdinalIgnoreCase) ||
+        (string.Equals(environment, "Development", StringComparison.Ordinal) && allowPostgresDevelopment);
 
     private static DateTimeOffset? ToUtc(DateTime? value) => value is null
         ? null
@@ -593,12 +632,15 @@ public static class BootstrapProgram
     private sealed record DevelopmentRuntime(
         ConnectionStrings ConnectionStrings,
         JwtSettings Jwt,
-        SecuritySettings Security);
+        SecuritySettings Security,
+        DataProtectionSettings? DataProtection = null);
 
     private sealed record ConnectionStrings(string DatabaseAdmin, string Database);
 
     private sealed record JwtSettings(string Issuer, string Audience, string SigningKey, int AccessTokenMinutes);
 
     private sealed record SecuritySettings(bool MfaRequiredForSuperAdmin, bool AllowDevelopmentBootstrap);
+
+    private sealed record DataProtectionSettings(string KeysPath, string ApplicationName);
 }
 #pragma warning restore CA1050

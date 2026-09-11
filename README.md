@@ -2,7 +2,7 @@
 
 API, Web, Worker e Bootstrap usam `src/Odca.Api/development-runtime.json` ao executar dentro do repositório. `ODCA_RUNTIME_CONFIG` continua permitindo um caminho explícito. Produção e Testing não carregam esse arquivo automaticamente.
 
-Execute `dotnet run --project src/Odca.Bootstrap -- init` na raiz para gerar o arquivo com segredos aleatórios. Se houver configuração antiga em LocalApplicationData, `init` copia o conteúdo existente sem sobrescrever um arquivo no projeto; o original é preservado. Depois use `configure-native` para configurar o PostgreSQL nativo conforme as instruções abaixo.
+Execute `.\scripts\setup-local.ps1` na raiz. O script confere o SDK do `global.json`, reutiliza o Bootstrap, pede a senha sem eco e grava a conexão escolhida sem trocar `Database=postgres`, usuário ou parâmetros. Se houver configuração antiga em LocalApplicationData, `init` copia o conteúdo existente sem sobrescrever um arquivo no projeto; o original é preservado.
 
 `development-runtime.example.json` é apenas uma referência sem segredos; não o copie como configuração funcional. O arquivo real e seus backups são ignorados pelo Git e não são publicados. As credenciais iniciais continuam no diretório pessoal usado pelo Bootstrap. Não gere novamente uma chave JWT válida para mudar o arquivo de lugar.
 
@@ -23,19 +23,25 @@ O cliente `psql` não é necessário: o runner usa Npgsql. O arquivo `database/o
 
 ### PostgreSQL nativo no Windows (sem Docker)
 
-Crie uma base vazia chamada `odca` pelo pgAdmin, usando uma conta administrativa já autorizada. O setup não altera `pg_hba.conf`, não redefine a senha existente e não usa `trust`. Na raiz do repositório, em uma sessão temporária do PowerShell:
+O ambiente confirmado usa a base existente `postgres` e o schema `odca`. O setup não altera o banco, `pg_hba.conf`, senha do servidor ou outros bancos e não usa `psql`. No Windows PowerShell 5.1 ou PowerShell 7, a partir de qualquer pasta, execute o script pelo caminho do repositório (na raiz, o primeiro comando é):
 
 ```powershell
-dotnet run --project src/Odca.Bootstrap -- init
-$env:ODCA_NATIVE_ADMIN_CONNECTION = 'Host=localhost;Port=5432;Database=odca;Username=postgres;Include Error Detail=false'
-dotnet run --project src/Odca.Bootstrap -- configure-native
-Remove-Item Env:ODCA_NATIVE_ADMIN_CONNECTION
+.\scripts\setup-local.ps1
+```
+
+Ele cria/preserva `src/Odca.Api/development-runtime.json`, gera somente segredos ausentes e executa diagnóstico com conexão. “JSON válido”, “conexão aprovada” e “schema compatível” são estados distintos na saída. Para diagnóstico posterior, use `diagnose` (sem acessar o banco) ou `diagnose --connection`.
+
+Somente depois da conexão aprovada, execute separadamente os comandos abaixo, que **alteram o banco**:
+
+```powershell
 dotnet run --project src/Odca.Bootstrap -- migrate
-dotnet run --project src/Odca.Bootstrap -- provision-test-access --environment Development
+dotnet run --project src/Odca.Bootstrap -- provision-test-access --environment Development --allow-postgres-development
 dotnet run --project src/Odca.Bootstrap -- show-login
 ```
 
-`configure-native` pede a senha administrativa sem ecoá-la, valida a conexão e exige PostgreSQL 18+. Para automação local controlada, `Password` também pode vir na variável temporária. A string administrativa e a senha aleatória da role de runtime ficam somente em `src/Odca.Api/development-runtime.json`, que não pertence ao repositório.
+`configure-native` mantém separadas `DatabaseAdmin` (operações de setup) e `Database` (aplicação) e exige que ambas sejam informadas explicitamente; nunca substitui a segunda por `odca_app_login`. Neste Development ambas preservam exatamente a conexão escolhida com `Database=postgres`, `Search Path=odca`, pool 0–50, timeouts 30/60 e `Application Name=odca.api`. Usar `postgres` localmente não demonstra isolamento RLS; os testes automatizados continuam exigindo a role restrita e banco descartável, e produção mantém menor privilégio obrigatório.
+
+As migrations foram inspecionadas quanto ao alcance: tabelas, funções, políticas e dados da aplicação são qualificados no schema `odca`, mas a migration inicial também cria, se ausente, a role compartilhada de cluster `odca_app`; o comando `migrate` provisiona ainda o login `odca_app_login`. Não há criação de extensões. Esses objetos preexistentes não são removidos, e o percurso não executa `DROP DATABASE`, `DROP SCHEMA` ou `TRUNCATE`.
 
 ### Alternativa com Docker
 
@@ -50,10 +56,10 @@ dotnet run --project src/Odca.Bootstrap -- show-login
 
 `init` cria segredos aleatórios em `%LOCALAPPDATA%\ODCA Solutions` e o `.env.local` ignorado pelo Git. Em sistemas Unix, os JSON locais são gravados com modo `0600`. Reexecutar não troca credenciais existentes. `migrate` aplica somente versões ausentes, sob lock e checksum, cria uma role de aplicação sem `SUPERUSER`/`BYPASSRLS` e preserva a senha do superadministrador já criado.
 
-`provision-test-access` é deliberadamente restrito a `--environment Development`, recusa a base genérica `postgres` e mostra host, porta e banco sem senha. Ele valida ou cria `admin@odca.local` como superadministrador e `cliente.teste@odca.local` como administrador da organização **ODCA Cliente de Demonstração**, com concessão local auditada do plano Basic vigente. A operação é transacional, relê perfil/vínculo/plano e confere senhas disponíveis pelo mesmo serviço usado no login. Uma conta comum preexistente nunca é promovida silenciosamente. Reexecução preserva senhas; para rotação explícita, use:
+`provision-test-access` exige `--environment Development`; a base genérica `postgres` exige ainda a confirmação explícita `--allow-postgres-development`, recusada fora de Development. O comando mostra apenas destino sanitizado e valida ou cria `admin@odca.local` como superadministrador e `cliente.teste@odca.local` como administrador da organização **ODCA Cliente de Demonstração**, com concessão local auditada do plano Basic vigente. A operação é transacional, relê perfil/vínculo/plano e confere senhas disponíveis pelo mesmo serviço usado no login. Uma conta comum preexistente nunca é promovida silenciosamente. Reexecução preserva senhas; para rotação explícita, use:
 
 ```powershell
-dotnet run --project src/Odca.Bootstrap -- provision-test-access --environment Development --rotate-passwords
+dotnet run --project src/Odca.Bootstrap -- provision-test-access --environment Development --allow-postgres-development --rotate-passwords
 ```
 
 `show-login` consulta o banco configurado e só exibe uma senha inicial local quando ela confere com o hash persistido. A senha precisa ser alterada no primeiro acesso. Para recuperação explícita somente do superadministrador:
