@@ -111,7 +111,7 @@ public static class BootstrapProgram
             var version = await connection.ExecuteScalarAsync<int?>("SELECT max(version) FROM odca.schema_migrations;");
             Console.WriteLine(version == 9
                 ? "Conexão aprovada; schema odca compatível (versão 009)."
-                : $"Conexão aprovada; schema odca incompatível (versão encontrada: {version?.ToString() ?? "nenhuma"}; esperada: 009).");
+                : $"Conexão aprovada; schema odca incompatível (versão encontrada: {version?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "nenhuma"}; esperada: 009).");
         }
         catch (Exception exception) when (exception is NpgsqlException or TimeoutException)
         {
