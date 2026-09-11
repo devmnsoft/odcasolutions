@@ -28,13 +28,17 @@ public static class BootstrapProgram
             switch (command)
             {
                 case "init":
-                    Initialize(paths);
+                {
+                    var postgresDevelopment = args.Contains("--postgres-development", StringComparer.OrdinalIgnoreCase);
+                    Initialize(paths, postgresDevelopment);
                     Console.WriteLine("Configuração local criada ou preservada.");
-                    Console.WriteLine("Use Docker ou execute configure-native para apontar ao PostgreSQL local.");
+                    Console.WriteLine(postgresDevelopment
+                        ? "Conexão PostgreSQL de Development preservada; nenhuma operação foi executada no banco."
+                        : "Use Docker ou execute configure-native para apontar ao PostgreSQL local.");
                     return 0;
+                }
                 case "diagnose":
-                    await DiagnoseAsync(paths, args.Contains("--connection", StringComparer.OrdinalIgnoreCase));
-                    return 0;
+                    return await DiagnoseAsync(paths, args.Contains("--connection", StringComparer.OrdinalIgnoreCase)) ? 0 : 1;
                 case "repair":
                     Repair(paths, args.Contains("--replace-invalid-signing-key", StringComparer.OrdinalIgnoreCase));
                     return 0;
@@ -57,7 +61,7 @@ public static class BootstrapProgram
                     await ProvisionTestAccessAsync(paths, args);
                     return 0;
                 default:
-                    Console.WriteLine("Uso: dotnet run --project src/Odca.Bootstrap -- <init|diagnose|repair [--replace-invalid-signing-key]|configure-native|migrate|show-login|reset-password|provision-test-access>");
+                    Console.WriteLine("Uso: dotnet run --project src/Odca.Bootstrap -- <init [--postgres-development]|diagnose [--connection]|repair [--replace-invalid-signing-key]|configure-native|migrate|show-login|reset-password|provision-test-access>");
                     return command == "help" ? 0 : 2;
             }
         }
@@ -68,13 +72,13 @@ public static class BootstrapProgram
         }
     }
 
-    private static async Task DiagnoseAsync(LocalPaths paths, bool testConnection)
+    private static async Task<bool> DiagnoseAsync(LocalPaths paths, bool testConnection)
     {
         Console.WriteLine($"Ambiente=Development; caminho={paths.RuntimeFile}");
         if (!File.Exists(paths.RuntimeFile))
         {
             Console.WriteLine("Arquivo não encontrado.");
-            return;
+            return false;
         }
 
         JsonObject root;
@@ -82,18 +86,18 @@ public static class BootstrapProgram
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
         {
             Console.WriteLine($"Arquivo ilegível ou JSON inválido: {exception.Message}");
-            return;
+            return false;
         }
 
         var issues = RuntimeIssues(root);
         if (issues.Count != 0)
         {
             Console.WriteLine($"Propriedades ausentes/inválidas: {string.Join(", ", issues)}");
-            return;
+            return false;
         }
 
         Console.WriteLine("Configuração sintaticamente válida; conectividade não testada.");
-        if (!testConnection) return;
+        if (!testConnection) return true;
 
         var connectionString = root["ConnectionStrings"]?["Database"]!.GetValue<string>()!;
         var target = new NpgsqlConnectionStringBuilder(connectionString);
@@ -106,7 +110,7 @@ public static class BootstrapProgram
             if (!schemaExists)
             {
                 Console.WriteLine("Conexão aprovada; schema odca ausente.");
-                return;
+                return true;
             }
             var version = await connection.ExecuteScalarAsync<int?>("SELECT max(version) FROM odca.schema_migrations;");
             Console.WriteLine(version == 9
@@ -118,6 +122,7 @@ public static class BootstrapProgram
             Console.WriteLine($"Conexão recusada ou indisponível: {exception.Message}");
             throw;
         }
+        return true;
     }
 
     private static void Repair(LocalPaths paths, bool replaceInvalidSigningKey)
@@ -129,6 +134,14 @@ public static class BootstrapProgram
         }
 
         var root = ReadObject(paths.RuntimeFile);
+        var connections = root["ConnectionStrings"] as JsonObject ?? new JsonObject();
+        root["ConnectionStrings"] = connections;
+        if (string.IsNullOrWhiteSpace(connections["DatabaseAdmin"]?.GetValue<string>()))
+        {
+            var database = connections["Database"]?.GetValue<string>();
+            if (!string.IsNullOrWhiteSpace(database)) connections["DatabaseAdmin"] = database;
+        }
+
         var jwt = root["Jwt"] as JsonObject ?? new JsonObject();
         root["Jwt"] = jwt;
         SetMissing(jwt, "Issuer", "odca-api");
@@ -156,13 +169,21 @@ public static class BootstrapProgram
         SetMissing(dataProtection, "KeysPath", Path.Combine(paths.LocalDirectory, "data-protection-keys"));
         SetMissing(dataProtection, "ApplicationName", "ODCA Solutions");
 
+        var security = root["Security"] as JsonObject ?? new JsonObject();
+        root["Security"] = security;
+        if (security["MfaRequiredForSuperAdmin"] is null) security["MfaRequiredForSuperAdmin"] = false;
+        if (security["AllowDevelopmentBootstrap"] is null) security["AllowDevelopmentBootstrap"] = true;
+
         var backup = paths.RuntimeFile + ".backup-" + DateTime.UtcNow.ToString("yyyyMMddHHmmssfff", System.Globalization.CultureInfo.InvariantCulture);
         File.Copy(paths.RuntimeFile, backup, overwrite: false);
         ProtectFile(backup);
         WriteJsonAtomic(paths.RuntimeFile, root);
         Console.WriteLine($"Backup protegido: {backup}");
         Console.WriteLine("Reparo concluído sem alterar conexão, credenciais, banco ou migrações.");
-        DiagnoseAsync(paths, false).GetAwaiter().GetResult();
+        if (!DiagnoseAsync(paths, false).GetAwaiter().GetResult())
+        {
+            throw new InvalidOperationException("O reparo terminou, mas a configuração ainda é inválida.");
+        }
     }
 
     private static void SetMissing(JsonObject value, string name, string defaultValue)
@@ -174,6 +195,7 @@ public static class BootstrapProgram
     {
         var issues = new List<string>();
         if (string.IsNullOrWhiteSpace(root["ConnectionStrings"]?["Database"]?.GetValue<string>())) issues.Add("ConnectionStrings:Database (ausente)");
+        if (string.IsNullOrWhiteSpace(root["ConnectionStrings"]?["DatabaseAdmin"]?.GetValue<string>())) issues.Add("ConnectionStrings:DatabaseAdmin (ausente)");
         if (string.IsNullOrWhiteSpace(root["Jwt"]?["Issuer"]?.GetValue<string>())) issues.Add("Jwt:Issuer (ausente)");
         if (string.IsNullOrWhiteSpace(root["Jwt"]?["Audience"]?.GetValue<string>())) issues.Add("Jwt:Audience (ausente)");
         var accessTokenMinutes = root["Jwt"]?["AccessTokenMinutes"]?.GetValue<int>();
@@ -182,6 +204,7 @@ public static class BootstrapProgram
         if (string.IsNullOrWhiteSpace(key)) issues.Add("Jwt:SigningKey (ausente)");
         else if (Encoding.UTF8.GetByteCount(key) < 32) issues.Add("Jwt:SigningKey (tamanho insuficiente)");
         if (string.IsNullOrWhiteSpace(root["DataProtection"]?["KeysPath"]?.GetValue<string>())) issues.Add("DataProtection:KeysPath (ausente)");
+        if (string.IsNullOrWhiteSpace(root["DataProtection"]?["ApplicationName"]?.GetValue<string>())) issues.Add("DataProtection:ApplicationName (ausente)");
         return issues;
     }
 
@@ -287,7 +310,7 @@ public static class BootstrapProgram
         }
     }
 
-    private static void Initialize(LocalPaths paths)
+    private static void Initialize(LocalPaths paths, bool postgresDevelopment = false)
     {
         Directory.CreateDirectory(paths.LocalDirectory);
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(paths.RuntimeFile))!);
@@ -308,20 +331,33 @@ public static class BootstrapProgram
                 GeneratePassword(),
                 GenerateSecret(24),
                 GenerateSecret(24));
-            WriteJson(paths.CredentialsFile, credentials);
+            WriteJsonNew(paths.CredentialsFile, credentials);
         }
 
         var stored = ReadJson<DevelopmentCredentials>(paths.CredentialsFile);
         if (!File.Exists(paths.RuntimeFile))
         {
+            var postgresPassword = postgresDevelopment
+                ? Environment.GetEnvironmentVariable("ODCA_LOCAL_POSTGRES_PASSWORD")
+                : null;
+            if (postgresDevelopment && string.IsNullOrWhiteSpace(postgresPassword))
+            {
+                throw new InvalidOperationException(
+                    "Defina ODCA_LOCAL_POSTGRES_PASSWORD somente durante o init --postgres-development. A senha não será registrada em logs.");
+            }
+
+            var adminConnection = postgresDevelopment
+                ? BuildPostgresDevelopmentConnectionString(postgresPassword!)
+                : BuildConnectionString("postgres", stored.PostgresAdminPassword);
+            var applicationConnection = postgresDevelopment
+                ? adminConnection
+                : BuildConnectionString("odca_app_login", stored.ApplicationDatabasePassword);
             var runtime = new DevelopmentRuntime(
-                new ConnectionStrings(
-                    BuildConnectionString("postgres", stored.PostgresAdminPassword),
-                    BuildConnectionString("odca_app_login", stored.ApplicationDatabasePassword)),
+                new ConnectionStrings(adminConnection, applicationConnection),
                 new JwtSettings("odca-api", "odca-bff", GenerateSecret(48), 15),
                 new SecuritySettings(false, true),
                 new DataProtectionSettings(Path.Combine(paths.LocalDirectory, "data-protection-keys"), "ODCA Solutions"));
-            WriteJson(paths.RuntimeFile, runtime);
+            WriteJsonNew(paths.RuntimeFile, runtime);
         }
 
         if (!File.Exists(paths.EnvironmentFile))
@@ -532,6 +568,24 @@ public static class BootstrapProgram
             CommandTimeout = 30
         }.ConnectionString;
 
+    private static string BuildPostgresDevelopmentConnectionString(string password) =>
+        new NpgsqlConnectionStringBuilder
+        {
+            Host = "localhost",
+            Port = 5432,
+            Database = "postgres",
+            Username = "postgres",
+            Password = password,
+            Pooling = true,
+            MaxPoolSize = 50,
+            MinPoolSize = 0,
+            Timeout = 30,
+            CommandTimeout = 60,
+            SearchPath = "odca",
+            ApplicationName = "odca.api",
+            IncludeErrorDetail = false
+        }.ConnectionString;
+
     private static string GenerateSecret(int bytes) => Convert.ToBase64String(RandomNumberGenerator.GetBytes(bytes));
 
     private static string GeneratePassword()
@@ -595,6 +649,30 @@ public static class BootstrapProgram
         }
     }
 
+    private static void WriteJsonNew<T>(string path, T value)
+    {
+        var temporary = path + ".tmp-" + Guid.NewGuid().ToString("N");
+        try
+        {
+            File.WriteAllText(temporary, JsonSerializer.Serialize(value, JsonOptions));
+            ProtectFile(temporary);
+            try
+            {
+                File.Move(temporary, path, overwrite: false);
+            }
+            catch (IOException) when (File.Exists(path))
+            {
+                // Another setup won the race. Preserve its complete file rather than replacing it.
+                return;
+            }
+            ProtectFile(path);
+        }
+        finally
+        {
+            if (File.Exists(temporary)) File.Delete(temporary);
+        }
+    }
+
     private sealed record LocalPaths(
         string RepositoryRoot,
         string LocalDirectory,
@@ -605,10 +683,14 @@ public static class BootstrapProgram
         public static LocalPaths For(string repositoryRoot)
         {
             var runtimeOverride = Environment.GetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable);
+            if (runtimeOverride is not null && string.IsNullOrWhiteSpace(runtimeOverride))
+            {
+                throw new InvalidOperationException($"{LocalRuntimeConfiguration.EnvironmentVariable} foi definida com um caminho vazio.");
+            }
             var localDirectory = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "ODCA Solutions");
-            var runtimeFile = runtimeOverride ?? LocalRuntimeConfiguration.GetDefaultPath(repositoryRoot);
+            var runtimeFile = Path.GetFullPath(runtimeOverride ?? LocalRuntimeConfiguration.GetDefaultPath(repositoryRoot));
             return new(
                 repositoryRoot,
                 localDirectory,

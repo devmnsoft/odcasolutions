@@ -17,15 +17,15 @@
     <div class="metrics">
         <a class="metric" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@home.TenantId" asp-route-tab="pessoas" asp-route-status="active">
             <span>Membros ativos</span>
-            <strong>@(overview?.ActiveMembers.ToString() ?? "—")</strong>
+            <strong>@(overview?.ActiveMembers.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "—")</strong>
         </a>
         <a class="metric" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@home.TenantId" asp-route-tab="convites" asp-route-invitationStatus="pending">
             <span>Convites válidos</span>
-            <strong>@(overview?.ValidInvitations.ToString() ?? "—")</strong>
+            <strong>@(overview?.ValidInvitations.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "—")</strong>
         </a>
         <a class="metric" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@home.TenantId" asp-route-tab="pessoas">
             <span>Assentos disponíveis</span>
-            <strong>@(overview?.AvailableSeats.ToString() ?? "—")</strong>
+            <strong>@(overview?.AvailableSeats.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "—")</strong>
         </a>
     </div>
 
