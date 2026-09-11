@@ -1,5 +1,11 @@
 # Status de execução
 
+## Configuração local consolidada (10/09/2026)
+
+- O setup oficial passou a ser `.\scripts\setup-local.ps1`; ele mantém `Database=postgres`, schema `odca` e separa configuração/conectividade de migration e provisionamento.
+- A exceção para provisionar acesso de demonstração na base `postgres` requer simultaneamente `--environment Development` e `--allow-postgres-development`; as recusas históricas abaixo descrevem versões anteriores.
+- Neste ambiente de revisão o executável `dotnet` não está instalado e não há conexão autorizada ao PostgreSQL do usuário; portanto build/testes .NET, schema, credenciais, login HTTP, MFA e dashboard não foram declarados aprovados.
+
 ## Evolução prompt 13 — central operacional de equipe (10/09/2026)
 
 - SHA inicial desta sessão: `297b2cde045c11f27665f4bf5d82ebd3d39b151c` (já à frente de `6ac493b` com lockfiles/CI).
