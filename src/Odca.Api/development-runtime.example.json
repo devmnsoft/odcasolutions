@@ -10,7 +10,7 @@
     "AccessTokenMinutes": 15
   },
   "Security": {
-    "MfaRequiredForSuperAdmin": false,
+    "MfaRequiredForSuperAdmin": true,
     "AllowDevelopmentBootstrap": true
   },
   "DataProtection": {

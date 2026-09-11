@@ -171,7 +171,7 @@ public static class BootstrapProgram
 
         var security = root["Security"] as JsonObject ?? new JsonObject();
         root["Security"] = security;
-        if (security["MfaRequiredForSuperAdmin"] is null) security["MfaRequiredForSuperAdmin"] = false;
+        if (security["MfaRequiredForSuperAdmin"] is null) security["MfaRequiredForSuperAdmin"] = true;
         if (security["AllowDevelopmentBootstrap"] is null) security["AllowDevelopmentBootstrap"] = true;
 
         var backup = paths.RuntimeFile + ".backup-" + DateTime.UtcNow.ToString("yyyyMMddHHmmssfff", System.Globalization.CultureInfo.InvariantCulture);
@@ -355,7 +355,7 @@ public static class BootstrapProgram
             var runtime = new DevelopmentRuntime(
                 new ConnectionStrings(adminConnection, applicationConnection),
                 new JwtSettings("odca-api", "odca-bff", GenerateSecret(48), 15),
-                new SecuritySettings(false, true),
+                new SecuritySettings(true, true),
                 new DataProtectionSettings(Path.Combine(paths.LocalDirectory, "data-protection-keys"), "ODCA Solutions"));
             WriteJsonNew(paths.RuntimeFile, runtime);
         }
@@ -618,13 +618,17 @@ public static class BootstrapProgram
 
     private static string FindRepositoryRoot()
     {
-        var current = new DirectoryInfo(Directory.GetCurrentDirectory());
-        while (current is not null && !File.Exists(Path.Combine(current.FullName, "Odca.sln")))
+        static string? FindFrom(string startDirectory)
         {
-            current = current.Parent;
+            var current = new DirectoryInfo(startDirectory);
+            while (current is not null && !File.Exists(Path.Combine(current.FullName, "Odca.sln")))
+            {
+                current = current.Parent;
+            }
+            return current?.FullName;
         }
 
-        return current?.FullName
+        return FindFrom(Directory.GetCurrentDirectory()) ?? FindFrom(AppContext.BaseDirectory)
             ?? throw new DirectoryNotFoundException("Execute o bootstrap dentro do repositório ODCA Solutions.");
     }
 
@@ -682,15 +686,10 @@ public static class BootstrapProgram
     {
         public static LocalPaths For(string repositoryRoot)
         {
-            var runtimeOverride = Environment.GetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable);
-            if (runtimeOverride is not null && string.IsNullOrWhiteSpace(runtimeOverride))
-            {
-                throw new InvalidOperationException($"{LocalRuntimeConfiguration.EnvironmentVariable} foi definida com um caminho vazio.");
-            }
             var localDirectory = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "ODCA Solutions");
-            var runtimeFile = Path.GetFullPath(runtimeOverride ?? LocalRuntimeConfiguration.GetDefaultPath(repositoryRoot));
+            var runtimeFile = LocalRuntimeConfiguration.ResolvePath(repositoryRoot);
             return new(
                 repositoryRoot,
                 localDirectory,

@@ -20,7 +20,7 @@ if (-not (Test-Path -LiteralPath $runtimeFile)) {
     }
     Write-Host 'Configuração ausente; iniciando a preparação local antes dos serviços.'
     & (Join-Path $PSScriptRoot 'setup-local.ps1')
-    if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $runtimeFile)) {
+    if (-not $? -or -not (Test-Path -LiteralPath $runtimeFile -PathType Leaf)) {
         throw 'A preparação local falhou ou não criou a configuração; nenhum serviço foi iniciado.'
     }
 }
@@ -36,7 +36,8 @@ $projects = @(
 $processes = @()
 try {
     foreach ($project in $projects) {
-        $arguments = @('run', '--project', (Join-Path $repositoryRoot $project.Path), '--launch-profile', $project.Profile)
+        # Relative project names keep Start-Process argument handling safe when the repository path contains spaces.
+        $arguments = @('run', '--project', $project.Path, '--launch-profile', $project.Profile)
         $processes += Start-Process dotnet -ArgumentList $arguments -WorkingDirectory $repositoryRoot -NoNewWindow -PassThru
         Write-Host ("{0} iniciado (PID {1})." -f $project.Name, $processes[-1].Id)
     }

@@ -20,7 +20,7 @@
 
   <ItemGroup>
     <Content Update="development-runtime.json" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
-    <Content Remove="development-runtime.json.backup-*;development-runtime.json.tmp-*" />
+    <Content Remove="development-runtime.json.backup-*;development-runtime.json.tmp-*;.development-runtime-*.tmp" />
   </ItemGroup>
 
 </Project>

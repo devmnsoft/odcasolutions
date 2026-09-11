@@ -1,8 +1,8 @@
 ## Configuração de desenvolvimento no projeto principal
 
-API, Web, Worker e Bootstrap usam `src/Odca.Api/development-runtime.json` ao executar dentro do repositório. `ODCA_RUNTIME_CONFIG` continua permitindo um caminho explícito. Produção e Testing não carregam esse arquivo automaticamente.
+API, Web, Worker e Bootstrap usam `src/Odca.Api/development-runtime.json`. `ODCA_RUNTIME_CONFIG` permite um caminho explícito; se for relativo, ele é resolvido a partir do diretório corrente tanto no script quanto no código .NET, e um valor vazio é recusado. Produção e Testing não carregam esse arquivo automaticamente.
 
-Execute `.\scripts\setup-local.ps1` na raiz. O script confere o SDK do `global.json`, reutiliza o Bootstrap e só pede a senha sem eco quando não existe configuração atual ou anterior. Ele grava a conexão escolhida sem trocar `Database=postgres`, usuário ou parâmetros; reexecuções validam e completam apenas seções ausentes. Se houver configuração antiga em LocalApplicationData, `init` copia o conteúdo existente sem sobrescrever um arquivo no projeto; o original é preservado. Use `-TestConnection` para também abrir uma conexão, sem executar migrations.
+Execute `.\scripts\setup-local.ps1` na raiz. O script é independente do build e do SDK e só pede a senha sem eco quando precisa criar uma configuração. Ele grava a conexão escolhida sem trocar `Database=postgres`, schema `odca`, usuário ou parâmetros. Reexecuções apenas validam o JSON existente e informam campos ausentes, preservando todas as propriedades e chaves. Se houver configuração antiga em LocalApplicationData, o script oferece importação explícita (ou aceite com `-ImportLegacy`) sem alterar o original. O setup não abre conexão nem executa migrations.
 
 `development-runtime.example.json` é apenas uma referência sem segredos; não o copie como configuração funcional. O arquivo real e seus backups são ignorados pelo Git e não são publicados. As credenciais iniciais continuam no diretório pessoal usado pelo Bootstrap. Não gere novamente uma chave JWT válida para mudar o arquivo de lugar.
 
@@ -23,13 +23,14 @@ O cliente `psql` não é necessário: o runner usa Npgsql. O arquivo `database/o
 
 ### PostgreSQL nativo no Windows (sem Docker)
 
-O ambiente confirmado usa a base existente `postgres` e o schema `odca`. O setup não altera o banco, `pg_hba.conf`, senha do servidor ou outros bancos e não usa `psql`. No Windows PowerShell 5.1 ou PowerShell 7, a partir de qualquer pasta, execute o script pelo caminho do repositório (na raiz, o primeiro comando é):
+O ambiente confirmado usa a base existente `postgres` e o schema `odca`. O setup não altera o banco, `pg_hba.conf`, senha do servidor ou outros bancos e não usa `psql`. No Windows PowerShell 5.1 ou PowerShell 7, use esta sequência principal:
 
 ```powershell
+Set-Location C:\MNSOFT\odcasolutions
 .\scripts\setup-local.ps1
 ```
 
-Ele cria/preserva `src/Odca.Api/development-runtime.json`, gera somente segredos ausentes e executa o diagnóstico estrutural. “JSON válido”, “conexão aprovada” e “schema compatível” são estados distintos na saída. Para diagnóstico posterior, use `diagnose` (sem acessar o banco) ou `diagnose --connection`; ambos retornam código diferente de zero para configuração inválida ou falha de conexão.
+Ele cria `src/Odca.Api/development-runtime.json` de forma atômica, gera uma única chave JWT aleatória e executa o diagnóstico estrutural sem build. Se o arquivo já existe, não o modifica nem regenera segredos. “JSON válido”, “conexão não testada”, “conexão aprovada” e “schema compatível” são estados distintos. Para diagnóstico posterior, use `dotnet run --project src/Odca.Bootstrap -- diagnose` (sem acessar o banco) ou acrescente `--connection`; ambos retornam código diferente de zero para configuração inválida ou falha de conexão.
 
 Somente depois da conexão aprovada, execute separadamente os comandos abaixo, que **alteram o banco**:
 
