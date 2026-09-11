@@ -80,6 +80,72 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
     }
 
     [Fact]
+    public void EmptyOverrideIsRejectedInDevelopment()
+    {
+        Environment.SetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable, "   ");
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            LocalRuntimeConfiguration.Add(new ConfigurationManager(), EnvironmentNamed("Development"), []));
+        Assert.Contains("caminho vazio", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task PostgresDevelopmentInitCreatesCompleteConfigurationWithoutChangingUserChoice()
+    {
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, "runtime.json");
+        Environment.SetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable, path);
+        Environment.SetEnvironmentVariable("ODCA_LOCAL_POSTGRES_PASSWORD", "local-test-secret");
+        try
+        {
+            Assert.Equal(0, await BootstrapProgram.RunAsync(["init", "--postgres-development"]));
+            var root = JsonNode.Parse(File.ReadAllText(path))!;
+            var database = new Npgsql.NpgsqlConnectionStringBuilder(root["ConnectionStrings"]!["Database"]!.GetValue<string>());
+            Assert.Equal("postgres", database.Database);
+            Assert.Equal("postgres", database.Username);
+            Assert.Equal(5432, database.Port);
+            Assert.Equal("odca", database.SearchPath);
+            Assert.Equal(50, database.MaxPoolSize);
+            Assert.Equal(60, database.CommandTimeout);
+            Assert.Equal(root["ConnectionStrings"]!["Database"]!.GetValue<string>(),
+                root["ConnectionStrings"]!["DatabaseAdmin"]!.GetValue<string>());
+            Assert.Equal(48, Convert.FromBase64String(root["Jwt"]!["SigningKey"]!.GetValue<string>()).Length);
+            Assert.Equal("ODCA Solutions", root["DataProtection"]!["ApplicationName"]!.GetValue<string>());
+
+            var original = File.ReadAllText(path);
+            Environment.SetEnvironmentVariable("ODCA_LOCAL_POSTGRES_PASSWORD", "must-not-replace");
+            Assert.Equal(0, await BootstrapProgram.RunAsync(["init", "--postgres-development"]));
+            Assert.Equal(original, File.ReadAllText(path));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("ODCA_LOCAL_POSTGRES_PASSWORD", null);
+        }
+    }
+
+    [Fact]
+    public async Task ConcurrentInitializationsNeverReplaceTheWinningConfiguration()
+    {
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, "runtime.json");
+        Environment.SetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable, path);
+        Environment.SetEnvironmentVariable("ODCA_LOCAL_POSTGRES_PASSWORD", "concurrent-secret");
+        try
+        {
+            var results = await Task.WhenAll(
+                BootstrapProgram.RunAsync(["init", "--postgres-development"]),
+                BootstrapProgram.RunAsync(["init", "--postgres-development"]));
+            Assert.All(results, result => Assert.Equal(0, result));
+            Assert.Equal(48, Convert.FromBase64String(
+                JsonNode.Parse(File.ReadAllText(path))!["Jwt"]!["SigningKey"]!.GetValue<string>()).Length);
+            Assert.Empty(Directory.GetFiles(directory, "*.tmp-*"));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("ODCA_LOCAL_POSTGRES_PASSWORD", null);
+        }
+    }
+
+    [Fact]
     public async Task RepairIsIdempotentAndPreservesValidAndUnknownValues()
     {
         Directory.CreateDirectory(directory);

@@ -35,7 +35,13 @@ public static class LocalRuntimeConfiguration
             return new(environment.EnvironmentName, null, false);
         }
 
-        var path = Environment.GetEnvironmentVariable(EnvironmentVariable) ?? GetDefaultPath(environment.ContentRootPath);
+        var configuredPath = Environment.GetEnvironmentVariable(EnvironmentVariable);
+        if (configuredPath is not null && string.IsNullOrWhiteSpace(configuredPath))
+        {
+            throw new InvalidOperationException($"{EnvironmentVariable} foi definida com um caminho vazio.");
+        }
+
+        var path = Path.GetFullPath(configuredPath ?? GetDefaultPath(environment.ContentRootPath));
         try
         {
             // The personal file supplies defaults. Explicit process configuration always wins.
