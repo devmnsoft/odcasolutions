@@ -49,7 +49,7 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordService, AspNetPasswordService>();
         services.AddSingleton<ITokenService, JwtTokenService>();
         var dataProtection = services.AddDataProtection()
-            .SetApplicationName("ODCA Solutions");
+            .SetApplicationName(configuration["DataProtection:ApplicationName"] ?? "ODCA Solutions");
         var keysPath = configuration["DataProtection:KeysPath"];
         if (!string.IsNullOrWhiteSpace(keysPath))
         {

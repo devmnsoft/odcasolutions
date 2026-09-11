@@ -12,5 +12,9 @@
   "Security": {
     "MfaRequiredForSuperAdmin": false,
     "AllowDevelopmentBootstrap": true
+  },
+  "DataProtection": {
+    "KeysPath": "<caminho-local-compartilhado-fora-do-Git>",
+    "ApplicationName": "ODCA Solutions"
   }
 }

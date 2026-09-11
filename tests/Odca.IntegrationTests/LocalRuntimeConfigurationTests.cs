@@ -112,18 +112,46 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
     }
 
     [Fact]
-    public void ApiAndWorkerResolveTheSameProjectConfiguration()
+    public void ApiWebWorkerAndBootstrapResolveTheSameProjectConfiguration()
     {
         var api = Path.Combine(directory, "src", "Odca.Api");
         var worker = Path.Combine(directory, "src", "Odca.Worker");
+        var web = Path.Combine(directory, "src", "Odca.Web");
+        var bootstrap = Path.Combine(directory, "src", "Odca.Bootstrap");
         Directory.CreateDirectory(api);
         Directory.CreateDirectory(worker);
+        Directory.CreateDirectory(web);
+        Directory.CreateDirectory(bootstrap);
         File.WriteAllText(Path.Combine(api, "Odca.Api.csproj"), "<Project />");
         var expected = Path.Combine(api, "development-runtime.json");
 
         Assert.Equal(expected, LocalRuntimeConfiguration.GetDefaultPath(api));
         Assert.Equal(expected, LocalRuntimeConfiguration.GetDefaultPath(worker));
+        Assert.Equal(expected, LocalRuntimeConfiguration.GetDefaultPath(web));
+        Assert.Equal(expected, LocalRuntimeConfiguration.GetDefaultPath(bootstrap));
         Assert.Equal(expected, LocalRuntimeConfiguration.GetDefaultPath(directory));
+    }
+
+    [Theory]
+    [InlineData("Development", "postgres", false, false)]
+    [InlineData("Development", "postgres", true, true)]
+    [InlineData("Testing", "postgres", true, false)]
+    [InlineData("Production", "postgres", true, false)]
+    [InlineData("Development", "odca_test", false, true)]
+    public void PostgresProvisioningRequiresExplicitDevelopmentException(
+        string environment, string database, bool option, bool expected)
+    {
+        Assert.Equal(expected, BootstrapProgram.IsProvisionTargetAllowed(environment, database, option));
+    }
+
+    [Fact]
+    public void SetupStopsDotNetPipelineOnNonZeroExitCode()
+    {
+        var root = LocalRuntimeConfiguration.GetDefaultPath(Directory.GetCurrentDirectory());
+        var script = File.ReadAllText(Path.Combine(Directory.GetParent(Directory.GetParent(Directory.GetParent(root)!.FullName)!.FullName)!.FullName,
+            "scripts", "setup-local.ps1"));
+        Assert.Contains("if ($LASTEXITCODE -ne 0)", script, StringComparison.Ordinal);
+        Assert.Contains("As etapas dependentes não foram executadas", script, StringComparison.Ordinal);
     }
 
     public void Dispose()

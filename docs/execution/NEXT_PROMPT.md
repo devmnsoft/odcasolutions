@@ -2,15 +2,17 @@
 
 ## Fechar evidência do prompt 13
 
-1. Com PostgreSQL 18 autorizado, criar/usar `odca` e `odca_test_local`, aplicar migrações até a versão 9 e executar:
+1. Com PostgreSQL 18 autorizado, configurar a base `postgres`/schema `odca` sem alterar o banco durante o setup:
 
 ```powershell
-dotnet run --project src/Odca.Bootstrap -- init
-$env:ODCA_NATIVE_ADMIN_CONNECTION = 'Host=localhost;Port=5432;Database=odca;Username=postgres;Password=<senha>;Include Error Detail=false'
-dotnet run --project src/Odca.Bootstrap -- configure-native
-Remove-Item Env:ODCA_NATIVE_ADMIN_CONNECTION
+.\scripts\setup-local.ps1
+```
+
+Depois, em uma etapa explícita que altera o banco:
+
+```powershell
 dotnet run --project src/Odca.Bootstrap -- migrate
-dotnet run --project src/Odca.Bootstrap -- provision-test-access --environment Development
+dotnet run --project src/Odca.Bootstrap -- provision-test-access --environment Development --allow-postgres-development
 dotnet run --project src/Odca.Bootstrap -- show-login
 ```
 
