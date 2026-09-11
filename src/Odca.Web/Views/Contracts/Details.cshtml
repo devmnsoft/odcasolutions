@@ -1,0 +1,248 @@
+@model ContractDetailPageViewModel
+@{
+    ViewData["Title"] = Model.Contract.Title;
+    var org = Model.Organization;
+    var contract = Model.Contract;
+    var canEdit = Model.CanManage && contract.OperationalStatus is "draft" or "active";
+    var canActivate = Model.CanLifecycle && contract.OperationalStatus == "draft";
+    var canClose = Model.CanLifecycle && contract.OperationalStatus == "active";
+    var canCancel = Model.CanLifecycle && contract.OperationalStatus is "draft" or "active";
+    var canRenew = Model.CanLifecycle && contract.OperationalStatus == "active" && !contract.IsIndefinite;
+    var canInactivate = Model.CanManage && contract.OperationalStatus is not "cancelled";
+}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">@org.Name</span>
+        <h1>@contract.Title</h1>
+        <p class="muted">
+            @(string.IsNullOrWhiteSpace(contract.ReferenceNumber) ? contract.TypeName : $"{contract.ReferenceNumber} · {contract.TypeName}")
+            · ciclo @contract.TermCycle
+        </p>
+        <div class="chip-row">
+            <span class="@ContractsDisplay.OperationalStatusClass(contract.OperationalStatus)">@ContractsDisplay.OperationalStatus(contract.OperationalStatus)</span>
+            <span class="@ContractsDisplay.TemporalStatusClass(contract.TemporalStatus)">@ContractsDisplay.TemporalStatus(contract.TemporalStatus)</span>
+            <span class="badge badge-muted">@ContractsDisplay.FormatTerm(contract.StartDate, contract.EndDate, contract.IsIndefinite)</span>
+            <span class="badge badge-muted">Responsável: @(string.IsNullOrWhiteSpace(contract.OwnerName) ? "não atribuído" : contract.OwnerName)</span>
+        </div>
+    </div>
+    <div class="toolbar">
+        @if (canEdit)
+        {
+            <a class="button" asp-action="Edit" asp-route-tenantId="@org.Id" asp-route-id="@contract.Id" asp-route-returnQuery="@Model.ReturnQuery">Editar</a>
+        }
+        <a class="button" href="@(string.IsNullOrWhiteSpace(Model.ReturnQuery) ? Url.Action("Index", new { tenantId = org.Id }) : Url.Action("Index", new { tenantId = org.Id }) + "?" + Model.ReturnQuery)">Voltar à lista</a>
+    </div>
+</section>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success" role="status">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-error" role="alert">@error</div>
+}
+
+<div class="toolbar">
+    <nav class="tabs" aria-label="Seções do contrato">
+        <a class="tab @(Model.Tab == "resumo" ? "active" : null)" asp-action="Details" asp-route-tenantId="@org.Id" asp-route-id="@contract.Id" asp-route-tab="resumo" asp-route-returnQuery="@Model.ReturnQuery" aria-current="@(Model.Tab == "resumo" ? "page" : null)">Resumo</a>
+        <a class="tab @(Model.Tab == "partes" ? "active" : null)" asp-action="Details" asp-route-tenantId="@org.Id" asp-route-id="@contract.Id" asp-route-tab="partes" asp-route-returnQuery="@Model.ReturnQuery" aria-current="@(Model.Tab == "partes" ? "page" : null)">Partes</a>
+        <a class="tab @(Model.Tab == "renovacoes" ? "active" : null)" asp-action="Details" asp-route-tenantId="@org.Id" asp-route-id="@contract.Id" asp-route-tab="renovacoes" asp-route-returnQuery="@Model.ReturnQuery" aria-current="@(Model.Tab == "renovacoes" ? "page" : null)">Renovações</a>
+        <a class="tab @(Model.Tab == "historico" ? "active" : null)" asp-action="Details" asp-route-tenantId="@org.Id" asp-route-id="@contract.Id" asp-route-tab="historico" asp-route-returnQuery="@Model.ReturnQuery" aria-current="@(Model.Tab == "historico" ? "page" : null)">Histórico</a>
+    </nav>
+    <div class="toolbar">
+        @if (canActivate)
+        {
+            <button class="button button-primary" type="button"
+                    data-confirm-open
+                    data-confirm-title="Ativar contrato?"
+                    data-confirm-body="A ativação inicia o monitoramento de prazos e alertas internos. Não realiza assinatura digital nem envia documento para assinatura."
+                    data-confirm-action="Ativar monitoramento"
+                    data-confirm-form="contract-activate">Ativar</button>
+        }
+        @if (canClose)
+        {
+            <button class="button" type="button"
+                    data-confirm-open
+                    data-confirm-title="Encerrar contrato?"
+                    data-confirm-body="O contrato deixa de gerar novos alertas e passa ao estado encerrado. O histórico permanece disponível."
+                    data-confirm-action="Encerrar"
+                    data-confirm-form="contract-close">Encerrar</button>
+        }
+        @if (canCancel)
+        {
+            <button class="button" type="button"
+                    data-confirm-open
+                    data-confirm-title="Cancelar contrato?"
+                    data-confirm-body="O cancelamento encerra o ciclo operacional. Esta ação não apaga o histórico auditável."
+                    data-confirm-action="Cancelar contrato"
+                    data-confirm-form="contract-cancel">Cancelar</button>
+        }
+        @if (canInactivate)
+        {
+            <button class="button" type="button" data-open-panel="inactivate">Inativar</button>
+        }
+    </div>
+</div>
+
+@if (Model.Tab == "resumo")
+{
+    <section class="card">
+        <h2>Resumo</h2>
+        <dl class="detail-grid">
+            <div><dt>Tipo</dt><dd>@contract.TypeName</dd></div>
+            <div><dt>Contraparte principal</dt><dd>@contract.PrimaryCounterpartyName</dd></div>
+            <div><dt>Responsável</dt><dd>@(contract.OwnerName ?? "—")</dd></div>
+            <div><dt>Vigência</dt><dd>@ContractsDisplay.FormatTerm(contract.StartDate, contract.EndDate, contract.IsIndefinite)</dd></div>
+            <div><dt>Valor</dt><dd>@(contract.Amount is null ? "—" : $"{contract.Amount:N2} {contract.Currency}")</dd></div>
+            <div><dt>Periodicidade</dt><dd>@ContractsDisplay.AmountPeriodicity(contract.AmountPeriodicity)</dd></div>
+            <div><dt>Aviso de renovação</dt><dd>@(contract.RenewalNoticeDays?.ToString() ?? "—")</dd></div>
+            <div><dt>Decisão de renovação</dt><dd>@ContractsDisplay.RenewalDecision(contract.RenewalDecision)</dd></div>
+            <div><dt>Atualizado em</dt><dd>@contract.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd></div>
+        </dl>
+        @if (!string.IsNullOrWhiteSpace(contract.Summary))
+        {
+            <h3>Descrição</h3>
+            <p>@contract.Summary</p>
+        }
+    </section>
+}
+else if (Model.Tab == "partes")
+{
+    <section class="card">
+        <h2>Partes</h2>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Contraparte</th><th>Papel</th></tr></thead>
+                <tbody>
+                @foreach (var party in contract.Parties)
+                {
+                    <tr>
+                        <td>@party.CounterpartyName</td>
+                        <td>@(string.Equals(party.Role, "primary", StringComparison.OrdinalIgnoreCase) ? "Principal" : "Adicional")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+else if (Model.Tab == "renovacoes")
+{
+    <section class="card">
+        <h2>Renovações</h2>
+        @if (canRenew)
+        {
+            <form asp-action="Renew" asp-route-tenantId="@org.Id" asp-route-id="@contract.Id" method="post" class="form-grid" data-processing>
+                <input type="hidden" name="returnQuery" value="@Model.ReturnQuery" />
+                <input type="hidden" name="tab" value="renovacoes" />
+                <input type="hidden" asp-for="Renew.Version" />
+                <label asp-for="Renew.NewEndDate">
+                    Nova data de término
+                    <input asp-for="Renew.NewEndDate" type="date" required />
+                </label>
+                <label asp-for="Renew.Reason">
+                    Motivo
+                    <input asp-for="Renew.Reason" maxlength="500" />
+                </label>
+                <div style="align-self:end">
+                    <button class="button button-primary" type="submit" data-processing-label="Registrando…">Registrar renovação</button>
+                </div>
+            </form>
+            <p class="muted">A renovação preserva o ciclo anterior no histórico append-only.</p>
+        }
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>De</th><th>Para</th><th>Ciclo</th><th>Motivo</th><th>Quando</th></tr></thead>
+                <tbody>
+                @if (contract.Renewals.Count == 0)
+                {
+                    <tr><td colspan="5"><div class="empty-state"><h2>Nenhuma renovação</h2><p>Quando houver renovação, o histórico completo permanece aqui.</p></div></td></tr>
+                }
+                else
+                {
+                    foreach (var renewal in contract.Renewals)
+                    {
+                        <tr>
+                            <td>@renewal.PreviousEndDate.ToString("dd/MM/yyyy")</td>
+                            <td>@renewal.NewEndDate.ToString("dd/MM/yyyy")</td>
+                            <td>@renewal.PreviousTermCycle → @renewal.NewTermCycle</td>
+                            <td>@(string.IsNullOrWhiteSpace(renewal.Reason) ? "—" : renewal.Reason)</td>
+                            <td>@renewal.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+else
+{
+    <section class="card">
+        <h2>Histórico</h2>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Evento</th><th>Quando</th></tr></thead>
+                <tbody>
+                @if (contract.Events.Count == 0)
+                {
+                    <tr><td colspan="2"><div class="empty-state"><h2>Sem eventos</h2><p>Os eventos operacionais aparecerão conforme o ciclo de vida avançar.</p></div></td></tr>
+                }
+                else
+                {
+                    foreach (var item in contract.Events)
+                    {
+                        <tr>
+                            <td>@ContractsDisplay.ContractEvent(item.Action)</td>
+                            <td>@item.OccurredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+<form id="contract-activate" class="sr-form" asp-action="Activate" asp-route-tenantId="@org.Id" asp-route-id="@contract.Id" method="post">
+    <input type="hidden" name="Version" value="@contract.Version" />
+    <input type="hidden" name="returnQuery" value="@Model.ReturnQuery" />
+</form>
+<form id="contract-close" class="sr-form" asp-action="Close" asp-route-tenantId="@org.Id" asp-route-id="@contract.Id" method="post">
+    <input type="hidden" name="Version" value="@contract.Version" />
+    <input type="hidden" name="returnQuery" value="@Model.ReturnQuery" />
+</form>
+<form id="contract-cancel" class="sr-form" asp-action="Cancel" asp-route-tenantId="@org.Id" asp-route-id="@contract.Id" method="post">
+    <input type="hidden" name="Version" value="@contract.Version" />
+    <input type="hidden" name="returnQuery" value="@Model.ReturnQuery" />
+</form>
+
+<div class="panel-scrim" hidden></div>
+<aside class="drawer-panel" id="panel-inactivate" data-panel="inactivate" aria-hidden="true">
+    <div class="drawer-header">
+        <h2>Inativar contrato</h2>
+        <button type="button" class="icon-button" data-close-panel aria-label="Fechar"><span aria-hidden="true">×</span></button>
+    </div>
+    <p class="muted">A inativação remove o contrato das listas operacionais e marca avisos futuros como obsoletos. O histórico permanece auditável.</p>
+    <form asp-action="SoftDelete" asp-route-tenantId="@org.Id" asp-route-id="@contract.Id" method="post" data-processing>
+        <input type="hidden" asp-for="SoftDelete.Version" />
+        <input type="hidden" name="returnQuery" value="@Model.ReturnQuery" />
+        <label asp-for="SoftDelete.Reason">
+            Motivo
+            <textarea asp-for="SoftDelete.Reason" required minlength="3" maxlength="500"></textarea>
+        </label>
+        <button class="button button-primary" type="submit" data-processing-label="Inativando…">Confirmar inativação</button>
+    </form>
+</aside>
+
+<dialog class="confirm-dialog" data-confirm-dialog aria-labelledby="confirm-title-contract">
+    <form method="dialog" class="confirm-dialog-body">
+        <h2 id="confirm-title-contract" data-confirm-title-target>Confirmar ação</h2>
+        <p data-confirm-body-target></p>
+        <div class="toolbar">
+            <button class="button" value="cancel" type="submit">Voltar</button>
+            <button class="button button-primary" value="confirm" type="submit" data-confirm-action-target>Confirmar</button>
+        </div>
+    </form>
+</dialog>

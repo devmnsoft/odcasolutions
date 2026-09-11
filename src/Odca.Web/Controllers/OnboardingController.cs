@@ -106,11 +106,26 @@ public sealed class OnboardingController(OdcaApiClient apiClient) : Controller
             overview = overviewResult.Value;
         }
 
+        Odca.Contracts.Contracts.ContractOverviewResponse? contractOverview = null;
+        var contracts = await apiClient.GetContractOverviewAsync(token, result.Value.TenantId, cancellationToken);
+        if (contracts.Succeeded)
+        {
+            contractOverview = contracts.Value;
+        }
+
+        var unread = await apiClient.GetUnreadNotificationCountAsync(token, result.Value.TenantId, cancellationToken);
         ViewData["OrganizationName"] = result.Value.OrganizationName;
+        ViewData["TenantId"] = result.Value.TenantId;
+        if (unread.Succeeded)
+        {
+            ViewData["UnreadNotifications"] = unread.Value!.Count;
+        }
+
         return View(new CustomerHomePageViewModel
         {
             Home = result.Value,
-            Overview = overview
+            Overview = overview,
+            ContractOverview = contractOverview
         });
     }
 }

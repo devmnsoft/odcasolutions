@@ -5,14 +5,17 @@ using System.Text.Json.Nodes;
 using Odca.Configuration;
 using Dapper;
 using Npgsql;
-using Odca.Bootstrap;
 using Odca.Application.Identity;
 using Odca.Infrastructure.Database;
 using Odca.Infrastructure.Identity;
 
-return await BootstrapProgram.RunAsync(args);
+namespace Odca.Bootstrap;
 
-#pragma warning disable CA1050 // Console entry point type is intentionally global.
+public static class Program
+{
+    public static Task<int> Main(string[] args) => BootstrapProgram.RunAsync(args);
+}
+
 public static class BootstrapProgram
 {
     private const string DefaultEmail = "admin@odca.local";
@@ -60,8 +63,11 @@ public static class BootstrapProgram
                 case "provision-test-access":
                     await ProvisionTestAccessAsync(paths, args);
                     return 0;
+                case "seed-contracts-demo":
+                    await SeedContractsDemoAsync(paths, args);
+                    return 0;
                 default:
-                    Console.WriteLine("Uso: dotnet run --project src/Odca.Bootstrap -- <init [--postgres-development]|diagnose [--connection]|repair [--replace-invalid-signing-key]|configure-native|migrate|show-login|reset-password|provision-test-access>");
+                    Console.WriteLine("Uso: dotnet run --project src/Odca.Bootstrap -- <init [--postgres-development]|diagnose [--connection]|repair [--replace-invalid-signing-key]|configure-native|migrate|show-login|reset-password|provision-test-access|seed-contracts-demo>");
                     return command == "help" ? 0 : 2;
             }
         }
@@ -113,9 +119,9 @@ public static class BootstrapProgram
                 return true;
             }
             var version = await connection.ExecuteScalarAsync<int?>("SELECT max(version) FROM odca.schema_migrations;");
-            Console.WriteLine(version == 9
-                ? "Conexão aprovada; schema odca compatível (versão 009)."
-                : $"Conexão aprovada; schema odca incompatível (versão encontrada: {version?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "nenhuma"}; esperada: 009).");
+            Console.WriteLine(version == DatabaseSchema.CurrentVersion
+                ? $"Conexão aprovada; schema odca compatível (versão {DatabaseSchema.CurrentVersion:000})."
+                : $"Conexão aprovada; schema odca incompatível (versão encontrada: {version?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "nenhuma"}; esperada: {DatabaseSchema.CurrentVersion:000}).");
         }
         catch (Exception exception) when (exception is NpgsqlException or TimeoutException)
         {
@@ -383,6 +389,31 @@ public static class BootstrapProgram
             runtime.ConnectionStrings.DatabaseAdmin,
             credentials.SuperAdministratorEmail,
             credentials.SuperAdministratorPassword);
+    }
+
+    private static async Task SeedContractsDemoAsync(LocalPaths paths, string[] args)
+    {
+        EnsureInitialized(paths);
+        var runtime = ReadJson<DevelopmentRuntime>(paths.RuntimeFile);
+        DateOnly? referenceDate = null;
+        var referenceArg = args.Skip(1).FirstOrDefault(x => x.StartsWith("--reference-date=", StringComparison.OrdinalIgnoreCase));
+        if (referenceArg is not null)
+        {
+            var raw = referenceArg["--reference-date=".Length..];
+            if (!DateOnly.TryParse(raw, out var parsed))
+            {
+                throw new InvalidOperationException("Use --reference-date=YYYY-MM-DD.");
+            }
+
+            referenceDate = parsed;
+        }
+
+        await DevelopmentSeeder.SeedContractsDemoAsync(
+            runtime.ConnectionStrings.DatabaseAdmin,
+            referenceDate);
+        Console.WriteLine(referenceDate is null
+            ? "Seed seed-contracts-demo concluído com a data de referência atual (UTC)."
+            : $"Seed seed-contracts-demo concluído com referência {referenceDate:yyyy-MM-dd}.");
     }
 
     private static async Task ShowLoginAsync(LocalPaths paths)

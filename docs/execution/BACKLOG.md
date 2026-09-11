@@ -68,7 +68,13 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [ ] Configurar adaptador de e-mail de produção, política de limpeza operacional e fila de falhas com operador humano.
 - [ ] Executar QA por teclado e capturas 360/768/1440 com PostgreSQL/API/Web reais.
 
-## Próxima fatia vertical — contratos (S02)
+## S02 — contratos (esta entrega)
 
-- [ ] Cadastro manual de tipo + contraparte → contrato com vigência → listagem/detalhe → permissões → histórico → alerta interno.
+- [x] Cadastro manual de tipo + contraparte → contrato com vigência → listagem/detalhe → permissões → histórico → alerta interno.
+- [ ] Prova PostgreSQL descartável A×B, E2E autenticado e capturas 360/768/1280/1440 no ambiente do usuário.
 - Não antecipar OCR/editor rico nem declarar conformidade LGPD plena.
+
+## Próxima fatia vertical
+
+- [ ] Upload seguro → revisão de extração → editor e versões → assinatura e créditos → integrações de comunicação e cobrança.
+- Não implementar essas etapas parcialmente nesta tarefa.

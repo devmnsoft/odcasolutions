@@ -1,0 +1,199 @@
+@model ContractFormPageViewModel
+@{
+    ViewData["Title"] = Model.IsEdit ? "Editar contrato" : "Novo contrato";
+    var org = Model.Organization;
+    var form = Model.Form;
+    var selectableTypes = Model.Types.Where(x => x.Status == "active" || x.Id == form.TypeId).ToList();
+}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">@org.Name</span>
+        <h1>@(Model.IsEdit ? "Editar contrato" : "Novo contrato")</h1>
+        <p>Preencha por seções e salve o rascunho quando quiser. Não há bloqueio de assistente em etapas.</p>
+    </div>
+    <div class="toolbar">
+        @if (Model.IsEdit && form.Id is Guid id)
+        {
+            <a class="button" asp-action="Details" asp-route-tenantId="@org.Id" asp-route-id="@id" asp-route-returnQuery="@form.ReturnQuery">Voltar à ficha</a>
+        }
+        else
+        {
+            <a class="button" asp-action="Index" asp-route-tenantId="@org.Id">Voltar à lista</a>
+        }
+    </div>
+</section>
+
+@if (form.VersionConflict)
+{
+    <div class="alert alert-error" role="alert">
+        Os dados mudaram em outra sessão.
+        @if (form.Id is Guid conflictId)
+        {
+            <a asp-action="Edit" asp-route-tenantId="@org.Id" asp-route-id="@conflictId" asp-route-returnQuery="@form.ReturnQuery">Recarregar formulário</a>
+        }
+    </div>
+}
+
+<section class="card" data-dirty-form>
+    <form asp-action="@(Model.IsEdit ? "Edit" : "Create")"
+          asp-route-tenantId="@org.Id"
+          asp-route-id="@form.Id"
+          method="post"
+          novalidate
+          data-processing
+          data-contract-form>
+        <div asp-validation-summary="All" class="validation-summary" role="alert"></div>
+        <input type="hidden" asp-for="Form.Id" />
+        <input type="hidden" asp-for="Form.Version" />
+        <input type="hidden" asp-for="Form.ReturnQuery" />
+
+        <section class="form-section">
+            <h2>Identificação</h2>
+            <div class="form-grid">
+                <label asp-for="Form.ReferenceNumber">
+                    Número de referência
+                    <input asp-for="Form.ReferenceNumber" maxlength="80" />
+                    <span asp-validation-for="Form.ReferenceNumber" class="validation"></span>
+                </label>
+                <label asp-for="Form.Title">
+                    Título
+                    <input asp-for="Form.Title" maxlength="240" required />
+                    <span asp-validation-for="Form.Title" class="validation"></span>
+                </label>
+                <label asp-for="Form.TypeId">
+                    Tipo
+                    <select asp-for="Form.TypeId" required>
+                        <option value="">Selecione</option>
+                        @foreach (var item in selectableTypes)
+                        {
+                            <option value="@item.Id">@item.Name @(item.Status == "inactive" ? "(histórico)" : "")</option>
+                        }
+                    </select>
+                    <span asp-validation-for="Form.TypeId" class="validation"></span>
+                </label>
+            </div>
+            <label asp-for="Form.Summary">
+                Resumo
+                <textarea asp-for="Form.Summary" rows="4" maxlength="4000"></textarea>
+                <span asp-validation-for="Form.Summary" class="validation"></span>
+            </label>
+        </section>
+
+        <section class="form-section">
+            <h2>Partes</h2>
+            <div class="form-grid">
+                <label asp-for="Form.PrimaryCounterpartyId">
+                    Contraparte principal
+                    <select asp-for="Form.PrimaryCounterpartyId" required>
+                        <option value="">Selecione</option>
+                        @foreach (var item in Model.Counterparties)
+                        {
+                            <option value="@item.Id">@item.DisplayName</option>
+                        }
+                    </select>
+                    <span asp-validation-for="Form.PrimaryCounterpartyId" class="validation"></span>
+                </label>
+                <label asp-for="Form.OwnerUserId">
+                    Responsável interno
+                    <select asp-for="Form.OwnerUserId">
+                        <option value="">Sem responsável</option>
+                        @foreach (var item in Model.Members)
+                        {
+                            <option value="@item.UserId">@item.Name</option>
+                        }
+                    </select>
+                </label>
+            </div>
+            <fieldset>
+                <legend>Contrapartes adicionais</legend>
+                <div class="checkbox-grid">
+                    @foreach (var item in Model.Counterparties)
+                    {
+                        var selected = form.AdditionalCounterpartyIds?.Contains(item.Id) == true;
+                        <label class="checkbox-line">
+                            <input type="checkbox" name="Form.AdditionalCounterpartyIds" value="@item.Id" checked="@(selected ? "checked" : null)" />
+                            <span>@item.DisplayName</span>
+                        </label>
+                    }
+                </div>
+            </fieldset>
+        </section>
+
+        <section class="form-section">
+            <h2>Prazo</h2>
+            <div class="form-grid">
+                <label asp-for="Form.StartDate">
+                    Início
+                    <input asp-for="Form.StartDate" type="date" required />
+                    <span asp-validation-for="Form.StartDate" class="validation"></span>
+                </label>
+                <label asp-for="Form.EndDate">
+                    Término
+                    <input asp-for="Form.EndDate" type="date" data-end-date />
+                    <span asp-validation-for="Form.EndDate" class="validation"></span>
+                </label>
+                <label class="checkbox-line" style="align-self:end">
+                    <input asp-for="Form.IsIndefinite" data-indefinite-toggle />
+                    <span>Prazo indeterminado</span>
+                </label>
+                <label asp-for="Form.RenewalNoticeDays">
+                    Aviso de renovação (dias)
+                    <input asp-for="Form.RenewalNoticeDays" type="number" min="0" max="3650" />
+                </label>
+                <label asp-for="Form.RenewalDecision">
+                    Decisão de renovação
+                    <select asp-for="Form.RenewalDecision">
+                        <option value="pending">Pendente</option>
+                        <option value="renew">Renovar</option>
+                        <option value="do_not_renew">Não renovar</option>
+                        <option value="not_applicable">Não se aplica</option>
+                    </select>
+                </label>
+            </div>
+        </section>
+
+        <section class="form-section">
+            <h2>Valores</h2>
+            <div class="form-grid">
+                <label asp-for="Form.Amount">
+                    Valor
+                    <input asp-for="Form.Amount" inputmode="decimal" />
+                </label>
+                <label asp-for="Form.Currency">
+                    Moeda (ISO)
+                    <input asp-for="Form.Currency" maxlength="3" placeholder="BRL" />
+                </label>
+                <label asp-for="Form.AmountPeriodicity">
+                    Periodicidade
+                    <select asp-for="Form.AmountPeriodicity">
+                        <option value="">Não informada</option>
+                        <option value="once">Único</option>
+                        <option value="monthly">Mensal</option>
+                        <option value="yearly">Anual</option>
+                        <option value="other">Outro</option>
+                    </select>
+                </label>
+            </div>
+        </section>
+
+        <section class="form-section">
+            <h2>Revisão</h2>
+            <p class="muted">Confira identificação, partes, prazo e valores. Salvar mantém o contrato como rascunho ou atualiza o conteúdo editável. A ativação é feita na ficha e inicia apenas o monitoramento.</p>
+            <div class="toolbar">
+                <button class="button button-primary" type="submit" data-processing-label="Salvando…">Salvar</button>
+                @if (Model.IsEdit && form.Id is Guid editId)
+                {
+                    <a class="button" asp-action="Details" asp-route-tenantId="@org.Id" asp-route-id="@editId" asp-route-returnQuery="@form.ReturnQuery">Cancelar</a>
+                }
+                else
+                {
+                    <a class="button" asp-action="Index" asp-route-tenantId="@org.Id">Cancelar</a>
+                }
+            </div>
+        </section>
+    </form>
+</section>
+
+@section Scripts {
+    <script src="~/js/contracts.js" asp-append-version="true"></script>
+}

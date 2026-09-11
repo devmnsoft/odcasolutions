@@ -12,7 +12,7 @@ public sealed class TenancyInvitationTests
         Assert.Contains("expire_tenant_invitations", sql, StringComparison.Ordinal);
         Assert.Contains("ensure_not_removing_last_admin", sql, StringComparison.Ordinal);
         Assert.Contains("'expired'", sql, StringComparison.Ordinal);
-        Assert.Equal(9, DatabaseSchema.CurrentVersion);
+        Assert.Equal(10, DatabaseSchema.CurrentVersion);
         DatabaseMigrator.ValidateChecksums(sql);
     }
 

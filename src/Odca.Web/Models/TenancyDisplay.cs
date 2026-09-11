@@ -7,7 +7,15 @@ public static class TenancyDisplay
         ("tenant.organization.read", "Consultar organização", "Organização"),
         ("tenant.organization.manage", "Editar organização", "Organização"),
         ("tenant.team.read", "Consultar equipe e perfis", "Equipe"),
-        ("tenant.team.manage", "Gerenciar equipe, perfis e convites", "Equipe")
+        ("tenant.team.manage", "Gerenciar equipe, perfis e convites", "Equipe"),
+        ("tenant.counterparties.read", "Consultar contrapartes", "Contratos"),
+        ("tenant.counterparties.manage", "Cadastrar e gerenciar contrapartes", "Contratos"),
+        ("tenant.contract_types.read", "Consultar tipos de contrato", "Contratos"),
+        ("tenant.contract_types.manage", "Cadastrar e gerenciar tipos de contrato", "Contratos"),
+        ("tenant.contracts.read", "Consultar contratos", "Contratos"),
+        ("tenant.contracts.manage", "Criar e editar contratos", "Contratos"),
+        ("tenant.contracts.lifecycle", "Ativar, renovar, encerrar ou cancelar contratos", "Contratos"),
+        ("tenant.notifications.read", "Consultar notificações internas", "Contratos")
     ];
 
     public static string MemberStatus(string? code) => code switch

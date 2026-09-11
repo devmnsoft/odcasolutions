@@ -1,0 +1,106 @@
+@model NotificationsPageViewModel
+@{
+    ViewData["Title"] = "Notificações";
+    var org = Model.Organization;
+    var items = Model.Items;
+    var totalPages = items is null ? 1 : Math.Max(1, (int)Math.Ceiling(items.TotalCount / (double)items.PageSize));
+}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">@org.Name</span>
+        <h1>Notificações</h1>
+        <p>Avisos internos de prazos e eventos. Itens obsoletos permanecem visíveis para rastreabilidade.</p>
+    </div>
+    <div class="toolbar">
+        <span class="badge @(Model.UnreadCount > 0 ? "badge-warning" : "badge-muted")">@Model.UnreadCount não lida(s)</span>
+        <a class="button" asp-controller="Organizations" asp-action="Index">Trocar organização</a>
+    </div>
+</section>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success" role="status">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-error" role="alert">@error</div>
+}
+
+<section class="card">
+    <form method="get" class="form-inline toolbar" action="@Url.Action("Index", new { tenantId = org.Id })">
+        <label class="checkbox-line">
+            <input type="checkbox" name="unreadOnly" value="true" checked="@(Model.UnreadOnly ? "checked" : null)" />
+            <span>Somente não lidas</span>
+        </label>
+        <button class="button" type="submit">Filtrar</button>
+        <a class="button" asp-action="Index" asp-route-tenantId="@org.Id">Limpar</a>
+    </form>
+
+    @if (Model.LoadError)
+    {
+        <div class="empty-state">
+            <h2>Não foi possível carregar as notificações</h2>
+            <p>Tente novamente em instantes.</p>
+        </div>
+    }
+    else if (items is null || items.Items.Count == 0)
+    {
+        <div class="empty-state">
+            <h2>Nenhuma notificação</h2>
+            <p>Quando houver alertas de vigência ou eventos relevantes, eles aparecerão aqui.</p>
+        </div>
+    }
+    else
+    {
+        <div class="notification-list">
+            @foreach (var item in items.Items)
+            {
+                <article class="notification-item @(item.Status == "unread" ? "is-unread" : null) @(item.IsObsolete ? "is-obsolete" : null)">
+                    <div>
+                        <div class="chip-row">
+                            <span class="@ContractsDisplay.NotificationStatusClass(item.Status)">@ContractsDisplay.NotificationStatus(item.Status)</span>
+                            @if (item.IsObsolete)
+                            {
+                                <span class="badge badge-muted">Obsoleta</span>
+                            }
+                            <span class="muted">@item.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                        <h2>@item.Title</h2>
+                        <p>@item.Body</p>
+                        @if (item.RelevantDate is DateOnly relevant)
+                        {
+                            <p class="muted">Data relevante: @relevant.ToString("dd/MM/yyyy")</p>
+                        }
+                    </div>
+                    <div class="toolbar">
+                        @if (item.Status == "unread")
+                        {
+                            <form asp-action="MarkRead" asp-route-tenantId="@org.Id" asp-route-id="@item.Id" method="post">
+                                <input type="hidden" name="unreadOnly" value="@Model.UnreadOnly" />
+                                <input type="hidden" name="page" value="@Model.Page" />
+                                <button class="button button-small" type="submit">Marcar como lida</button>
+                            </form>
+                        }
+                        <form asp-action="Open" asp-route-tenantId="@org.Id" asp-route-id="@item.Id" method="post">
+                            <input type="hidden" name="resourceId" value="@item.ResourceId" />
+                            <input type="hidden" name="resourceType" value="@item.ResourceType" />
+                            <input type="hidden" name="unreadOnly" value="@Model.UnreadOnly" />
+                            <input type="hidden" name="page" value="@Model.Page" />
+                            <button class="button button-small button-primary" type="submit">Abrir contrato</button>
+                        </form>
+                    </div>
+                </article>
+            }
+        </div>
+        @if (items.TotalCount > items.PageSize)
+        {
+            <nav class="pagination" aria-label="Paginação de notificações">
+                <a class="button button-small @(Model.Page <= 1 ? "disabled" : null)"
+                   asp-action="Index" asp-route-tenantId="@org.Id" asp-route-unreadOnly="@Model.UnreadOnly" asp-route-page="@(Model.Page - 1)">Anterior</a>
+                <span>Página @Model.Page de @totalPages (@items.TotalCount)</span>
+                <a class="button button-small @(Model.Page >= totalPages ? "disabled" : null)"
+                   asp-action="Index" asp-route-tenantId="@org.Id" asp-route-unreadOnly="@Model.UnreadOnly" asp-route-page="@(Model.Page + 1)">Próxima</a>
+            </nav>
+        }
+    }
+</section>

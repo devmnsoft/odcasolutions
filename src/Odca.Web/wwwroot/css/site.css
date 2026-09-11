@@ -88,10 +88,34 @@ input:focus, select:focus, textarea:focus { border-color: var(--action-600); out
 .tab { background: transparent; border: 1px solid transparent; border-radius: var(--radius-sm); color: var(--text-muted); font-weight: 700; min-height: 2.5rem; padding: .5rem .9rem; text-decoration: none; }
 .tab:hover { background: var(--action-100); color: var(--action-700); }
 .tab.active { background: var(--action-100); border-color: #c7d7ff; color: var(--action-700); }
-.table-wrap { overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; }
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+table { border-collapse: collapse; min-width: 40rem; width: 100%; }
 th, td { border-bottom: 1px solid var(--border); padding: .75rem .5rem; text-align: left; vertical-align: top; }
 th { color: var(--text-muted); font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; }
+.metrics-dense { grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); }
+.howto-callout { background: #eef5fb; border: 1px solid #c9d9e8; border-radius: var(--radius); color: var(--navy-900); margin-bottom: 1.25rem; padding: 1rem 1.25rem; }
+.howto-callout strong { display: block; margin-bottom: .35rem; }
+.howto-callout p { margin: 0; color: var(--text-muted); }
+.chip-row { align-items: center; display: flex; flex-wrap: wrap; gap: .5rem; }
+.chip { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; color: var(--text); font-size: .875rem; font-weight: 700; padding: .35rem .8rem; text-decoration: none; }
+.chip.active, .chip:hover { background: var(--action-100); border-color: #c7d7ff; color: var(--action-700); }
+.filter-panel { border-bottom: 1px solid var(--border); margin-bottom: 1rem; padding-bottom: 1rem; }
+.form-section { border-top: 1px solid var(--border); margin-top: 1.5rem; padding-top: 1.25rem; }
+.form-section:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+.form-section h2 { font-size: 1.1rem; margin: 0 0 1rem; }
+.checkbox-grid { display: grid; gap: .5rem; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
+.detail-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); margin: 0; }
+.detail-grid dt { color: var(--text-muted); font-size: .8rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.detail-grid dd { margin: .25rem 0 0; }
+.inline-form { display: inline; }
+.nav-badge { background: #fff1f0; border-radius: 999px; color: var(--danger); font-size: .7rem; font-weight: 800; margin-left: auto; min-width: 1.35rem; padding: .1rem .35rem; text-align: center; }
+.nav-item.active .nav-badge { background: var(--action-100); color: var(--action-700); }
+.notification-list { display: grid; gap: 1rem; }
+.notification-item { border: 1px solid var(--border); border-radius: var(--radius); display: grid; gap: 1rem; padding: 1rem; }
+.notification-item.is-unread { border-color: #c7d7ff; box-shadow: inset 3px 0 0 var(--action-600); }
+.notification-item.is-obsolete { opacity: .78; }
+.notification-item h2 { font-size: 1.05rem; margin: .35rem 0; }
+.notification-item .toolbar { justify-content: flex-start; margin: 0; }
 .pagination { align-items: center; display: flex; flex-wrap: wrap; gap: .75rem; justify-content: space-between; margin-top: 1rem; }
 .action-menu { position: relative; }
 .action-menu summary { list-style: none; }
@@ -151,11 +175,12 @@ body.sidebar-collapsed { --sidebar: 5rem; }
   .page-shell { padding: 1.25rem; }
   .auth-layout { grid-template-columns: 1fr; min-height: auto; }
   .auth-intro { display: none; }
-  .metrics, .plan-grid, .card-grid { grid-template-columns: 1fr; }
+  .metrics, .metrics-dense, .plan-grid, .card-grid { grid-template-columns: 1fr; }
   .public-topbar { padding: 1rem 1.25rem; }
   .public-actions { gap: .75rem; }
   .dashboard-heading h1, .page-heading h1 { font-size: clamp(1.65rem, 8vw, 2rem); }
   .drawer-panel { max-width: none; width: 100vw; }
   .form-inline { display: grid; }
+  table { min-width: 32rem; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }

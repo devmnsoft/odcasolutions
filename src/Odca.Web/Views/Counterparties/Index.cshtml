@@ -1,0 +1,122 @@
+@model CounterpartyListPageViewModel
+@{
+    ViewData["Title"] = "Contrapartes";
+    var org = Model.Organization;
+    var items = Model.Items;
+    var totalPages = items is null ? 1 : Math.Max(1, (int)Math.Ceiling(items.TotalCount / (double)items.PageSize));
+}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">@org.Name</span>
+        <h1>Contrapartes</h1>
+        <p>Cadastre clientes, fornecedores, parceiros e prestadores sem digitar identificadores técnicos.</p>
+    </div>
+    <div class="toolbar">
+        @if (Model.CanManage)
+        {
+            <a class="button button-primary" asp-action="Create" asp-route-tenantId="@org.Id">Nova contraparte</a>
+        }
+        <a class="button" asp-controller="Organizations" asp-action="Index">Trocar organização</a>
+    </div>
+</section>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success" role="status">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-error" role="alert">@error</div>
+}
+
+<section class="card">
+    <form method="get" class="form-inline toolbar" action="@Url.Action("Index", new { tenantId = org.Id })">
+        <label>Buscar<input name="search" value="@Model.Search" placeholder="Nome ou documento" /></label>
+        <label>Estado
+            <select name="status">
+                <option value="">Todos</option>
+                <option value="active" selected="@(Model.Status == "active")">Ativa</option>
+                <option value="inactive" selected="@(Model.Status == "inactive")">Inativa</option>
+            </select>
+        </label>
+        <button class="button" type="submit">Filtrar</button>
+    </form>
+
+    @if (Model.LoadError)
+    {
+        <div class="empty-state">
+            <h2>Não foi possível carregar as contrapartes</h2>
+            <p>Tente novamente em instantes.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>Nome</th><th>Documento</th><th>Classificações</th><th>Estado</th><th>Ações</th></tr>
+                </thead>
+                <tbody>
+                @if (items is null || items.Items.Count == 0)
+                {
+                    <tr><td colspan="5"><div class="empty-state"><h2>Nenhuma contraparte encontrada</h2><p>Ajuste a busca ou cadastre uma nova contraparte.</p></div></td></tr>
+                }
+                else
+                {
+                    foreach (var item in items.Items)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@item.DisplayName</strong>
+                                <div class="muted">@ContractsDisplay.PersonType(item.PersonType)</div>
+                            </td>
+                            <td>@ContractsDisplay.DocumentType(item.DocumentType) @ContractsDisplay.MaskDocument(item.DocumentDisplay, item.DocumentType)</td>
+                            <td>@ContractsDisplay.Classifications(item.IsClient, item.IsSupplier, item.IsPartner, item.IsProvider)</td>
+                            <td><span class="@ContractsDisplay.CounterpartyStatusClass(item.Status)">@ContractsDisplay.CounterpartyStatus(item.Status)</span></td>
+                            <td>
+                                <a class="button button-small" asp-action="Edit" asp-route-tenantId="@org.Id" asp-route-id="@item.Id">Abrir</a>
+                                @if (Model.CanManage && item.Status == "active")
+                                {
+                                    <button class="button button-small" type="button"
+                                            data-confirm-open
+                                            data-confirm-title="Inativar @item.DisplayName?"
+                                            data-confirm-body="A contraparte deixa de ser selecionável em novos contratos. O histórico permanece."
+                                            data-confirm-action="Inativar"
+                                            data-confirm-form="cp-inactivate-@item.Id">Inativar</button>
+                                    <form id="cp-inactivate-@item.Id" class="sr-form" asp-action="Inactivate" asp-route-tenantId="@org.Id" asp-route-id="@item.Id" method="post">
+                                        <input type="hidden" name="Version" value="@item.Version" />
+                                        <input type="hidden" name="search" value="@Model.Search" />
+                                        <input type="hidden" name="status" value="@Model.Status" />
+                                        <input type="hidden" name="page" value="@Model.Page" />
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+        @if (items is not null && items.TotalCount > items.PageSize)
+        {
+            <nav class="pagination" aria-label="Paginação de contrapartes">
+                <a class="button button-small @(Model.Page <= 1 ? "disabled" : null)"
+                   asp-action="Index" asp-route-tenantId="@org.Id" asp-route-search="@Model.Search" asp-route-status="@Model.Status" asp-route-page="@(Model.Page - 1)">Anterior</a>
+                <span>Página @Model.Page de @totalPages (@items.TotalCount)</span>
+                <a class="button button-small @(Model.Page >= totalPages ? "disabled" : null)"
+                   asp-action="Index" asp-route-tenantId="@org.Id" asp-route-search="@Model.Search" asp-route-status="@Model.Status" asp-route-page="@(Model.Page + 1)">Próxima</a>
+            </nav>
+        }
+    }
+</section>
+
+<dialog class="confirm-dialog" data-confirm-dialog aria-labelledby="confirm-title-cp">
+    <form method="dialog" class="confirm-dialog-body">
+        <h2 id="confirm-title-cp" data-confirm-title-target>Confirmar ação</h2>
+        <p data-confirm-body-target></p>
+        <div class="toolbar">
+            <button class="button" value="cancel" type="submit">Voltar</button>
+            <button class="button button-primary" value="confirm" type="submit" data-confirm-action-target>Confirmar</button>
+        </div>
+    </form>
+</dialog>

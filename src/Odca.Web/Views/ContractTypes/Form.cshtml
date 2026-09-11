@@ -1,0 +1,82 @@
+@model ContractTypeFormPageViewModel
+@{
+    ViewData["Title"] = Model.IsEdit ? "Editar tipo" : "Novo tipo";
+    var org = Model.Organization;
+    var form = Model.Form;
+}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">@org.Name</span>
+        <h1>@(Model.IsEdit ? "Editar tipo de contrato" : "Novo tipo de contrato")</h1>
+        <p>Defina código, nome e orientação operacional para o cadastro de contratos.</p>
+    </div>
+    <a class="button" asp-action="Index" asp-route-tenantId="@org.Id">Voltar</a>
+</section>
+
+@if (form.VersionConflict)
+{
+    <div class="alert alert-error" role="alert">
+        Os dados mudaram em outra sessão.
+        @if (form.Id is Guid id)
+        {
+            <a asp-action="Edit" asp-route-tenantId="@org.Id" asp-route-id="@id">Recarregar</a>
+        }
+    </div>
+}
+
+<section class="card" data-dirty-form>
+    @if (!Model.CanManage)
+    {
+        <p class="muted">Somente leitura.</p>
+    }
+    <form asp-action="@(Model.IsEdit ? "Edit" : "Create")"
+          asp-route-tenantId="@org.Id"
+          asp-route-id="@form.Id"
+          method="post"
+          novalidate
+          data-processing>
+        <div asp-validation-summary="All" class="validation-summary" role="alert"></div>
+        <input type="hidden" asp-for="Form.Id" />
+        <input type="hidden" asp-for="Form.Version" />
+        <fieldset @(Model.CanManage ? null : "disabled")>
+            <div class="form-grid">
+                <label asp-for="Form.Code">
+                    Código
+                    @if (Model.IsEdit)
+                    {
+                        <input asp-for="Form.Code" maxlength="40" required readonly />
+                    }
+                    else
+                    {
+                        <input asp-for="Form.Code" maxlength="40" required />
+                    }
+                    <span asp-validation-for="Form.Code" class="validation"></span>
+                </label>
+                <label asp-for="Form.Name">
+                    Nome
+                    <input asp-for="Form.Name" maxlength="120" required />
+                    <span asp-validation-for="Form.Name" class="validation"></span>
+                </label>
+            </div>
+            <label asp-for="Form.Description">
+                Descrição
+                <textarea asp-for="Form.Description" rows="3" maxlength="500"></textarea>
+            </label>
+            <label asp-for="Form.Guidance">
+                Orientação
+                <textarea asp-for="Form.Guidance" rows="4" maxlength="1000"></textarea>
+            </label>
+            @if (!string.IsNullOrWhiteSpace(form.Status))
+            {
+                <p class="muted">Estado atual: @ContractsDisplay.ContractTypeStatus(form.Status)</p>
+            }
+        </fieldset>
+        @if (Model.CanManage)
+        {
+            <div class="toolbar">
+                <button class="button button-primary" type="submit" data-processing-label="Salvando…">Salvar</button>
+                <a class="button" asp-action="Index" asp-route-tenantId="@org.Id">Cancelar</a>
+            </div>
+        }
+    </form>
+</section>

@@ -3,6 +3,7 @@
     ViewData["Title"] = "Visão geral";
     var home = Model.Home;
     var overview = Model.Overview;
+    var contracts = Model.ContractOverview;
 }
 <section>
     <div class="dashboard-heading page-heading">
@@ -11,7 +12,10 @@
             <h1>@home.OrganizationName</h1>
             <p class="muted">Estado comercial: <strong>@home.CommercialState</strong>. O uso operacional permanece limitado até ativação comercial validada.</p>
         </div>
-        <a class="button" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@home.TenantId">Abrir equipe</a>
+        <div class="toolbar">
+            <a class="button button-primary" asp-controller="Contracts" asp-action="Index" asp-route-tenantId="@home.TenantId">Abrir contratos</a>
+            <a class="button" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@home.TenantId">Abrir equipe</a>
+        </div>
     </div>
 
     <div class="metrics">
@@ -26,6 +30,25 @@
         <a class="metric" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@home.TenantId" asp-route-tab="pessoas">
             <span>Assentos disponíveis</span>
             <strong>@(overview?.AvailableSeats.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "—")</strong>
+        </a>
+    </div>
+
+    <div class="metrics metrics-dense">
+        <a class="metric" asp-controller="Contracts" asp-action="Index" asp-route-tenantId="@home.TenantId" asp-route-operationalStatus="active">
+            <span>Contratos ativos</span>
+            <strong>@(contracts?.Active.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "—")</strong>
+        </a>
+        <a class="metric" asp-controller="Contracts" asp-action="Index" asp-route-tenantId="@home.TenantId" asp-route-approaching="true">
+            <span>Próximos do fim</span>
+            <strong>@(contracts?.Approaching.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "—")</strong>
+        </a>
+        <a class="metric" asp-controller="Contracts" asp-action="Index" asp-route-tenantId="@home.TenantId" asp-route-temporalStatus="Expired">
+            <span>Vencidos</span>
+            <strong>@(contracts?.Expired.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "—")</strong>
+        </a>
+        <a class="metric" asp-controller="Contracts" asp-action="Index" asp-route-tenantId="@home.TenantId" asp-route-operationalStatus="draft">
+            <span>Rascunhos</span>
+            <strong>@(contracts?.Draft.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "—")</strong>
         </a>
     </div>
 
