@@ -16,3 +16,4 @@ development-credentials.json
 src/Odca.Web/wwwroot/dist/
 development-runtime.json.backup-*
 development-runtime.json.tmp-*
+.development-runtime-*.tmp

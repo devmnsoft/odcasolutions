@@ -9,6 +9,18 @@ public static class LocalRuntimeConfiguration
 {
     public const string EnvironmentVariable = "ODCA_RUNTIME_CONFIG";
 
+    public static string ResolvePath(string? startDirectory = null)
+    {
+        var configuredPath = Environment.GetEnvironmentVariable(EnvironmentVariable);
+        if (configuredPath is not null && string.IsNullOrWhiteSpace(configuredPath))
+        {
+            throw new InvalidOperationException($"{EnvironmentVariable} foi definida com um caminho vazio.");
+        }
+
+        // Relative overrides are relative to the process working directory on every host and in the setup script.
+        return Path.GetFullPath(configuredPath ?? GetDefaultPath(startDirectory));
+    }
+
     public static string GetDefaultPath(string? startDirectory = null)
     {
         var current = new DirectoryInfo(startDirectory ?? Directory.GetCurrentDirectory());
@@ -35,13 +47,7 @@ public static class LocalRuntimeConfiguration
             return new(environment.EnvironmentName, null, false);
         }
 
-        var configuredPath = Environment.GetEnvironmentVariable(EnvironmentVariable);
-        if (configuredPath is not null && string.IsNullOrWhiteSpace(configuredPath))
-        {
-            throw new InvalidOperationException($"{EnvironmentVariable} foi definida com um caminho vazio.");
-        }
-
-        var path = Path.GetFullPath(configuredPath ?? GetDefaultPath(environment.ContentRootPath));
+        var path = ResolvePath(environment.ContentRootPath);
         try
         {
             // The personal file supplies defaults. Explicit process configuration always wins.
@@ -53,7 +59,8 @@ public static class LocalRuntimeConfiguration
         catch (FileNotFoundException exception)
         {
             throw new InvalidOperationException(
-                $"Configuração local não encontrada. Ambiente={environment.EnvironmentName}; caminho={path}.", exception);
+                $"Configuração local não encontrada. Ambiente={environment.EnvironmentName}; caminho={path}. " +
+                "Na raiz do repositório, execute .\\scripts\\setup-local.ps1 e depois inicie novamente.", exception);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or FormatException or InvalidDataException)
         {

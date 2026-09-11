@@ -110,6 +110,7 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
                 root["ConnectionStrings"]!["DatabaseAdmin"]!.GetValue<string>());
             Assert.Equal(48, Convert.FromBase64String(root["Jwt"]!["SigningKey"]!.GetValue<string>()).Length);
             Assert.Equal("ODCA Solutions", root["DataProtection"]!["ApplicationName"]!.GetValue<string>());
+            Assert.True(root["Security"]!["MfaRequiredForSuperAdmin"]!.GetValue<bool>());
 
             var original = File.ReadAllText(path);
             Environment.SetEnvironmentVariable("ODCA_LOCAL_POSTGRES_PASSWORD", "must-not-replace");
@@ -198,6 +199,28 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
         Assert.Equal(expected, LocalRuntimeConfiguration.GetDefaultPath(directory));
     }
 
+    [Fact]
+    public void ExplicitRelativeOverrideUsesTheProcessWorkingDirectory()
+    {
+        Environment.SetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable,
+            Path.Combine("folder with spaces", "runtime.json"));
+
+        Assert.Equal(Path.Combine(Directory.GetCurrentDirectory(), "folder with spaces", "runtime.json"),
+            LocalRuntimeConfiguration.ResolvePath());
+    }
+
+    [Fact]
+    public void MissingFileDiagnosticIncludesPreparationCommand()
+    {
+        Environment.SetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable,
+            Path.Combine(directory, "missing.json"));
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            LocalRuntimeConfiguration.Add(new ConfigurationManager(), EnvironmentNamed("Development"), []));
+
+        Assert.Contains(@".\scripts\setup-local.ps1", exception.Message, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("Development", "postgres", false, false)]
     [InlineData("Development", "postgres", true, true)]
@@ -211,13 +234,14 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
     }
 
     [Fact]
-    public void SetupStopsDotNetPipelineOnNonZeroExitCode()
+    public void SetupCreatesConfigurationWithoutInvokingDotNet()
     {
         var root = LocalRuntimeConfiguration.GetDefaultPath(Directory.GetCurrentDirectory());
         var script = File.ReadAllText(Path.Combine(Directory.GetParent(Directory.GetParent(Directory.GetParent(root)!.FullName)!.FullName)!.FullName,
             "scripts", "setup-local.ps1"));
-        Assert.Contains("if ($LASTEXITCODE -ne 0)", script, StringComparison.Ordinal);
-        Assert.Contains("As etapas dependentes não foram executadas", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("dotnet", script, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("[IO.File]::Move($temporary, $Path)", script, StringComparison.Ordinal);
+        Assert.Contains("RandomNumberGenerator", script, StringComparison.Ordinal);
     }
 
     public void Dispose()
