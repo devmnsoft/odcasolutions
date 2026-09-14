@@ -1,5 +1,13 @@
 # Status de execução
 
+## Reparo do pacote S01/S02 (14/09/2026)
+
+- O checkout disponível está em `596ffe6` (S01), e não contém o SHA S02 informado (`183aa2b5`); o acesso ao remoto foi recusado pelo proxy HTTP 403. Assim, a central de contratos/documentos não foi recriada sobre uma base antiga nem declarada concluída.
+- Foi reproduzido por inspeção o bloqueio PostgreSQL 42P13 da migração 009: parâmetro de entrada e coluna `RETURNS TABLE` usavam `invitation_id`. O instalador canônico agora usa `p_invitation_id`, sem alterar a assinatura por tipos, permissões ou o snapshot distribuído v009.
+- O release v009 defeituoso permanece imutável para auditoria. O migrador aceita **somente** a transição dos checksums conhecidos v009 defeituoso → reparado, recria a função sem `DROP CASCADE` e atualiza o registro; qualquer outro checksum continua sendo recusado. O v010 registra o reparo e é o pacote canônico integral para instalação nova, atualização completa ou histórico parcialmente aplicado.
+- Os testes de host agora isolam também Data Protection e cada caso mantém válidos os campos alheios ao alvo. As mensagens JWT identificam a própria validação, sem reduzir os requisitos de produção.
+- Não verificado neste ambiente: restore/build/testes .NET (SDK ausente), PostgreSQL descartável, HTTP autenticado, navegador e larguras visuais. O build de assets e as verificações estáticas executadas estão registrados no PR.
+
 ## Configuração local consolidada (10/09/2026)
 
 - O setup oficial passou a ser `.\scripts\setup-local.ps1`; ele mantém `Database=postgres`, schema `odca` e separa configuração/conectividade de migration e provisionamento.

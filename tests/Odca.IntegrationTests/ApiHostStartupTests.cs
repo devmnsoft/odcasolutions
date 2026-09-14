@@ -50,7 +50,9 @@ public sealed class ApiHostStartupTests
         ["Jwt:SigningKey"] = "host-test-key-with-at-least-thirty-two-bytes",
         ["Jwt:AccessTokenMinutes"] = "15",
         ["Security:MfaRequiredForSuperAdmin"] = "true",
-        ["Security:AllowDevelopmentBootstrap"] = "false"
+        ["Security:AllowDevelopmentBootstrap"] = "false",
+        ["DataProtection:ApplicationName"] = "ODCA startup isolation tests",
+        ["DataProtection:KeysPath"] = Path.Combine(Path.GetTempPath(), "odca-startup-tests", Guid.NewGuid().ToString("N"))
     };
 
     private sealed class ConfiguredApiFactory(

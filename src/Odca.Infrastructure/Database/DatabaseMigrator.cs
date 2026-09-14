@@ -34,6 +34,7 @@ public sealed class DatabaseMigrator(string sqlPath)
             var history = historyExists
                 ? await LoadHistoryAsync(connection, cancellationToken)
                 : [];
+            await RepairKnownDefectivePackageAsync(connection, migrations, history, cancellationToken);
             ValidateHistory(migrations, history);
 
             foreach (var migration in migrations)
@@ -89,6 +90,53 @@ public sealed class DatabaseMigrator(string sqlPath)
                 }
             }
         }
+    }
+
+    // v009 was distributed with a PostgreSQL 42P13 error: the input and an OUT
+    // column of preview_tenant_invitation were both named invitation_id.  This
+    // is the only accepted checksum transition; arbitrary divergence still
+    // fails in ValidateHistory.  The immutable release snapshot remains the
+    // record of the defective package, while the canonical installer contains
+    // the corrected parameter name.
+    private static async Task RepairKnownDefectivePackageAsync(
+        NpgsqlConnection connection,
+        IReadOnlyList<MigrationBlock> migrations,
+        IDictionary<int, string> history,
+        CancellationToken cancellationToken)
+    {
+        const int version = 9;
+        const string defective = "8ea94f7cafca871d9a1923a8383eaf89a7535f2749efa550e6930bfcf7a7982b";
+        const string repaired = "f2d7bc3a2ed44f1e0601b29d911cd4af4fba774a4d47a2020962519d094209f2";
+        if (!history.TryGetValue(version, out var stored) ||
+            !string.Equals(stored.Trim(), defective, StringComparison.Ordinal) ||
+            !migrations.Any(x => x.Version == version && x.Checksum == repaired))
+        {
+            return;
+        }
+
+        await ExecuteAsync(connection, $"""
+            BEGIN;
+            DROP FUNCTION IF EXISTS odca.preview_tenant_invitation(uuid,text);
+            CREATE OR REPLACE FUNCTION odca.preview_tenant_invitation(p_invitation_id uuid, presented_hash text)
+            RETURNS TABLE(invitation_id uuid, organization_name text, role_name text, recipient_email text, expires_at timestamptz, status text)
+            LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, odca AS $function$
+            DECLARE locked_tenant_id uuid;
+            BEGIN
+              SELECT i.tenant_id INTO locked_tenant_id FROM odca.tenant_invitations i WHERE i.id = p_invitation_id;
+              IF FOUND THEN PERFORM odca.expire_tenant_invitations(locked_tenant_id); END IF;
+              RETURN QUERY SELECT i.id, t.display_name, r.display_name, i.recipient_email, i.expires_at, i.status
+                FROM odca.tenant_invitations i JOIN odca.tenants t ON t.id = i.tenant_id
+                JOIN odca.roles r ON r.id = i.role_id AND r.tenant_id = i.tenant_id
+               WHERE i.id = p_invitation_id AND i.token_hash = presented_hash
+                 AND i.status IN ('pending','sent') AND i.expires_at > now();
+            END; $function$;
+            REVOKE ALL ON FUNCTION odca.preview_tenant_invitation(uuid,text) FROM PUBLIC;
+            GRANT EXECUTE ON FUNCTION odca.preview_tenant_invitation(uuid,text) TO odca_app;
+            UPDATE odca.schema_migrations SET checksum = '{repaired}'
+             WHERE version = {version} AND checksum = '{defective}';
+            COMMIT;
+            """, cancellationToken);
+        history[version] = repaired;
     }
 
     public static void ValidateChecksums(string sql)

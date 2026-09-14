@@ -112,13 +112,24 @@ public sealed class MigrationChecksumTests
     }
 
     [Fact]
-    public void ReleaseV009MatchesCanonicalSql()
+    public void ReleaseV009PreservesTheDefectiveDistributedPackageForAudit()
     {
         var canonical = FindSql();
         var snapshot = Path.Combine(Path.GetDirectoryName(canonical)!, "releases", "odca-v009.sql");
         Assert.True(File.Exists(snapshot));
         var snapshotSql = File.ReadAllText(snapshot);
         Assert.Contains("ODCA-MIGRATION 009", snapshotSql, StringComparison.Ordinal);
+        DatabaseMigrator.ValidateChecksums(snapshotSql);
+        Assert.Contains("preview_tenant_invitation(invitation_id uuid", snapshotSql, StringComparison.Ordinal);
+        Assert.Contains("preview_tenant_invitation(p_invitation_id uuid", File.ReadAllText(canonical), StringComparison.Ordinal);
+        Assert.NotEqual(File.ReadAllBytes(canonical), File.ReadAllBytes(snapshot));
+    }
+
+    [Fact]
+    public void ReleaseV010MatchesRepairedCanonicalSql()
+    {
+        var canonical = FindSql();
+        var snapshot = Path.Combine(Path.GetDirectoryName(canonical)!, "releases", "odca-v010.sql");
         Assert.Equal(File.ReadAllBytes(canonical), File.ReadAllBytes(snapshot));
     }
 
