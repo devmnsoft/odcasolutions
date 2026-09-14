@@ -71,7 +71,7 @@ public static class MonthlyRecurrence
 {
     public static DateOnly Occurrence(DateOnly baseDate, int offset)
     {
-        if(offset<0) throw new ArgumentOutOfRangeException(nameof(offset));
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
         var month=baseDate.AddMonths(offset); return new DateOnly(month.Year,month.Month,Math.Min(baseDate.Day,DateTime.DaysInMonth(month.Year,month.Month)));
     }
     public static IReadOnlyList<DateOnly> Materialize(DateOnly baseDate, int count, DateOnly? endsOn=null, int maximumWindow=24)

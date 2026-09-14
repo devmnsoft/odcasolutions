@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -15,7 +16,7 @@ public sealed class OdcaApiClient(HttpClient client)
 {
     public Task<ApiCallResult<ObligationPage>> GetObligationsAsync(string token,Guid tenantId,string scope,Guid? contractId,Guid? ownerId,string? category,string? status,DateOnly? from,DateOnly? to,string? search,int page,int pageSize,CancellationToken cancellationToken)
     {
-        var query=new Dictionary<string,string?>{{"scope",scope},{"contractId",contractId?.ToString()},{"ownerId",ownerId?.ToString()},{"category",category},{"status",status},{"from",from?.ToString("yyyy-MM-dd")},{"to",to?.ToString("yyyy-MM-dd")},{"search",search},{"page",page.ToString(System.Globalization.CultureInfo.InvariantCulture)},{"pageSize",pageSize.ToString(System.Globalization.CultureInfo.InvariantCulture)}};
+        var query=new Dictionary<string,string?>{{"scope",scope},{"contractId",contractId?.ToString()},{"ownerId",ownerId?.ToString()},{"category",category},{"status",status},{"from",from?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)},{"to",to?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)},{"search",search},{"page",page.ToString(CultureInfo.InvariantCulture)},{"pageSize",pageSize.ToString(CultureInfo.InvariantCulture)}};
         var encoded=string.Join('&',query.Where(x=>!string.IsNullOrWhiteSpace(x.Value)).Select(x=>$"{Uri.EscapeDataString(x.Key)}={Uri.EscapeDataString(x.Value!)}"));
         return SendAsync<ObligationPage>(CreateAuthorized(HttpMethod.Get,$"api/v1/organizations/{tenantId}/obligations?{encoded}",token),false,cancellationToken);
     }

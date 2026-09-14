@@ -1,0 +1,67 @@
+using System.Globalization;
+using System.Net;
+using Odca.Web.Services;
+
+namespace Odca.Domain.Tests;
+
+public sealed class OdcaApiClientTests
+{
+    [Theory]
+    [InlineData("pt-BR")]
+    [InlineData("ar-SA")]
+    public async Task ObligationDatesUseInvariantWireFormatWithoutChangingCurrentCulture(string cultureName)
+    {
+        var originalCulture = CultureInfo.CurrentCulture;
+        var originalUiCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            var culture = CultureInfo.GetCultureInfo(cultureName);
+            CultureInfo.CurrentCulture = culture;
+            CultureInfo.CurrentUICulture = culture;
+            var handler = new CapturingHandler();
+            using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
+            var client = new OdcaApiClient(http);
+
+            await client.GetObligationsAsync("token", Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                "mine", null, null, null, null, new DateOnly(2026, 9, 3), new DateOnly(2026, 10, 4),
+                null, 1, 20, CancellationToken.None);
+
+            Assert.Contains("from=2026-09-03", handler.RequestUri!.Query, StringComparison.Ordinal);
+            Assert.Contains("to=2026-10-04", handler.RequestUri.Query, StringComparison.Ordinal);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+            CultureInfo.CurrentUICulture = originalUiCulture;
+        }
+    }
+
+    [Fact]
+    public async Task MissingOptionalDatesAreOmittedFromQuery()
+    {
+        var handler = new CapturingHandler();
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
+        var client = new OdcaApiClient(http);
+
+        await client.GetObligationsAsync("token", Guid.NewGuid(), "mine", null, null, null, null,
+            null, null, "prazo especial", 2, 20, CancellationToken.None);
+
+        Assert.DoesNotContain("from=", handler.RequestUri!.Query, StringComparison.Ordinal);
+        Assert.DoesNotContain("to=", handler.RequestUri.Query, StringComparison.Ordinal);
+        Assert.Contains("search=prazo%20especial", handler.RequestUri.Query, StringComparison.Ordinal);
+    }
+
+    private sealed class CapturingHandler : HttpMessageHandler
+    {
+        public Uri? RequestUri { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            RequestUri = request.RequestUri;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"items\":[],\"page\":1,\"pageSize\":20,\"total\":0}")
+            });
+        }
+    }
+}

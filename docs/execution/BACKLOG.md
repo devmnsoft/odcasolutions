@@ -117,3 +117,13 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [ ] Completar formulários BFF de criação, ações destrutivas e edição “esta/futuras”, com seleção prévia para eventual cópia na renovação.
 - [ ] Integrar resumo de obrigações/renovação à ficha contratual quando a ficha HTTP for conectada.
 - [ ] Realizar QA autenticado e registrar capturas nas quatro larguras e zoom 200%.
+
+
+## Próximo incremento após correções de analisadores
+
+- [x] Corrigir CA1859, CA1305, CS8604 e CA1512 sem supressões.
+- [x] Cobrir motivo e auditoria de reatribuição, recorrência zero/negativa e datas invariáveis.
+- [x] Preservar filtros e validar intervalo de datas em Minhas pendências.
+- [ ] Unificar projeção autorizada de revisões, obrigações e decisões de renovação sem criar tabela de tarefas.
+- [ ] Implementar ficha do contrato, ações BFF e histórico integrado.
+- [ ] Executar SDK .NET, PostgreSQL descartável, HTTP autenticado e QA visual quando o ambiente estiver disponível.
