@@ -103,6 +103,24 @@ npm run build
 dotnet test Odca.sln --configuration Release --no-build
 ```
 
+### Processamento local de documentos
+
+A migração 011 cria o núcleo de contratos, documentos lógicos, versões imutáveis,
+jobs, resultados, sugestões, revisões e histórico. Os bytes ficam fora de
+`wwwroot`, em `Documents:StoragePath`. O Worker usa executáveis locais configurados
+sem interpolar nomes de arquivo em shell: ClamAV (`clamscan`), Poppler
+(`pdftotext`) e Tesseract (`tesseract`, dados de idioma `por`). DOCX é lido
+estruturalmente pelo runtime, com DTD proibido e limite descompactado. Se o scanner
+não estiver configurado ou falhar, o arquivo fica `scan_failed` e não pode ser
+baixado, visualizado ou extraído; nunca é presumido seguro.
+
+O endpoint autenticado de documentos é
+`/api/v1/organizations/{tenantId}/contracts/{contractId}/documents`. Upload aceita
+somente PDF, PNG, JPEG e DOCX (25 MB), valida assinatura de conteúdo, calcula
+SHA-256 durante streaming, reserva cota sob bloqueio de linha e cria uma nova
+versão. `POST .../{documentId}/versions/{versionId}/extractions` enfileira uma
+execução rastreável apenas depois do estado `safe`.
+
 Os testes de integração nunca usam a configuração de desenvolvimento. Eles exigem um banco descartável cujo nome comece com `odca_test`, a role exclusiva `odca_test_app_login` e o marcador explícito abaixo. A fixture recusa qualquer outra combinação antes de migrar ou alterar dados:
 
 ```powershell

@@ -12,17 +12,15 @@ public sealed class TenancyInvitationTests
         Assert.Contains("expire_tenant_invitations", sql, StringComparison.Ordinal);
         Assert.Contains("ensure_not_removing_last_admin", sql, StringComparison.Ordinal);
         Assert.Contains("'expired'", sql, StringComparison.Ordinal);
-        Assert.Equal(9, DatabaseSchema.CurrentVersion);
+        Assert.Equal(11, DatabaseSchema.CurrentVersion);
         DatabaseMigrator.ValidateChecksums(sql);
     }
 
     [Fact]
-    public async Task InvitationQuotaAndAcceptScenariosSkipWithoutDisposableDatabase()
+    public async Task InvitationQuotaAndAcceptScenariosRequireDisposableDatabase()
     {
-        if (!HasExclusiveTestEnvironment())
-        {
-            return;
-        }
+        Assert.True(HasExclusiveTestEnvironment(),
+            "Teste PostgreSQL essencial não foi executado. Defina ODCA_TEST_ENVIRONMENT=ODCA_INTEGRATION_TESTS, ODCA_TEST_ADMIN_CONNECTION e ODCA_TEST_APP_CONNECTION para um banco odca_test* descartável.");
 
         var fixture = new DatabaseFixture();
         await fixture.InitializeAsync();
