@@ -10,6 +10,7 @@ public enum ApiCallStatus
     Unavailable,
     Timeout,
     InvalidRequest,
+    NotFound,
     Conflict
 }
 

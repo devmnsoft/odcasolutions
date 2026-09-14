@@ -12,6 +12,37 @@ namespace Odca.Api.Controllers;
 [Route("api/v1/organizations/{tenantId:guid}/obligations")]
 public sealed class ObligationsController(NpgsqlDataSource dataSource) : ControllerBase
 {
+    [HttpGet("{id:guid}/history")]
+    public async Task<IActionResult> History(Guid tenantId, Guid id, CancellationToken ct)
+    {
+        var actor = Actor();
+        if (actor is null) return Unauthorized();
+
+        await using var connection = await dataSource.OpenConnectionAsync(ct);
+        if (!await Allowed(connection, actor.Value, tenantId, "tenant.obligations.read", ct)) return Forbid();
+        await using var transaction = await connection.BeginTransactionAsync(ct);
+        await SetTenant(connection, tenantId, transaction, ct);
+
+        var obligation = await connection.QuerySingleOrDefaultAsync<HistoryHeader>(new CommandDefinition(
+            "SELECT id AS Id,title AS Title,owner_id AS OwnerId FROM odca.contract_obligations WHERE tenant_id=@tenantId AND id=@id AND deleted_at IS NULL",
+            new { tenantId, id }, transaction, cancellationToken: ct));
+        if (obligation is null) return NotFound();
+
+        var canReadAll = await Allowed(connection, actor.Value, tenantId, "tenant.obligations.read_all", ct);
+        if (obligation.OwnerId != actor.Value && !canReadAll) return Forbid();
+
+        var events = await connection.QueryAsync<ObligationHistoryItem>(new CommandDefinition("""
+            SELECT e.id AS Id,e.event_type AS EventType,e.actor_id AS ActorId,u.display_name AS Actor,
+                   e.details::text AS Details,e.occurred_at AS OccurredAt
+            FROM odca.obligation_events e
+            JOIN odca.users u ON u.id=e.actor_id
+            WHERE e.tenant_id=@tenantId AND e.obligation_id=@id
+            ORDER BY e.occurred_at,e.id
+            """, new { tenantId, id }, transaction, cancellationToken: ct));
+        await transaction.CommitAsync(ct);
+        return Ok(new ObligationHistoryResponse(id, obligation.Title, events.AsList()));
+    }
+
     [HttpGet]
     public async Task<IActionResult> List(Guid tenantId,[FromQuery] string scope="mine",[FromQuery] Guid? contractId=null,[FromQuery] Guid? ownerId=null,[FromQuery] string? category=null,[FromQuery] string? status=null,[FromQuery] DateOnly? from=null,[FromQuery] DateOnly? to=null,[FromQuery] string? search=null,[FromQuery] int page=1,[FromQuery] int pageSize=20,CancellationToken ct=default)
     {
@@ -98,5 +129,5 @@ public sealed class ObligationsController(NpgsqlDataSource dataSource) : Control
     private static Task<int> SetTenant(NpgsqlConnection c,Guid tenant,NpgsqlTransaction tx,CancellationToken ct)=>c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@value,true)",new{value=tenant.ToString()},tx,cancellationToken:ct));
     private static List<DateOnly> Materialize(MonthlyRecurrenceRequest recurrence){var count=Math.Min(recurrence.OccurrenceCount??24,24);var result=new List<DateOnly>();for(var i=0;i<count;i++){var month=recurrence.BaseDate.AddMonths(i);var date=new DateOnly(month.Year,month.Month,Math.Min(recurrence.IntendedDay,DateTime.DaysInMonth(month.Year,month.Month)));if(recurrence.EndsOn is not null&&date>recurrence.EndsOn)break;result.Add(date);}return result;}
     private static readonly HashSet<string> Categories=["delivery","document","renewal","communication","financial","other"]; private static readonly HashSet<string> Priorities=["low","normal","high","critical"];private static readonly HashSet<string> Origins=["manual","reviewed_suggestion"];
-    private sealed record ContractTerm(DateOnly? EndDate);private sealed record ActionRow(string Status,long Version,DateOnly DueDate,bool EvidenceRequired,Guid OwnerId);private sealed record ObligationRow(Guid Id,Guid ContractId,string Contract,string Title,string Category,string ObligatedParty,Guid OwnerId,string Owner,DateOnly DueDate,string Priority,string Status,bool Overdue,bool OwnerBlocked,long Version,decimal? Amount,string? Currency);
+    private sealed record ContractTerm(DateOnly? EndDate);private sealed record ActionRow(string Status,long Version,DateOnly DueDate,bool EvidenceRequired,Guid OwnerId);private sealed record ObligationRow(Guid Id,Guid ContractId,string Contract,string Title,string Category,string ObligatedParty,Guid OwnerId,string Owner,DateOnly DueDate,string Priority,string Status,bool Overdue,bool OwnerBlocked,long Version,decimal? Amount,string? Currency);private sealed record HistoryHeader(Guid Id,string Title,Guid OwnerId);
 }

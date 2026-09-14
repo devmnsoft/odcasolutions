@@ -1,5 +1,22 @@
 # Status de execução
 
+## Histórico autorizado de obrigações (14/09/2026)
+
+### Implementado
+
+- A API expõe o histórico cronológico da obrigação somente após validar vínculo, permissão de leitura, tenant RLS e o escopo do responsável; quem possui apenas leitura própria não consulta o histórico de outro responsável.
+- O BFF mantém o token fora do JavaScript, distingue ausência, proibição e indisponibilidade e entrega à interface apenas a projeção autorizada.
+- O painel de detalhes de “Minhas pendências” carrega autor, data, tipo, motivo, observação, mudança de prazo/responsável e presença de evidência, com texto seguro criado via DOM e estados de carregamento, vazio e erro.
+
+### Validado neste ambiente
+
+- `npm run build` validou os seis assets web e `git diff --check` não encontrou erros.
+
+### Pendente / limitação verificada
+
+- O SDK .NET 10.0.400 e o PostgreSQL descartável continuam indisponíveis; restore, builds .NET, testes, HTTP autenticado, RLS real e jornada no navegador não são declarados aprovados.
+- As ações de mutação e a jornada completa de revisões ainda precisam ser conectadas no BFF. A consulta de histórico entregue não é apresentada como conclusão integral desses fluxos.
+
 ## Correções de analisadores e refinamento de Minhas pendências (14/09/2026)
 
 ### Implementado

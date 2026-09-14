@@ -51,8 +51,29 @@ public sealed class OdcaApiClientTests
         Assert.Contains("search=prazo%20especial", handler.RequestUri.Query, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task ObligationHistoryUsesTenantScopedRoute()
+    {
+        var handler = new CapturingHandler("{\"obligationId\":\"bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb\",\"title\":\"Relatório\",\"events\":[]}");
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
+        var client = new OdcaApiClient(http);
+
+        var result = await client.GetObligationHistoryAsync(
+            "token",
+            Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("/api/v1/organizations/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/obligations/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb/history", handler.RequestUri!.AbsolutePath);
+    }
+
     private sealed class CapturingHandler : HttpMessageHandler
     {
+        private readonly string response;
+
+        public CapturingHandler(string response = "{\"items\":[],\"page\":1,\"pageSize\":20,\"total\":0}") => this.response = response;
+
         public Uri? RequestUri { get; private set; }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -60,7 +81,7 @@ public sealed class OdcaApiClientTests
             RequestUri = request.RequestUri;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent("{\"items\":[],\"page\":1,\"pageSize\":20,\"total\":0}")
+                Content = new StringContent(response)
             });
         }
     }
