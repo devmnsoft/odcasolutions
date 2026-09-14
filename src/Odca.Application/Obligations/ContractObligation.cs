@@ -59,8 +59,8 @@ public sealed class ContractObligation
         if (Status is not (ObligationStatus.Fulfilled or ObligationStatus.Cancelled)) throw new ObligationRuleException("Somente obrigação cumprida ou cancelada pode ser reaberta.");
         RequireReason(reason,"reabertura"); Status=ObligationStatus.Open; FulfilledAt=null; Version++;
     }
-    public void Reschedule(long expectedVersion, DateOnly dueDate, string reason) { EnsureVersion(expectedVersion); EnsureActive(); RequireReason(reason,"mudança de prazo"); DueDate=dueDate; Version++; }
-    public void Reassign(long expectedVersion, Guid ownerId) { EnsureVersion(expectedVersion); EnsureActive(); if(ownerId==Guid.Empty) throw new ObligationRuleException("Informe o novo responsável."); OwnerId=ownerId; Version++; }
+    public void Reschedule(long expectedVersion, DateOnly dueDate, string reason) { EnsureVersion(expectedVersion); EnsureActive(); RequireReason(reason,"mudança de prazo"); if(dueDate==DueDate) throw new ObligationRuleException("O novo prazo deve ser diferente do prazo atual."); DueDate=dueDate; Version++; }
+    public void Reassign(long expectedVersion, Guid ownerId, string reason) { EnsureVersion(expectedVersion); EnsureActive(); RequireReason(reason,"reatribuição"); if(ownerId==Guid.Empty) throw new ObligationRuleException("Informe o novo responsável."); if(ownerId==OwnerId) throw new ObligationRuleException("O novo responsável deve ser diferente do responsável atual."); OwnerId=ownerId; Version++; }
     private void EnsureActive() { if(Status is ObligationStatus.Fulfilled or ObligationStatus.Cancelled) throw new ObligationRuleException("A obrigação encerrada precisa ser reaberta antes desta ação."); }
     private void EnsureVersion(long expected) { if(expected!=Version) throw new ObligationConflictException(expected,Version); }
     private static void RequireReason(string value,string action) { if(string.IsNullOrWhiteSpace(value)) throw new ObligationRuleException($"A {action} exige motivo."); }
@@ -72,12 +72,15 @@ public static class MonthlyRecurrence
     public static DateOnly Occurrence(DateOnly baseDate, int offset)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(offset);
+        var availableMonths = ((DateOnly.MaxValue.Year-baseDate.Year)*12)+(DateOnly.MaxValue.Month-baseDate.Month);
+        if(offset>availableMonths) throw new ObligationRuleException("A recorrência ultrapassa a data máxima aceita.");
         var month=baseDate.AddMonths(offset); return new DateOnly(month.Year,month.Month,Math.Min(baseDate.Day,DateTime.DaysInMonth(month.Year,month.Month)));
     }
     public static IReadOnlyList<DateOnly> Materialize(DateOnly baseDate, int count, DateOnly? endsOn=null, int maximumWindow=24)
     {
         if(count is <1 or >120 || maximumWindow is <1 or >24) throw new ObligationRuleException("A recorrência deve ter entre 1 e 120 ocorrências e janela de até 24 meses.");
-        return Enumerable.Range(0,Math.Min(count,maximumWindow)).Select(i=>Occurrence(baseDate,i)).TakeWhile(x=>endsOn is null || x<=endsOn).ToArray();
+        var availableMonths = ((DateOnly.MaxValue.Year-baseDate.Year)*12)+(DateOnly.MaxValue.Month-baseDate.Month);
+        return Enumerable.Range(0,Math.Min(Math.Min(count,maximumWindow),availableMonths+1)).Select(i=>Occurrence(baseDate,i)).TakeWhile(x=>endsOn is null || x<=endsOn).ToArray();
     }
 }
 

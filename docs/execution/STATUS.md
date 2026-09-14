@@ -1,5 +1,25 @@
 # Status de execução
 
+## Obrigações: compilação e integridade das ações (14/09/2026)
+
+### Implementado
+
+- O alvo de `CA1859` em `ObligationsController.Create` era a variável local `IReadOnlyList<DateOnly> dates`; ela agora declara o `List<DateOnly>` efetivamente produzido pelos dois ramos, sem materialização adicional nem mudança no contrato HTTP.
+- Reprogramações e reatribuições sem mudança real são rejeitadas antes da gravação, e a reatribuição exige justificativa tanto na regra de aplicação quanto na API.
+- Evidências de cumprimento exigem permissão de download, versão do mesmo tenant e contrato, documento lógico ativo e estado de segurança `safe`; anexar não altera quarentena.
+- A recorrência mensal limita a janela no extremo de `DateOnly`, evitando overflow, e continua preservando o dia-base nos meses curtos.
+- A leitura de histórico agora executa a segunda consulta de permissão na transação ativa da conexão.
+
+### Validado neste ambiente
+
+- `npm run build` e verificações de diff/whitespace foram executados localmente.
+- Foram adicionados testes comportamentais de reprogramação, reatribuição e limite superior da recorrência.
+
+### Pendente / limitação verificada
+
+- O SDK .NET 10.0.400 e o PostgreSQL descartável não estão disponíveis neste contêiner; restore, builds Debug/Release, testes .NET/HTTP/RLS e jornada autenticada no navegador não são declarados aprovados.
+- Agenda mensal, formulários BFF das mutações, edição prospectiva de séries e dashboard consolidado permanecem incrementos posteriores; esta entrega não os apresenta como concluídos.
+
 ## Histórico autorizado de obrigações (14/09/2026)
 
 ### Implementado
