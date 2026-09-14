@@ -1,5 +1,13 @@
 # Backlog
 
+## Após integridade das ações de obrigações
+
+- [ ] Conectar criação e ações de obrigação ao BFF com seletores por nome para contrato, responsável e documento, mantendo os dados após erro recuperável.
+- [ ] Entregar agenda mensal consultando apenas a janela visível e reutilizando exatamente os filtros/autorização da lista.
+- [ ] Implementar alteração de série com escopo “esta ocorrência” e “esta e futuras”, sem modificar ocorrências encerradas.
+- [ ] Consolidar indicadores de obrigações, revisões e renovações no dashboard sem duplicar tarefas nem divergir os critérios.
+- [ ] Executar a matriz PostgreSQL descartável, HTTP autenticado, RLS A × B, concorrência e QA visual/teclado em 360/768/1280/1440 e zoom 200% quando o runtime estiver disponível.
+
 ## Revisão interna v012
 
 - [x] Modelar revisão sequencial presa à versão e snapshot material, com transições, comentários, reatribuição e conflito otimista; criar migration v012 tenant-aware e testes unitários do agregado.
