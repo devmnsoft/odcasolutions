@@ -149,3 +149,12 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [ ] Implementar e validar a jornada HTTP/BFF completa de revisões; o agregado e as tabelas v012 não constituem, isoladamente, uma entrega ponta a ponta.
 - [x] Expor e renderizar o histórico autorizado de obrigações sem enviar o token da API ao navegador.
 - [ ] Conectar os formulários de iniciar, cumprir, reprogramar, reatribuir, cancelar e reabrir ao BFF, preservando valores após conflitos.
+
+## Após a política canônica de vistas (14/09/2026)
+
+- [x] Centralizar allowlist, tipos básicos, datas ISO, intervalos, ordenação e chaves de rota reservadas.
+- [x] Aplicar precedência URL explícita → vista identificada → padrão → geral e reiniciar página ao abrir vista.
+- [x] Permitir atualização explícita dos filtros com versão otimista e manter renomear/padrão/inativar.
+- [ ] Persistir modos de data relativa e resolvê-los com relógio injetável e fuso cadastrado da organização em lista, agenda e contagens.
+- [ ] Adicionar chave idempotente à criação e provar timeout/repetição e disputa de padrão em PostgreSQL descartável.
+- [ ] Conectar formulários completos de tratamento e validar retorno ao contexto; executar HTTP/RLS, navegador, zoom e capturas nas quatro larguras.

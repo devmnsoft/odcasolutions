@@ -5,4 +5,6 @@ namespace Odca.Web.Models;
 
 public sealed record ObligationWorkspaceViewModel(
     ObligationPage Results,
-    IReadOnlyList<SavedViewItem> SavedViews);
+    IReadOnlyList<SavedViewItem> SavedViews,
+    SavedViewItem? CurrentView = null,
+    bool IsCurrentViewModified = false);

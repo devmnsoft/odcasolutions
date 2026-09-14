@@ -13,28 +13,12 @@ namespace Odca.Api.Controllers;
 [Route("api/v1/organizations/{tenantId:guid}/saved-views")]
 public sealed class SavedViewsController(NpgsqlDataSource dataSource) : ControllerBase
 {
-    private static readonly IReadOnlyDictionary<string, HashSet<string>> AllowedFilters =
-        new Dictionary<string, HashSet<string>>(StringComparer.Ordinal)
-        {
-            ["obligations"] = ["scope", "contractId", "ownerId", "category", "status", "from", "to", "search"],
-            ["reviews"] = ["scope", "contractId", "reviewerId", "requesterId", "status", "from", "to", "search"],
-            ["contracts"] = ["ownerId", "status", "renewalFrom", "renewalTo", "search"]
-        };
-
-    private static readonly IReadOnlyDictionary<string, HashSet<string>> AllowedSorts =
-        new Dictionary<string, HashSet<string>>(StringComparer.Ordinal)
-        {
-            ["obligations"] = ["due_date", "-due_date", "title", "-title"],
-            ["reviews"] = ["due_date", "-due_date", "updated_at", "-updated_at"],
-            ["contracts"] = ["title", "-title", "end_date", "-end_date"]
-        };
-
     [HttpGet]
     public async Task<IActionResult> List(Guid tenantId, [FromQuery] string listingType = "obligations", CancellationToken ct = default)
     {
         var actor = Actor();
         if (actor is null) return Unauthorized();
-        if (!AllowedFilters.ContainsKey(listingType)) return ValidationProblem("Tipo de listagem inválido.");
+        if (!SavedViewFilterPolicy.IsListingType(listingType)) return ValidationProblem("Tipo de listagem inválido.");
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(connection, actor.Value, tenantId, ct)) return Forbid();
         await using var transaction = await connection.BeginTransactionAsync(ct);
@@ -66,7 +50,7 @@ public sealed class SavedViewsController(NpgsqlDataSource dataSource) : Controll
              WHERE tenant_id=@tenantId AND owner_id=@actor AND id=@id AND inactive_at IS NULL
             """, new { tenantId, actor, id }, transaction, cancellationToken: ct));
         if (row is null) return NotFound();
-        var filters = ParseAndValidate(row.ListingType, row.Filters);
+        var filters = ParseAndValidate(row.ListingType, row.Filters, row.Sort);
         if (!await IdentifiersAvailable(connection, tenantId, filters, transaction, ct))
             return Conflict(new ProblemDetails { Title = "A vista usa um contrato ou responsável que não está mais disponível." });
         await transaction.CommitAsync(ct);
@@ -78,20 +62,20 @@ public sealed class SavedViewsController(NpgsqlDataSource dataSource) : Controll
     {
         var actor = Actor();
         if (actor is null) return Unauthorized();
-        var validation = Validate(request);
+        var validation = Validate(request, out var normalizedFilters, out var normalizedSort);
         if (validation is not null) return ValidationProblem(validation);
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(connection, actor.Value, tenantId, ct)) return Forbid();
         await using var transaction = await connection.BeginTransactionAsync(ct);
         await SetContext(connection, tenantId, actor.Value, transaction, ct);
-        if (!await IdentifiersAvailable(connection, tenantId, request.Filters, transaction, ct))
+        if (!await IdentifiersAvailable(connection, tenantId, normalizedFilters, transaction, ct))
             return ValidationProblem("Contrato ou responsável indisponível para esta organização.");
         var row = await connection.QuerySingleAsync<Row>(new CommandDefinition("""
             INSERT INTO odca.saved_work_views(tenant_id,owner_id,name,listing_type,filters,sort)
             VALUES(@tenantId,@actor,@name,@listingType,CAST(@filters AS jsonb),@sort)
             RETURNING id AS Id,name AS Name,listing_type AS ListingType,filters::text AS Filters,sort AS Sort,
                       is_default AS IsDefault,row_version AS Version,created_at AS CreatedAt,updated_at AS UpdatedAt
-            """, new { tenantId, actor, name = request.Name.Trim(), request.ListingType, filters = JsonSerializer.Serialize(request.Filters), sort = request.Sort ?? "due_date" }, transaction, cancellationToken: ct));
+            """, new { tenantId, actor, name = request.Name.Trim(), request.ListingType, filters = JsonSerializer.Serialize(normalizedFilters), sort = normalizedSort }, transaction, cancellationToken: ct));
         await transaction.CommitAsync(ct);
         return CreatedAtAction(nameof(Get), new { tenantId, id = row.Id }, ToItem(row));
     }
@@ -112,9 +96,15 @@ public sealed class SavedViewsController(NpgsqlDataSource dataSource) : Controll
             new { tenantId, actor, id }, transaction, cancellationToken: ct));
         if (current == default) return NotFound();
         if (current.Version != request.Version) return Conflict(new { title = "A vista foi alterada em outra sessão.", currentVersion = current.Version });
+        Dictionary<string, string>? normalizedFilters = null;
+        string? normalizedSort = null;
+        if (request.Filters is not null && !SavedViewFilterPolicy.TryNormalize(current.ListingType, request.Filters, request.Sort, out normalizedFilters, out normalizedSort, out var error))
+            return ValidationProblem(error);
+        if (normalizedFilters is not null && !await IdentifiersAvailable(connection, tenantId, normalizedFilters, transaction, ct))
+            return ValidationProblem("Contrato ou responsável indisponível para esta organização.");
         if (request.IsDefault)
             await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.saved_work_views SET is_default=false,updated_at=now(),row_version=row_version+1 WHERE tenant_id=@tenantId AND owner_id=@actor AND listing_type=@listingType AND is_default", new { tenantId, actor, current.ListingType }, transaction, cancellationToken: ct));
-        await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.saved_work_views SET name=@name,is_default=@isDefault,updated_at=now(),row_version=row_version+1 WHERE tenant_id=@tenantId AND owner_id=@actor AND id=@id", new { tenantId, actor, id, name = request.Name.Trim(), request.IsDefault }, transaction, cancellationToken: ct));
+        await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.saved_work_views SET name=@name,is_default=@isDefault,filters=COALESCE(CAST(@filters AS jsonb),filters),sort=COALESCE(@sort,sort),updated_at=now(),row_version=row_version+1 WHERE tenant_id=@tenantId AND owner_id=@actor AND id=@id", new { tenantId, actor, id, name = request.Name.Trim(), request.IsDefault, filters = normalizedFilters is null ? null : JsonSerializer.Serialize(normalizedFilters), sort = normalizedSort }, transaction, cancellationToken: ct));
         await transaction.CommitAsync(ct);
         return NoContent();
     }
@@ -134,24 +124,23 @@ public sealed class SavedViewsController(NpgsqlDataSource dataSource) : Controll
         return NoContent();
     }
 
-    private static string? Validate(SaveViewRequest request)
+    private static string? Validate(SaveViewRequest request, out Dictionary<string, string> filters, out string sort)
     {
+        filters = [];
+        sort = request.Sort ?? "due_date";
         if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Trim().Length > 80) return "O nome deve ter entre 1 e 80 caracteres.";
-        if (!AllowedFilters.TryGetValue(request.ListingType, out var allowed) || request.Filters.Any(x => !allowed.Contains(x.Key) || x.Value.Length > 200)) return "A vista contém filtros não permitidos.";
-        var sort = request.Sort ?? "due_date";
-        if (!AllowedSorts.TryGetValue(request.ListingType, out var sorts) || !sorts.Contains(sort)) return "Ordenação não permitida.";
-        return null;
+        return SavedViewFilterPolicy.TryNormalize(request.ListingType, request.Filters, request.Sort, out filters, out sort, out var error) ? null : error;
     }
 
-    private static IReadOnlyDictionary<string, string> ParseAndValidate(string listingType, string json)
+    private static Dictionary<string, string> ParseAndValidate(string listingType, string json, string sort)
     {
         var filters = JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? [];
-        if (!AllowedFilters.TryGetValue(listingType, out var allowed) || filters.Any(x => !allowed.Contains(x.Key) || x.Value.Length > 200))
+        if (!SavedViewFilterPolicy.TryNormalize(listingType, filters, sort, out var normalized, out _, out _))
             throw new InvalidDataException("Definição de vista inválida.");
-        return filters;
+        return normalized;
     }
 
-    private static async Task<bool> IdentifiersAvailable(NpgsqlConnection connection, Guid tenantId, IReadOnlyDictionary<string, string> filters, NpgsqlTransaction transaction, CancellationToken ct)
+    private static async Task<bool> IdentifiersAvailable(NpgsqlConnection connection, Guid tenantId, Dictionary<string, string> filters, NpgsqlTransaction transaction, CancellationToken ct)
     {
         if (filters.TryGetValue("contractId", out var contractText) && (!Guid.TryParse(contractText, out var contractId) || !await connection.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.contracts WHERE tenant_id=@tenantId AND id=@contractId AND deleted_at IS NULL)", new { tenantId, contractId }, transaction, cancellationToken: ct)))) return false;
         if (filters.TryGetValue("ownerId", out var ownerText) && (!Guid.TryParse(ownerText, out var ownerId) || !await connection.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.memberships WHERE tenant_id=@tenantId AND user_id=@ownerId AND status='active')", new { tenantId, ownerId }, transaction, cancellationToken: ct)))) return false;
@@ -161,6 +150,6 @@ public sealed class SavedViewsController(NpgsqlDataSource dataSource) : Controll
     private Guid? Actor() => Guid.TryParse(User.FindFirstValue("sub"), out var id) ? id : null;
     private static Task<bool> Allowed(NpgsqlConnection c, Guid actor, Guid tenant, CancellationToken ct) => c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT odca.tenant_actor_has_permission(@actor,@tenant,'tenant.saved_views.manage')", new { actor, tenant }, cancellationToken: ct));
     private static Task<int> SetContext(NpgsqlConnection c, Guid tenant, Guid actor, NpgsqlTransaction tx, CancellationToken ct) => c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenantValue,true),set_config('odca.actor_id',@actorValue,true)", new { tenantValue = tenant.ToString(), actorValue = actor.ToString() }, tx, cancellationToken: ct));
-    private static SavedViewItem ToItem(Row row) => new(row.Id, row.Name, row.ListingType, ParseAndValidate(row.ListingType, row.Filters), row.Sort, row.IsDefault, row.Version, row.CreatedAt, row.UpdatedAt);
+    private static SavedViewItem ToItem(Row row) => new(row.Id, row.Name, row.ListingType, ParseAndValidate(row.ListingType, row.Filters, row.Sort), row.Sort, row.IsDefault, row.Version, row.CreatedAt, row.UpdatedAt);
     private sealed record Row(Guid Id, string Name, string ListingType, string Filters, string Sort, bool IsDefault, long Version, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
 }

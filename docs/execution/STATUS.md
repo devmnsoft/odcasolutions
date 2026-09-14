@@ -1,5 +1,25 @@
 # Status de execução
 
+## Política canônica e jornada de vistas pessoais (14/09/2026)
+
+- Estado inicial registrado: branch `work`, SHA `1e0a470ed78f6151da7e284474f8e99d395ba58f`; árvore inicialmente limpa.
+
+### Implementado
+
+- Os alvos `CA1859` em `SavedViewsController` agora expõem os tipos concretos realmente usados nos detalhes privados; o helper de contexto continua retornando `Task<int>`. O parâmetro privado `Add` do BFF recebe `Dictionary<string,string>`.
+- A construção de rota deixou de usar o construtor incompatível de `RouteValueDictionary`: filtros passam pela política canônica, são inseridos individualmente e somente depois recebem `tenantId`, `viewId` e página inicial confiáveis. Chaves reservadas são recusadas.
+- Salvar, atualizar e aplicar reutilizam a mesma normalização de chaves, enumerações, UUIDs, datas ISO, intervalo, ordenação e limites. Atualização de filtros é explícita e preserva a versão otimista.
+- Acesso sem filtro/vista abre a vista padrão; filtros explícitos (inclusive dashboard) prevalecem. A central identifica vista atual e alterações não salvas, oferece chips, limpeza e gerenciamento responsivo.
+
+### Validado nesta execução
+
+- `npm run build` e `git diff --check` aprovados. Foram adicionados testes comportamentais para rota confiável, caracteres especiais, chaves reservadas, datas e exclusão de página da persistência.
+
+### Pendente por limitação do ambiente
+
+- O container não contém `dotnet`; restore bloqueado, builds Debug/Release e testes .NET não puderam ser executados. Não há PostgreSQL descartável/role restrita nem aplicação executável, portanto HTTP/RLS, concorrência real, jornada autenticada, capturas e QA 360/768/1280/1440 permanecem não validados.
+- Datas relativas dependentes do fuso da organização, ficha/formulários de tratamento completos e criação idempotente com chave de requisição permanecem pendentes; não são declarados concluídos.
+
 ## Evolução — factory inequívoca e vistas pessoais (14/09/2026)
 
 - Estado inicial registrado: branch `work`, SHA `4a38ba0f368e0fc9dfc3c89b6238da707b920315`; árvore de trabalho inicialmente limpa.

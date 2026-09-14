@@ -52,6 +52,20 @@ public sealed class OdcaApiClientTests
     }
 
     [Fact]
+    public async Task SpecialSearchCharactersAreEncodedWithoutChangingTheirMeaning()
+    {
+        var handler = new CapturingHandler();
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
+        var client = new OdcaApiClient(http);
+
+        await client.GetObligationsAsync("token", Guid.NewGuid(), "mine", null, null, null, null,
+            null, null, "ação & revisão + fiscal", 1, 20, CancellationToken.None);
+
+        Assert.Contains($"search={Uri.EscapeDataString("ação & revisão + fiscal")}", handler.RequestUri!.Query, StringComparison.Ordinal);
+        Assert.DoesNotContain("ação & revisão + fiscal", handler.RequestUri.Query, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ObligationHistoryUsesTenantScopedRoute()
     {
         var handler = new CapturingHandler("{\"obligationId\":\"bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb\",\"title\":\"Relatório\",\"events\":[]}");
