@@ -1,5 +1,9 @@
 # Próxima execução
 
+## Pré-condição para continuar S02
+
+Disponibilizar no checkout o commit `183aa2b5153cf7dbfa475c65fcdeb1c36f0f911b` (ou descendente) e integrar seu histórico antes de editar contratos/documentos. Não implementar uma central paralela no estado S01. Depois da integração, executar primeiro `dotnet restore Odca.sln --locked-mode`, `dotnet build Odca.sln -c Release --no-restore`, `npm run build` e a suíte PostgreSQL descartável abaixo; em seguida tratar as falhas restantes e concluir a jornada de documentos.
+
 ## Fechar evidência do prompt 13
 
 1. Com PostgreSQL 18 autorizado, configurar a base `postgres`/schema `odca` sem alterar o banco durante o setup:
