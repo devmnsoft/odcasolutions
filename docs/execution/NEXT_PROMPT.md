@@ -1,5 +1,11 @@
 # Próxima execução
 
+## Fechar a fatia v012 sem criar outro modelo
+
+Use `ContractReview` e as tabelas `contract_review_*` da v012 como fontes únicas. Implemente primeiro o repositório Dapper transacional e os casos de uso que consultam vínculo/permissão no servidor, gravando decisão, evento e notificação atomicamente com `row_version`. Depois exponha API/BFF e central de pendências. Não trate `changes_requested` ou comentário resolvido como aprovação, não altere o status operacional do contrato e nunca transfira aprovação entre versões.
+
+O gate obrigatório é: SDK 10.0.400, restore locked, build Release, assets, testes unitários, PostgreSQL 18 descartável, HTTP autenticado A × B e navegador em 360/768/1280/1440 e zoom 200%. O ambiente desta entrega não tinha `dotnet`; repita o gate em host/CI suportado antes de promover a v012.
+
 ## Continuação obrigatória do estúdio
 
 Usar `StructuredContractDocument` como única fonte canônica e não criar outro modelo paralelo. A próxima fatia deve persistir o agregado com tenant/RLS e permissões, expor autosave com revisão esperada e integrar o BFF; depois implementar publicação e PDF por versão. Antes de promover, instalar o SDK fixado e executar restore/build/testes, PostgreSQL descartável e jornada autenticada.
