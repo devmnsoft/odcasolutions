@@ -14,6 +14,16 @@ namespace Odca.Web.Services;
 
 public sealed class OdcaApiClient(HttpClient client)
 {
+    public Task<ApiCallResult<ObligationHistoryResponse>> GetObligationHistoryAsync(
+        string token,
+        Guid tenantId,
+        Guid obligationId,
+        CancellationToken cancellationToken) =>
+        SendAsync<ObligationHistoryResponse>(
+            CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/obligations/{obligationId}/history", token),
+            false,
+            cancellationToken);
+
     public Task<ApiCallResult<ObligationPage>> GetObligationsAsync(
         string token,
         Guid tenantId,
@@ -429,6 +439,7 @@ public sealed class OdcaApiClient(HttpClient client)
             HttpStatusCode.Unauthorized when invalidCredentialsOnUnauthorized => ApiCallStatus.InvalidCredentials,
             HttpStatusCode.Unauthorized => ApiCallStatus.Unauthorized,
             HttpStatusCode.Forbidden => ApiCallStatus.Forbidden,
+            HttpStatusCode.NotFound => ApiCallStatus.NotFound,
             HttpStatusCode.TooManyRequests => ApiCallStatus.RateLimited,
             HttpStatusCode.Conflict => ApiCallStatus.Conflict,
             _ when (int)statusCode >= 500 => ApiCallStatus.Unavailable,

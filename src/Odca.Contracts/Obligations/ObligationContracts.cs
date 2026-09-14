@@ -5,4 +5,6 @@ public sealed record MonthlyRecurrenceRequest(DateOnly BaseDate,int IntendedDay,
 public sealed record ObligationActionRequest(long Version,string? Reason,string? Note,DateTimeOffset? EffectiveAt,Guid? EvidenceDocumentVersionId,Guid? OwnerId,DateOnly? DueDate);
 public sealed record ObligationItem(Guid Id,Guid ContractId,string Contract,string Title,string Category,string ObligatedParty,Guid OwnerId,string Owner,DateOnly DueDate,string Priority,string Status,bool Overdue,bool OwnerBlocked,long Version,decimal? Amount,string? Currency,string NextAction);
 public sealed record ObligationPage(IReadOnlyList<ObligationItem> Items,int Page,int PageSize,int Total);
+public sealed record ObligationHistoryItem(long Id,string EventType,Guid ActorId,string Actor,string Details,DateTimeOffset OccurredAt);
+public sealed record ObligationHistoryResponse(Guid ObligationId,string Title,IReadOnlyList<ObligationHistoryItem> Events);
 public sealed record RenewalDecisionRequest(long ContractVersion,string Decision,string Justification,DateOnly? NewStartDate,DateOnly? NewEndDate);
