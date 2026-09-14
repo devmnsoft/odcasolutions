@@ -1,0 +1,2 @@
+const panel=document.querySelector('.obligation-detail-panel');const title=document.querySelector('#detail-title');const copy=document.querySelector('#detail-copy');
+for(const button of document.querySelectorAll('.obligation-detail'))button.addEventListener('click',()=>{title.textContent=button.dataset.title;copy.textContent=`Contrato: ${button.dataset.contract}. Responsável: ${button.dataset.owner}. Prazo: ${button.dataset.due}.`;panel?.focus();});

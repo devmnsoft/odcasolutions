@@ -160,3 +160,36 @@ Ainda pendentes nesta entrega: transporte de e-mail de produção/worker com lea
 - O BFF ganhou escolha por nome e equipe/perfis sem IDs digitados. O shell usa o nome selecionado, fallback seguro de avatar e melhorias de drawer/localStorage/formulários.
 - `npm run build`, validação local dos sete checksums e `git diff --check` passaram. O SDK 10.0.400 continua ausente e o instalador oficial respondeu HTTP 403; portanto restore forçado/bloqueado, build/testes .NET, PostgreSQL e QA renderizado não foram executados neste ambiente. Os lockfiles não foram editados manualmente.
 - Bloqueio/restauração de membros, reenvio/cancelamento, proteção concorrente do último administrador e transporte de produção permanecem pendentes; esta entrega não declara o módulo integral concluído.
+
+## Evolução S03 — obrigações e renovações (14/09/2026)
+
+### Matriz de reconciliação
+
+| Funcionalidade | Existente | Validada agora | Problema encontrado | Alteração prevista/realizada |
+|---|---|---|---|---|
+| Configuração local | Sim | Inspeção + teste isolado existente | SDK ausente impede execução .NET | CS9007 permanece corrigido por `JsonSerializer`; orientação ENC0097 preservada |
+| Contratos/documentos/versões | Sim (v011) | Inspeção de código e FKs | Não havia obrigação ligada a versão | Evidência referencia a versão imutável sem novo upload nem ampliação de download |
+| Revisão/aprovação | Domínio e SQL (v012) | Testes existentes inspecionados | Jornada HTTP ainda parcial | Mantida separada de cumprimento e renovação |
+| Obrigações | Não | Regras puras e assets | Ausência de modelo, API, central e auditoria | Implementado agregado, API tenant-aware, concorrência, histórico, filtros e central responsiva |
+| Recorrência | Não | Testes para fevereiro, bissexto e dia 31 | Risco de deriva pelo último dia ajustado | Série mensal usa sempre o dia-base e materializa no máximo 24 ocorrências |
+| Alertas internos | Outbox de convites/revisão | Checksum e inspeção | Não havia lembrete de obrigação | Lease tokenizado, deduplicação, atraso limitado a um dia e notificação interna individual |
+| Renovações | Campos básicos no contrato | Inspeção | Intenção poderia ser confundida com vigência | Ciclos históricos; apenas `renewed` com novas datas altera a vigência |
+| Central visual | Não | `npm run build` | Sem lista operacional | Lista paginada, URL filtrável, escopo, painel lateral e adaptação móvel |
+
+### Implementado
+
+- Migration aditiva v013, snapshot, permissões, RLS, FKs compostas, índices, concorrência otimista, séries/ocorrências, evidências, eventos, lembretes, notificações individuais e ciclos de renovação.
+- Obrigações pontuais ou mensais; atraso derivado; cumprimento, cancelamento, reabertura, reatribuição e mudança de prazo auditáveis. Obrigações financeiras mantêm valor decimal e moeda explícita e não acionam pagamento.
+- API preserva tenant explícito e valida permissão por operação, vínculo ativo, transições e versão. Evidência apenas aponta para `document_versions`; download continua sob a permissão própria.
+- Worker interno reivindica um lembrete com `SKIP LOCKED`, proprietário/token, tentativas limitadas e cancelamento do host. Itens muito antigos não causam avalanche.
+- Renovação guarda ciclos anteriores e obrigações pendentes. Intenção e negociação não mudam vigência; somente renovação registrada altera datas.
+
+### Validado neste ambiente
+
+- `npm run build`, verificação independente dos 13 checksums e `git diff --check` foram executados.
+- O SDK .NET 10 não está instalado (`dotnet: command not found`), portanto restore/build/testes .NET, PostgreSQL descartável, HTTP, navegador autenticado e capturas não são declarados aprovados.
+
+### Pendente
+
+- Conectar formulário completo de criação/ações e ficha visual do contrato; a central entregue é consultiva e o percurso de mutação está disponível na API.
+- Executar CI com SDK 10/PostgreSQL 18 e QA renderizado em 360/768/1280/1440 e zoom 200%. Sem runtime não foi fabricada captura.
