@@ -86,9 +86,8 @@ Em terminal interativo, `run-local.ps1` encaminha automaticamente ao setup se o 
 
 1. encerre a depuração (`Shift+F5`);
 2. encerre somente as instâncias de API, Web e Worker que foram iniciadas pela solução;
-3. corrija primeiro o `CS9007` e qualquer outro erro real indicado pela compilação;
-4. use **Compilar > Recompilar Solução**;
-5. inicie novamente o perfil de vários projetos **ODCA local**, que sobe API, Web e Worker.
+3. recompile a solução depois de aplicar as correções dos diagnósticos reais;
+4. reinicie os projetos necessários pelo perfil de vários projetos **ODCA local**.
 
 Se uma compilação normal ainda apontar artefatos inconsistentes, feche esses processos, remova apenas `bin` e `obj` dos projetos citados, restaure e recompile. Preserve `development-runtime.json`, chaves de Data Protection, uploads e dados do PostgreSQL.
 

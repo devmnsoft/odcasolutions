@@ -127,3 +127,6 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [ ] Unificar projeção autorizada de revisões, obrigações e decisões de renovação sem criar tabela de tarefas.
 - [ ] Implementar ficha do contrato, ações BFF e histórico integrado.
 - [ ] Executar SDK .NET, PostgreSQL descartável, HTTP autenticado e QA visual quando o ambiente estiver disponível.
+- [x] Preservar no evento de cumprimento a data efetiva, observação e evidência, e permitir reabertura sem violar a consistência da projeção atual.
+- [x] Rejeitar intervalo de datas invertido também na API, mantendo limites inclusivos (`due_date >= from` e `due_date <= to`).
+- [ ] Implementar e validar a jornada HTTP/BFF completa de revisões; o agregado e as tabelas v012 não constituem, isoladamente, uma entrega ponta a ponta.
