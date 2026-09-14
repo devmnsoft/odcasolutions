@@ -110,3 +110,10 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 
 - [ ] Cadastro manual de tipo + contraparte → contrato com vigência → listagem/detalhe → permissões → histórico → alerta interno.
 - Não antecipar OCR/editor rico nem declarar conformidade LGPD plena.
+
+## Após S03 obrigações (14/09/2026)
+
+- [ ] Executar v013 em PostgreSQL 18 descartável e provar RLS A × B, concorrência, leases e reexecução.
+- [ ] Completar formulários BFF de criação, ações destrutivas e edição “esta/futuras”, com seleção prévia para eventual cópia na renovação.
+- [ ] Integrar resumo de obrigações/renovação à ficha contratual quando a ficha HTTP for conectada.
+- [ ] Realizar QA autenticado e registrar capturas nas quatro larguras e zoom 200%.

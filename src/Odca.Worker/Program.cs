@@ -8,6 +8,7 @@ var localConfiguration = LocalRuntimeConfiguration.Add(builder.Configuration, bu
 Console.WriteLine($"Configuração: ambiente={localConfiguration.Environment}; caminho={localConfiguration.Path ?? "não utilizado"}.");
 builder.Services.AddHostedService<Worker>();
 builder.Services.AddHostedService<DocumentWorker>();
+builder.Services.AddHostedService<ObligationReminderWorker>();
 var dataProtection = builder.Services.AddDataProtection()
     .SetApplicationName(builder.Configuration["DataProtection:ApplicationName"] ?? "ODCA Solutions");
 var keysPath = builder.Configuration["DataProtection:KeysPath"];
