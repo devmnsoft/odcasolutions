@@ -1,5 +1,9 @@
 # Próxima execução
 
+## Continuação obrigatória do estúdio
+
+Usar `StructuredContractDocument` como única fonte canônica e não criar outro modelo paralelo. A próxima fatia deve persistir o agregado com tenant/RLS e permissões, expor autosave com revisão esperada e integrar o BFF; depois implementar publicação e PDF por versão. Antes de promover, instalar o SDK fixado e executar restore/build/testes, PostgreSQL descartável e jornada autenticada.
+
 ## Pré-condição para continuar S02
 
 Partir da migração v011 e reconciliar o commit `183aa2b5153cf7dbfa475c65fcdeb1c36f0f911b` caso ele se torne acessível, sem substituir versões ou decisões já persistidas. Executar primeiro `dotnet restore Odca.sln --locked-mode`, `dotnet build Odca.sln -c Release --no-restore`, `npm run build` e a suíte PostgreSQL descartável abaixo; em seguida concluir decisão/aplicação transacional e a tela de revisão. O incremento posterior é o editor estruturado, biblioteca de cláusulas e campos preenchíveis, reutilizando documento lógico, versões e proveniência v011.

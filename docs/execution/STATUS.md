@@ -1,5 +1,13 @@
 # Status de execução
 
+## Evolução do estúdio estruturado — fundação validável (14/09/2026)
+
+- **Implementado:** CA1859 no migrador corrigido no parâmetro privado com o tipo concreto efetivamente produzido por `LoadHistoryAsync`, sem materialização, mudança de contrato público, ordem, checksum, transação ou cancelamento.
+- **Implementado:** formato canônico JSON único para documentos, com nós/atributos/marcas permitidos, limites, campos por identificador estável e recusa de HTML, handlers e recursos externos. Validação tipada de campos, confirmação obrigatória na publicação, snapshot imutável, conflito otimista e restauração como novo rascunho foram adicionados à camada Application.
+- **Validado neste ambiente:** assets e integridade do diff. O SDK .NET 10.0.400 não está instalado, portanto restore, build e testes .NET não foram declarados aprovados. A CLI do GitHub não está autenticada, logo o resultado remoto atual da CI não pôde ser consultado.
+- **Documentado:** ENC0097 como limitação de Hot Reload e sequência segura de reinicialização do perfil `ODCA local`, sem modificar ou excluir configuração pessoal.
+- **Pendente:** persistência/API/BFF do estúdio, modelos e cláusulas, PDF rastreável, migration v012, navegador autenticado, PostgreSQL descartável e QA visual. A fundação não é apresentada como jornada completa.
+
 ## Incremento S02 recuperado sobre o checkout disponível (14/09/2026)
 
 | Funcionalidade | Implementada | Validada | Pendência | Ação desta entrega |

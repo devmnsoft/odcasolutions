@@ -1,5 +1,15 @@
 # Backlog
 
+## Estúdio de contratos
+
+- [x] Corrigir CA1859 sem alterar o contrato público ou materializar novamente o histórico.
+- [x] Definir JSON estruturado como fonte canônica, validar nós/formatação e recusar superfícies de conteúdo ativo.
+- [x] Modelar campos estáveis/repetidos, validação tipada, confirmação, conflito otimista, publicação imutável e restauração não destrutiva na camada Application.
+- [ ] Persistir modelos, cláusulas, concessões, rascunhos, versões e emissões em migration nova, sem modificar releases aplicados.
+- [ ] Integrar casos de uso tenant-aware, permissões/limites/auditoria, API e BFF ao núcleo existente.
+- [ ] Entregar editor visual modular, autosave com retry/conflito, PDF rastreável e histórico autenticado.
+- [ ] Executar PostgreSQL descartável, jornada no navegador, inspeção do PDF e QA 360/768/1280/1440 e zoom 200%.
+
 ## Recuperação da referência S02
 
 - [x] Reparar a colisão PostgreSQL 42P13 no instalador novo sem `DROP CASCADE` e preservar o artefato histórico defeituoso.

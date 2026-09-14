@@ -80,6 +80,17 @@ Abra `Odca.sln` no Visual Studio e selecione o perfil de vários projetos `ODCA 
 
 Em terminal interativo, `run-local.ps1` encaminha automaticamente ao setup se o arquivo estiver ausente; com `-NonInteractive`, falha antes de criar qualquer processo e informa o caminho esperado. Antes de anunciar prontidão, ele valida a configuração e aguarda `https://localhost:7143/health/ready` responder com sucesso.
 
+### Reinicialização após ENC0097 no Visual Studio
+
+`ENC0097` na linha 1 de `LocalRuntimeConfiguration.cs` indica que o Hot Reload não consegue aplicar aquela alteração estrutural ao processo em execução; ele não é, por si só, um erro de compilação. Não altere a configuração nem apague o arquivo pessoal para contorná-lo. No Visual Studio:
+
+1. encerre a depuração (`Shift+F5`);
+2. encerre somente as instâncias de API, Web e Worker que foram iniciadas pela solução;
+3. use **Compilar > Recompilar Solução**;
+4. inicie novamente o perfil de vários projetos **ODCA local**, que sobe API, Web e Worker.
+
+Se uma compilação normal ainda apontar artefatos inconsistentes, feche esses processos, remova apenas `bin` e `obj` dos projetos citados, restaure e recompile. Preserve `development-runtime.json`, chaves de Data Protection, uploads e dados do PostgreSQL.
+
 Também é possível iniciar API e Web em terminais separados:
 
 ```powershell
