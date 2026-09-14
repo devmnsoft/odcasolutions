@@ -8,7 +8,7 @@ using System.Text.Json.Nodes;
 namespace Odca.IntegrationTests;
 
 [CollectionDefinition("Environment", DisableParallelization = true)]
-public sealed class EnvironmentCollection { }
+public sealed class LocalRuntimeConfigurationTestGroup { }
 
 [Collection("Environment")]
 public sealed class LocalRuntimeConfigurationTests : IDisposable
@@ -261,7 +261,7 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
         if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
     }
 
-    private static IHostEnvironment EnvironmentNamed(string name) => new FakeEnvironment { EnvironmentName = name };
+    private static FakeEnvironment EnvironmentNamed(string name) => new() { EnvironmentName = name };
 
     private sealed class FakeEnvironment : IHostEnvironment
     {
