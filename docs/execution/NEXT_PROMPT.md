@@ -1,5 +1,9 @@
 # Próxima execução
 
+## Continuação após política canônica de vistas
+
+Execute primeiro a suíte com SDK .NET 10.0.400 e PostgreSQL 18 descartável/role restrita. Prove isolamento por proprietário e tenant, revogação de acesso, referência indisponível, atualização concorrente, duas definições de padrão, inativação do padrão e repetição de criação. Em seguida modele datas relativas com `TimeProvider` e fuso persistido da organização, sem congelá-las como datas absolutas, e conecte os formulários de tratamento preservando `viewId`, filtros, ordenação e página de retorno. Só declare a jornada completa após HTTP autenticado e QA/capturas em 360, 768, 1280 e 1440 px e zoom 200%.
+
 ## Continuação após v014
 
 Parta do gate recompilável com `ApiAssemblyMarker` e da migration v014 de vistas pessoais. Primeiro execute restore/build/testes com .NET 10.0.400 e PostgreSQL descartável usando a role restrita; prove isolamento por tenant e proprietário e concorrência de atualização de vista. Depois conecte renomear/padrão/inativar no BFF, complete a ficha operacional do contrato reutilizando documentos, revisões, obrigações, renovações e histórico existentes, e entregue a agenda mensal limitada à janela visível. Não declare a jornada de revisão concluída enquanto persistência/API/BFF e conflito otimista não estiverem cobertos ponta a ponta.

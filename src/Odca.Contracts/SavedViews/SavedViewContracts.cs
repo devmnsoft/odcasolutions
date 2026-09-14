@@ -19,4 +19,9 @@ public sealed record SaveViewRequest(
     IReadOnlyDictionary<string, string> Filters,
     string? Sort);
 
-public sealed record UpdateSavedViewRequest(string Name, bool IsDefault, long Version);
+public sealed record UpdateSavedViewRequest(
+    string Name,
+    bool IsDefault,
+    long Version,
+    IReadOnlyDictionary<string, string>? Filters = null,
+    string? Sort = null);
