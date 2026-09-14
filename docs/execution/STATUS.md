@@ -5,7 +5,7 @@
 ### Implementado
 
 - `CA1859` corrigido usando `Dictionary` no mapa privado de transições, sem alterar a exposição somente leitura das etapas e do histórico.
-- Reatribuição valida motivo nulo, vazio, em branco e acima de 1.000 caracteres antes de qualquer mutação; normaliza com `Trim` e mantém separados ator, revisor anterior e novo revisor na etapa e no evento.
+- Reatribuição rejeita motivo nulo, vazio ou em branco antes de qualquer mutação; normaliza com `Trim`, preserva a política de truncamento em 1.000 caracteres e mantém separados ator, revisor anterior e novo revisor na etapa e no evento.
 - `CA1512` corrigido com `ArgumentOutOfRangeException.ThrowIfNegative(offset)`, preservando zero como ocorrência-base válida.
 - Datas opcionais da consulta de obrigações usam `InvariantCulture` no formato ISO e continuam omitidas quando ausentes. Intervalo invertido retorna validação antes de chamar a API.
 - A superfície existente foi renomeada para “Minhas pendências”, ganhou linguagem de central operacional, labels explícitos, estado de validação e paginação que preserva todos os filtros da URL.
@@ -214,3 +214,10 @@ Ainda pendentes nesta entrega: transporte de e-mail de produção/worker com lea
 
 - Conectar formulário completo de criação/ações e ficha visual do contrato; a central entregue é consultiva e o percurso de mutação está disponível na API.
 - Executar CI com SDK 10/PostgreSQL 18 e QA renderizado em 360/768/1280/1440 e zoom 200%. Sem runtime não foi fabricada captura.
+## Correção dos diagnósticos e integridade do histórico (14/09/2026)
+
+- O HEAD inicial desta execução foi `e923e81f8636464cd0fe0575d359a3f8d15f8861`, posterior à referência `09b078947bdf1a39bc0966ece0f60655a1daa615`; as alterações existentes foram preservadas e ajustadas incrementalmente.
+- CA1859 foi corrigido somente no campo privado de transições. CS8604 foi corrigido pelo contrato de nulabilidade de `Limit`; o motivo de reatribuição é normalizado/truncado uma vez e reutilizado na decisão e auditoria, sem alterar a política preexistente.
+- CA1305 permanece corrigido com datas `DateOnly` invariáveis na query e montagem legível. CA1512 permanece corrigido com `ThrowIfNegative`, mantendo zero e o cálculo a partir da data-base.
+- A API agora rejeita intervalos invertidos. O evento de cumprimento preserva data efetiva, observação e identificador da evidência; a reabertura limpa apenas a projeção atual de cumprimento, mantendo o evento histórico e respeitando o `CHECK` do banco.
+- `npm run build` e `git diff --check` passaram. Restore, build e testes .NET não foram executados porque o SDK 10.0.400 não existe no contêiner e o instalador oficial respondeu HTTP 403. PostgreSQL descartável, HTTP autenticado, navegador e capturas continuam não aprovados.

@@ -101,13 +101,16 @@ public sealed class ContractReviewTests
     }
 
     [Fact]
-    public void OversizedReassignmentReasonFailsBeforeChangingCurrentStep()
+    public void OversizedReassignmentReasonIsTruncatedOnceForDecisionAndAudit()
     {
         var review = Create([Reviewer1]);
-        Assert.Throws<ContractReviewRuleException>(() => review.Reassign(Requester, true, Reviewer2, new string('a', 1001), 1, Now));
-        Assert.Equal(ReviewStepStatus.Current, review.Steps[0].Status);
-        Assert.Single(review.Steps);
-        Assert.Equal(1, review.Revision);
+        review.Reassign(Requester, true, Reviewer2, $"  {new string('a', 1001)}  ", 1, Now);
+
+        var normalizedReason = new string('a', 1000);
+        Assert.Equal(ReviewStepStatus.Reassigned, review.Steps[0].Status);
+        Assert.Equal(normalizedReason, review.Steps[0].Justification);
+        Assert.Equal($"{Reviewer1}:{Reviewer2}:{normalizedReason}",
+            Assert.Single(review.Events, item => item.Type == "review.step.reassigned").Detail);
     }
 
     [Fact]
