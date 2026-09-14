@@ -37,7 +37,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
 
     public Task DisposeAsync() => Task.CompletedTask;
 
-    public WebApplicationFactory<Program> CreateApi()
+    public WebApplicationFactory<global::Odca.Api.ApiAssemblyMarker> CreateApi()
     {
         return new TestApiFactory(this);
     }
@@ -224,7 +224,8 @@ public sealed class DatabaseFixture : IAsyncLifetime
         throw new FileNotFoundException(string.Join(Path.DirectorySeparatorChar, segments));
     }
 
-    private sealed class TestApiFactory(DatabaseFixture fixture) : WebApplicationFactory<Program>
+    private sealed class TestApiFactory(DatabaseFixture fixture)
+        : WebApplicationFactory<global::Odca.Api.ApiAssemblyMarker>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

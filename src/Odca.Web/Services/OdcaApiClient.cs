@@ -9,11 +9,35 @@ using Odca.Contracts.Plans;
 using Odca.Contracts.Privacy;
 using Odca.Contracts.Tenancy;
 using Odca.Contracts.Obligations;
+using Odca.Contracts.SavedViews;
 
 namespace Odca.Web.Services;
 
 public sealed class OdcaApiClient(HttpClient client)
 {
+    public Task<ApiCallResult<SavedViewItem[]>> GetSavedViewsAsync(string token, Guid tenantId, string listingType, CancellationToken cancellationToken) =>
+        SendAsync<SavedViewItem[]>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/saved-views?listingType={Uri.EscapeDataString(listingType)}", token), false, cancellationToken);
+
+    public Task<ApiCallResult<SavedViewItem>> GetSavedViewAsync(string token, Guid tenantId, Guid id, CancellationToken cancellationToken) =>
+        SendAsync<SavedViewItem>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/saved-views/{id}", token), false, cancellationToken);
+
+    public async Task<ApiCallResult<SavedViewItem>> CreateSavedViewAsync(string token, Guid tenantId, SaveViewRequest body, CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/saved-views", token);
+        message.Content = JsonContent.Create(body);
+        return await SendAsync<SavedViewItem>(message, false, cancellationToken);
+    }
+
+    public async Task<ApiCallResult<bool>> UpdateSavedViewAsync(string token, Guid tenantId, Guid id, UpdateSavedViewRequest body, CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(HttpMethod.Put, $"api/v1/organizations/{tenantId}/saved-views/{id}", token);
+        message.Content = JsonContent.Create(body);
+        return await SendAsync<bool>(message, false, cancellationToken, emptyBodyIsSuccess: true);
+    }
+
+    public Task<ApiCallResult<bool>> DeactivateSavedViewAsync(string token, Guid tenantId, Guid id, CancellationToken cancellationToken) =>
+        SendAsync<bool>(CreateAuthorized(HttpMethod.Delete, $"api/v1/organizations/{tenantId}/saved-views/{id}", token), false, cancellationToken, emptyBodyIsSuccess: true);
+
     public Task<ApiCallResult<ObligationHistoryResponse>> GetObligationHistoryAsync(
         string token,
         Guid tenantId,

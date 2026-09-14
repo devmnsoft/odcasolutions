@@ -8,6 +8,16 @@ namespace Odca.IntegrationTests;
 public sealed class ApiHostStartupTests
 {
     [Fact]
+    public void ApiMarkerIdentifiesTheApiExecutableAssembly()
+    {
+        var assembly = typeof(global::Odca.Api.ApiAssemblyMarker).Assembly;
+
+        Assert.Equal("Odca.Api", assembly.GetName().Name);
+        Assert.NotNull(assembly.EntryPoint);
+        Assert.NotEqual(typeof(global::BootstrapProgram).Assembly, assembly);
+    }
+
+    [Fact]
     public async Task IsolatedConfigurationStartsTheHostAndServesARequest()
     {
         await using var factory = new ConfiguredApiFactory("Testing", ValidConfiguration());
@@ -57,7 +67,8 @@ public sealed class ApiHostStartupTests
 
     private sealed class ConfiguredApiFactory(
         string environment,
-        IReadOnlyDictionary<string, string?> settings) : WebApplicationFactory<Program>
+        IReadOnlyDictionary<string, string?> settings)
+        : WebApplicationFactory<global::Odca.Api.ApiAssemblyMarker>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

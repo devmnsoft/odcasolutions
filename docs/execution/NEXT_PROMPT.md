@@ -1,5 +1,9 @@
 # Próxima execução
 
+## Continuação após v014
+
+Parta do gate recompilável com `ApiAssemblyMarker` e da migration v014 de vistas pessoais. Primeiro execute restore/build/testes com .NET 10.0.400 e PostgreSQL descartável usando a role restrita; prove isolamento por tenant e proprietário e concorrência de atualização de vista. Depois conecte renomear/padrão/inativar no BFF, complete a ficha operacional do contrato reutilizando documentos, revisões, obrigações, renovações e histórico existentes, e entregue a agenda mensal limitada à janela visível. Não declare a jornada de revisão concluída enquanto persistência/API/BFF e conflito otimista não estiverem cobertos ponta a ponta.
+
 ## Prioridade
 
 Parta do fluxo de obrigações já existente e validado estaticamente. Primeiro execute, com o SDK .NET 10.0.400 e PostgreSQL 18 descartável, restore bloqueado, builds Debug/Release e todos os testes. Confirme em particular a variável concreta que removeu `CA1859`, as justificativas/no-op de reprogramação e reatribuição, evidência `safe` autorizada, histórico dentro da transação e recorrência próxima a `DateOnly.MaxValue`.
