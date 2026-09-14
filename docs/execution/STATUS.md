@@ -1,5 +1,26 @@
 # Status de execução
 
+## Correções de analisadores e refinamento de Minhas pendências (14/09/2026)
+
+### Implementado
+
+- `CA1859` corrigido usando `Dictionary` no mapa privado de transições, sem alterar a exposição somente leitura das etapas e do histórico.
+- Reatribuição valida motivo nulo, vazio, em branco e acima de 1.000 caracteres antes de qualquer mutação; normaliza com `Trim` e mantém separados ator, revisor anterior e novo revisor na etapa e no evento.
+- `CA1512` corrigido com `ArgumentOutOfRangeException.ThrowIfNegative(offset)`, preservando zero como ocorrência-base válida.
+- Datas opcionais da consulta de obrigações usam `InvariantCulture` no formato ISO e continuam omitidas quando ausentes. Intervalo invertido retorna validação antes de chamar a API.
+- A superfície existente foi renomeada para “Minhas pendências”, ganhou linguagem de central operacional, labels explícitos, estado de validação e paginação que preserva todos os filtros da URL.
+
+### Validado neste ambiente
+
+- `npm run build` validou os assets e `git diff --check` não encontrou erros de whitespace.
+- Testes foram ampliados para justificativas, ausência de mutação parcial, auditoria de reatribuição, limite, offset negativo/zero e serialização ISO sob `pt-BR` e `ar-SA`, com restauração das culturas no `finally`.
+
+### Pendente / limitação verificada
+
+- O contêiner não possui o SDK .NET 10.0.400; por isso restore, build Release, testes .NET, PostgreSQL descartável, HTTP e jornada autenticada não são declarados aprovados.
+- Sem aplicação .NET executável, não houve captura honesta nem QA em navegador nas quatro larguras. Integração completa de revisões e renovações na central, ficha do contrato e ações BFF continuam pendentes.
+- A consulta da CI remota não pôde ser autenticada: `gh` não possui sessão e a API pública respondeu HTTP 403. O workflow versionado executa restore bloqueado, build, assets, testes com PostgreSQL 18 e secret scan.
+
 ## Incremento de revisão contratual interna (14/09/2026)
 
 ### Implementado

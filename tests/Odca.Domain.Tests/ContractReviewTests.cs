@@ -70,6 +70,46 @@ public sealed class ContractReviewTests
         Assert.Contains(review.Events, item => item.Type == "review.step.reassigned");
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void ReassignmentRejectsMissingReasonWithoutPartialMutation(string? reason)
+    {
+        var review = Create([Reviewer1]);
+
+        Assert.Throws<ContractReviewRuleException>(() => review.Reassign(Requester, true, Reviewer2, reason, 1, Now));
+
+        Assert.Equal(1, review.Revision);
+        Assert.Single(review.Steps);
+        Assert.Equal(Reviewer1, review.CurrentStep!.ReviewerId);
+        Assert.Equal(ReviewStepStatus.Current, review.CurrentStep.Status);
+    }
+
+    [Fact]
+    public void ReassignmentNormalizesReasonAndAuditsActorAndReviewers()
+    {
+        var review = Create([Reviewer1]);
+
+        review.Reassign(Requester, true, Reviewer2, "  Vínculo do responsável encerrado.  ", 1, Now);
+
+        Assert.Equal(Requester, review.Steps[0].DecidedBy);
+        Assert.Equal("Vínculo do responsável encerrado.", review.Steps[0].Justification);
+        var audit = Assert.Single(review.Events, item => item.Type == "review.step.reassigned");
+        Assert.Equal(Requester, audit.ActorId);
+        Assert.Equal($"{Reviewer1}:{Reviewer2}:Vínculo do responsável encerrado.", audit.Detail);
+    }
+
+    [Fact]
+    public void OversizedReassignmentReasonFailsBeforeChangingCurrentStep()
+    {
+        var review = Create([Reviewer1]);
+        Assert.Throws<ContractReviewRuleException>(() => review.Reassign(Requester, true, Reviewer2, new string('a', 1001), 1, Now));
+        Assert.Equal(ReviewStepStatus.Current, review.Steps[0].Status);
+        Assert.Single(review.Steps);
+        Assert.Equal(1, review.Revision);
+    }
+
     [Fact]
     public void SupersedingKeepsApprovalBoundToOriginalImmutableVersion()
     {

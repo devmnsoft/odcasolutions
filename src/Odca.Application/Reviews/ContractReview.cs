@@ -32,7 +32,7 @@ public sealed record ApprovedContentSnapshot(
 
 public sealed class ContractReview
 {
-    private static readonly IReadOnlyDictionary<ContractReviewStatus, ContractReviewStatus[]> Transitions =
+    private static readonly Dictionary<ContractReviewStatus, ContractReviewStatus[]> Transitions =
         new Dictionary<ContractReviewStatus, ContractReviewStatus[]>
         {
             [ContractReviewStatus.InReview] = [ContractReviewStatus.ChangesRequested, ContractReviewStatus.InternallyApproved, ContractReviewStatus.Cancelled, ContractReviewStatus.Superseded],
@@ -122,7 +122,7 @@ public sealed class ContractReview
         TransitionTo(ContractReviewStatus.Superseded, actorId, now, replacementVersionId.ToString());
     }
 
-    public void Reassign(Guid actorId, bool canReassign, Guid replacementReviewerId, string reason, long expectedRevision, DateTimeOffset now)
+    public void Reassign(Guid actorId, bool canReassign, Guid replacementReviewerId, string? reason, long expectedRevision, DateTimeOffset now)
     {
         EnsureRevision(expectedRevision);
         if (Status != ContractReviewStatus.InReview || CurrentStep is null) throw new ContractReviewRuleException("Não há etapa ativa para reatribuir.");
@@ -130,12 +130,14 @@ public sealed class ContractReview
         if (replacementReviewerId == Guid.Empty || replacementReviewerId == RequestedBy || steps.Any(x => x.ReviewerId == replacementReviewerId))
             throw new ContractReviewRuleException("O revisor substituto deve ser outro usuário habilitado e não repetido.");
         if (string.IsNullOrWhiteSpace(reason)) throw new ContractReviewRuleException("A reatribuição exige motivo.");
+        var normalizedReason = reason.Trim();
+        if (normalizedReason.Length > 1000) throw new ContractReviewRuleException("O motivo da reatribuição deve ter no máximo 1.000 caracteres.");
         var old = CurrentStep;
-        old.Reassign(actorId, now, Limit(reason, 1000));
+        old.Reassign(actorId, now, normalizedReason);
         var replacement = new ReviewStep(Guid.NewGuid(), old.Sequence, replacementReviewerId, ReviewStepStatus.Current);
         steps.Insert(steps.IndexOf(old) + 1, replacement);
         Revision++;
-        events.Add(new("review.step.reassigned", actorId, now, $"{old.ReviewerId}:{replacementReviewerId}:{Limit(reason, 1000)}"));
+        events.Add(new("review.step.reassigned", actorId, now, $"{old.ReviewerId}:{replacementReviewerId}:{normalizedReason}"));
     }
 
     public ReviewComment AddComment(Guid actorId, string body, string? reference, DateTimeOffset now)
