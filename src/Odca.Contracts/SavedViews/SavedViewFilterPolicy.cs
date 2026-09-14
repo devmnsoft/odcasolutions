@@ -96,6 +96,9 @@ public static class SavedViewFilterPolicy
 
     private static string DefaultSort(string listingType) => listingType == "contracts" ? "title" : "due_date";
 
-    private static bool TryDate(Dictionary<string, string> filters, string key, out DateOnly value) =>
-        filters.TryGetValue(key, out var text) && DateOnly.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out value);
+    private static bool TryDate(Dictionary<string, string> filters, string key, out DateOnly value)
+    {
+        value = default;
+        return filters.TryGetValue(key, out var text) && DateOnly.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out value);
+    }
 }
