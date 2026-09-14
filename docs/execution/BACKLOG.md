@@ -1,5 +1,14 @@
 # Backlog
 
+## Após vistas pessoais v014
+
+- [x] Remover a ambiguidade entre entrypoints da API e Bootstrap sem retirar referências necessárias.
+- [x] Persistir e reaplicar vistas pessoais de obrigações com allowlist, RLS por tenant/proprietário e revalidação das referências.
+- [x] Conectar renomear, definir padrão e inativar aos controles do BFF com versão otimista.
+- [ ] Reutilizar a infraestrutura de vistas nas listagens HTTP de revisões e contratos quando essas jornadas forem conectadas.
+- [ ] Executar v014 em PostgreSQL descartável com role restrita e provar que proprietário/tenant diferentes recebem zero linhas.
+- [ ] Concluir ficha operacional do contrato e agenda mensal sem duplicar projeções ou carregar catálogos integrais no navegador.
+
 ## Após integridade das ações de obrigações
 
 - [ ] Conectar criação e ações de obrigação ao BFF com seletores por nome para contrato, responsável e documento, mantendo os dados após erro recuperável.

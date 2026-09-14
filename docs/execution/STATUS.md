@@ -1,5 +1,27 @@
 # Status de execução
 
+## Evolução — factory inequívoca e vistas pessoais (14/09/2026)
+
+- Estado inicial registrado: branch `work`, SHA `4a38ba0f368e0fc9dfc3c89b6238da707b920315`; árvore de trabalho inicialmente limpa.
+
+### Implementado
+
+- A ambiguidade `CS0433` vinha das referências simultâneas a `Odca.Api` e `Odca.Bootstrap`, cujos entrypoints declaram `Program` no namespace global. As factories agora usam o marcador público exclusivo `Odca.Api.ApiAssemblyMarker`; a referência ao Bootstrap e seu comportamento foram preservados.
+- A migration v014 adiciona vistas pessoais de trabalho, isoladas por tenant **e proprietário** via RLS, com definição JSON de filtros, ordenação allowlisted pela API, inativação lógica, versão otimista e unicidade de nome/padrão.
+- A central de obrigações permite salvar os filtros correntes e reabrir uma vista. A API revalida permissão, tenant, contrato e responsável a cada abertura; somente a definição é persistida e a consulta operacional continua paginada no servidor.
+- O schema canônico passa a declarar v014. A divergência preexistente entre a migration v013 presente e `DatabaseSchema.CurrentVersion` foi corrigida.
+
+### Validado nesta execução
+
+- `npm run build`, validação independente dos checksums 001–014 e `git diff --check` foram aprovados.
+- A ausência de ocorrências restantes de `WebApplicationFactory<Program>`/`typeof(Program)` nos testes foi verificada por busca estática.
+
+### Pendente por limitação do ambiente
+
+- O container não possui `dotnet`; restore, builds Debug/Release e testes .NET não puderam ser executados localmente.
+- Não há PostgreSQL descartável nem as credenciais exclusivas `ODCA_TEST_*`; migration real, RLS A × B e jornada autenticada permanecem gates de CI/QA.
+- A ficha completa de contrato, agenda mensal e jornada HTTP integral de revisões permanecem no backlog; esta entrega não os declara concluídos.
+
 ## Obrigações: compilação e integridade das ações (14/09/2026)
 
 ### Implementado
