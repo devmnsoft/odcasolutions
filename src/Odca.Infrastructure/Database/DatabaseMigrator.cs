@@ -101,7 +101,7 @@ public sealed class DatabaseMigrator(string sqlPath)
     private static async Task RepairKnownDefectivePackageAsync(
         NpgsqlConnection connection,
         IReadOnlyList<MigrationBlock> migrations,
-        IDictionary<int, string> history,
+        Dictionary<int, string> history,
         CancellationToken cancellationToken)
     {
         const int version = 9;
