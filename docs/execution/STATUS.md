@@ -1,5 +1,13 @@
 # Status de execução
 
+## Correção do controller de documentos e contexto RLS (14/09/2026)
+
+- **Implementado:** os streams e caminhos do upload têm nomes sem conflito; operações físicas usam o alias explícito de `System.IO.File`, enquanto respostas continuam usando os helpers do MVC. O arquivo temporário é descartado após a gravação e removido no `finally`; falha do commit remove o objeto que ainda não se tornou válido no banco.
+- **Implementado:** `SetTenant` expõe o `Task<int>` realmente devolvido pelo Dapper. Listagem, conteúdo e revisão de extração agora definem `odca.tenant_id` localmente em uma transação e consultam na mesma conexão, eliminando o contexto de sessão que sobrevivia no pool. Nova versão bloqueia e valida o documento lógico no tenant/contrato antes de calcular seu número.
+- **Validado neste ambiente:** `npm run build` e `git diff --check`. O teste PostgreSQL foi ampliado para alternância A → B e limpeza do contexto após commit e rollback usando a role restrita.
+- **Não validado neste ambiente:** restore, build e testes .NET, PostgreSQL descartável, HTTP autenticado, navegador e capturas; o executável `dotnet` não está instalado e a obtenção do instalador oficial retornou HTTP 403. Essas verificações não são declaradas aprovadas.
+- **Pendente:** BFF da área de contratos/documentos/revisão, inativação, reconciliação automática de órfãos/reservas, idempotência de upload, indicadores do dashboard e QA visual. A jornada integral solicitada continua explicitamente não concluída.
+
 ## Evolução do estúdio estruturado — fundação validável (14/09/2026)
 
 - **Implementado:** CA1859 no migrador corrigido no parâmetro privado com o tipo concreto efetivamente produzido por `LoadHistoryAsync`, sem materialização, mudança de contrato público, ordem, checksum, transação ou cancelamento.

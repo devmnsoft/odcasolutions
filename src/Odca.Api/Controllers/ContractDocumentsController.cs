@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using Odca.Application.Documents;
+using IOFile = System.IO.File;
 
 namespace Odca.Api.Controllers;
 
@@ -19,13 +20,16 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
         var actor = Actor(); if (actor is null) return Unauthorized();
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(connection, actor.Value, tenantId, "tenant.contracts.read", ct)) return Forbid();
+        await using var transaction = await connection.BeginTransactionAsync(ct);
+        await SetTenant(connection, tenantId, transaction, ct);
         var rows = await connection.QueryAsync(new CommandDefinition("""
             SELECT d.id, d.title, v.id AS version_id, v.version_number, v.display_name, v.detected_type,
                    v.byte_size, v.security_status, v.uploaded_at, v.uploaded_by
               FROM odca.contract_documents d JOIN odca.document_versions v ON v.document_id=d.id
              WHERE d.tenant_id=@tenantId AND d.contract_id=@contractId AND d.deleted_at IS NULL
              ORDER BY d.created_at DESC,v.version_number DESC
-            """, new { tenantId, contractId }, cancellationToken: ct));
+            """, new { tenantId, contractId }, transaction, cancellationToken: ct));
+        await transaction.CommitAsync(ct);
         return Ok(rows);
     }
 
@@ -42,7 +46,7 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
         {
             string hash; SupportedDocumentType type; long size;
             await using (var source = file.OpenReadStream())
-            await using (var destination = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, FileOptions.Asynchronous | FileOptions.WriteThrough))
+            await using (var destinationStream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, FileOptions.Asynchronous | FileOptions.WriteThrough))
             using (var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256))
             {
                 var buffer = new byte[81920]; size = 0; var prefix = new byte[16]; var prefixCount = 0;
@@ -51,12 +55,12 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
                 {
                     size += read; if (size > DocumentContent.MaximumBytes) return Problem(statusCode: 413, title: "Arquivo excede o limite de 25 MB.");
                     var copy = Math.Min(read, prefix.Length - prefixCount); if (copy > 0) { buffer.AsSpan(0, copy).CopyTo(prefix.AsSpan(prefixCount)); prefixCount += copy; }
-                    sha.AppendData(buffer, 0, read); await destination.WriteAsync(buffer.AsMemory(0, read), ct);
+                    sha.AppendData(buffer, 0, read); await destinationStream.WriteAsync(buffer.AsMemory(0, read), ct);
                 }
                 type = DocumentContent.Detect(prefix.AsSpan(0, prefixCount), file.FileName);
                 hash = Convert.ToHexString(sha.GetHashAndReset()).ToLowerInvariant();
             }
-            var versionId = Guid.NewGuid(); var logicalId = documentId ?? Guid.NewGuid(); var key = $"{tenantId:N}/{contractId:N}/{versionId:N}";
+            var versionId = Guid.NewGuid(); var logicalId = documentId ?? Guid.NewGuid(); var storageObjectKey = $"{tenantId:N}/{contractId:N}/{versionId:N}";
             await using var connection = await dataSource.OpenConnectionAsync(ct);
             if (!await Allowed(connection, actor.Value, tenantId, "tenant.documents.manage", ct)) return Forbid();
             await using var transaction = await connection.BeginTransactionAsync(ct);
@@ -68,18 +72,33 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
             if (!reserved) return Problem(statusCode: 413, title: "A cota de armazenamento da organização foi atingida.");
             if (documentId is null)
                 await connection.ExecuteAsync(new CommandDefinition("INSERT INTO odca.contract_documents(id,tenant_id,contract_id,title,created_by) VALUES(@logicalId,@tenantId,@contractId,@title,@actor)", new { logicalId, tenantId, contractId, title = Path.GetFileName(file.FileName), actor }, transaction, cancellationToken: ct));
+            else
+            {
+                var lockedDocumentId = await connection.ExecuteScalarAsync<Guid?>(new CommandDefinition("SELECT id FROM odca.contract_documents WHERE id=@logicalId AND tenant_id=@tenantId AND contract_id=@contractId AND deleted_at IS NULL FOR UPDATE", new { logicalId, tenantId, contractId }, transaction, cancellationToken: ct));
+                if (lockedDocumentId is null) return NotFound();
+            }
             var number = await connection.ExecuteScalarAsync<int>(new CommandDefinition("SELECT COALESCE(max(version_number),0)+1 FROM odca.document_versions WHERE document_id=@logicalId", new { logicalId }, transaction, cancellationToken: ct));
             await connection.ExecuteAsync(new CommandDefinition("""
                 INSERT INTO odca.document_versions(id,tenant_id,contract_id,document_id,version_number,uploaded_by,display_name,detected_type,byte_size,sha256,storage_key)
                 VALUES(@versionId,@tenantId,@contractId,@logicalId,@number,@actor,@name,@type,@size,@hash,@key);
                 UPDATE odca.tenant_storage_usage SET reserved_bytes=reserved_bytes-@size,used_bytes=used_bytes+@size WHERE tenant_id=@tenantId;
                 INSERT INTO odca.contract_events(tenant_id,contract_id,actor_id,event_type,details) VALUES(@tenantId,@contractId,@actor,'document_uploaded',jsonb_build_object('versionId',@versionId,'bytes',@size));
-                """, new { versionId, tenantId, contractId, logicalId, number, actor, name = Path.GetFileName(file.FileName), type = type.ToString().ToLowerInvariant(), size, hash, key }, transaction, cancellationToken: ct));
-            var destination = Path.Combine(root, key.Replace('/', Path.DirectorySeparatorChar)); Directory.CreateDirectory(Path.GetDirectoryName(destination)!); File.Move(temporary, destination);
-            await transaction.CommitAsync(ct);
+                """, new { versionId, tenantId, contractId, logicalId, number, actor, name = Path.GetFileName(file.FileName), type = type.ToString().ToLowerInvariant(), size, hash, key = storageObjectKey }, transaction, cancellationToken: ct));
+            var destinationPath = Path.Combine(root, storageObjectKey.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
+            IOFile.Move(temporary, destinationPath);
+            try
+            {
+                await transaction.CommitAsync(ct);
+            }
+            catch
+            {
+                IOFile.Delete(destinationPath);
+                throw;
+            }
             return Created($"{Request.Path}/{logicalId:D}/versions/{versionId:D}", new { documentId = logicalId, versionId, version = number, securityStatus = "pending" });
         }
-        finally { if (System.IO.File.Exists(temporary)) System.IO.File.Delete(temporary); }
+        finally { if (IOFile.Exists(temporary)) IOFile.Delete(temporary); }
     }
 
     [HttpGet("{documentId:guid}/versions/{versionId:guid}/content")]
@@ -88,11 +107,14 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
         var actor = Actor(); if (actor is null) return Unauthorized();
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(connection, actor.Value, tenantId, "tenant.documents.download", ct)) return Forbid();
-        var item = await connection.QuerySingleOrDefaultAsync<StoredVersion>(new CommandDefinition("SELECT storage_key AS StorageKey,display_name AS DisplayName,detected_type AS DetectedType,security_status AS SecurityStatus FROM odca.document_versions WHERE tenant_id=@tenantId AND contract_id=@contractId AND document_id=@documentId AND id=@versionId", new { tenantId, contractId, documentId, versionId }, cancellationToken: ct));
+        await using var transaction = await connection.BeginTransactionAsync(ct);
+        await SetTenant(connection, tenantId, transaction, ct);
+        var item = await connection.QuerySingleOrDefaultAsync<StoredVersion>(new CommandDefinition("SELECT storage_key AS StorageKey,display_name AS DisplayName,detected_type AS DetectedType,security_status AS SecurityStatus FROM odca.document_versions WHERE tenant_id=@tenantId AND contract_id=@contractId AND document_id=@documentId AND id=@versionId", new { tenantId, contractId, documentId, versionId }, transaction, cancellationToken: ct));
         if (item is null) return NotFound();
         if (item.SecurityStatus != "safe") return Conflict(new ProblemDetails { Title = "Arquivo indisponível", Detail = "O arquivo somente é liberado após uma análise de segurança concluída." });
         var root = Path.GetFullPath(configuration["Documents:StoragePath"] ?? "./private-documents"); var path = Path.GetFullPath(Path.Combine(root, item.StorageKey));
-        if (!path.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal) || !System.IO.File.Exists(path)) return Problem(statusCode: 503, title: "Arquivo requer reconciliação de armazenamento.");
+        if (!path.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal) || !IOFile.Exists(path)) return Problem(statusCode: 503, title: "Arquivo requer reconciliação de armazenamento.");
+        await transaction.CommitAsync(ct);
         return PhysicalFile(path, Mime(item.DetectedType), item.DisplayName, enableRangeProcessing: true);
     }
 
@@ -115,10 +137,12 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
         var actor = Actor(); if (actor is null) return Unauthorized();
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(connection, actor.Value, tenantId, "tenant.extractions.review", ct)) return Forbid();
-        await connection.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenant,false)", new { tenant = tenantId.ToString() }, cancellationToken: ct));
-        var job = await connection.QuerySingleOrDefaultAsync(new CommandDefinition("SELECT id,status,attempt_count,failure_code,version_id,completed_at FROM odca.extraction_jobs WHERE tenant_id=@tenantId AND contract_id=@contractId AND id=@extractionId", new { tenantId, contractId, extractionId }, cancellationToken: ct));
+        await using var transaction = await connection.BeginTransactionAsync(ct);
+        await SetTenant(connection, tenantId, transaction, ct);
+        var job = await connection.QuerySingleOrDefaultAsync(new CommandDefinition("SELECT id,status,attempt_count,failure_code,version_id,completed_at FROM odca.extraction_jobs WHERE tenant_id=@tenantId AND contract_id=@contractId AND id=@extractionId", new { tenantId, contractId, extractionId }, transaction, cancellationToken: ct));
         if (job is null) return NotFound();
-        var suggestions = await connection.QueryAsync(new CommandDefinition("SELECT s.id,s.field_name,s.extracted_value,s.normalized_value,s.evidence,s.page_number,s.method,s.review_status,s.reviewed_value FROM odca.extraction_suggestions s JOIN odca.extraction_results r ON r.id=s.result_id AND r.tenant_id=s.tenant_id WHERE r.job_id=@extractionId ORDER BY s.field_name,s.id", new { extractionId }, cancellationToken: ct));
+        var suggestions = await connection.QueryAsync(new CommandDefinition("SELECT s.id,s.field_name,s.extracted_value,s.normalized_value,s.evidence,s.page_number,s.method,s.review_status,s.reviewed_value FROM odca.extraction_suggestions s JOIN odca.extraction_results r ON r.id=s.result_id AND r.tenant_id=s.tenant_id WHERE r.job_id=@extractionId ORDER BY s.field_name,s.id", new { extractionId }, transaction, cancellationToken: ct));
+        await transaction.CommitAsync(ct);
         return Ok(new { job, suggestions });
     }
 
@@ -163,7 +187,7 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
 
     private Guid? Actor() => Guid.TryParse(User.FindFirstValue("sub"), out var id) ? id : null;
     private static Task<bool> Allowed(NpgsqlConnection c, Guid actor, Guid tenant, string permission, CancellationToken ct) => c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT odca.tenant_actor_has_permission(@actor,@tenant,@permission)", new { actor, tenant, permission }, cancellationToken: ct));
-    private static Task SetTenant(NpgsqlConnection c, Guid tenant, NpgsqlTransaction tx, CancellationToken ct) => c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@value,true)", new { value = tenant.ToString() }, tx, cancellationToken: ct));
+    private static Task<int> SetTenant(NpgsqlConnection c, Guid tenant, NpgsqlTransaction tx, CancellationToken ct) => c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@value,true)", new { value = tenant.ToString() }, tx, cancellationToken: ct));
     private static string Mime(string type) => type switch { "pdf" => "application/pdf", "png" => "image/png", "jpeg" => "image/jpeg", "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document", _ => "application/octet-stream" };
     private sealed record StoredVersion(string StorageKey, string DisplayName, string DetectedType, string SecurityStatus);
     private sealed record SuggestionForApply(string FieldName, string? NormalizedValue);

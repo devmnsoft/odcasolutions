@@ -54,6 +54,22 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
 
         Assert.Equal(0, await connection.ExecuteScalarAsync<int>("SELECT count(*)::integer FROM odca.tenants;"));
 
+        await using (var tenantBTransaction = await connection.BeginTransactionAsync())
+        {
+            await connection.ExecuteAsync(
+                "SELECT set_config('odca.tenant_id', @tenantId, true);",
+                new { tenantId = "50000000-0000-0000-0000-000000000002" },
+                tenantBTransaction);
+            Assert.Equal("TEST-B", await connection.QuerySingleAsync<string>(
+                "SELECT business_code FROM odca.tenants;",
+                transaction: tenantBTransaction));
+            await tenantBTransaction.RollbackAsync();
+        }
+
+        // A rollback (including the one caused by cancellation/error in request code)
+        // must clear the transaction-local tenant before this pooled connection is reused.
+        Assert.Equal(0, await connection.ExecuteScalarAsync<int>("SELECT count(*)::integer FROM odca.tenants;"));
+
         await using var invalidTransaction = await connection.BeginTransactionAsync();
         await connection.ExecuteAsync(
             "SELECT set_config('odca.tenant_id', @tenantId, true);",
