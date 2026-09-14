@@ -2,7 +2,7 @@
 
 ## Pré-condição para continuar S02
 
-Disponibilizar no checkout o commit `183aa2b5153cf7dbfa475c65fcdeb1c36f0f911b` (ou descendente) e integrar seu histórico antes de editar contratos/documentos. Não implementar uma central paralela no estado S01. Depois da integração, executar primeiro `dotnet restore Odca.sln --locked-mode`, `dotnet build Odca.sln -c Release --no-restore`, `npm run build` e a suíte PostgreSQL descartável abaixo; em seguida tratar as falhas restantes e concluir a jornada de documentos.
+Partir da migração v011 e reconciliar o commit `183aa2b5153cf7dbfa475c65fcdeb1c36f0f911b` caso ele se torne acessível, sem substituir versões ou decisões já persistidas. Executar primeiro `dotnet restore Odca.sln --locked-mode`, `dotnet build Odca.sln -c Release --no-restore`, `npm run build` e a suíte PostgreSQL descartável abaixo; em seguida concluir decisão/aplicação transacional e a tela de revisão. O incremento posterior é o editor estruturado, biblioteca de cláusulas e campos preenchíveis, reutilizando documento lógico, versões e proveniência v011.
 
 ## Fechar evidência do prompt 13
 

@@ -1,5 +1,24 @@
 # Status de execução
 
+## Incremento S02 recuperado sobre o checkout disponível (14/09/2026)
+
+| Funcionalidade | Implementada | Validada | Pendência | Ação desta entrega |
+|---|---|---|---|---|
+| Equipe e convites | sim | testes existentes; banco não executado aqui | prova PostgreSQL | preservada; schema avançado para v011 |
+| Contratos | núcleo SQL | checksum estático | telas/casos completos da referência ausente | modelo mínimo tenant-aware criado |
+| Upload e versões | API e armazenamento privado | testes de detecção/limites | reconciliação automática | streaming, hash, cota transacional e imutabilidade |
+| Segurança | Worker local | fail-closed por código | fixture ClamAV | estados separados; sem liberação implícita |
+| Extração | PDF nativo, imagem OCR e DOCX | DOCX/sugestões unitários | OCR de PDF digitalizado e QA executável | job com lease, retry e resultado rastreável |
+| Revisão/aplicação | schema de decisões | checksum | API/BFF transacional e tela split-view | persistência preparada, sem alegar jornada completa |
+
+O SHA histórico `183aa2b5` continua ausente do pack local e o fetch do GitHub foi
+recusado pelo proxy (HTTP 403). O estado real foi reavaliado em `f6954f3`: este
+checkout continha S01 e apenas o reparo v010, não os módulos S02 mencionados.
+Esta entrega implementa uma primeira fatia executável em vez de declarar como
+existente o código inacessível. SDK .NET, PostgreSQL descartável e navegador não
+estão disponíveis neste ambiente; esses gates permanecem explicitamente não
+aprovados.
+
 ## Reparo do pacote S01/S02 (14/09/2026)
 
 - O checkout disponível está em `596ffe6` (S01), e não contém o SHA S02 informado (`183aa2b5`); o acesso ao remoto foi recusado pelo proxy HTTP 403. Assim, a central de contratos/documentos não foi recriada sobre uma base antiga nem declarada concluída.

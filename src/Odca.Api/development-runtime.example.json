@@ -16,5 +16,11 @@
   "DataProtection": {
     "KeysPath": "<caminho-local-compartilhado-fora-do-Git>",
     "ApplicationName": "ODCA Solutions"
+  },
+  "Documents": {
+    "StoragePath": "<caminho-local-privado-fora-de-wwwroot>",
+    "MalwareScannerExecutable": "clamscan",
+    "PdfTextExecutable": "pdftotext",
+    "OcrExecutable": "tesseract"
   }
 }
