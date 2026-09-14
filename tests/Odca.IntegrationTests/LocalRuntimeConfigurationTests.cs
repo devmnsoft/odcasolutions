@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Odca.Configuration;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace Odca.IntegrationTests;
@@ -22,6 +23,7 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
         var path = Path.Combine(directory, "runtime.json");
         File.WriteAllText(path, """{"Value":"file","Jwt":{"Issuer":"issuer"}}""");
         Environment.SetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable, path);
+        var previousValue = Environment.GetEnvironmentVariable("Value");
         Environment.SetEnvironmentVariable("Value", "environment");
         try
         {
@@ -31,7 +33,7 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
             Assert.Equal("environment", configuration["Value"]);
             Assert.Equal("issuer", configuration["Jwt:Issuer"]);
         }
-        finally { Environment.SetEnvironmentVariable("Value", null); }
+        finally { Environment.SetEnvironmentVariable("Value", previousValue); }
     }
 
     [Fact]
@@ -41,6 +43,7 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
         var path = Path.Combine(directory, "runtime.json");
         File.WriteAllText(path, """{"Value":"file"}""");
         Environment.SetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable, path);
+        var previousValue = Environment.GetEnvironmentVariable("Value");
         Environment.SetEnvironmentVariable("Value", "environment");
         try
         {
@@ -48,7 +51,7 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
             LocalRuntimeConfiguration.Add(configuration, EnvironmentNamed("Development"), ["--Value=argument"]);
             Assert.Equal("argument", configuration["Value"]);
         }
-        finally { Environment.SetEnvironmentVariable("Value", null); }
+        finally { Environment.SetEnvironmentVariable("Value", previousValue); }
     }
 
     [Theory]
@@ -94,6 +97,7 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
         Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, "runtime.json");
         Environment.SetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable, path);
+        var previousPassword = Environment.GetEnvironmentVariable("ODCA_LOCAL_POSTGRES_PASSWORD");
         Environment.SetEnvironmentVariable("ODCA_LOCAL_POSTGRES_PASSWORD", "local-test-secret");
         try
         {
@@ -119,7 +123,7 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
         }
         finally
         {
-            Environment.SetEnvironmentVariable("ODCA_LOCAL_POSTGRES_PASSWORD", null);
+            Environment.SetEnvironmentVariable("ODCA_LOCAL_POSTGRES_PASSWORD", previousPassword);
         }
     }
 
@@ -129,6 +133,7 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
         Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, "runtime.json");
         Environment.SetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable, path);
+        var previousPassword = Environment.GetEnvironmentVariable("ODCA_LOCAL_POSTGRES_PASSWORD");
         Environment.SetEnvironmentVariable("ODCA_LOCAL_POSTGRES_PASSWORD", "concurrent-secret");
         try
         {
@@ -142,7 +147,7 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
         }
         finally
         {
-            Environment.SetEnvironmentVariable("ODCA_LOCAL_POSTGRES_PASSWORD", null);
+            Environment.SetEnvironmentVariable("ODCA_LOCAL_POSTGRES_PASSWORD", previousPassword);
         }
     }
 
@@ -152,7 +157,13 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
         Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, "runtime.json");
         const string validKey = "this-existing-signing-key-is-long-enough-to-preserve";
-        File.WriteAllText(path, $$"""{"ConnectionStrings":{"Database":"Host=private;Password=secret"},"Jwt":{"SigningKey":"{{validKey}}"},"Unknown":{"Keep":true}}""");
+        var settings = new
+        {
+            ConnectionStrings = new { Database = "Host=private;Password=secret" },
+            Jwt = new { SigningKey = validKey },
+            Unknown = new { Keep = true }
+        };
+        File.WriteAllText(path, JsonSerializer.Serialize(settings));
         Environment.SetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable, path);
 
         Assert.Equal(0, await BootstrapProgram.RunAsync(["repair"]));

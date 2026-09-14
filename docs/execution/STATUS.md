@@ -1,5 +1,24 @@
 # Status de execução
 
+## Incremento de revisão contratual interna (14/09/2026)
+
+### Implementado
+
+- O `CS9007` do teste de reparo foi removido na origem: o cenário de JSON válido agora serializa um objeto com `System.Text.Json`, preservando conexão, chave e propriedade desconhecida verificadas pelo teste. Os valores globais de ambiente usados pelos testes são restaurados ao valor anterior em `finally`, e a coleção continua serializada.
+- A camada de aplicação recebeu o agregado `ContractReview`, separado do processamento do arquivo e do estado operacional do contrato. Ele prende a solicitação a uma versão imutável e a um snapshot de hash, partes, valor, moeda e vigência; aplica fluxo sequencial, confirmação explícita, justificativas, tabela de transições, revisão otimista, reatribuição histórica e comentários resolvíveis sem convertê-los em aprovação.
+- A migration aditiva v012 cria solicitações, etapas, comentários, eventos e outbox interna com FKs compostas por tenant, RLS, índices de pendências, unicidade da etapa corrente/idempotência e catálogo de seis permissões de revisão. `database/odca.sql` e o snapshot de release foram consolidados com o mesmo checksum.
+- O procedimento documentado de `ENC0097` agora explicita parar somente a sessão, corrigir erros reais, recompilar e reiniciar; não orienta alterar configuração nem finalizar todos os processos `dotnet`.
+
+### Validado neste ambiente
+
+- Checksum de todos os 12 blocos do SQL e igualdade do snapshot v012 foram verificados por script local; `npm run build` e verificações textuais são registradas na entrega.
+- A tentativa real de `dotnet restore Odca.sln --locked-mode` foi feita, mas o executável `dotnet` não está instalado neste contêiner. Por isso build/testes .NET, PostgreSQL descartável e jornada autenticada não são declarados aprovados nesta execução.
+
+### Pendente
+
+- A v012 é a base transacional e de domínio, não a jornada HTTP/BFF completa. Repositório Dapper, casos de uso autorizados, endpoints, Worker da outbox, ficha split-view, central “Minhas pendências”, comparação e dashboard ainda precisam ser conectados antes de declarar o critério de conclusão do fluxo autenticado.
+- Também permanecem pendentes a prova PostgreSQL de decisão/cancelamento concorrentes e isolamento A × B, e QA real por navegador/teclado em 360/768/1280/1440 e zoom 200%. Nenhuma captura foi fabricada sem uma aplicação executável.
+
 ## Correção do controller de documentos e contexto RLS (14/09/2026)
 
 - **Implementado:** os streams e caminhos do upload têm nomes sem conflito; operações físicas usam o alias explícito de `System.IO.File`, enquanto respostas continuam usando os helpers do MVC. O arquivo temporário é descartado após a gravação e removido no `finally`; falha do commit remove o objeto que ainda não se tornou válido no banco.
