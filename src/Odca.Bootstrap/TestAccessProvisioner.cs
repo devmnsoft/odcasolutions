@@ -1,3 +1,4 @@
+using System.Globalization;
 using Dapper;
 using Npgsql;
 using Odca.Application.Identity;
@@ -120,7 +121,7 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
         if (version != Odca.Infrastructure.Database.DatabaseSchema.CurrentVersion)
         {
             throw new InvalidOperationException(
-                $"Schema ausente ou desatualizado (encontrado {version?.ToString() ?? "nenhum"}, esperado {Odca.Infrastructure.Database.DatabaseSchema.CurrentVersion}). Execute 'dotnet run --project src/Odca.Bootstrap -- migrate'.");
+                $"Schema ausente ou desatualizado (encontrado {version?.ToString(CultureInfo.InvariantCulture) ?? "nenhum"}, esperado {Odca.Infrastructure.Database.DatabaseSchema.CurrentVersion}). Execute 'dotnet run --project src/Odca.Bootstrap -- migrate'.");
         }
     }
 
