@@ -1129,7 +1129,7 @@ public sealed class NpgsqlTenantAdministrationRepository(
     private sealed record OverviewMetrics(
         int ActiveMembers,
         int ValidInvitations,
-        int SeatLimit,
+        long SeatLimit,
         int FailedInvitations,
         int BlockedMembers);
 }

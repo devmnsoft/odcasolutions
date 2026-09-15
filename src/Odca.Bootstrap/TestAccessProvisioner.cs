@@ -19,7 +19,9 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
         string? clientPassword,
         bool rotateAdministrator,
         bool rotateClient,
-        Func<string> passwordFactory)
+        Func<string> passwordFactory,
+        string? requestedAdministratorPassword = null,
+        string? requestedClientPassword = null)
     {
         if (!File.Exists(seedSqlPath))
         {
@@ -43,11 +45,11 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
         var clientCreated = client is null;
         if (administratorCreated || rotateAdministrator)
         {
-            administratorPassword = passwordFactory();
+            administratorPassword = requestedAdministratorPassword ?? passwordFactory();
         }
         if (clientCreated || rotateClient)
         {
-            do { clientPassword = passwordFactory(); }
+            do { clientPassword = requestedClientPassword ?? passwordFactory(); }
             while (string.Equals(clientPassword, administratorPassword, StringComparison.Ordinal));
         }
 

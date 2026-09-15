@@ -8,6 +8,7 @@ public sealed class TeamPageViewModel
 {
     public required OrganizationSummary Organization { get; set; }
     public OrganizationOverviewResponse? Overview { get; set; }
+    public bool OverviewLoadFailed { get; set; }
     public required string Tab { get; set; }
     public string? Search { get; set; }
     public string? Status { get; set; }

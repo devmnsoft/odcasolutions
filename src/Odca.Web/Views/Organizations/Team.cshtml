@@ -34,10 +34,18 @@
 
 @if (Model.Overview is not null)
 {
-    <div class="metrics">
-        <div class="metric"><span>Membros ativos</span><strong>@Model.Overview.ActiveMembers</strong></div>
-        <div class="metric"><span>Convites válidos</span><strong>@Model.Overview.ValidInvitations</strong></div>
-        <div class="metric"><span>Assentos disponíveis</span><strong>@Model.Overview.AvailableSeats</strong></div>
+    <div class="metrics team-overview" aria-label="Resumo de membros, convites e vagas">
+        <div class="metric"><span>Membros ativos</span><strong>@Model.Overview.ActiveMembers</strong><small>vagas ocupadas por pessoas</small></div>
+        <div class="metric"><span>Convites válidos</span><strong>@Model.Overview.ValidInvitations</strong><small>vagas temporariamente reservadas</small></div>
+        <div class="metric"><span>Vagas disponíveis</span><strong>@Model.Overview.AvailableSeats</strong><small>de @Model.Overview.SeatLimit no plano atual</small></div>
+        <div class="metric"><span>Vagas ocupadas</span><strong>@((long)Model.Overview.ActiveMembers + Model.Overview.ValidInvitations)</strong><small>membros e convites válidos</small></div>
+    </div>
+}
+else if (Model.OverviewLoadFailed)
+{
+    <div class="overview-error" role="alert">
+        <div><strong>Não foi possível carregar o resumo.</strong><span>Tente novamente; as listas da equipe continuam disponíveis.</span></div>
+        <a class="button" asp-action="Team" asp-route-tenantId="@org.Id" asp-route-tab="@Model.Tab">Tentar novamente</a>
     </div>
 }
 
