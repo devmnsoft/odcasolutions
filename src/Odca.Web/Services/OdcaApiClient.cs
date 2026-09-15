@@ -10,6 +10,7 @@ using Odca.Contracts.Privacy;
 using Odca.Contracts.Tenancy;
 using Odca.Contracts.Obligations;
 using Odca.Contracts.SavedViews;
+using Odca.Contracts.Studio;
 
 namespace Odca.Web.Services;
 
@@ -405,6 +406,33 @@ public sealed class OdcaApiClient(HttpClient client)
         {
             return false;
         }
+    }
+
+    public Task<ApiCallResult<TemplateCatalogPage>> GetStudioTemplatesAsync(string token, Guid tenantId, string? search, int page, CancellationToken ct) =>
+        SendAsync<TemplateCatalogPage>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/studio/templates?search={Uri.EscapeDataString(search ?? string.Empty)}&page={page}", token), false, ct);
+
+    public async Task<ApiCallResult<JsonElement>> CreateStudioDraftAsync(string token, Guid tenantId, CreateDraftRequest request, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/drafts", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<JsonElement>(message, false, ct);
+    }
+
+    public Task<ApiCallResult<DraftResponse>> GetStudioDraftAsync(string token, Guid tenantId, Guid draftId, CancellationToken ct) =>
+        SendAsync<DraftResponse>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}", token), false, ct);
+
+    public async Task<ApiCallResult<SaveDraftResponse>> SaveStudioDraftAsync(string token, Guid tenantId, Guid draftId, SaveDraftRequest request, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Put, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<SaveDraftResponse>(message, false, ct);
+    }
+
+    public async Task<ApiCallResult<GeneratedVersionResponse>> GenerateStudioVersionAsync(string token, Guid tenantId, Guid draftId, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/versions", token);
+        message.Content = JsonContent.Create(new GenerateVersionRequest(Guid.NewGuid()));
+        return await SendAsync<GeneratedVersionResponse>(message, false, ct);
     }
 
     private async Task<ApiCallResult<T>> SendAsync<T>(

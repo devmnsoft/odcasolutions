@@ -75,4 +75,13 @@ public sealed class StructuredContractDocumentTests
         Assert.Single(draft.Versions);
         Assert.DoesNotContain("Novo", draft.Content.CanonicalJson);
     }
+
+    [Fact]
+    public void AcceptsPageBreakInCanonicalDocument()
+    {
+        var document = StructuredContractDocument.Parse(
+            """{"type":"document","content":[{"type":"pageBreak"}]}""", []);
+
+        Assert.Empty(document.FieldOccurrences);
+    }
 }

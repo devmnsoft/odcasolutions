@@ -1,0 +1,9 @@
+@model Odca.Contracts.Studio.TemplateCatalogPage
+@{ var tenantId=(Guid)ViewData["TenantId"]!; ViewData["OrganizationName"]="Organização selecionada"; }
+<section class="page-heading"><div><p class="eyebrow">Biblioteca</p><h1>Modelos de contrato</h1><p class="muted">Escolha uma versão publicada. A minuta será uma cópia independente e rastreável.</p></div><details class="help"><summary>Como usar</summary><p>Pesquise, confira a origem e selecione <strong>Usar modelo</strong>. Campos obrigatórios serão revisados no estúdio.</p></details></section>
+@if(TempData["StudioError"] is string error){<div class="error" role="alert">@error</div>}
+<form method="get" class="studio-filter"><label>Pesquisar<input name="search" value="@ViewData["Search"]" placeholder="Nome ou descrição" /></label><button class="button button-primary" type="submit">Pesquisar</button></form>
+<div class="template-grid">
+@foreach(var item in Model.Items){<article class="template-card"><div><span class="badge badge-muted">@item.ContractType</span><span class="badge">@(item.Scope=="global"?"Global":item.Scope=="consultancy"?"Consultoria":"Particular")</span></div><h2>@item.Name</h2><p>@item.Description</p><small>Versão @item.Version · por @item.Author</small><form method="post" asp-action="Create" asp-route-tenantId="@tenantId"><input type="hidden" name="templateId" value="@item.Id"/><label>Título da minuta<input name="title" required maxlength="160" value="@item.Name"/></label><button class="button button-primary" type="submit">Usar modelo</button></form></article>}
+</div>
+@if(Model.Items.Count==0){<div class="card empty-state"><h2>Nenhum modelo disponível</h2><p>Ajuste a busca ou solicite acesso a um modelo publicado.</p></div>}

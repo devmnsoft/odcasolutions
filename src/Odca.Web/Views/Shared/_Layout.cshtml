@@ -47,6 +47,7 @@
                         <a class="nav-item @(controller == "Organizations" ? "active" : null)" aria-label="Equipe e perfis" aria-current="@(controller == "Organizations" ? "page" : null)" asp-controller="Organizations" asp-action="Index"><span aria-hidden="true">◎</span><span>Equipe e perfis</span></a>
                         @if (!string.IsNullOrWhiteSpace(activeTenantId))
                         {
+                            <a class="nav-item @(controller == "Studio" ? "active" : null)" aria-label="Modelos e estúdio" aria-current="@(controller == "Studio" ? "page" : null)" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@activeTenantId"><span aria-hidden="true">▤</span><span>Modelos e minutas</span></a>
                             <a class="nav-item @(controller == "Obligations" ? "active" : null)" aria-label="Central de obrigações" aria-current="@(controller == "Obligations" ? "page" : null)" asp-controller="Obligations" asp-action="Index" asp-route-tenantId="@activeTenantId"><span aria-hidden="true">✓</span><span>Obrigações</span></a>
                         }
                     }
