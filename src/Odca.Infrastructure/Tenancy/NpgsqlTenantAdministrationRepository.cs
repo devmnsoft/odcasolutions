@@ -16,14 +16,28 @@ public sealed class NpgsqlTenantAdministrationRepository(
     public async Task<IReadOnlyList<OrganizationAccess>> ListOrganizationsAsync(Guid userId, CancellationToken cancellationToken)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
-        var rows = await connection.QueryAsync<OrganizationAccess>(new CommandDefinition(
+        // Keep the provider-facing shape out of the Application contract. PostgreSQL
+        // exposes an array column to Dapper as System.Array while Npgsql can materialize
+        // the declared text[] value into a writable string[] property. Dapper's
+        // constructor selection cannot match System.Array to OrganizationAccess's
+        // string[] constructor parameter, which was the source of the login-time error.
+        var rows = await connection.QueryAsync<OrganizationAccessRow>(new CommandDefinition(
             """
-            SELECT id AS "Id", name AS "Name", status AS "Status", version AS "Version", permissions AS "Permissions"
+            SELECT id AS "Id",
+                   name AS "Name",
+                   status AS "Status",
+                   version AS "Version",
+                   permissions::text[] AS "Permissions"
             FROM odca.user_organizations(@userId);
             """,
             new { userId },
             cancellationToken: cancellationToken));
-        return rows.AsList();
+        return rows.Select(static row => new OrganizationAccess(
+            row.Id,
+            row.Name,
+            row.Status,
+            row.Version,
+            row.Permissions.ToArray())).ToArray();
     }
 
     public async Task<OrganizationRecord?> GetOrganizationAsync(Guid actorId, Guid tenantId, CancellationToken cancellationToken)
@@ -1125,6 +1139,15 @@ public sealed class NpgsqlTenantAdministrationRepository(
     }
 
     private sealed record RoleRow(Guid Id, string Name, bool IsSystem);
+
+    private sealed class OrganizationAccessRow
+    {
+        public Guid Id { get; init; }
+        public string Name { get; init; } = string.Empty;
+        public string Status { get; init; } = string.Empty;
+        public long Version { get; init; }
+        public string[] Permissions { get; init; } = [];
+    }
 
     private sealed record OverviewMetrics(
         int ActiveMembers,
