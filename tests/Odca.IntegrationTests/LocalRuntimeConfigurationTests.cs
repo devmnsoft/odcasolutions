@@ -255,6 +255,39 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
         Assert.Contains("RandomNumberGenerator", script, StringComparison.Ordinal);
     }
 
+
+    [Theory]
+    [InlineData("Development")]
+    [InlineData("Testing")]
+    [InlineData("Production")]
+    public void AutomaticSetupNeverCreatesAnExplicitOverride(string environment)
+    {
+        var previousSetup = Environment.GetEnvironmentVariable("ODCA_SETUP_ON_START");
+        var path = Path.Combine(directory, "explicit-missing.json");
+        Environment.SetEnvironmentVariable("ODCA_SETUP_ON_START", "true");
+        Environment.SetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable, path);
+        try
+        {
+            var configuration = new ConfigurationManager();
+            if (environment == "Development")
+            {
+                var exception = Assert.Throws<InvalidOperationException>(() =>
+                    LocalRuntimeConfiguration.Add(configuration, EnvironmentNamed(environment), []));
+                Assert.Contains("não encontrada", exception.Message, StringComparison.Ordinal);
+            }
+            else
+            {
+                Assert.False(LocalRuntimeConfiguration.Add(
+                    configuration, EnvironmentNamed(environment), []).Loaded);
+            }
+            Assert.False(File.Exists(path));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("ODCA_SETUP_ON_START", previousSetup);
+        }
+    }
+
     public void Dispose()
     {
         Environment.SetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable, previousPath);
