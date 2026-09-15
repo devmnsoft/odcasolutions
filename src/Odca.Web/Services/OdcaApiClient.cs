@@ -435,6 +435,45 @@ public sealed class OdcaApiClient(HttpClient client)
         return await SendAsync<GeneratedVersionResponse>(message, false, ct);
     }
 
+    public async Task<ApiCallResult<GeneratedVersionResponse>> GenerateStudioVersionAsync(string token, Guid tenantId, Guid draftId, GenerateVersionRequest request, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/versions", token);
+        message.Content = JsonContent.Create(request); return await SendAsync<GeneratedVersionResponse>(message, false, ct);
+    }
+
+    public Task<ApiCallResult<StudioReviewerItem[]>> GetStudioReviewersAsync(string token, Guid tenantId, CancellationToken ct) =>
+        SendAsync<StudioReviewerItem[]>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/studio/reviewers", token), false, ct);
+
+    public async Task<ApiCallResult<ReviewSubmittedResponse>> SubmitStudioReviewAsync(string token, Guid tenantId, SubmitReviewRequest request, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/reviews", token);
+        message.Content = JsonContent.Create(request); return await SendAsync<ReviewSubmittedResponse>(message, false, ct);
+    }
+
+    public Task<ApiCallResult<StudioVersionItem[]>> GetStudioVersionsAsync(string token, Guid tenantId, Guid draftId, CancellationToken ct) =>
+        SendAsync<StudioVersionItem[]>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/versions", token), false, ct);
+
+    public Task<ApiCallResult<VersionComparisonResponse>> CompareStudioVersionsAsync(string token, Guid tenantId, Guid before, Guid after, CancellationToken ct) =>
+        SendAsync<VersionComparisonResponse>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/studio/versions/compare?before={before}&after={after}", token), false, ct);
+
+    public Task<ApiCallResult<ChecklistResponse>> GetStudioChecklistAsync(string token, Guid tenantId, Guid draftId, long version, CancellationToken ct) =>
+        SendAsync<ChecklistResponse>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/checklist?expectedVersion={version}", token), false, ct);
+
+    public Task<ApiCallResult<StudioCommentItem[]>> GetStudioCommentsAsync(string token, Guid tenantId, Guid draftId, bool resolved, CancellationToken ct) =>
+        SendAsync<StudioCommentItem[]>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/comments?includeResolved={resolved}", token), false, ct);
+
+    public async Task<ApiCallResult<JsonElement>> AddStudioCommentAsync(string token, Guid tenantId, Guid draftId, CreateStudioCommentRequest request, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/comments", token);
+        message.Content = JsonContent.Create(request); return await SendAsync<JsonElement>(message, false, ct);
+    }
+
+    public async Task<ApiCallResult<bool>> SetStudioCommentStateAsync(string token, Guid tenantId, Guid draftId, Guid commentId, string action, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/comments/{commentId}/{action}", token);
+        return await SendAsync<bool>(message, false, ct, emptyBodyIsSuccess: true);
+    }
+
     private async Task<ApiCallResult<T>> SendAsync<T>(
         HttpRequestMessage message,
         bool invalidCredentialsOnUnauthorized,

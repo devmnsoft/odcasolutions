@@ -1,22 +1,28 @@
-# Biblioteca e estúdio de contratos — estado da entrega
+# Biblioteca e Estúdio de Contratos
 
-## Implementado
+## Fluxo entregue
 
-- O login, MFA, seleção de organização, permissões e RLS continuam sendo a base autorizadora existente; esta evolução não altera provisionamento nem `development-runtime.json`.
-- A migration 015 adiciona modelos particulares, de consultoria e globais, versões imutáveis, concessão revogável, minutas copiadas da versão de origem, valores estruturados, versões documentais e emissões rastreáveis. Todas as entidades operacionais carregam o tenant e minutas usam concorrência otimista.
-- A API oferece catálogo paginado, criação/edição concorrente/publicação/duplicação/arquivamento de modelo, criação/reabertura/autosave de minuta, geração de snapshot imutável e submissão da versão exata à revisão interna.
-- O estúdio BFF mantém o bearer token no servidor. A tela responsiva renderiza o JSON canônico em blocos, atualiza todas as ocorrências pela chave estável, confirma valores, destaca pendências e coordena autosave sem gravações sobrepostas. O conteúdo integral não é colocado em `localStorage`.
-- O formato canônico é JSON versão 1 e aceita títulos, parágrafos, listas, tabelas, alinhamento, texto com negrito/itálico/sublinhado e campos. HTML, scripts, eventos e URLs não fazem parte do schema aceito. Não há promessa de fidelidade com Microsoft Word.
+1. Um usuário com `tenant.contract_drafts.manage` cria uma minuta a partir de uma versão publicada de modelo. Conteúdo, definições e valores usam o JSON estruturado canônico; HTML arbitrário, scripts, URLs e marcas desconhecidas são rejeitados.
+2. O editor salva manualmente ou 900 ms após a última alteração. Cada tentativa leva a versão esperada e um UUID de revisão cliente. O servidor usa concorrência otimista e um recibo idempotente, portanto repetir a mesma tentativa não incrementa a versão duas vezes.
+3. Em conflito, o conteúdo aberto não é substituído. A interface oferece abrir o estado do servidor em outra aba; a recuperação/mesclagem é uma decisão explícita do usuário.
+4. O histórico lista retratos imutáveis. A comparação só aceita duas versões do mesmo contrato e separa texto, formatação suportada, valores de campos e metadados. O limite síncrono é 2 MB por componente e 10.000 diferenças; documentos maiores devem seguir o worker de processamento antes de esta operação ser habilitada.
+5. Comentários contextuais são vinculados à minuta, à revisão numérica e, quando informado, à versão imutável. Respostas usam `parent_id`; resolução e reabertura geram eventos e não alteram aprovação. A referência estável é preservada com `reference_located=false` quando o trecho deixa de existir.
+6. O checklist do servidor distingue bloqueios de avisos. Documento não salvo/conflitante e campos obrigatórios inválidos bloqueiam; comentários abertos e valores manuais avisam. Ele é uma validação operacional, não um parecer jurídico.
+7. Ao encaminhar, o BFF confirma o checklist, exige um revisor autorizado, cria/reutiliza pelo UUID idempotente o retrato da versão exata da minuta e vincula esse retrato à revisão. A constraint e o estado da versão impedem duplo envio e aprovação herdada por conteúdo posterior.
 
-## Parcial
+## Persistência e segurança
 
-- A geração cria o snapshot canônico imutável, hash SHA-256 e arquivo privado; o catálogo visual ainda não oferece administração de modelos, embora os endpoints persistentes existam.
-- Upload, antivírus, extração PDF/imagem/DOCX e revisão existentes foram preservados. Sugestões de OCR ainda não aparecem no painel contextual do novo estúdio.
-- A revisão é criada para uma versão gerada específica; as telas de decisão da revisão permanecem separadas. Aprovação interna não é tratada como assinatura digital.
+A migration 016 adiciona recibos de salvamento, identidade idempotente e versão da minuta nos retratos, comentários contextuais, eventos, FKs compostas, índices e RLS. Todos os endpoints validam permissão e tenant no servidor e configuram `odca.tenant_id` e `odca.actor_id` na transação. Eventos guardam identificadores e resultados, nunca o texto completo do contrato. Versões geradas e submetidas não oferecem edição nem exclusão.
 
-## Pendente e dependências externas
+O bearer permanece somente no BFF e requisições mutáveis da interface mantêm o antiforgery token. O conteúdo completo não é colocado em `localStorage`.
 
-- Conversão PDF paginada, cópia emitida com serial/rodapé, consulta/download de emissão e processamento em job ainda dependem da escolha e homologação de um conversor comercialmente compatível. Nenhuma emissão é apresentada como prova de impressão física.
-- Reserva/liberação de cota para artefatos gerados e idempotência física após falha precisam ser conectadas ao worker antes de habilitar emissão em produção.
-- Faltam comparação visual de conflitos, sugestões cadastrais/OCR, prévia completa e administração visual de versões/acessos de modelos.
-- QA autenticado em PostgreSQL e navegador (360/768/desktop), inspeção de PDF, acessibilidade assistiva e testes de concorrência/cota dependem do ambiente executável. Auditoria e exclusão lógica são controles, não uma declaração de adequação integral à LGPD.
+## Estados
+
+- Minuta: `Alterações não salvas` → `Salvando` → `Salvo`; falhas viram `Falha` e divergência vira `Conflito`.
+- Versão: `generated` → `submitted` → `internally_approved` → `externally_signed` (transições posteriores continuam no fluxo de revisão/assinatura existente).
+- Revisão: `in_review`, `changes_requested`, `internally_approved`, `cancelled` ou `superseded`.
+- Comentário: aberto, resolvido, reaberto ou logicamente excluído; resolver nunca aprova uma etapa.
+
+## Limitações objetivas
+
+A versão privada persistida nesta etapa é o snapshot canônico JSON com SHA-256. Conversão PDF paginada e processamento assíncrono para comparações acima do limite ainda dependem do worker/conversor homologado. A interface não implementa menções ou notificações externas. Referências removidas são preservadas pelo modelo de dados; a atualização automática de `reference_located` deverá ser feita pelo processamento de estrutura quando ele for conectado.
