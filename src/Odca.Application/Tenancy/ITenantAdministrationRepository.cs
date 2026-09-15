@@ -28,8 +28,8 @@ public sealed record OrganizationPendencyItem(string Message, string? Tab, strin
 public sealed record OrganizationOverview(
     int ActiveMembers,
     int ValidInvitations,
-    int SeatLimit,
-    int AvailableSeats,
+    long SeatLimit,
+    long AvailableSeats,
     IReadOnlyList<OrganizationPendencyItem> Pendencies);
 public sealed record TeamMember(Guid UserId, string Name, string Email, string Status, string[] Roles);
 public sealed record TeamMemberDetail(Guid UserId, string Name, string Email, string Status, Guid[] RoleIds, string[] Roles, int SecurityVersion);

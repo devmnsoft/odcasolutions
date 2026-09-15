@@ -9,8 +9,8 @@ public sealed record OrganizationPendency(string Message, string? Tab, string? S
 public sealed record OrganizationOverviewResponse(
     int ActiveMembers,
     int ValidInvitations,
-    int SeatLimit,
-    int AvailableSeats,
+    long SeatLimit,
+    long AvailableSeats,
     IReadOnlyList<OrganizationPendency> Pendencies);
 
 public sealed record UpdateOrganizationRequest(string Name, string Timezone, long Version);

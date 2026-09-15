@@ -179,6 +179,7 @@ public sealed class OrganizationsController(OdcaApiClient api) : Controller
         {
             Organization = org,
             Overview = overview.Succeeded ? overview.Value : null,
+            OverviewLoadFailed = !overview.Succeeded,
             Tab = normalizedTab,
             Search = search,
             Status = status,

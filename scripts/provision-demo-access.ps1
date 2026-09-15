@@ -63,7 +63,7 @@ try {
     }
 
     $arguments = @('run', '--project', $bootstrapProject, '--', 'provision-test-access',
-        '--environment', 'Development', '--allow-postgres-development')
+        '--environment', 'Development', '--allow-postgres-development', '--prompt-passwords')
     if ($ResetPassword) { $arguments += @('--rotate-password', $ResetPassword) }
     & dotnet @arguments
     if ($LASTEXITCODE -ne 0) { throw 'Falha no provisionamento; nenhuma credencial sera exibida.' }

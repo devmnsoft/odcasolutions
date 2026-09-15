@@ -497,11 +497,19 @@ public static class BootstrapProgram
 
         Console.WriteLine($"Destino: host={target.Host}; porta={target.Port}; banco={target.Database}; ambiente=Development");
         var credentials = ReadJson<DevelopmentCredentials>(paths.CredentialsFile);
+        string? requestedAdministratorPassword = null;
+        string? requestedClientPassword = null;
+        if (args.Contains("--prompt-passwords", StringComparer.OrdinalIgnoreCase))
+        {
+            requestedAdministratorPassword = ReadSecret("Senha inicial de admin@odca.local (entrada oculta): ");
+            requestedClientPassword = ReadSecret("Senha inicial de cliente.teste@odca.local (entrada oculta): ");
+        }
         var provisioner = new TestAccessProvisioner(new AspNetPasswordService(),
             Path.Combine(paths.RepositoryRoot, "database", "development", "seed-test-access.sql"));
         var result = await provisioner.ProvisionAsync(runtime.ConnectionStrings.DatabaseAdmin,
             credentials.SuperAdministratorPassword, credentials.ClientPassword,
-            rotateAll || rotateAccount == "admin", rotateAll || rotateAccount == "client", GeneratePassword);
+            rotateAll || rotateAccount == "admin", rotateAll || rotateAccount == "client", GeneratePassword,
+            requestedAdministratorPassword, requestedClientPassword);
 
         var updated = credentials with
         {
