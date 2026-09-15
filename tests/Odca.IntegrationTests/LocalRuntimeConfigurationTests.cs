@@ -1,9 +1,10 @@
+using System.Diagnostics;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Odca.Configuration;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 
 namespace Odca.IntegrationTests;
 
@@ -192,6 +193,58 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
         });
 
         Assert.True(File.Exists(path));
+    }
+
+    [Fact]
+    public async Task ConcurrentSetupFailureDoesNotOpenRepeatedAssistants()
+    {
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, "runtime.json");
+        var invocations = 0;
+        using var firstEntered = new ManualResetEventSlim();
+        using var releaseFirst = new ManualResetEventSlim();
+        using var callersReady = new CountdownEvent(3);
+        using var releaseCallers = new ManualResetEventSlim();
+        var entrants = Enumerable.Range(0, 3).Select(_ => Task.Run(() =>
+        {
+            callersReady.Signal();
+            releaseCallers.Wait(TimeSpan.FromSeconds(5));
+            return Assert.Throws<InvalidOperationException>(() =>
+                DevelopmentRuntimeSetup.CoordinateCreation(path, TimeSpan.FromSeconds(10), _ =>
+                {
+                    Interlocked.Increment(ref invocations);
+                    firstEntered.Set();
+                    releaseFirst.Wait(TimeSpan.FromSeconds(5));
+                    return 1223;
+                }));
+        })).ToArray();
+
+        Assert.True(callersReady.Wait(TimeSpan.FromSeconds(5)));
+        releaseCallers.Set();
+        Assert.True(firstEntered.Wait(TimeSpan.FromSeconds(5)));
+        await Task.Delay(250);
+        releaseFirst.Set();
+        await Task.WhenAll(entrants);
+
+        Assert.Equal(1, invocations);
+        Assert.All(entrants, task => Assert.Contains("1223", task.Result.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void PowerShellLaunchUsesWindowRepositoryAndExactRuntimePath()
+    {
+        var repository = Path.Combine(directory, "repository with spaces");
+        var script = Path.Combine(repository, "scripts", "setup-local.ps1");
+        var runtime = Path.Combine(directory, "explicit folder", "runtime file.json");
+
+        ProcessStartInfo startInfo = DevelopmentRuntimeSetup.CreatePowerShellStartInfo(repository, script, runtime);
+
+        Assert.Equal("powershell.exe", startInfo.FileName);
+        Assert.True(startInfo.UseShellExecute);
+        Assert.Equal(ProcessWindowStyle.Normal, startInfo.WindowStyle);
+        Assert.Equal(Path.GetFullPath(repository), startInfo.WorkingDirectory);
+        Assert.Equal(["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+            Path.GetFullPath(script), "-RuntimePath", Path.GetFullPath(runtime)], startInfo.ArgumentList.ToArray());
     }
 
     [Fact]

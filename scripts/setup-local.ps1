@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [switch]$ImportLegacy,
-    [switch]$NonInteractive
+    [switch]$NonInteractive,
+    [string]$RuntimePath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -9,6 +10,11 @@ $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $defaultRuntimePath = Join-Path $repositoryRoot 'src\Odca.Api\development-runtime.json'
 
 function Resolve-RuntimePath {
+    if ($null -ne $RuntimePath) {
+        if ([string]::IsNullOrWhiteSpace($RuntimePath)) { throw 'RuntimePath foi informado com um caminho vazio.' }
+        return [IO.Path]::GetFullPath($RuntimePath)
+    }
+
     $configured = [Environment]::GetEnvironmentVariable('ODCA_RUNTIME_CONFIG')
     if ($null -ne $configured -and [string]::IsNullOrWhiteSpace($configured)) {
         throw 'ODCA_RUNTIME_CONFIG foi definida com um caminho vazio.'
