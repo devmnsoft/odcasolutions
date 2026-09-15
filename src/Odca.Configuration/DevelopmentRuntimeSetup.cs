@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
@@ -31,7 +32,7 @@ public static class DevelopmentRuntimeSetup
                 $"{EnableEnvironmentVariable}.");
         }
 
-        CoordinateCreation(runtimePath, SetupTimeout, _ => RunPowerShellSetup(environment.ContentRootPath));
+        CoordinateCreation(runtimePath, SetupTimeout, target => RunPowerShellSetup(environment.ContentRootPath, target));
     }
 
     internal static void CoordinateCreation(
@@ -45,26 +46,46 @@ public static class DevelopmentRuntimeSetup
 
         var fullPath = Path.GetFullPath(runtimePath);
         var lockPath = GetLockPath(fullPath);
+        var failurePath = lockPath + ".failed";
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)
             ?? throw new InvalidOperationException($"O caminho da configuração não possui diretório: '{fullPath}'."));
 
+        var attemptStartedAt = DateTimeOffset.UtcNow;
         var started = Stopwatch.StartNew();
         using var coordination = AcquireLock(lockPath, timeout, started);
         if (File.Exists(fullPath)) return;
 
-        var exitCode = setup(fullPath);
-        if (exitCode != 0)
+        // A caller which was already waiting when the winning assistant failed must observe that
+        // same result instead of opening another password prompt. A later, deliberate restart can retry.
+        if (TryReadConcurrentFailure(failurePath, attemptStartedAt, out var concurrentFailure))
         {
-            throw new InvalidOperationException(
-                $"O assistente de configuração foi cancelado ou falhou (código {exitCode}). " +
-                $"O arquivo esperado era '{fullPath}'. Execute scripts/setup-local.ps1 manualmente para ver o diagnóstico completo.");
+            throw new InvalidOperationException(concurrentFailure);
         }
 
-        if (!File.Exists(fullPath))
+        try
         {
-            throw new InvalidOperationException(
-                $"O assistente terminou com sucesso, mas não criou '{fullPath}'. " +
-                $"Verifique {LocalRuntimeConfiguration.EnvironmentVariable} e execute scripts/setup-local.ps1 manualmente.");
+            var exitCode = setup(fullPath);
+            if (exitCode != 0)
+            {
+                throw new InvalidOperationException(
+                    $"O assistente de configuração foi cancelado ou falhou (código {exitCode}). " +
+                    $"O arquivo esperado era '{fullPath}'. Execute scripts/setup-local.ps1 manualmente para ver o diagnóstico completo.");
+            }
+
+            if (!File.Exists(fullPath))
+            {
+                throw new InvalidOperationException(
+                    $"O assistente terminou com sucesso, mas não criou '{fullPath}'. " +
+                    $"Verifique {LocalRuntimeConfiguration.EnvironmentVariable} e execute scripts/setup-local.ps1 manualmente.");
+            }
+
+            File.Delete(failurePath);
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or IOException or
+            UnauthorizedAccessException or TimeoutException or Win32Exception)
+        {
+            WriteFailure(failurePath, exception.Message);
+            throw;
         }
     }
 
@@ -90,7 +111,7 @@ public static class DevelopmentRuntimeSetup
         }
     }
 
-    private static int RunPowerShellSetup(string contentRootPath)
+    private static int RunPowerShellSetup(string contentRootPath, string runtimePath)
     {
         var repositoryRoot = FindRepositoryRoot(contentRootPath);
         var scriptPath = Path.Combine(repositoryRoot, "scripts", "setup-local.ps1");
@@ -99,19 +120,7 @@ public static class DevelopmentRuntimeSetup
             throw new FileNotFoundException("O script de configuração local não foi encontrado.", scriptPath);
         }
 
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = "powershell.exe",
-            WorkingDirectory = repositoryRoot,
-            UseShellExecute = true,
-            WindowStyle = ProcessWindowStyle.Normal
-        };
-        startInfo.ArgumentList.Add("-NoLogo");
-        startInfo.ArgumentList.Add("-NoProfile");
-        startInfo.ArgumentList.Add("-ExecutionPolicy");
-        startInfo.ArgumentList.Add("Bypass");
-        startInfo.ArgumentList.Add("-File");
-        startInfo.ArgumentList.Add(scriptPath);
+        var startInfo = CreatePowerShellStartInfo(repositoryRoot, scriptPath, runtimePath);
 
         using var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("O Windows não conseguiu iniciar powershell.exe para a configuração local.");
@@ -122,6 +131,59 @@ public static class DevelopmentRuntimeSetup
         throw new TimeoutException(
             $"O assistente não terminou em {SetupTimeout.TotalMinutes:0} minutos e foi encerrado. " +
             "Execute scripts/setup-local.ps1 manualmente para tentar novamente.");
+    }
+
+    internal static ProcessStartInfo CreatePowerShellStartInfo(
+        string repositoryRoot,
+        string scriptPath,
+        string runtimePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(repositoryRoot);
+        ArgumentException.ThrowIfNullOrWhiteSpace(scriptPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(runtimePath);
+
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "powershell.exe",
+            WorkingDirectory = Path.GetFullPath(repositoryRoot),
+            UseShellExecute = true,
+            WindowStyle = ProcessWindowStyle.Normal
+        };
+        startInfo.ArgumentList.Add("-NoLogo");
+        startInfo.ArgumentList.Add("-NoProfile");
+        startInfo.ArgumentList.Add("-ExecutionPolicy");
+        startInfo.ArgumentList.Add("Bypass");
+        startInfo.ArgumentList.Add("-File");
+        startInfo.ArgumentList.Add(Path.GetFullPath(scriptPath));
+        startInfo.ArgumentList.Add("-RuntimePath");
+        startInfo.ArgumentList.Add(Path.GetFullPath(runtimePath));
+        return startInfo;
+    }
+
+    private static bool TryReadConcurrentFailure(string failurePath, DateTimeOffset attemptStartedAt, out string message)
+    {
+        message = string.Empty;
+        if (!File.Exists(failurePath) || File.GetLastWriteTimeUtc(failurePath) < attemptStartedAt.UtcDateTime)
+        {
+            return false;
+        }
+
+        message = File.ReadAllText(failurePath);
+        return !string.IsNullOrWhiteSpace(message);
+    }
+
+    private static void WriteFailure(string failurePath, string message)
+    {
+        var temporary = failurePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            File.WriteAllText(temporary, message);
+            File.Move(temporary, failurePath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporary)) File.Delete(temporary);
+        }
     }
 
     private static string FindRepositoryRoot(string startPath)
