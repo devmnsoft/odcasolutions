@@ -177,3 +177,7 @@ Convites reservam um assento enquanto estiverem `pending`/`sent` e não expirado
 Em `Development`, o worker grava mensagens exclusivamente no diretório configurado por `Notifications:DevelopmentPickupDirectory`. Fora de Development, ausência de provedor mantém a mensagem em retry/falha com código `notification_provider_missing`, nunca como enviada.
 
 API e Worker devem compartilhar o mesmo `DataProtection:KeysPath` persistente e o mesmo `ApplicationName` (`ODCA Solutions`) para desencriptar o token protegido do convite. Em múltiplas instâncias do BFF, o ticket store também precisa de cache distribuído compartilhado; o desenvolvimento local ainda usa cache em memória.
+
+### Biblioteca e estúdio de contratos
+
+Com uma organização selecionada, abra `/organizacoes/{tenantId}/estudio`. O catálogo mostra somente modelos publicados autorizados. Ao usar um modelo, informe o título, confirme os campos no painel direito e edite os blocos do documento; o autosave usa debounce e versão otimista. O botão **Gerar versão** somente aceita campos obrigatórios confirmados e cria um snapshot imutável ligado à versão original do modelo. O estado detalhado, recursos suportados e dependências de PDF estão em `docs/execution/CONTRACT_STUDIO.md`.
