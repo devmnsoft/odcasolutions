@@ -474,14 +474,22 @@ public static class BootstrapProgram
 
         var target = new NpgsqlConnectionStringBuilder(runtime.ConnectionStrings.DatabaseAdmin);
         var applicationTarget = new NpgsqlConnectionStringBuilder(runtime.ConnectionStrings.Database);
+        var applicationSearchPath = applicationTarget.SearchPath;
+        if (string.IsNullOrWhiteSpace(applicationSearchPath))
+        {
+            throw new InvalidOperationException(
+                "A configuração ConnectionStrings:Database deve declarar Search Path com o schema odca.");
+        }
+
         if (!string.Equals(target.Host, applicationTarget.Host, StringComparison.OrdinalIgnoreCase) ||
             target.Port != applicationTarget.Port ||
             !string.Equals(target.Database, applicationTarget.Database, StringComparison.Ordinal) ||
-            !applicationTarget.SearchPath.Split(',', StringSplitOptions.TrimEntries).Contains("odca", StringComparer.Ordinal))
+            !applicationSearchPath.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Contains("odca", StringComparer.Ordinal))
         {
             throw new InvalidOperationException("DatabaseAdmin e Database devem apontar ao mesmo servidor, banco e schema odca usado pela API.");
         }
-        if (!IsProvisionTargetAllowed(environment!, target.Database,
+        if (!IsProvisionTargetAllowed("Development", target.Database,
                 args.Contains("--allow-postgres-development", StringComparer.OrdinalIgnoreCase)))
         {
             throw new InvalidOperationException("Provisionamento na base postgres exige --environment Development e --allow-postgres-development explícitos.");
