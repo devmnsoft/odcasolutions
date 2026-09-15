@@ -48,6 +48,7 @@ public static class LocalRuntimeConfiguration
         }
 
         var path = ResolvePath(environment.ContentRootPath);
+        DevelopmentRuntimeSetup.EnsureCreated(path);
         try
         {
             // The personal file supplies defaults. Explicit process configuration always wins.
