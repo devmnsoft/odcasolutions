@@ -11,11 +11,18 @@ using Odca.Contracts.Tenancy;
 using Odca.Contracts.Obligations;
 using Odca.Contracts.SavedViews;
 using Odca.Contracts.Studio;
+using Odca.Contracts.Renewals;
 
 namespace Odca.Web.Services;
 
 public sealed class OdcaApiClient(HttpClient client)
 {
+    public Task<ApiCallResult<RenewalPage>> GetRenewalsAsync(string token,Guid tenantId,DateOnly? from,DateOnly? to,Guid? ownerId,string? contractType,string? counterparty,string? status,bool mine,bool withoutOwner,int page,int pageSize,CancellationToken cancellationToken)
+    {
+        var query=new Dictionary<string,string?> { ["from"]=from?.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture),["to"]=to?.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture),["ownerId"]=ownerId?.ToString(),["contractType"]=contractType,["counterparty"]=counterparty,["status"]=status,["mine"]=mine?"true":null,["withoutOwner"]=withoutOwner?"true":null,["page"]=page.ToString(CultureInfo.InvariantCulture),["pageSize"]=pageSize.ToString(CultureInfo.InvariantCulture)};
+        var encoded=string.Join('&',query.Where(x=>!string.IsNullOrWhiteSpace(x.Value)).Select(x=>$"{Uri.EscapeDataString(x.Key)}={Uri.EscapeDataString(x.Value!)}"));
+        return SendAsync<RenewalPage>(CreateAuthorized(HttpMethod.Get,$"api/v1/organizations/{tenantId}/renewals?{encoded}",token),false,cancellationToken);
+    }
     public Task<ApiCallResult<SavedViewItem[]>> GetSavedViewsAsync(string token, Guid tenantId, string listingType, CancellationToken cancellationToken) =>
         SendAsync<SavedViewItem[]>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/saved-views?listingType={Uri.EscapeDataString(listingType)}", token), false, cancellationToken);
 
