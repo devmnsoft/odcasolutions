@@ -1946,3 +1946,6 @@ INSERT INTO odca.schema_migrations(version,name,checksum)
 VALUES(14,'Personal saved work views','2cc024fc41b0cb12adbaac3db2fa480a33989f3a4b061c01203d5838fcf930d1') ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 014
+
+-- Development identities are intentionally excluded from the consolidated installer.
+-- Their explicit parameterized seed is database/development/seed-test-access.sql.

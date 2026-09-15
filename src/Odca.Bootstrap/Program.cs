@@ -54,7 +54,7 @@ public static class BootstrapProgram
                     await ShowLoginAsync(paths);
                     return 0;
                 case "reset-password":
-                    await ResetPasswordAsync(paths);
+                    await ResetPasswordAsync(paths, args);
                     Console.WriteLine("Senha inicial redefinida. Execute show-login para recuperá-la localmente.");
                     return 0;
                 case "provision-test-access":
@@ -113,9 +113,9 @@ public static class BootstrapProgram
                 return true;
             }
             var version = await connection.ExecuteScalarAsync<int?>("SELECT max(version) FROM odca.schema_migrations;");
-            Console.WriteLine(version == 9
-                ? "Conexão aprovada; schema odca compatível (versão 009)."
-                : $"Conexão aprovada; schema odca incompatível (versão encontrada: {version?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "nenhuma"}; esperada: 009).");
+            Console.WriteLine(version == DatabaseSchema.CurrentVersion
+                ? $"Conexão aprovada; schema odca compatível (versão {DatabaseSchema.CurrentVersion:000})."
+                : $"Conexão aprovada; schema odca incompatível (versão encontrada: {version?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "nenhuma"}; esperada: {DatabaseSchema.CurrentVersion:000}).");
         }
         catch (Exception exception) when (exception is NpgsqlException or TimeoutException)
         {
@@ -222,7 +222,26 @@ public static class BootstrapProgram
 
     private static void ProtectFile(string path)
     {
-        if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        if (!OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            return;
+        }
+
+        using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "icacls.exe",
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            ArgumentList = { path, "/inheritance:r", "/grant:r", $"{Environment.UserDomainName}\\{Environment.UserName}:(R,W)" }
+        }) ?? throw new InvalidOperationException("Não foi possível proteger o arquivo local com ACL do Windows.");
+        process.WaitForExit();
+        if (process.ExitCode != 0)
+        {
+            throw new InvalidOperationException("O Windows recusou a proteção do arquivo local de credenciais.");
+        }
     }
 
     private static async Task ConfigureNativeAsync(LocalPaths paths)
@@ -379,10 +398,6 @@ public static class BootstrapProgram
         await DatabaseRoleProvisioner.ProvisionApplicationLoginAsync(
             runtime.ConnectionStrings.DatabaseAdmin,
             credentials.ApplicationDatabasePassword);
-        await new DevelopmentSeeder(new AspNetPasswordService()).SeedSuperAdministratorAsync(
-            runtime.ConnectionStrings.DatabaseAdmin,
-            credentials.SuperAdministratorEmail,
-            credentials.SuperAdministratorPassword);
     }
 
     private static async Task ShowLoginAsync(LocalPaths paths)
@@ -391,7 +406,7 @@ public static class BootstrapProgram
         var credentials = ReadJson<DevelopmentCredentials>(paths.CredentialsFile);
         var runtime = ReadJson<DevelopmentRuntime>(paths.RuntimeFile);
         await ShowCredentialAsync(runtime.ConnectionStrings.DatabaseAdmin, "Superadministrador",
-            credentials.SuperAdministratorEmail, credentials.SuperAdministratorPassword);
+            TestAccessProvisioner.AdministratorEmail, credentials.SuperAdministratorPassword);
         if (!string.IsNullOrWhiteSpace(credentials.ClientPassword))
         {
             await ShowCredentialAsync(runtime.ConnectionStrings.DatabaseAdmin, "Cliente de demonstração",
@@ -444,7 +459,13 @@ public static class BootstrapProgram
             throw new InvalidOperationException("Informe --environment Development. A concessão de demonstração é recusada fora de Development.");
         }
 
-        var rotate = args.Contains("--rotate-passwords", StringComparer.OrdinalIgnoreCase);
+        var rotateIndex = Array.FindIndex(args, value => value.Equals("--rotate-password", StringComparison.OrdinalIgnoreCase));
+        var rotateAccount = rotateIndex >= 0 && rotateIndex + 1 < args.Length
+            ? args[rotateIndex + 1].ToLowerInvariant()
+            : null;
+        var rotateAll = args.Contains("--rotate-passwords", StringComparer.OrdinalIgnoreCase);
+        if (rotateAccount is not (null or "admin" or "client"))
+            throw new InvalidOperationException("--rotate-password aceita admin ou client.");
         var runtime = ReadJson<DevelopmentRuntime>(paths.RuntimeFile);
         if (!runtime.Security.AllowDevelopmentBootstrap)
         {
@@ -452,6 +473,14 @@ public static class BootstrapProgram
         }
 
         var target = new NpgsqlConnectionStringBuilder(runtime.ConnectionStrings.DatabaseAdmin);
+        var applicationTarget = new NpgsqlConnectionStringBuilder(runtime.ConnectionStrings.Database);
+        if (!string.Equals(target.Host, applicationTarget.Host, StringComparison.OrdinalIgnoreCase) ||
+            target.Port != applicationTarget.Port ||
+            !string.Equals(target.Database, applicationTarget.Database, StringComparison.Ordinal) ||
+            !applicationTarget.SearchPath.Split(',', StringSplitOptions.TrimEntries).Contains("odca", StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException("DatabaseAdmin e Database devem apontar ao mesmo servidor, banco e schema odca usado pela API.");
+        }
         if (!IsProvisionTargetAllowed(environment!, target.Database,
                 args.Contains("--allow-postgres-development", StringComparer.OrdinalIgnoreCase)))
         {
@@ -460,13 +489,15 @@ public static class BootstrapProgram
 
         Console.WriteLine($"Destino: host={target.Host}; porta={target.Port}; banco={target.Database}; ambiente=Development");
         var credentials = ReadJson<DevelopmentCredentials>(paths.CredentialsFile);
-        var provisioner = new TestAccessProvisioner(new AspNetPasswordService());
+        var provisioner = new TestAccessProvisioner(new AspNetPasswordService(),
+            Path.Combine(paths.RepositoryRoot, "database", "development", "seed-test-access.sql"));
         var result = await provisioner.ProvisionAsync(runtime.ConnectionStrings.DatabaseAdmin,
-            credentials.SuperAdministratorEmail, credentials.SuperAdministratorPassword,
-            credentials.ClientPassword, rotate, GeneratePassword);
+            credentials.SuperAdministratorPassword, credentials.ClientPassword,
+            rotateAll || rotateAccount == "admin", rotateAll || rotateAccount == "client", GeneratePassword);
 
         var updated = credentials with
         {
+            SuperAdministratorEmail = TestAccessProvisioner.AdministratorEmail,
             SuperAdministratorPassword = result.AdministratorPassword,
             ClientPassword = result.ClientPassword
         };
@@ -482,6 +513,8 @@ public static class BootstrapProgram
         }
 
         Console.WriteLine($"Persistência verificada: {(AllVerified(result.Verification) ? "sim" : "não")}");
+        Console.WriteLine($"Superadministrador: {(result.AdministratorCreated ? "criado" : "já existente e validado")}");
+        Console.WriteLine($"Cliente de demonstração: {(result.ClientCreated ? "criado" : "já existente e validado")}");
         Console.WriteLine($"Senha do superadministrador confere: {(result.AdministratorPasswordMatches ? "sim" : "não (arquivo local desatualizado; use --rotate-passwords)")}");
         Console.WriteLine($"Senha do cliente confere: {(result.ClientPasswordMatches ? "sim" : "não (arquivo local ausente/desatualizado; use --rotate-passwords)")}");
         Console.WriteLine("Login HTTP aprovado: não executado por este comando.");
@@ -500,58 +533,36 @@ public static class BootstrapProgram
         ? null
         : new DateTimeOffset(DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
 
-    private static async Task ResetPasswordAsync(LocalPaths paths)
+    private static async Task ResetPasswordAsync(LocalPaths paths, string[] args)
     {
+        var accountIndex = Array.FindIndex(args, value => value.Equals("--account", StringComparison.OrdinalIgnoreCase));
+        var account = accountIndex >= 0 && accountIndex + 1 < args.Length ? args[accountIndex + 1].ToLowerInvariant() : null;
+        if (account is not ("admin" or "client"))
+            throw new InvalidOperationException("Informe --account admin ou --account client.");
+
+        var forwarded = new List<string> { "provision-test-access", "--environment", "Development" };
+        if (args.Contains("--allow-postgres-development", StringComparer.OrdinalIgnoreCase))
+            forwarded.Add("--allow-postgres-development");
         EnsureInitialized(paths);
         var runtime = ReadJson<DevelopmentRuntime>(paths.RuntimeFile);
+        if (!runtime.Security.AllowDevelopmentBootstrap)
+            throw new InvalidOperationException("Security:AllowDevelopmentBootstrap está desabilitado.");
+        var target = new NpgsqlConnectionStringBuilder(runtime.ConnectionStrings.DatabaseAdmin);
+        if (!IsProvisionTargetAllowed("Development", target.Database, forwarded.Contains("--allow-postgres-development")))
+            throw new InvalidOperationException("Redefinição na base postgres exige --allow-postgres-development.");
+
         var credentials = ReadJson<DevelopmentCredentials>(paths.CredentialsFile);
-        var newPassword = GeneratePassword();
-        var template = new UserCredential(
-            Guid.Empty,
-            credentials.SuperAdministratorEmail,
-            "Administrador da plataforma",
-            string.Empty,
-            1,
-            true,
-            true,
-            null,
-            false,
-            null);
-        var hash = new AspNetPasswordService().Hash(template, newPassword);
-
-        const string updateUserSql = """
-            UPDATE odca.users
-               SET password_hash = @hash,
-                   must_change_password = true,
-                   security_version = security_version + 1,
-                   failed_login_count = 0,
-                   locked_until = NULL,
-                   updated_at = now()
-             WHERE email_normalized = @email;
-            """;
-        const string revokeSessionsSql = """
-            UPDATE odca.sessions
-               SET revoked_at = COALESCE(revoked_at, now())
-             WHERE user_id = (SELECT id FROM odca.users WHERE email_normalized = @email);
-            """;
-        await using var connection = new NpgsqlConnection(runtime.ConnectionStrings.DatabaseAdmin);
-        await connection.OpenAsync();
-        await using var transaction = await connection.BeginTransactionAsync();
-        var parameters = new
+        var provisioner = new TestAccessProvisioner(new AspNetPasswordService(),
+            Path.Combine(paths.RepositoryRoot, "database", "development", "seed-test-access.sql"));
+        var result = await provisioner.ProvisionAsync(runtime.ConnectionStrings.DatabaseAdmin,
+            credentials.SuperAdministratorPassword, credentials.ClientPassword,
+            account == "admin", account == "client", GeneratePassword);
+        WriteJson(paths.CredentialsFile, credentials with
         {
-            hash,
-            email = credentials.SuperAdministratorEmail.Trim().ToUpperInvariant()
-        };
-        var userAffected = await connection.ExecuteAsync(updateUserSql, parameters, transaction);
-        if (userAffected != 1)
-        {
-            throw new InvalidOperationException("A conta superadministradora ainda não existe; execute migrate.");
-        }
-
-        await connection.ExecuteAsync(revokeSessionsSql, parameters, transaction);
-        await transaction.CommitAsync();
-
-        WriteJson(paths.CredentialsFile, credentials with { SuperAdministratorPassword = newPassword });
+            SuperAdministratorEmail = TestAccessProvisioner.AdministratorEmail,
+            SuperAdministratorPassword = result.AdministratorPassword,
+            ClientPassword = result.ClientPassword
+        });
     }
 
     private static string BuildConnectionString(string username, string password) =>

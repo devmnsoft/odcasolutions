@@ -4,90 +4,61 @@ using Odca.Application.Identity;
 
 namespace Odca.Bootstrap;
 
-internal sealed class TestAccessProvisioner(IPasswordService passwordService)
+public sealed class TestAccessProvisioner(IPasswordService passwordService, string seedSqlPath)
 {
-    internal const string ClientEmail = "cliente.teste@odca.local";
-    internal const string DemoTenantName = "ODCA Cliente de Demonstração";
-    private const string DemoTenantCode = "ODCA-DEMO-LOCAL";
+    public const string AdministratorEmail = "admin@odca.local";
+    public const string ClientEmail = "cliente.teste@odca.local";
+    public const string DemoTenantName = "ODCA Cliente de Demonstração";
+    public const string DemoTenantCode = "ODCA-DEMO-LOCAL";
     private const string DemoGrantReason = "development-demo-access";
 
     public async Task<TestAccessResult> ProvisionAsync(
         string connectionString,
-        string administratorEmail,
         string administratorPassword,
         string? clientPassword,
-        bool rotatePasswords,
+        bool rotateAdministrator,
+        bool rotateClient,
         Func<string> passwordFactory)
     {
-        var adminNormalized = Normalize(administratorEmail);
-        var clientNormalized = Normalize(ClientEmail);
+        if (!File.Exists(seedSqlPath))
+        {
+            throw new FileNotFoundException("O SQL de provisionamento de Development não foi encontrado.", seedSqlPath);
+        }
+
+        var seedSql = await File.ReadAllTextAsync(seedSqlPath);
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
         await using var transaction = await connection.BeginTransactionAsync();
+        await connection.ExecuteAsync(new CommandDefinition(
+            "SELECT pg_advisory_xact_lock(hashtext('odca.development.test-access'));", transaction: transaction));
 
-        var administrator = await FindUserAsync(connection, transaction, adminNormalized);
+        await EnsureSchemaAsync(connection, transaction);
+        var administrator = await FindUserAsync(connection, transaction, Normalize(AdministratorEmail));
+        var client = await FindUserAsync(connection, transaction, Normalize(ClientEmail));
+        var tenant = await FindTenantAsync(connection, transaction);
+        await ValidateExistingAsync(connection, transaction, administrator, client, tenant);
+
         var administratorCreated = administrator is null;
-        if (administrator is not null && !administrator.IsPlatformAdministrator)
-        {
-            throw new InvalidOperationException(
-                $"A identidade {administratorEmail} já existe sem o perfil de plataforma; nenhuma elevação foi feita.");
-        }
-
-        if (administrator is null)
-        {
-            administrator = await InsertUserAsync(
-                connection, transaction, administratorEmail, "Administrador da plataforma", administratorPassword, true);
-        }
-        else if (rotatePasswords)
+        var clientCreated = client is null;
+        if (administratorCreated || rotateAdministrator)
         {
             administratorPassword = passwordFactory();
-            administrator = await RotatePasswordAsync(connection, transaction, administrator, administratorPassword);
+        }
+        if (clientCreated || rotateClient)
+        {
+            do { clientPassword = passwordFactory(); }
+            while (string.Equals(clientPassword, administratorPassword, StringComparison.Ordinal));
         }
 
-        var client = await FindUserAsync(connection, transaction, clientNormalized);
-        var clientCreated = client is null;
-        if (client is not null && client.IsPlatformAdministrator)
-        {
-            throw new InvalidOperationException("A identidade reservada ao cliente possui privilégio de plataforma; provisionamento recusado.");
-        }
-
-        if (client is not null)
-        {
-            var belongsToDemo = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
-                """SELECT EXISTS (SELECT 1 FROM odca.memberships m JOIN odca.tenants t ON t.id=m.tenant_id WHERE m.user_id=@id AND t.business_code=@code);""",
-                new { client.Id, code = DemoTenantCode }, transaction));
-            if (!belongsToDemo)
-            {
-                throw new InvalidOperationException(
-                    $"A identidade {ClientEmail} já existe sem vínculo com a demonstração; finalidade não confirmada e conta preservada.");
-            }
-        }
-
-        if (client is null)
-        {
-            clientPassword = passwordFactory();
-            client = await InsertUserAsync(
-                connection, transaction, ClientEmail, "Cliente de demonstração", clientPassword, false);
-        }
-        else if (rotatePasswords)
-        {
-            clientPassword = passwordFactory();
-            client = await RotatePasswordAsync(connection, transaction, client, clientPassword);
-        }
-
-        var tenantId = await connection.ExecuteScalarAsync<Guid>(new CommandDefinition(
-            """
-            INSERT INTO odca.tenants (business_code, display_name, status)
-            VALUES (@code, @name, 'active')
-            ON CONFLICT (business_code) DO UPDATE SET updated_at = now()
-              WHERE odca.tenants.display_name = EXCLUDED.display_name
-                AND NOT odca.tenants.is_deleted
-            RETURNING id;
-            """, new { code = DemoTenantCode, name = DemoTenantName }, transaction));
-        if (tenantId == Guid.Empty)
-        {
-            throw new InvalidOperationException("O código reservado à demonstração pertence a outra organização ou a uma organização excluída.");
-        }
+        var administratorId = administrator?.Id ?? Guid.NewGuid();
+        var clientId = client?.Id ?? Guid.NewGuid();
+        var tenantId = tenant?.Id ?? Guid.NewGuid();
+        var administratorHash = administratorCreated || rotateAdministrator
+            ? Hash(administratorId, AdministratorEmail, "Administrador da plataforma", administratorPassword, true)
+            : administrator!.PasswordHash;
+        var clientHash = clientCreated || rotateClient
+            ? Hash(clientId, ClientEmail, "Cliente de demonstração", clientPassword!, false)
+            : client!.PasswordHash;
 
         var planVersionId = await connection.ExecuteScalarAsync<Guid?>(new CommandDefinition(
             """
@@ -101,132 +72,168 @@ internal sealed class TestAccessProvisioner(IPasswordService passwordService)
             throw new InvalidOperationException("Não existe versão Basic publicada e vigente; nenhuma concessão foi criada.");
         }
 
-        await connection.ExecuteAsync(new CommandDefinition(
-            """
-            INSERT INTO odca.memberships (tenant_id, user_id, status)
-            VALUES (@tenantId, @userId, 'active')
-            ON CONFLICT (tenant_id, user_id) DO UPDATE SET status='active', updated_at=now();
+        await connection.ExecuteAsync(new CommandDefinition(seedSql, new
+        {
+            AdministratorId = administratorId,
+            AdministratorEmail,
+            AdministratorNormalized = Normalize(AdministratorEmail),
+            AdministratorName = "Administrador da plataforma",
+            AdministratorHash = administratorHash,
+            RotateAdministrator = rotateAdministrator,
+            ClientId = clientId,
+            ClientEmail,
+            ClientNormalized = Normalize(ClientEmail),
+            ClientName = "Cliente de demonstração",
+            ClientHash = clientHash,
+            RotateClient = rotateClient,
+            TenantId = tenantId,
+            TenantCode = DemoTenantCode,
+            TenantName = DemoTenantName,
+            PlanVersionId = planVersionId.Value,
+            GrantReason = DemoGrantReason
+        }, transaction));
 
-            INSERT INTO odca.roles (scope_type, tenant_id, code, display_name, is_system)
-            VALUES ('tenant', @tenantId, 'tenant-administrator', 'Administrador da organização', true)
-            ON CONFLICT DO NOTHING;
-
-            INSERT INTO odca.member_roles (tenant_id, user_id, role_id, assigned_by)
-            SELECT @tenantId, @userId, r.id, @userId
-              FROM odca.roles r
-             WHERE r.tenant_id=@tenantId AND r.code='tenant-administrator'
-            ON CONFLICT DO NOTHING;
-
-            INSERT INTO odca.subscriptions
-                (tenant_id, plan_version_id, commercial_state, status, manual_grant_reason, created_by)
-            VALUES (@tenantId, @planVersionId, 'active', 'active', @reason, @userId)
-            ON CONFLICT (tenant_id) DO UPDATE
-                SET plan_version_id=EXCLUDED.plan_version_id,
-                    commercial_state='active', status='active',
-                    manual_grant_reason=EXCLUDED.manual_grant_reason, updated_at=now();
-
-            INSERT INTO odca.audit_events
-                (scope_type, tenant_id, actor_user_id, action, entity_type, entity_id, result, metadata)
-            VALUES ('tenant', @tenantId, @userId, 'development.test_access.provisioned',
-                    'tenant', @tenantId, 'success', jsonb_build_object('grant', @reason));
-            """, new { tenantId, userId = client.Id, planVersionId, reason = DemoGrantReason }, transaction));
+        administrator = await FindUserAsync(connection, transaction, Normalize(AdministratorEmail))
+            ?? throw new InvalidOperationException("A identidade superadministradora não foi persistida.");
+        client = await FindUserAsync(connection, transaction, Normalize(ClientEmail))
+            ?? throw new InvalidOperationException("A identidade cliente não foi persistida.");
+        var verification = await VerifyAsync(connection, transaction, administratorId, clientId, tenantId);
+        var administratorMatches = passwordService.Verify(ToCredential(administrator), administrator.PasswordHash, administratorPassword);
+        var clientMatches = clientPassword is not null &&
+            passwordService.Verify(ToCredential(client), client.PasswordHash, clientPassword);
+        if (!AllVerified(verification) ||
+            (administratorCreated || rotateAdministrator) && (!administratorMatches || !administrator.MustChangePassword) ||
+            (clientCreated || rotateClient) && (!clientMatches || !client.MustChangePassword))
+        {
+            throw new InvalidOperationException("As pós-condições do provisionamento não foram confirmadas; transação revertida.");
+        }
 
         await transaction.CommitAsync();
-
-        var verification = await VerifyAsync(connection, administrator.Id, client.Id, tenantId);
-        return new(
-            administratorPassword,
-            clientPassword,
-            administratorCreated,
-            clientCreated,
-            VerifyPassword(administrator, administratorPassword),
-            clientPassword is not null && VerifyPassword(client, clientPassword),
-            verification);
+        return new(administratorPassword, clientPassword, administratorCreated, clientCreated,
+            administratorMatches, clientMatches, verification);
     }
 
-    private async Task<ProvisionedUser> InsertUserAsync(
-        NpgsqlConnection connection, NpgsqlTransaction transaction, string email, string name, string password, bool platform)
+    private static async Task EnsureSchemaAsync(NpgsqlConnection connection, NpgsqlTransaction transaction)
     {
-        var id = Guid.NewGuid();
-        var template = Credential(id, email, name, string.Empty, 1, platform, true, null, false);
-        var hash = passwordService.Hash(template, password);
-        return await connection.QuerySingleAsync<ProvisionedUser>(new CommandDefinition(
-            """
-            INSERT INTO odca.users
-                (id, email, email_normalized, login_normalized, display_name, password_hash,
-                 must_change_password, is_platform_administrator, email_verified_at)
-            VALUES (@id, @email, @normalized, @normalized, @name, @hash, true, @platform, now())
-            RETURNING id AS Id, email AS Email, display_name AS DisplayName, password_hash AS PasswordHash,
-                      security_version AS SecurityVersion, is_platform_administrator AS IsPlatformAdministrator,
-                      must_change_password AS MustChangePassword, locked_until AS LockedUntil,
-                      is_deleted AS IsDeleted, mfa_confirmed_at AS MfaConfirmedAt;
-            """, new { id, email, normalized = Normalize(email), name, hash, platform }, transaction));
+        var version = await connection.ExecuteScalarAsync<int?>(new CommandDefinition(
+            "SELECT max(version) FROM odca.schema_migrations;", transaction: transaction));
+        if (version != Odca.Infrastructure.Database.DatabaseSchema.CurrentVersion)
+        {
+            throw new InvalidOperationException(
+                $"Schema ausente ou desatualizado (encontrado {version?.ToString() ?? "nenhum"}, esperado {Odca.Infrastructure.Database.DatabaseSchema.CurrentVersion}). Execute 'dotnet run --project src/Odca.Bootstrap -- migrate'.");
+        }
     }
 
-    private async Task<ProvisionedUser> RotatePasswordAsync(
-        NpgsqlConnection connection, NpgsqlTransaction transaction, ProvisionedUser user, string password)
+    private static async Task ValidateExistingAsync(NpgsqlConnection connection, NpgsqlTransaction transaction,
+        ProvisionedUser? administrator, ProvisionedUser? client, ProvisionedTenant? tenant)
     {
-        var hash = passwordService.Hash(
-            Credential(user.Id, user.Email, user.DisplayName, user.PasswordHash, user.SecurityVersion, user.IsPlatformAdministrator,
-                true, ToUtc(user.LockedUntil), user.IsDeleted), password);
-        return await connection.QuerySingleAsync<ProvisionedUser>(new CommandDefinition(
-            """
-            UPDATE odca.users SET password_hash=@hash, must_change_password=true,
-                security_version=security_version+1, failed_login_count=0, locked_until=NULL, updated_at=now()
-             WHERE id=@id
-            RETURNING id AS Id, email AS Email, display_name AS DisplayName, password_hash AS PasswordHash,
-                      security_version AS SecurityVersion, is_platform_administrator AS IsPlatformAdministrator,
-                      must_change_password AS MustChangePassword, locked_until AS LockedUntil,
-                      is_deleted AS IsDeleted, mfa_confirmed_at AS MfaConfirmedAt;
+        if (administrator is not null && (!administrator.IsPlatformAdministrator || administrator.IsDeleted ||
+            administrator.LockedUntil is not null))
+        {
+            throw new InvalidOperationException(
+                $"A identidade {AdministratorEmail} existe, mas não é um superadministrador ativo e desbloqueado; nenhuma alteração foi feita.");
+        }
+        if (client is not null && (client.IsPlatformAdministrator || client.IsDeleted || client.LockedUntil is not null))
+        {
+            throw new InvalidOperationException(
+                $"A identidade {ClientEmail} existe com estado ou privilégio incompatível; nenhuma alteração foi feita.");
+        }
+        if (tenant is not null && (tenant.DisplayName != DemoTenantName || tenant.IsDeleted || tenant.Status != "active"))
+        {
+            throw new InvalidOperationException("O código reservado pertence a uma organização incompatível, excluída ou suspensa.");
+        }
+        if (tenant is not null)
+        {
+            var role = await connection.QuerySingleOrDefaultAsync<ExistingRole>(new CommandDefinition(
+                "SELECT display_name AS DisplayName,is_system AS IsSystem FROM odca.roles WHERE tenant_id=@tenantId AND code='tenant-administrator' FOR UPDATE;",
+                new { tenantId = tenant.Id }, transaction));
+            if (role is not null && (role.DisplayName != "Administrador da organização" || !role.IsSystem))
+                throw new InvalidOperationException("O perfil tenant-administrator existente é incompatível; nenhuma alteração foi feita.");
+        }
+        if (client is null) return;
 
-            UPDATE odca.sessions SET revoked_at=COALESCE(revoked_at, now()) WHERE user_id=@id;
-            """, new { user.Id, hash }, transaction));
+        var memberships = (await connection.QueryAsync<ExistingMembership>(new CommandDefinition(
+            """
+            SELECT m.tenant_id AS TenantId, t.business_code AS BusinessCode, m.status AS Status
+              FROM odca.memberships m JOIN odca.tenants t ON t.id=m.tenant_id
+             WHERE m.user_id=@id FOR UPDATE OF m;
+            """, new { client.Id }, transaction))).ToArray();
+        if (memberships.Length != 1 || memberships[0].BusinessCode != DemoTenantCode || memberships[0].Status != "active")
+        {
+            throw new InvalidOperationException(
+                $"A identidade {ClientEmail} não possui exatamente um vínculo ativo com a organização de demonstração; conta preservada.");
+        }
+        if (tenant is null || memberships[0].TenantId != tenant.Id)
+        {
+            throw new InvalidOperationException("O vínculo existente do cliente não corresponde à organização reservada.");
+        }
+
+        var hasExpectedRole = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
+            """
+            SELECT EXISTS(SELECT 1 FROM odca.member_roles mr JOIN odca.roles r ON r.id=mr.role_id
+              WHERE mr.tenant_id=@tenantId AND mr.user_id=@userId AND r.tenant_id=@tenantId
+                AND r.code='tenant-administrator');
+            """, new { tenantId = tenant.Id, userId = client.Id }, transaction));
+        if (!hasExpectedRole) throw new InvalidOperationException("O cliente existente não possui o perfil esperado; conta preservada.");
+
+        var subscription = await connection.QuerySingleOrDefaultAsync<ExistingSubscription>(new CommandDefinition(
+            """
+            SELECT p.code AS PlanCode, s.status AS Status, s.commercial_state AS CommercialState,
+                   s.manual_grant_reason AS ManualGrantReason
+              FROM odca.subscriptions s JOIN odca.plan_versions p ON p.id=s.plan_version_id
+             WHERE s.tenant_id=@tenantId FOR UPDATE OF s;
+            """, new { tenantId = tenant.Id }, transaction));
+        if (subscription is not null && (subscription.PlanCode != "basic" || subscription.Status != "active" ||
+            subscription.CommercialState != "active" || subscription.ManualGrantReason != DemoGrantReason))
+        {
+            throw new InvalidOperationException("A organização possui assinatura comercial ou concessão incompatível; assinatura preservada.");
+        }
     }
 
-    private static Task<ProvisionedUser?> FindUserAsync(
-        NpgsqlConnection connection, NpgsqlTransaction transaction, string normalized) =>
+    private string Hash(Guid id, string email, string name, string password, bool platform) =>
+        passwordService.Hash(new UserCredential(id, email, name, string.Empty, 1, true, platform, null, false, null), password);
+
+    private static Task<ProvisionedUser?> FindUserAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, string normalized) =>
         connection.QuerySingleOrDefaultAsync<ProvisionedUser>(new CommandDefinition(
-            """
-            SELECT id AS Id, email AS Email, display_name AS DisplayName, password_hash AS PasswordHash,
-                   security_version AS SecurityVersion, is_platform_administrator AS IsPlatformAdministrator,
-                   must_change_password AS MustChangePassword, locked_until AS LockedUntil,
-                   is_deleted AS IsDeleted, mfa_confirmed_at AS MfaConfirmedAt
-              FROM odca.users WHERE email_normalized=@normalized FOR UPDATE;
-            """, new { normalized }, transaction));
+            """SELECT id AS Id,email AS Email,display_name AS DisplayName,password_hash AS PasswordHash,security_version AS SecurityVersion,is_platform_administrator AS IsPlatformAdministrator,must_change_password AS MustChangePassword,locked_until AS LockedUntil,is_deleted AS IsDeleted,mfa_confirmed_at AS MfaConfirmedAt FROM odca.users WHERE email_normalized=@normalized FOR UPDATE;""",
+            new { normalized }, transaction));
 
-    private static async Task<TestAccessVerification> VerifyAsync(
-        NpgsqlConnection connection, Guid administratorId, Guid clientId, Guid tenantId) =>
-        await connection.QuerySingleAsync<TestAccessVerification>(
+    private static Task<ProvisionedTenant?> FindTenantAsync(NpgsqlConnection connection, NpgsqlTransaction transaction) =>
+        connection.QuerySingleOrDefaultAsync<ProvisionedTenant>(new CommandDefinition(
+            "SELECT id AS Id,display_name AS DisplayName,status AS Status,is_deleted AS IsDeleted FROM odca.tenants WHERE business_code=@code FOR UPDATE;",
+            new { code = DemoTenantCode }, transaction));
+
+    private static Task<TestAccessVerification> VerifyAsync(NpgsqlConnection connection, NpgsqlTransaction transaction,
+        Guid administratorId, Guid clientId, Guid tenantId) => connection.QuerySingleAsync<TestAccessVerification>(new CommandDefinition(
             """
             SELECT EXISTS(SELECT 1 FROM odca.users WHERE id=@administratorId AND is_platform_administrator AND NOT is_deleted) AS AdministratorPersisted,
                    EXISTS(SELECT 1 FROM odca.users WHERE id=@clientId AND NOT is_platform_administrator AND NOT is_deleted AND locked_until IS NULL) AS ClientPersisted,
-                   EXISTS(SELECT 1 FROM odca.memberships WHERE tenant_id=@tenantId AND user_id=@clientId AND status='active') AS MembershipActive,
+                   ((SELECT count(*)=1 FROM odca.memberships WHERE user_id=@clientId) AND
+                    EXISTS(SELECT 1 FROM odca.memberships WHERE user_id=@clientId AND tenant_id=@tenantId AND status='active')) AS MembershipActive,
                    EXISTS(SELECT 1 FROM odca.member_roles mr JOIN odca.roles r ON r.id=mr.role_id AND r.tenant_id=mr.tenant_id WHERE mr.tenant_id=@tenantId AND mr.user_id=@clientId AND r.code='tenant-administrator') AS TenantAdministrator,
-                   EXISTS(SELECT 1 FROM odca.subscriptions s JOIN odca.plan_versions p ON p.id=s.plan_version_id WHERE s.tenant_id=@tenantId AND s.status='active' AND p.code='basic') AS BasicPlanActive;
-            """, new { administratorId, clientId, tenantId });
+                   EXISTS(SELECT 1 FROM odca.subscriptions s JOIN odca.plan_versions p ON p.id=s.plan_version_id WHERE s.tenant_id=@tenantId AND s.status='active' AND s.commercial_state='active' AND s.manual_grant_reason=@reason AND p.code='basic') AS BasicPlanActive;
+            """, new { administratorId, clientId, tenantId, reason = DemoGrantReason }, transaction));
 
-    private bool VerifyPassword(ProvisionedUser user, string password) => passwordService.Verify(
-        Credential(user.Id, user.Email, user.DisplayName, user.PasswordHash, user.SecurityVersion,
-            user.IsPlatformAdministrator, user.MustChangePassword, ToUtc(user.LockedUntil), user.IsDeleted), user.PasswordHash, password);
-
-    private static UserCredential Credential(Guid id, string email, string name, string hash, int version,
-        bool platform, bool mustChange, DateTimeOffset? lockedUntil, bool deleted) =>
-        new(id, email, name, hash, version, mustChange, platform, null, deleted, lockedUntil);
-
-    private static DateTimeOffset? ToUtc(DateTime? value) => value is null
-        ? null
-        : new DateTimeOffset(DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
-
+    private static bool AllVerified(TestAccessVerification value) => value.AdministratorPersisted && value.ClientPersisted &&
+        value.MembershipActive && value.TenantAdministrator && value.BasicPlanActive;
+    private static UserCredential ToCredential(ProvisionedUser user) => new(user.Id, user.Email, user.DisplayName,
+        user.PasswordHash, user.SecurityVersion, user.MustChangePassword, user.IsPlatformAdministrator,
+        user.MfaConfirmedAt is null ? null : new DateTimeOffset(DateTime.SpecifyKind(user.MfaConfirmedAt.Value, DateTimeKind.Utc)),
+        user.IsDeleted, user.LockedUntil is null ? null : new DateTimeOffset(DateTime.SpecifyKind(user.LockedUntil.Value, DateTimeKind.Utc)));
     private static string Normalize(string email) => email.Trim().ToUpperInvariant();
 
     private sealed record ProvisionedUser(Guid Id, string Email, string DisplayName, string PasswordHash,
-        int SecurityVersion, bool IsPlatformAdministrator, bool MustChangePassword,
-        DateTime? LockedUntil, bool IsDeleted, DateTime? MfaConfirmedAt);
+        int SecurityVersion, bool IsPlatformAdministrator, bool MustChangePassword, DateTime? LockedUntil,
+        bool IsDeleted, DateTime? MfaConfirmedAt);
+    private sealed record ProvisionedTenant(Guid Id, string DisplayName, string Status, bool IsDeleted);
+    private sealed record ExistingMembership(Guid TenantId, string BusinessCode, string Status);
+    private sealed record ExistingSubscription(string PlanCode, string Status, string CommercialState, string? ManualGrantReason);
+    private sealed record ExistingRole(string DisplayName, bool IsSystem);
 }
 
-internal sealed record TestAccessVerification(bool AdministratorPersisted, bool ClientPersisted,
+public sealed record TestAccessVerification(bool AdministratorPersisted, bool ClientPersisted,
     bool MembershipActive, bool TenantAdministrator, bool BasicPlanActive);
 
-internal sealed record TestAccessResult(string AdministratorPassword, string? ClientPassword,
+public sealed record TestAccessResult(string AdministratorPassword, string? ClientPassword,
     bool AdministratorCreated, bool ClientCreated, bool AdministratorPasswordMatches,
     bool ClientPasswordMatches, TestAccessVerification Verification);
