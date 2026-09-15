@@ -4,6 +4,10 @@ API, Web, Worker e Bootstrap usam `src/Odca.Api/development-runtime.json`. `ODCA
 
 Execute `.\scripts\setup-local.ps1` na raiz. O script é independente do build e do SDK e só pede a senha sem eco quando precisa criar uma configuração. Ele grava a conexão escolhida sem trocar `Database=postgres`, schema `odca`, usuário ou parâmetros. Reexecuções apenas validam o JSON existente e informam campos ausentes, preservando todas as propriedades e chaves. Se houver configuração antiga em LocalApplicationData, o script oferece importação explícita (ou aceite com `-ImportLegacy`) sem alterar o original. O setup não abre conexão nem executa migrations.
 
+Os perfis locais do Visual Studio definem `ODCA_SETUP_ON_START=true`. No primeiro F5 interativo no Windows, o primeiro host que detectar a ausência abre uma janela normal do Windows PowerShell, no diretório raiz, e espera no máximo dez minutos pelo script. API, Web e Worker usam um lock entre processos: somente um abre o assistente e os demais reutilizam o arquivo validado. Cancelar, fechar a janela, exceder o prazo ou receber código de saída diferente de zero encerra a inicialização com o caminho e o comando manual no diagnóstico; o processo e o lock são liberados. Nas execuções seguintes o assistente não é aberto.
+
+Para desabilitar o assistente, remova `ODCA_SETUP_ON_START` do perfil ou defina-o como `false` e execute o script manualmente. A automação exige simultaneamente Development, opt-in igual a `true`, Windows e sessão interativa; não roda em Production, Testing, CI ou publicação. `ODCA_RUNTIME_CONFIG` continua sendo substituição explícita: um valor relativo parte do diretório de trabalho do processo e, se o destino estiver ausente ou inválido, esse erro é exibido sem procurar silenciosamente o caminho padrão.
+
 `development-runtime.example.json` é apenas uma referência sem segredos; não o copie como configuração funcional. O arquivo real e seus backups são ignorados pelo Git e não são publicados. As credenciais iniciais continuam no diretório pessoal usado pelo Bootstrap. Não gere novamente uma chave JWT válida para mudar o arquivo de lugar.
 
 # ODCA Solutions
@@ -31,6 +35,8 @@ Set-Location C:\MNSOFT\odcasolutions
 ```
 
 Ele cria `src/Odca.Api/development-runtime.json` de forma atômica, gera uma única chave JWT aleatória e executa o diagnóstico estrutural sem build. Se o arquivo já existe, não o modifica nem regenera segredos. “JSON válido”, “conexão não testada”, “conexão aprovada” e “schema compatível” são estados distintos. Para diagnóstico posterior, use `dotnet run --project src/Odca.Bootstrap -- diagnose` (sem acessar o banco) ou acrescente `--connection`; ambos retornam código diferente de zero para configuração inválida ou falha de conexão.
+
+Se a configuração estiver inválida, preserve-a e corrija os campos apontados ou use `dotnet run --project src/Odca.Bootstrap -- repair`; a reparação cria backup, mantém propriedades desconhecidas e não substitui uma chave JWT inválida sem `--replace-invalid-signing-key`. Criar ou reparar o JSON não prepara o PostgreSQL: migrations e provisionamento permanecem comandos posteriores, explícitos e separados.
 
 Somente depois da conexão aprovada, execute separadamente os comandos abaixo, que **alteram o banco**:
 

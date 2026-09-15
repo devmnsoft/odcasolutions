@@ -98,7 +98,8 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
         var path = Path.Combine(directory, "runtime.json");
         Environment.SetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable, path);
         var previousPassword = Environment.GetEnvironmentVariable("ODCA_LOCAL_POSTGRES_PASSWORD");
-        Environment.SetEnvironmentVariable("ODCA_LOCAL_POSTGRES_PASSWORD", "local-test-secret");
+        const string password = "p;a ss='\"$&?";
+        Environment.SetEnvironmentVariable("ODCA_LOCAL_POSTGRES_PASSWORD", password);
         try
         {
             Assert.Equal(0, await BootstrapProgram.RunAsync(["init", "--postgres-development"]));
@@ -106,6 +107,7 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
             var database = new Npgsql.NpgsqlConnectionStringBuilder(root["ConnectionStrings"]!["Database"]!.GetValue<string>());
             Assert.Equal("postgres", database.Database);
             Assert.Equal("postgres", database.Username);
+            Assert.Equal(password, database.Password);
             Assert.Equal(5432, database.Port);
             Assert.Equal("odca", database.SearchPath);
             Assert.Equal(50, database.MaxPoolSize);
@@ -149,6 +151,60 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
         {
             Environment.SetEnvironmentVariable("ODCA_LOCAL_POSTGRES_PASSWORD", previousPassword);
         }
+    }
+
+    [Fact]
+    public async Task HostSetupCoordinationPromptsOnlyOnceAndAllCallersObserveTheFile()
+    {
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, "folder with spaces", "runtime.json");
+        var invocations = 0;
+        var entrants = Enumerable.Range(0, 3).Select(_ => Task.Run(() =>
+            DevelopmentRuntimeSetup.CoordinateCreation(path, TimeSpan.FromSeconds(10), target =>
+            {
+                Interlocked.Increment(ref invocations);
+                Thread.Sleep(150);
+                Directory.CreateDirectory(Path.GetDirectoryName(target)
+                    ?? throw new InvalidOperationException("Caminho de teste sem diretório."));
+                File.WriteAllText(target, "{}");
+                return 0;
+            })));
+
+        await Task.WhenAll(entrants);
+
+        Assert.Equal(1, invocations);
+        Assert.True(File.Exists(path));
+    }
+
+    [Fact]
+    public void FailedSetupReleasesCoordinationAndReportsExitCode()
+    {
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, "runtime.json");
+        var failure = Assert.Throws<InvalidOperationException>(() =>
+            DevelopmentRuntimeSetup.CoordinateCreation(path, TimeSpan.FromSeconds(2), _ => 1223));
+        Assert.Contains("1223", failure.Message, StringComparison.Ordinal);
+
+        DevelopmentRuntimeSetup.CoordinateCreation(path, TimeSpan.FromSeconds(2), target =>
+        {
+            File.WriteAllText(target, "{}");
+            return 0;
+        });
+
+        Assert.True(File.Exists(path));
+    }
+
+    [Fact]
+    public void ExistingConfigurationDoesNotInvokeSetup()
+    {
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, "runtime.json");
+        File.WriteAllText(path, "{}");
+
+        DevelopmentRuntimeSetup.CoordinateCreation(path, TimeSpan.FromSeconds(2), _ =>
+            throw new Xunit.Sdk.XunitException("Setup não deveria ser executado."));
+
+        Assert.Equal("{}", File.ReadAllText(path));
     }
 
     [Fact]
