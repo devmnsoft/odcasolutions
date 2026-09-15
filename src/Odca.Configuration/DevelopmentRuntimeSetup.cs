@@ -126,11 +126,32 @@ public static class DevelopmentRuntimeSetup
             ?? throw new InvalidOperationException("O Windows não conseguiu iniciar powershell.exe para a configuração local.");
         if (process.WaitForExit((int)SetupTimeout.TotalMilliseconds)) return process.ExitCode;
 
-        try { process.Kill(entireProcessTree: true); }
-        catch (InvalidOperationException) { }
+        TerminateTimedOutProcess(process);
         throw new TimeoutException(
             $"O assistente não terminou em {SetupTimeout.TotalMinutes:0} minutos e foi encerrado. " +
             "Execute scripts/setup-local.ps1 manualmente para tentar novamente.");
+    }
+
+    internal static void TerminateTimedOutProcess(Process process)
+    {
+        ArgumentNullException.ThrowIfNull(process);
+        try
+        {
+            process.Kill(entireProcessTree: true);
+        }
+        catch (InvalidOperationException) when (process.HasExited)
+        {
+            return;
+        }
+
+        // Kill is asynchronous. Reap the process before releasing the cross-host lock so a timed-out
+        // PowerShell cannot remain alive, prompt later, and race a subsequent deliberate restart.
+        if (!process.WaitForExit(TimeSpan.FromSeconds(30)))
+        {
+            throw new TimeoutException(
+                $"O processo do assistente (PID {process.Id}) não encerrou após o cancelamento forçado. " +
+                "Encerre powershell.exe manualmente antes de tentar novamente.");
+        }
     }
 
     internal static ProcessStartInfo CreatePowerShellStartInfo(
