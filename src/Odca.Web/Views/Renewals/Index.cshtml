@@ -1,0 +1,26 @@
+@model Odca.Web.Models.RenewalWorkspaceViewModel
+@{ViewData["Title"]="Renovações e aditivos";var tenantId=ViewData["TenantId"];var q=Context.Request.Query;}
+<header class="renewal-heading"><div><p class="eyebrow">Central contratual · próximos três meses</p><h1>Renovações e aditivos</h1><p class="muted">Decida, formalize e aplique alterações sem confundir aviso, vencimento e início de vigência.</p></div><a class="button button-quiet" href="#como-usar">Como usar</a></header>
+
+<section class="renewal-cards" aria-label="Resumo do período">
+ <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-status="expiring"><strong>@Model.Results.Summary.Expiring</strong><span>Vencem em 3 meses</span></a>
+ <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-status="expired"><strong>@Model.Results.Summary.Expired</strong><span>Vencidos</span></a>
+ <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-status="draft"><strong>@Model.Results.Summary.Preparing</strong><span>Em preparação</span></a>
+ <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-status="in_review"><strong>@Model.Results.Summary.InReview</strong><span>Em revisão</span></a>
+ <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-status="formalized"><strong>@Model.Results.Summary.Scheduled</strong><span>Formalizadas</span></a>
+ <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-status="cancelled"><strong>@Model.Results.Summary.NotRenewing</strong><span>Não renovar</span></a>
+</section>
+
+<details class="filter-panel" open><summary>Filtros</summary><div asp-validation-summary="All" class="validation-summary" role="alert"></div><form method="get" class="renewal-filters">
+ <label>Período inicial<input type="date" name="from" value="@q["from"]"/></label><label>Período final<input type="date" name="to" value="@q["to"]"/></label>
+ <label>Tipo de contrato<input name="contractType" value="@q["contractType"]" placeholder="Ex.: Fornecimento"/></label><label>Contraparte<input name="counterparty" value="@q["counterparty"]"/></label>
+ <label>Situação<select name="status"><option value="">Todas</option><option value="expiring">Próximo do vencimento</option><option value="expired">Vencido</option><option value="draft">Em preparação</option><option value="in_review">Em revisão</option><option value="formalized">Formalizado</option><option value="cancelled">Não renovar</option></select></label>
+ <label class="check-line"><input type="checkbox" name="mine" value="true" checked="@(q["mine"]=="true")"/> Minhas pendências</label><label class="check-line"><input type="checkbox" name="withoutOwner" value="true" checked="@(q["withoutOwner"]=="true")"/> Sem responsável</label><button class="button button-primary">Aplicar</button>
+</form></details>
+
+<section class="renewal-list" aria-live="polite"><div class="list-header"><h2>Contratos e processos</h2><span>@Model.Results.Total resultado(s)</span></div>
+@if(Model.Results.Items.Count==0){<div class="empty-state"><strong>Nenhum registro encontrado</strong><p>Ajuste os filtros ou confirme se os contratos possuem data de término.</p></div>}
+else foreach(var item in Model.Results.Items){var urgent=item.DaysRemaining is <=30;<article class="renewal-row @(urgent?"urgent":null)"><div><span class="status-label">@(urgent?"Atenção · ":"")@item.Status.Replace('_',' ')</span><h3>@item.Name</h3><p>@(item.Counterparty??"Contraparte não informada") · @(item.OwnerName??"Sem responsável")</p></div><dl><div><dt>Término</dt><dd>@(item.EndDate?.ToString("dd/MM/yyyy")??"Sem término")</dd></div><div><dt>Decidir/comunicar até</dt><dd>@(item.DecisionDueOn?.ToString("dd/MM/yyyy")??"Não definido")</dd></div><div><dt>Prazo</dt><dd>@(item.DaysRemaining.HasValue?$"{item.DaysRemaining} dias":"Não aplicável")</dd></div></dl><div class="next-action"><span>Próxima ação</span><strong>@item.NextAction</strong>@if(item.RequestId.HasValue){<a class="button button-quiet" href="#">Abrir processo</a>}else{<span class="muted">Abra o contrato para preparar renovação/aditivo.</span>}</div></article>}
+</section>
+<nav class="pagination" aria-label="Paginação">@if(Model.Results.Page>1){<a asp-all-route-data="@(q.ToDictionary(x=>x.Key,x=>x.Value.ToString()))" asp-route-page="@(Model.Results.Page-1)">Anterior</a>}<span>Página @Model.Results.Page</span>@if(Model.Results.Page*Model.Results.PageSize<Model.Results.Total){<a asp-all-route-data="@(q.ToDictionary(x=>x.Key,x=>x.Value.ToString()))" asp-route-page="@(Model.Results.Page+1)">Próxima</a>}</nav>
+<aside id="como-usar" class="help-card"><h2>Como usar</h2><ol><li>Confira separadamente a data de aviso e o término.</li><li>Prepare a proposta; o contrato vigente não muda.</li><li>Encaminhe a versão imutável à revisão existente.</li><li>Depois da aprovação, anexe evidência segura da formalização manual.</li><li>Aplique agora ou aguarde a operação agendada.</li></ol><p><strong>Importante:</strong> registro manual não é assinatura digital validada pelo ODCA.</p></aside>
