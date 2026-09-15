@@ -42,7 +42,7 @@ public static class DevelopmentRuntimeSetup
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(runtimePath);
         ArgumentNullException.ThrowIfNull(setup);
-        if (timeout <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(timeout));
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(timeout, TimeSpan.Zero);
 
         var fullPath = Path.GetFullPath(runtimePath);
         var lockPath = GetLockPath(fullPath);
