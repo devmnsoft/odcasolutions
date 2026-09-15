@@ -248,6 +248,21 @@ public sealed class LocalRuntimeConfigurationTests : IDisposable
     }
 
     [Fact]
+    public void TimedOutAssistantIsTerminatedAndReaped()
+    {
+        using var process = Process.Start(new ProcessStartInfo
+        {
+            FileName = OperatingSystem.IsWindows() ? "cmd.exe" : "/bin/sh",
+            Arguments = OperatingSystem.IsWindows() ? "/c ping 127.0.0.1 -n 60 > nul" : "-c \"sleep 60\"",
+            UseShellExecute = false
+        }) ?? throw new InvalidOperationException("Não foi possível iniciar o processo de teste.");
+
+        DevelopmentRuntimeSetup.TerminateTimedOutProcess(process);
+
+        Assert.True(process.HasExited);
+    }
+
+    [Fact]
     public void ExistingConfigurationDoesNotInvokeSetup()
     {
         Directory.CreateDirectory(directory);
