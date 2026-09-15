@@ -1,11 +1,47 @@
 @model Odca.Contracts.Studio.DraftResponse
 @using System.Text.Json
-@{var tenantId=(Guid)ViewData["TenantId"]!;ViewData["OrganizationName"]="Organização selecionada";}
-<div class="studio" data-studio data-save-url="@Url.Action("Save",new{tenantId,draftId=Model.Id})" data-version="@Model.Version">
-<header class="studio-head"><div><p class="eyebrow">Minuta</p><h1>@Model.Title</h1></div><div class="studio-actions"><span class="save-state" data-save-state role="status">Salvo</span><button class="button button-link" type="button" data-save>Salvar</button><form method="post" asp-action="Generate" asp-route-tenantId="@tenantId" asp-route-draftId="@Model.Id"><button class="button button-primary" type="submit">Gerar versão</button></form></div></header>
-@if(TempData["StudioSuccess"] is string ok){<div class="success">@ok</div>}@if(TempData["StudioError"] is string err){<div class="error">@err</div>}
-<div class="studio-grid"><aside class="studio-side"><h2>Navegação</h2><button class="side-link active">Documento</button><button class="side-link">Campos pendentes <strong data-pending-count>0</strong></button><button class="side-link">Versões</button><p class="muted">Origem: modelo @Model.SourceTemplateId.ToString()[..8], versão imutável.</p></aside>
-<main class="studio-document"><div class="editor-toolbar" aria-label="Ferramentas"><button type="button" data-command="bold"><strong>N</strong></button><button type="button" data-command="italic"><em>I</em></button><button type="button" data-command="underline"><u>S</u></button><button type="button" data-add="paragraph">Parágrafo</button><button type="button" data-add="heading">Título</button><button type="button" data-add="pageBreak">Quebra de página</button><label>Zoom<select data-zoom><option>100</option><option>125</option><option>150</option></select></label></div><div class="paper" data-document aria-label="Documento estruturado"></div></main>
-<aside class="studio-side studio-context"><h2>Campos inteligentes</h2><p class="muted">Valores confirmados são preservados como retrato e não mudam com o cadastro.</p><div data-fields></div></aside></div>
-<script type="application/json" id="studio-content">@Html.Raw(Model.Content.GetRawText().Replace("</", "<\\/", StringComparison.Ordinal))</script><script type="application/json" id="studio-fields">@Html.Raw(Model.Fields.GetRawText().Replace("</", "<\\/", StringComparison.Ordinal))</script><script type="application/json" id="studio-values">@Html.Raw(Model.Values.GetRawText().Replace("</", "<\\/", StringComparison.Ordinal))</script></div>
-@section Scripts{<script src="~/js/studio.js" asp-append-version="true"></script>}
+@{
+    var tenantId = (Guid)ViewData["TenantId"]!;
+    ViewData["OrganizationName"] = "Organização selecionada";
+}
+<div class="studio" data-studio data-save-url="@Url.Action("Save",new{tenantId,draftId=Model.Id})"
+     data-draft-url="@Url.Action("Edit",new{tenantId,draftId=Model.Id})"
+     data-versions-url="@Url.Action("Versions",new{tenantId,draftId=Model.Id})"
+     data-compare-url="@Url.Action("Compare",new{tenantId})"
+     data-comments-url="@Url.Action("Comments",new{tenantId,draftId=Model.Id})"
+     data-generate-url="@Url.Action("GenerateJson",new{tenantId,draftId=Model.Id})" data-reviewers-url="@Url.Action("Reviewers",new{tenantId})" data-submit-url="@Url.Action("SubmitReview",new{tenantId})"
+     data-checklist-url="@Url.Action("Checklist",new{tenantId,draftId=Model.Id})" data-version="@Model.Version">
+    <header class="studio-head">
+        <div><p class="eyebrow">Estúdio de contratos · Minuta</p><h1>@Model.Title</h1><span class="status-chip">Em edição</span></div>
+        <div class="studio-actions">
+            <span><span class="save-state" data-save-state data-state="saved" role="status">Salvo</span><small data-saved-at> @Model.UpdatedAt.ToLocalTime().ToString("g")</small></span>
+            <button class="button button-link" type="button" data-save>Salvar</button>
+            <button class="button button-link" type="button" data-reading aria-pressed="false">Modo de leitura</button>
+            <button class="button button-link" type="button" data-open-compare>Comparar</button>
+            <button class="button button-primary" type="button" data-open-checklist>Encaminhar à revisão</button>
+        </div>
+    </header>
+    @if (TempData["StudioSuccess"] is string ok) { <div class="success">@ok</div> }
+    @if (TempData["StudioError"] is string err) { <div class="error">@err</div> }
+    <div class="conflict-banner" data-conflict hidden role="alert"><strong>Existe uma revisão mais recente no servidor.</strong> Seu conteúdo local foi preservado. <a href="@Url.Action("Edit",new{tenantId,draftId=Model.Id})" target="_blank" rel="noopener">Consultar versão do servidor</a> <button type="button" class="button button-link" data-retry>Repetir após recuperar</button></div>
+    <div class="studio-grid">
+        <aside class="studio-side"><h2>Seções</h2><nav data-sections aria-label="Seções do documento"></nav><button class="side-link" type="button" data-tab="history">Histórico de versões</button><details class="help"><summary>Como usar</summary><p>Edite o texto, confirme campos e acompanhe o salvamento. Compare retratos imutáveis antes de encaminhar.</p></details></aside>
+        <main class="studio-document">
+            <div class="editor-toolbar" aria-label="Ferramentas de edição"><button type="button" data-command="bold"><strong>N</strong></button><button type="button" data-command="italic"><em>I</em></button><button type="button" data-command="underline"><u>S</u></button><button type="button" data-add="paragraph">Parágrafo</button><button type="button" data-add="heading">Título</button><button type="button" data-add="pageBreak">Quebra de página</button><label>Zoom<select data-zoom><option>100</option><option>125</option><option>150</option></select></label></div>
+            <div class="paper" data-document aria-label="Documento estruturado"></div>
+        </main>
+        <aside class="studio-side studio-context">
+            <div class="context-tabs" role="tablist"><button type="button" role="tab" aria-selected="true" data-tab="fields">Campos</button><button type="button" role="tab" data-tab="comments">Comentários</button><button type="button" role="tab" data-tab="checklist">Checklist</button></div>
+            <section data-panel="fields"><h2>Campos inteligentes <span data-pending-count>0</span></h2><p class="muted">Valores confirmados ficam no retrato da versão.</p><div data-fields></div></section>
+            <section data-panel="comments" hidden><h2>Comentários contextuais</h2><label class="toggle"><input type="checkbox" data-resolved> Mostrar resolvidos</label><div data-comments></div><form data-comment-form><label>Referência<input name="reference" maxlength="200" placeholder="section:clausula-1" required></label><label>Comentário<textarea name="body" maxlength="4000" required></textarea></label><button class="button button-link" type="submit">Comentar</button></form></section>
+            <section data-panel="checklist" hidden><h2>Checklist pré-revisão</h2><p class="muted">Validação operacional; não constitui parecer jurídico.</p><div data-checklist></div></section>
+            <section data-panel="history" hidden><h2>Versões</h2><div data-history></div></section>
+        </aside>
+    </div>
+    <dialog data-compare-dialog class="studio-dialog"><form method="dialog"><button class="dialog-close" aria-label="Fechar">×</button></form><h2>Comparar versões</h2><div class="compare-controls"><label>Anterior<select data-before></select></label><label>Posterior<select data-after></select></label><button class="button button-link" type="button" data-run-compare>Comparar</button></div><div class="diff-filters" data-diff-filters></div><div data-comparison class="comparison"></div></dialog>
+    <form method="post" asp-action="Generate" asp-route-tenantId="@tenantId" asp-route-draftId="@Model.Id" data-generate-form hidden></form>
+    <script type="application/json" id="studio-content">@Html.Raw(Model.Content.GetRawText().Replace("</", "<\\/", StringComparison.Ordinal))</script>
+    <script type="application/json" id="studio-fields">@Html.Raw(Model.Fields.GetRawText().Replace("</", "<\\/", StringComparison.Ordinal))</script>
+    <script type="application/json" id="studio-values">@Html.Raw(Model.Values.GetRawText().Replace("</", "<\\/", StringComparison.Ordinal))</script>
+</div>
+@section Scripts { <script src="~/js/studio.js" asp-append-version="true"></script> }
