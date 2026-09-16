@@ -1,6 +1,14 @@
 const workspace = document.querySelector('[data-import-review]');
 const button = workspace?.querySelector('[data-save-review]');
 const message = workspace?.querySelector('[data-review-message]');
+let dirty = false;
+
+workspace?.addEventListener('change', () => { dirty = true; });
+window.addEventListener('beforeunload', event => { if (dirty) event.preventDefault(); });
+document.querySelectorAll('[data-review-tab]').forEach(tab => tab.addEventListener('click', () => {
+  const selected = tab.dataset.reviewTab;
+  document.querySelectorAll('[data-review-panel]').forEach(panel => panel.toggleAttribute('data-mobile-hidden', panel.dataset.reviewPanel !== selected));
+}));
 
 button?.addEventListener('click', async () => {
   const decisions = [...workspace.querySelectorAll('[data-suggestion-id]')].map(card => {
@@ -14,6 +22,7 @@ button?.addEventListener('click', async () => {
     const response = await fetch(workspace.dataset.saveUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrf }, body: JSON.stringify({ idempotencyKey: crypto.randomUUID(), contractVersion: Number(workspace.dataset.contractVersion), decisions }) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.detail || result.title || 'Não foi possível salvar.');
-    message.textContent = 'Revisão salva. Recarregue para conferir o estado persistido.';
+    dirty = false;
+    message.textContent = 'Revisão salva e persistida com sucesso.';
   } catch (error) { message.textContent = error.message; } finally { button.disabled = false; }
 });

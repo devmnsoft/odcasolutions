@@ -3,7 +3,7 @@ using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
-using Odca.Contracts.Imports;
+using Odca.Contracts.DocumentImports;
 
 namespace Odca.Api.Controllers;
 
@@ -123,11 +123,13 @@ public sealed class ContractImportsController(NpgsqlDataSource dataSource) : Con
             JOIN odca.contract_imports i ON i.extraction_job_id=r.job_id AND i.tenant_id=r.tenant_id
             WHERE i.tenant_id=@tenantId AND i.id=@importId AND s.review_status='pending'
             """, new { tenantId, importId }, tx, cancellationToken: ct));
-        if (pending > 0) return UnprocessableEntity(new ProblemDetails { Title = "Revise todas as sugestões antes de confirmar." });
-        var validContract = await c.ExecuteScalarAsync<bool>(new CommandDefinition(
-            "SELECT EXISTS(SELECT 1 FROM odca.contracts WHERE tenant_id=@tenantId AND id=@ContractId AND length(btrim(title))>=2)",
+        if (pending > 0) return UnprocessableEntity(new { title = "Revise todas as sugestões antes de confirmar.", issues = new[] { new ImportValidationIssue("unreviewed-suggestions", ImportIssueSeverity.Blocking, "Há sugestões ainda não revisadas.") } });
+        var contract = await c.QuerySingleOrDefaultAsync<ContractForValidation>(new CommandDefinition(
+            "SELECT title AS Title,start_date AS StartDate,end_date AS EndDate,value AS Value,currency AS Currency,renewal_notice_days AS RenewalNoticeDays FROM odca.contracts WHERE tenant_id=@tenantId AND id=@ContractId",
             new { tenantId, item.ContractId }, tx, cancellationToken: ct));
-        if (!validContract) return UnprocessableEntity(new ProblemDetails { Title = "Os dados obrigatórios do contrato estão pendentes." });
+        var issues = Validate(contract);
+        if (issues.Any(issue => issue.Severity == ImportIssueSeverity.Blocking))
+            return UnprocessableEntity(new { title = "Corrija as inconsistências bloqueantes antes de confirmar.", issues });
         await c.ExecuteAsync(new CommandDefinition("""
             UPDATE odca.contract_imports SET status='confirmed',current_step='confirmation',result_contract_id=@ContractId,
                    confirmed_by=@actor,confirmed_at=now(),updated_at=now(),review_version=review_version+1
@@ -156,11 +158,27 @@ public sealed class ContractImportsController(NpgsqlDataSource dataSource) : Con
         await tx.CommitAsync(ct); return changed == 0 ? Conflict(new { title = "A importação confirmada não pode ser cancelada." }) : NoContent();
     }
 
+
+    internal static IReadOnlyList<ImportValidationIssue> Validate(ContractForValidation? contract)
+    {
+        var issues = new List<ImportValidationIssue>();
+        if (contract is null || string.IsNullOrWhiteSpace(contract.Title))
+            issues.Add(new("required-contract-data", ImportIssueSeverity.Blocking, "A identificação do contrato é obrigatória.", "title"));
+        if (contract?.StartDate is not null && contract.EndDate is not null && contract.EndDate < contract.StartDate)
+            issues.Add(new("end-before-start", ImportIssueSeverity.Blocking, "O término não pode ser anterior ao início.", "end_date"));
+        if (contract?.Value is not null && string.IsNullOrWhiteSpace(contract.Currency))
+            issues.Add(new("missing-currency", ImportIssueSeverity.Blocking, "Informe a moeda do valor contratual.", "currency"));
+        if (contract?.RenewalNoticeDays is < 0)
+            issues.Add(new("invalid-notice-period", ImportIssueSeverity.Blocking, "O prazo de comunicação não pode ser negativo.", "renewal_notice_days"));
+        return issues;
+    }
+
     private Guid? Actor() => Guid.TryParse(User.FindFirstValue("sub"), out var id) ? id : null;
     private static Task<bool> Allowed(NpgsqlConnection c, Guid actor, Guid tenant, string permission, CancellationToken ct) => c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT odca.tenant_actor_has_permission(@actor,@tenant,@permission)", new { actor, tenant, permission }, cancellationToken: ct));
     private static Task<int> SetTenant(NpgsqlConnection c, Guid tenant, NpgsqlTransaction tx, CancellationToken ct) => c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@value,true)", new { value = tenant.ToString() }, tx, cancellationToken: ct));
     private static (string Status, string Step) State(string security, string? extraction) =>
         security switch { "pending" or "scanning" => ("security_review", "document"), "rejected" or "scan_failed" => ("failed", "document"), _ => extraction switch { null => ("received", "document"), "queued" => ("queued", "document"), "processing" => ("processing", "document"), "ready_for_review" => ("awaiting_review", "contract_data"), _ => ("failed", "document") } };
     private sealed record ImportSource(Guid VersionId, Guid ContractId, string Sha256, string SecurityStatus, Guid? JobId, string? JobStatus);
+    internal sealed record ContractForValidation(string Title, DateOnly? StartDate, DateOnly? EndDate, decimal? Value, string? Currency, int? RenewalNoticeDays);
     private sealed record ConfirmableImport(string Status, long ReviewVersion, Guid? ResultContractId, Guid ContractId, string SecurityStatus, string ExtractionStatus);
 }

@@ -13,7 +13,7 @@ using Odca.Contracts.SavedViews;
 using Odca.Contracts.Studio;
 using Odca.Contracts.Renewals;
 using Odca.Contracts.Consumption;
-using Odca.Contracts.Imports;
+using Odca.Contracts.DocumentImports;
 
 namespace Odca.Web.Services;
 
