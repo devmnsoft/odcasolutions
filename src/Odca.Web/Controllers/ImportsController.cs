@@ -11,13 +11,24 @@ namespace Odca.Web.Controllers;
 public sealed class ImportsController(OdcaApiClient api) : Controller
 {
     [HttpGet]
-    public async Task<IActionResult> Index(Guid tenantId, string? status = null, bool mine = false, bool awaitingReview = false, CancellationToken ct = default)
+    public async Task<IActionResult> Index(Guid tenantId, string? status = null, bool mine = false, bool awaitingReview = false,
+        DateOnly? from = null, DateOnly? to = null, CancellationToken ct = default)
     {
         var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
-        var result = await api.GetContractImportsAsync(token, tenantId, status, mine, awaitingReview, ct);
-        if (!result.Succeeded) return result.Status == ApiCallStatus.Forbidden ? Forbid() : View("~/Views/Shared/ServiceUnavailable.cshtml");
         ViewData["Title"] = "Central de importações"; ViewData["TenantId"] = tenantId; ViewData["Status"] = status;
-        ViewData["Mine"] = mine; ViewData["AwaitingReview"] = awaitingReview;
+        ViewData["Mine"] = mine; ViewData["AwaitingReview"] = awaitingReview; ViewData["From"] = from; ViewData["To"] = to;
+        if (from.HasValue && to.HasValue && from.Value > to.Value)
+        {
+            ViewData["DateError"] = "A data final deve ser igual ou posterior à data inicial.";
+            return View(new ContractImportPage([], 0));
+        }
+        var result = await api.GetContractImportsAsync(token, tenantId, status, mine, awaitingReview, from, to, ct);
+        if (!result.Succeeded)
+        {
+            if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+            ViewData["LoadError"] = result.UserMessage("Não foi possível carregar as importações.");
+            return View(new ContractImportPage([], 0));
+        }
         return View(result.Value!);
     }
 

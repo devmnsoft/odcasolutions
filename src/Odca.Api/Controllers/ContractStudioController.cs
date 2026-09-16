@@ -15,7 +15,7 @@ namespace Odca.Api.Controllers;
 [ApiController]
 [Authorize(Policy = "PasswordChanged")]
 [Route("api/v1/organizations/{tenantId:guid}/studio")]
-public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfiguration configuration) : ControllerBase
+public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfiguration configuration, ITemplateCatalogRepository templateCatalog) : ControllerBase
 {
     [HttpGet("templates")]
     public async Task<IActionResult> Templates(Guid tenantId, [FromQuery] string? search, [FromQuery] string? type, [FromQuery] string? scope, [FromQuery] int page = 1, [FromQuery] int pageSize = 12, CancellationToken ct = default)
@@ -24,16 +24,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         await using var c = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(c, actor.Value, tenantId, "tenant.templates.read", ct)) return Forbid();
         page = Math.Max(page, 1); pageSize = Math.Clamp(pageSize, 1, 50);
-        var args = new { tenantId, search = string.IsNullOrWhiteSpace(search) ? null : $"%{search.Trim()}%", type, scope, offset = (page - 1) * pageSize, pageSize };
-        const string visible = "t.status='published' AND (t.scope='global' OR t.owner_tenant_id=@tenantId OR EXISTS(SELECT 1 FROM odca.contract_template_access a WHERE a.template_id=t.id AND a.tenant_id=@tenantId AND a.revoked_at IS NULL)) AND (@search IS NULL OR t.name ILIKE @search OR t.description ILIKE @search) AND (@type IS NULL OR t.contract_type=@type) AND (@scope IS NULL OR t.scope=@scope)";
-        var total = await c.ExecuteScalarAsync<int>(new CommandDefinition($"SELECT count(*)::int FROM odca.contract_templates t WHERE {visible}", args, cancellationToken: ct));
-        var items = await c.QueryAsync<TemplateCatalogItem>(new CommandDefinition($"""
-            SELECT t.id AS Id,t.name AS Name,t.description AS Description,t.contract_type AS ContractType,t.scope AS Scope,t.status AS Status,
-              t.current_version AS Version,u.display_name AS Author,t.created_at AS CreatedAt,t.published_at AS PublishedAt
-            FROM odca.contract_templates t JOIN odca.users u ON u.id=t.author_id WHERE {visible}
-            ORDER BY t.name,t.id LIMIT @pageSize OFFSET @offset
-            """, args, cancellationToken: ct));
-        return Ok(new TemplateCatalogPage(items.AsList(), page, pageSize, total));
+        return Ok(await templateCatalog.ListAsync(tenantId, search, type, scope, page, pageSize, ct));
     }
 
     [HttpPost("templates")]

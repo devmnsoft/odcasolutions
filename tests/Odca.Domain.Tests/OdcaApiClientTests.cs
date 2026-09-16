@@ -9,6 +9,31 @@ public sealed class OdcaApiClientTests
     [Theory]
     [InlineData("pt-BR")]
     [InlineData("ar-SA")]
+    public async Task ImportDatesUseInvariantWireFormat(string cultureName)
+    {
+        var originalCulture = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(cultureName);
+            var handler = new CapturingHandler();
+            using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
+            var client = new OdcaApiClient(http);
+
+            await client.GetContractImportsAsync("token", Guid.NewGuid(), null, false, false,
+                new DateOnly(2026, 9, 3), new DateOnly(2026, 10, 4), CancellationToken.None);
+
+            Assert.Contains("from=2026-09-03", handler.RequestUri!.Query, StringComparison.Ordinal);
+            Assert.Contains("to=2026-10-04", handler.RequestUri.Query, StringComparison.Ordinal);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+        }
+    }
+
+    [Theory]
+    [InlineData("pt-BR")]
+    [InlineData("ar-SA")]
     public async Task ObligationDatesUseInvariantWireFormatWithoutChangingCurrentCulture(string cultureName)
     {
         var originalCulture = CultureInfo.CurrentCulture;

@@ -17,6 +17,24 @@ namespace Odca.IntegrationTests;
 public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<DatabaseFixture>
 {
     [Fact]
+    public async Task ContractImportsRejectInvalidDateRangeOverAuthenticatedHttp()
+    {
+        await database.ResetAuthenticationScenarioAsync();
+        await using var factory = database.CreateApi();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var authenticated = await ChangeInitialPasswordAsync(client);
+        using var request = Authorized(HttpMethod.Get,
+            $"/api/v1/organizations/{Guid.NewGuid()}/contract-imports?from=2026-09-17&to=2026-09-16",
+            authenticated.AccessToken);
+
+        using var response = await client.SendAsync(request);
+        var problem = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("A data final deve ser igual ou posterior", problem, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task CanonicalSqlReappliesWithoutDuplicatingMigration()
     {
         // The expectation comes from the canonical package version compiled with the
