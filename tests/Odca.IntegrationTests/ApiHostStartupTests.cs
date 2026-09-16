@@ -2,6 +2,8 @@ using System.Net;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Odca.IntegrationTests;
 
@@ -29,6 +31,31 @@ public sealed class ApiHostStartupTests
         using var response = await client.GetAsync("/health/live");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CommentStateRoutesBuildAndOnlyAcceptTheTwoAuthorizedPosts()
+    {
+        await using var factory = new ConfiguredApiFactory("Testing", ValidConfiguration());
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var dataSources = factory.Services.GetRequiredService<IEnumerable<EndpointDataSource>>();
+        var routes = dataSources.SelectMany(source => source.Endpoints).OfType<RouteEndpoint>().Select(endpoint => endpoint.RoutePattern.RawText).ToArray();
+        const string prefix = "api/v1/organizations/{tenantId:guid}/studio/drafts/{draftId:guid}/comments/{commentId:guid}/";
+        Assert.Contains(prefix + "resolve", routes);
+        Assert.Contains(prefix + "reopen", routes);
+        Assert.DoesNotContain(routes, route => route?.Contains("{action", StringComparison.OrdinalIgnoreCase) == true);
+
+        var tenant = Guid.NewGuid(); var draft = Guid.NewGuid(); var comment = Guid.NewGuid();
+        using var resolve = await client.PostAsJsonAsync($"/api/v1/organizations/{tenant}/studio/drafts/{draft}/comments/{comment}/resolve", new { expectedResolved = false });
+        using var reopen = await client.PostAsJsonAsync($"/api/v1/organizations/{tenant}/studio/drafts/{draft}/comments/{comment}/reopen", new { expectedResolved = true, observation = "Reavaliar cláusula." });
+        using var unknown = await client.PostAsJsonAsync($"/api/v1/organizations/{tenant}/studio/drafts/{draft}/comments/{comment}/toggle", new { });
+        using var invalid = await client.PostAsJsonAsync($"/api/v1/organizations/not-a-guid/studio/drafts/{draft}/comments/{comment}/resolve", new { expectedResolved = false });
+        using var get = await client.GetAsync($"/api/v1/organizations/{tenant}/studio/drafts/{draft}/comments/{comment}/resolve");
+        Assert.Equal(HttpStatusCode.Unauthorized, resolve.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, reopen.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, invalid.StatusCode);
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, get.StatusCode);
     }
 
     [Theory]

@@ -19,8 +19,10 @@ public sealed record StudioChangeItem(string Category, string Reference, string?
 public sealed record ChecklistResponse(bool CanSubmit, IReadOnlyList<ChecklistItem> Items);
 public sealed record ChecklistItem(string Severity, string Code, string Message, string? Reference);
 public sealed record CreateStudioCommentRequest(Guid? VersionId, long DraftRevision, string Reference, string Body, Guid? ParentId);
+public sealed record ChangeStudioCommentStateRequest(bool ExpectedResolved, string? Observation = null);
 public sealed record StudioCommentItem(Guid Id, Guid? VersionId, long DraftRevision, string Reference, string Body, Guid AuthorId, string Author,
-    Guid? ParentId, DateTimeOffset CreatedAt, bool Resolved, DateTimeOffset? ResolvedAt, bool ReferenceLocated);
+    Guid? ParentId, DateTimeOffset CreatedAt, bool Resolved, DateTimeOffset? ResolvedAt, bool ReferenceLocated,
+    string? ResolvedBy = null, DateTimeOffset? LastMovementAt = null, int? OriginVersion = null);
 
 public sealed record CreateTemplateRequest(string Name, string? Description, string ContractType, string Scope, JsonElement Content, JsonElement Fields);
 public sealed record UpdateTemplateRequest(string Name, string? Description, string ContractType, JsonElement Content, JsonElement Fields, long ExpectedVersion);
