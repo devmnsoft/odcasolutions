@@ -21,12 +21,58 @@ public static partial class DocumentContent
 
     public static SupportedDocumentType Detect(ReadOnlySpan<byte> prefix, string fileName)
     {
-        if (prefix.Length >= 5 && prefix[..5].SequenceEqual("%PDF-"u8)) return SupportedDocumentType.Pdf;
-        if (prefix.Length >= 8 && prefix[..8].SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 })) return SupportedDocumentType.Png;
-        if (prefix.Length >= 3 && prefix[0] == 0xff && prefix[1] == 0xd8 && prefix[2] == 0xff) return SupportedDocumentType.Jpeg;
+        var extension = Path.GetExtension(Path.GetFileName(fileName)).ToLowerInvariant();
+        if (prefix.Length >= 5 && prefix[..5].SequenceEqual("%PDF-"u8) && extension == ".pdf") return SupportedDocumentType.Pdf;
+        if (prefix.Length >= 8 && prefix[..8].SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }) && extension == ".png") return SupportedDocumentType.Png;
+        if (prefix.Length >= 3 && prefix[0] == 0xff && prefix[1] == 0xd8 && prefix[2] == 0xff && extension is ".jpg" or ".jpeg") return SupportedDocumentType.Jpeg;
         if (prefix.Length >= 4 && prefix[..4].SequenceEqual("PK\u0003\u0004"u8) && Path.GetExtension(fileName).Equals(".docx", StringComparison.OrdinalIgnoreCase))
             return SupportedDocumentType.Docx;
-        throw new InvalidDataException("Formato indisponível. Envie PDF, PNG, JPEG ou DOCX.");
+        throw new InvalidDataException("A extensão e a assinatura não correspondem a PDF, PNG, JPEG ou DOCX suportado.");
+    }
+
+    public static async Task ValidateImageDimensionsAsync(Stream input, SupportedDocumentType type, CancellationToken cancellationToken)
+    {
+        if (type is not (SupportedDocumentType.Png or SupportedDocumentType.Jpeg)) return;
+        if (!input.CanSeek) throw new InvalidDataException("A imagem precisa permitir validação estrutural.");
+        input.Position = 0;
+        var dimensions = type == SupportedDocumentType.Png
+            ? await ReadPngDimensions(input, cancellationToken)
+            : await ReadJpegDimensions(input, cancellationToken);
+        if (dimensions.Width <= 0 || dimensions.Height <= 0)
+            throw new InvalidDataException("Imagem corrompida ou sem dimensões válidas.");
+        if (dimensions.Width > MaximumImageDimension || dimensions.Height > MaximumImageDimension)
+            throw new InvalidDataException($"A imagem excede o limite de {MaximumImageDimension} pixels por dimensão.");
+        input.Position = 0;
+    }
+
+    private static async Task<(int Width, int Height)> ReadPngDimensions(Stream input, CancellationToken ct)
+    {
+        var header = new byte[24];
+        if (await input.ReadAsync(header, ct) != header.Length || !header.AsSpan(12, 4).SequenceEqual("IHDR"u8)) return default;
+        return (System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(16, 4)), System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(20, 4)));
+    }
+
+    private static async Task<(int Width, int Height)> ReadJpegDimensions(Stream input, CancellationToken ct)
+    {
+        var two = new byte[2];
+        if (await input.ReadAsync(two, ct) != 2 || two[0] != 0xff || two[1] != 0xd8) return default;
+        while (await input.ReadAsync(two, ct) == 2)
+        {
+            if (two[0] != 0xff) return default;
+            var marker = two[1];
+            if (marker is 0xd8 or 0xd9 || marker is >= 0xd0 and <= 0xd7) continue;
+            if (await input.ReadAsync(two, ct) != 2) return default;
+            var length = System.Buffers.Binary.BinaryPrimitives.ReadUInt16BigEndian(two);
+            if (length < 2) return default;
+            if (marker is >= 0xc0 and <= 0xc3 or >= 0xc5 and <= 0xc7 or >= 0xc9 and <= 0xcb or >= 0xcd and <= 0xcf)
+            {
+                var frame = new byte[5];
+                if (await input.ReadAsync(frame, ct) != frame.Length) return default;
+                return (System.Buffers.Binary.BinaryPrimitives.ReadUInt16BigEndian(frame.AsSpan(3, 2)), System.Buffers.Binary.BinaryPrimitives.ReadUInt16BigEndian(frame.AsSpan(1, 2)));
+            }
+            input.Seek(length - 2, SeekOrigin.Current);
+        }
+        return default;
     }
 
     public static async Task<ExtractedText> ExtractDocxAsync(Stream input, CancellationToken cancellationToken)

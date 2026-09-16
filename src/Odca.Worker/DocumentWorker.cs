@@ -66,6 +66,7 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
             foreach (var suggestion in suggestions)
                 await connection.ExecuteAsync(new CommandDefinition("INSERT INTO odca.extraction_suggestions(tenant_id,result_id,version_id,field_name,extracted_value,normalized_value,evidence,page_number,method) VALUES(@tenantId,@resultId,@versionId,@Field,@ExtractedValue,@NormalizedValue,@Evidence,@Page,@Method)", new { tenantId = job.TenantId, resultId, versionId = job.VersionId, suggestion.Field, suggestion.ExtractedValue, suggestion.NormalizedValue, suggestion.Evidence, suggestion.Page, suggestion.Method }, tx, cancellationToken: ct));
             await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.extraction_jobs SET status='ready_for_review',completed_at=now(),lease_token=NULL,lease_expires_at=NULL WHERE id=@id AND lease_token=@lease", new { id = job.Id, lease = job.LeaseToken }, tx, cancellationToken: ct));
+            await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.contract_imports SET status='awaiting_review',current_step='contract_data',attempt_count=@attempt,updated_at=now(),safe_diagnostic_code=NULL WHERE tenant_id=@tenant AND extraction_job_id=@id AND status NOT IN('confirmed','cancelled')", new { tenant = job.TenantId, id = job.Id, attempt = 1 }, tx, cancellationToken: ct));
             await tx.CommitAsync(ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
@@ -73,6 +74,7 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
         {
             logger.LogWarning("Extração {JobId} falhou sem registrar conteúdo: {ErrorType}", job.Id, exception.GetType().Name);
             await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.extraction_jobs SET status=CASE WHEN attempt_count>=max_attempts THEN 'failed' ELSE 'queued' END,available_at=now()+make_interval(secs=>least(300,attempt_count*15)),failure_code=@code,lease_token=NULL,lease_expires_at=NULL WHERE id=@id AND lease_token=@lease", new { id = job.Id, lease = job.LeaseToken, code = exception is InvalidDataException ? "invalid-document" : "extractor-failed" }, cancellationToken: CancellationToken.None));
+            await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.contract_imports SET status=CASE WHEN (SELECT attempt_count>=max_attempts FROM odca.extraction_jobs WHERE id=@id) THEN 'failed' ELSE 'queued' END,current_step='document',attempt_count=(SELECT attempt_count FROM odca.extraction_jobs WHERE id=@id),safe_diagnostic_code=@code,updated_at=now() WHERE tenant_id=@tenant AND extraction_job_id=@id AND status NOT IN('confirmed','cancelled')", new { id = job.Id, tenant = job.TenantId, code = exception is InvalidDataException ? "invalid-document" : "extractor-unavailable" }, cancellationToken: CancellationToken.None));
         }
     }
 

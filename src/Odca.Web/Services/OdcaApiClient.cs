@@ -13,11 +13,34 @@ using Odca.Contracts.SavedViews;
 using Odca.Contracts.Studio;
 using Odca.Contracts.Renewals;
 using Odca.Contracts.Consumption;
+using Odca.Contracts.Imports;
 
 namespace Odca.Web.Services;
 
 public sealed class OdcaApiClient(HttpClient client)
 {
+    public async Task<(HttpStatusCode Status, byte[]? Content, string? ContentType)> GetDocumentPreviewAsync(string token, Guid tenantId, Guid contractId, Guid documentId, Guid versionId, CancellationToken ct)
+    {
+        using var request = CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contracts/{contractId}/documents/{documentId}/versions/{versionId}/content", token);
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+        if (!response.IsSuccessStatusCode) return (response.StatusCode, null, null);
+        return (response.StatusCode, await response.Content.ReadAsByteArrayAsync(ct), response.Content.Headers.ContentType?.MediaType);
+    }
+    public Task<ApiCallResult<ContractImportPage>> GetContractImportsAsync(string token, Guid tenantId, string? status, bool mine, bool awaitingReview, CancellationToken ct)
+    {
+        var query = $"status={Uri.EscapeDataString(status ?? string.Empty)}&mine={mine.ToString().ToLowerInvariant()}&awaitingReview={awaitingReview.ToString().ToLowerInvariant()}";
+        return SendAsync<ContractImportPage>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contract-imports?{query}", token), false, ct);
+    }
+
+    public Task<ApiCallResult<JsonElement>> GetContractImportAsync(string token, Guid tenantId, Guid importId, CancellationToken ct) =>
+        SendAsync<JsonElement>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contract-imports/{importId}", token), false, ct);
+
+    public async Task<ApiCallResult<JsonElement>> SaveImportReviewAsync(string token, Guid tenantId, Guid contractId, Guid extractionId, SaveImportReview body, CancellationToken ct)
+    {
+        using var request = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/contracts/{contractId}/documents/extractions/{extractionId}/apply", token);
+        request.Content = JsonContent.Create(body);
+        return await SendAsync<JsonElement>(request, false, ct);
+    }
     public Task<ApiCallResult<ConsumptionSummary>> GetConsumptionAsync(string token,Guid tenantId,CancellationToken ct)=>SendAsync<ConsumptionSummary>(CreateAuthorized(HttpMethod.Get,$"api/v1/organizations/{tenantId}/consumption",token),false,ct);
     public Task<ApiCallResult<AdditionalStorageRequest[]>> GetStorageRequestsAsync(string token,Guid tenantId,CancellationToken ct)=>SendAsync<AdditionalStorageRequest[]>(CreateAuthorized(HttpMethod.Get,$"api/v1/organizations/{tenantId}/storage-requests",token),false,ct);
     public Task<ApiCallResult<StoragePackage[]>> GetStoragePackagesAsync(string token,CancellationToken ct)=>SendAsync<StoragePackage[]>(CreateAuthorized(HttpMethod.Get,"api/v1/storage-packages",token),false,ct);

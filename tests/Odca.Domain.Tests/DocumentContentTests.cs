@@ -7,10 +7,22 @@ namespace Odca.Domain.Tests;
 public sealed class DocumentContentTests
 {
     [Fact]
-    public void DetectsContentInsteadOfTrustingExtension()
+    public void RequiresMatchingContentSignatureAndExtension()
     {
-        Assert.Equal(SupportedDocumentType.Pdf, DocumentContent.Detect("%PDF-1.7"u8, "malicioso.exe"));
+        Assert.Equal(SupportedDocumentType.Pdf, DocumentContent.Detect("%PDF-1.7"u8, "contrato.pdf"));
+        Assert.Throws<InvalidDataException>(() => DocumentContent.Detect("%PDF-1.7"u8, "malicioso.exe"));
         Assert.Throws<InvalidDataException>(() => DocumentContent.Detect("texto"u8, "contrato.pdf"));
+    }
+
+    [Fact]
+    public async Task RejectsPngAbovePixelLimit()
+    {
+        var png = new byte[24];
+        new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }.CopyTo(png, 0);
+        "IHDR"u8.CopyTo(png.AsSpan(12));
+        System.Buffers.Binary.BinaryPrimitives.WriteInt32BigEndian(png.AsSpan(16, 4), DocumentContent.MaximumImageDimension + 1);
+        System.Buffers.Binary.BinaryPrimitives.WriteInt32BigEndian(png.AsSpan(20, 4), 100);
+        await Assert.ThrowsAsync<InvalidDataException>(() => DocumentContent.ValidateImageDimensionsAsync(new MemoryStream(png), SupportedDocumentType.Png, default));
     }
 
     [Fact]
