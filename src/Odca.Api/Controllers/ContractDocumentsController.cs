@@ -72,6 +72,11 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
                 type = DocumentContent.Detect(prefix.AsSpan(0, prefixCount), file.FileName);
                 hash = Convert.ToHexString(sha.GetHashAndReset()).ToLowerInvariant();
             }
+            if (type is SupportedDocumentType.Png or SupportedDocumentType.Jpeg)
+            {
+                await using var image = new FileStream(temporary, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, FileOptions.Asynchronous);
+                await DocumentContent.ValidateImageDimensionsAsync(image, type, ct);
+            }
             var versionId = Guid.NewGuid(); var logicalId = documentId ?? Guid.NewGuid(); var storageObjectKey = $"{tenantId:N}/{contractId:N}/{versionId:N}";
             await using var connection = await dataSource.OpenConnectionAsync(ct);
             if (!await Allowed(connection, actor.Value, tenantId, "tenant.documents.manage", ct)) return Forbid();
@@ -124,6 +129,10 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
                 throw;
             }
             return Created($"{Request.Path}/{logicalId:D}/versions/{versionId:D}", new { documentId = logicalId, versionId, version = number, securityStatus = "pending" });
+        }
+        catch (InvalidDataException exception)
+        {
+            return BadRequest(new ProblemDetails { Title = "Documento inválido ou não suportado.", Detail = exception.Message });
         }
         finally { if (IOFile.Exists(temporary)) IOFile.Delete(temporary); }
     }

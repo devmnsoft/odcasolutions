@@ -1,0 +1,32 @@
+@model Odca.Contracts.Imports.ContractImportPage
+@{
+    var tenantId = (Guid)ViewData["TenantId"]!;
+    var status = ViewData["Status"] as string;
+}
+<header class="page-heading">
+    <div><span class="eyebrow">CONTRATOS</span><h1>Central de importações</h1><p>Acompanhe a análise, retome revisões e confirme somente dados conferidos.</p></div>
+    <details class="help-panel"><summary>Como usar</summary><p>Envie o documento na biblioteca do contrato, solicite a extração e registre a versão nesta central. Nenhuma sugestão é confirmada automaticamente.</p></details>
+</header>
+<form method="get" class="filter-bar" aria-label="Filtros de importações">
+    <label>Estado<select name="status"><option value="">Todos</option>@foreach(var item in new[]{"security_review","queued","processing","awaiting_review","confirmed","failed","cancelled"}){<option value="@item" selected="@(status==item)">@item.Replace('_',' ')</option>}</select></label>
+    <label class="check-label"><input type="checkbox" name="mine" value="true" checked="@((bool)ViewData["Mine"]!)" /> Minhas importações</label>
+    <label class="check-label"><input type="checkbox" name="awaitingReview" value="true" checked="@((bool)ViewData["AwaitingReview"]!)" /> Aguardando revisão</label>
+    <button class="button button-primary" type="submit">Filtrar</button>
+</form>
+@if (Model.Items.Count == 0)
+{
+    <section class="empty-state"><h2>Nenhuma importação corresponde aos filtros</h2><p>Falhas permanecem visíveis ao selecionar “Todos”.</p></section>
+}
+else
+{
+    <section class="import-list" aria-label="Importações">
+    @foreach(var item in Model.Items)
+    {
+        <article class="import-row">
+            <div><span class="status-label">@item.Status.Replace('_',' ')</span><h2>@item.DocumentName</h2><p>Solicitada por @item.Requester em @item.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p></div>
+            <div><small>Etapa atual</small><strong>@item.CurrentStep.Replace('_',' ')</strong>@if(item.DiagnosticCode is not null){<span class="field-error">Diagnóstico: @item.DiagnosticCode</span>}</div>
+            <div class="row-actions"><a class="button button-quiet" asp-action="Review" asp-route-tenantId="@tenantId" asp-route-importId="@item.Id">@(item.Status=="awaiting_review"?"Continuar revisão":"Abrir")</a></div>
+        </article>
+    }
+    </section>
+}
