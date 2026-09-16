@@ -34,11 +34,23 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
     }
 
     [HttpPost]
-    [RequestSizeLimit(DocumentContent.MaximumBytes)]
+    [RequestSizeLimit(250_000_000)]
     public async Task<IActionResult> Upload(Guid tenantId, Guid contractId, IFormFile file, [FromForm] Guid? documentId, CancellationToken ct)
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
-        if (file.Length is <= 0 or > DocumentContent.MaximumBytes) return Problem(statusCode: 413, title: "Arquivo excede o limite de 25 MB.");
+        if (file.Length <= 0) return ValidationProblem();
+        long maximumFileBytes;
+        await using (var limitsConnection = await dataSource.OpenConnectionAsync(ct))
+        {
+            if (!await Allowed(limitsConnection, actor.Value, tenantId, "tenant.documents.manage", ct)) return Forbid();
+            maximumFileBytes = await limitsConnection.ExecuteScalarAsync<long>(new CommandDefinition("""
+                SELECT COALESCE(max(e.limit_value) FILTER(WHERE e.entitlement_code='file_bytes'),0)
+                  FROM odca.subscriptions s JOIN odca.plan_entitlements e ON e.plan_version_id=s.plan_version_id
+                 WHERE s.tenant_id=@tenantId AND s.status='active'
+                """,new{tenantId},cancellationToken:ct));
+        }
+        if (maximumFileBytes<=0) return Conflict(new ProblemDetails{Title="Upload indisponível",Detail="A assinatura não possui um limite de arquivo ativo."});
+        if (file.Length>maximumFileBytes) return Problem(statusCode:413,title:"Arquivo excede o limite do plano.",detail:$"O limite atual é {maximumFileBytes} bytes.");
         var root = Path.GetFullPath(configuration["Documents:StoragePath"] ?? "./private-documents");
         Directory.CreateDirectory(Path.Combine(root, "quarantine"));
         var temporary = Path.Combine(root, "quarantine", $"upload-{Guid.NewGuid():N}.tmp");
@@ -53,7 +65,7 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
                 int read;
                 while ((read = await source.ReadAsync(buffer, ct)) > 0)
                 {
-                    size += read; if (size > DocumentContent.MaximumBytes) return Problem(statusCode: 413, title: "Arquivo excede o limite de 25 MB.");
+                    size += read; if (size > maximumFileBytes) return Problem(statusCode: 413, title: "Arquivo excede o limite do plano.",detail:$"O stream ultrapassou {maximumFileBytes} bytes e foi interrompido.");
                     var copy = Math.Min(read, prefix.Length - prefixCount); if (copy > 0) { buffer.AsSpan(0, copy).CopyTo(prefix.AsSpan(prefixCount)); prefixCount += copy; }
                     sha.AppendData(buffer, 0, read); await destinationStream.WriteAsync(buffer.AsMemory(0, read), ct);
                 }
@@ -67,9 +79,21 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
             await SetTenant(connection, tenantId, transaction, ct);
             var contractExists = await connection.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.contracts WHERE tenant_id=@tenantId AND id=@contractId)", new { tenantId, contractId }, transaction, cancellationToken: ct));
             if (!contractExists) return NotFound();
-            await connection.ExecuteAsync(new CommandDefinition("INSERT INTO odca.tenant_storage_usage(tenant_id) VALUES(@tenantId) ON CONFLICT DO NOTHING", new { tenantId }, transaction, cancellationToken: ct));
+            var operationKey = Request.Headers.TryGetValue("Idempotency-Key", out var suppliedKey) && Guid.TryParse(suppliedKey, out var parsedKey) ? parsedKey : versionId;
+            await connection.ExecuteAsync(new CommandDefinition("""
+                INSERT INTO odca.tenant_storage_usage(tenant_id) VALUES(@tenantId) ON CONFLICT DO NOTHING;
+                UPDATE odca.tenant_storage_usage u SET quota_bytes=q.effective_quota
+                  FROM (SELECT COALESCE(max(e.limit_value) FILTER(WHERE e.entitlement_code='storage_bytes'),0)+
+                               COALESCE((SELECT sum(g.quantity_bytes) FROM odca.storage_capacity_grants g WHERE g.tenant_id=@tenantId AND g.revoked_at IS NULL AND(g.valid_until IS NULL OR g.valid_until>now())),0) AS effective_quota
+                          FROM odca.subscriptions s JOIN odca.plan_entitlements e ON e.plan_version_id=s.plan_version_id WHERE s.tenant_id=@tenantId) q
+                 WHERE u.tenant_id=@tenantId;
+                """, new { tenantId }, transaction, cancellationToken: ct));
+            var existing = await connection.QuerySingleOrDefaultAsync<ExistingReservation>(new CommandDefinition("SELECT id AS Id,status AS Status FROM odca.storage_reservations WHERE tenant_id=@tenantId AND operation_key=CAST(@operationKey AS text)",new{tenantId,operationKey},transaction,cancellationToken:ct));
+            if(existing is not null&&existing.Status=="confirmed") return Conflict(new ProblemDetails{Title="Upload já confirmado",Detail="A chave de idempotência já foi utilizada."});
+            var reservationId=existing?.Id??Guid.NewGuid();
             var reserved = await connection.ExecuteScalarAsync<bool>(new CommandDefinition("UPDATE odca.tenant_storage_usage SET reserved_bytes=reserved_bytes+@size WHERE tenant_id=@tenantId AND used_bytes+reserved_bytes+@size<=quota_bytes RETURNING true", new { tenantId, size }, transaction, cancellationToken: ct));
             if (!reserved) return Problem(statusCode: 413, title: "A cota de armazenamento da organização foi atingida.");
+            await connection.ExecuteAsync(new CommandDefinition("INSERT INTO odca.storage_reservations(id,tenant_id,operation_key,requested_bytes,status,created_by,expires_at) VALUES(@reservationId,@tenantId,CAST(@operationKey AS text),@size,'reserved',@actor,now()+interval '30 minutes') ON CONFLICT(tenant_id,operation_key) DO UPDATE SET requested_bytes=excluded.requested_bytes,status='reserved',expires_at=excluded.expires_at",new{reservationId,tenantId,operationKey,size,actor},transaction,cancellationToken:ct));
             if (documentId is null)
                 await connection.ExecuteAsync(new CommandDefinition("INSERT INTO odca.contract_documents(id,tenant_id,contract_id,title,created_by) VALUES(@logicalId,@tenantId,@contractId,@title,@actor)", new { logicalId, tenantId, contractId, title = Path.GetFileName(file.FileName), actor }, transaction, cancellationToken: ct));
             else
@@ -82,8 +106,11 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
                 INSERT INTO odca.document_versions(id,tenant_id,contract_id,document_id,version_number,uploaded_by,display_name,detected_type,byte_size,sha256,storage_key)
                 VALUES(@versionId,@tenantId,@contractId,@logicalId,@number,@actor,@name,@type,@size,@hash,@key);
                 UPDATE odca.tenant_storage_usage SET reserved_bytes=reserved_bytes-@size,used_bytes=used_bytes+@size WHERE tenant_id=@tenantId;
+                UPDATE odca.storage_reservations SET status='confirmed',finalized_at=now() WHERE tenant_id=@tenantId AND id=@reservationId;
+                INSERT INTO odca.resource_movements(tenant_id,resource_type,movement_type,quantity,unit,source_type,source_id,idempotency_key,actor_user_id)
+                VALUES(@tenantId,'storage_usage','consume',@size,'bytes','document_version',@versionId,'upload:'||CAST(@operationKey AS text),@actor);
                 INSERT INTO odca.contract_events(tenant_id,contract_id,actor_id,event_type,details) VALUES(@tenantId,@contractId,@actor,'document_uploaded',jsonb_build_object('versionId',@versionId,'bytes',@size));
-                """, new { versionId, tenantId, contractId, logicalId, number, actor, name = Path.GetFileName(file.FileName), type = type.ToString().ToLowerInvariant(), size, hash, key = storageObjectKey }, transaction, cancellationToken: ct));
+                """, new { versionId, tenantId, contractId, logicalId, number, actor, name = Path.GetFileName(file.FileName), type = type.ToString().ToLowerInvariant(), size, hash, key = storageObjectKey,reservationId,operationKey }, transaction, cancellationToken: ct));
             var destinationPath = Path.Combine(root, storageObjectKey.Replace('/', Path.DirectorySeparatorChar));
             Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
             IOFile.Move(temporary, destinationPath);
@@ -190,6 +217,7 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
     private static Task<int> SetTenant(NpgsqlConnection c, Guid tenant, NpgsqlTransaction tx, CancellationToken ct) => c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@value,true)", new { value = tenant.ToString() }, tx, cancellationToken: ct));
     private static string Mime(string type) => type switch { "pdf" => "application/pdf", "png" => "image/png", "jpeg" => "image/jpeg", "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document", _ => "application/octet-stream" };
     private sealed record StoredVersion(string StorageKey, string DisplayName, string DetectedType, string SecurityStatus);
+    private sealed record ExistingReservation(Guid Id,string Status);
     private sealed record SuggestionForApply(string FieldName, string? NormalizedValue);
     public sealed record ReviewDecision(Guid SuggestionId, string Status, string? Value);
     public sealed record ApplyReviewRequest(Guid IdempotencyKey, long ContractVersion, IReadOnlyList<ReviewDecision> Decisions);

@@ -40,6 +40,7 @@
                     {
                         <a class="nav-item @(controller == "Home" ? "active" : null)" aria-label="Visão global" aria-current="@(controller == "Home" ? "page" : null)" asp-controller="Home" asp-action="Index"><span aria-hidden="true">⌂</span><span>Visão global</span></a>
                         <a class="nav-item @(controller == "Plans" ? "active" : null)" aria-label="Catálogo de planos" aria-current="@(controller == "Plans" ? "page" : null)" asp-controller="Plans" asp-action="Index"><span aria-hidden="true">▦</span><span>Catálogo de planos</span></a>
+                        <a class="nav-item @(controller == "Customers" ? "active" : null)" asp-controller="Customers" asp-action="Index"><span aria-hidden="true">▣</span><span>Clientes e consumo</span></a>
                     }
                     else
                     {
@@ -50,6 +51,7 @@
                             <a class="nav-item @(controller == "Studio" ? "active" : null)" aria-label="Modelos e estúdio" aria-current="@(controller == "Studio" ? "page" : null)" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@activeTenantId"><span aria-hidden="true">▤</span><span>Modelos e minutas</span></a>
                             <a class="nav-item @(controller == "Obligations" ? "active" : null)" aria-label="Central de obrigações" aria-current="@(controller == "Obligations" ? "page" : null)" asp-controller="Obligations" asp-action="Index" asp-route-tenantId="@activeTenantId"><span aria-hidden="true">✓</span><span>Obrigações</span></a>
                             <a class="nav-item @(controller == "Renewals" ? "active" : null)" aria-label="Central de renovações e aditivos" aria-current="@(controller == "Renewals" ? "page" : null)" asp-controller="Renewals" asp-action="Index" asp-route-tenantId="@activeTenantId"><span aria-hidden="true">↻</span><span>Renovações e aditivos</span></a>
+                            <a class="nav-item @(controller == "Consumption" ? "active" : null)" asp-controller="Consumption" asp-action="Index" asp-route-tenantId="@activeTenantId"><span aria-hidden="true">◫</span><span>Plano e consumo</span></a>
                         }
                     }
                     <a class="nav-item" aria-label="Privacidade" asp-controller="Privacy" asp-action="Index"><span aria-hidden="true">◇</span><span>Privacidade</span></a>

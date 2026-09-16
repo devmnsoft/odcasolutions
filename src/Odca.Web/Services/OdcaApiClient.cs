@@ -12,11 +12,20 @@ using Odca.Contracts.Obligations;
 using Odca.Contracts.SavedViews;
 using Odca.Contracts.Studio;
 using Odca.Contracts.Renewals;
+using Odca.Contracts.Consumption;
 
 namespace Odca.Web.Services;
 
 public sealed class OdcaApiClient(HttpClient client)
 {
+    public Task<ApiCallResult<ConsumptionSummary>> GetConsumptionAsync(string token,Guid tenantId,CancellationToken ct)=>SendAsync<ConsumptionSummary>(CreateAuthorized(HttpMethod.Get,$"api/v1/organizations/{tenantId}/consumption",token),false,ct);
+    public Task<ApiCallResult<AdditionalStorageRequest[]>> GetStorageRequestsAsync(string token,Guid tenantId,CancellationToken ct)=>SendAsync<AdditionalStorageRequest[]>(CreateAuthorized(HttpMethod.Get,$"api/v1/organizations/{tenantId}/storage-requests",token),false,ct);
+    public Task<ApiCallResult<StoragePackage[]>> GetStoragePackagesAsync(string token,CancellationToken ct)=>SendAsync<StoragePackage[]>(CreateAuthorized(HttpMethod.Get,"api/v1/storage-packages",token),false,ct);
+    public async Task<ApiCallResult<AdditionalStorageRequest>> RequestStorageAsync(string token,Guid tenantId,CreateStorageRequest body,CancellationToken ct){using var m=CreateAuthorized(HttpMethod.Post,$"api/v1/organizations/{tenantId}/storage-requests",token);m.Content=JsonContent.Create(body);return await SendAsync<AdditionalStorageRequest>(m,false,ct);}
+    public Task<ApiCallResult<PlatformCustomer[]>> GetCustomersAsync(string token,string? search,CancellationToken ct)=>SendAsync<PlatformCustomer[]>(CreateAuthorized(HttpMethod.Get,$"api/v1/platform/customers?search={Uri.EscapeDataString(search??string.Empty)}",token),false,ct);
+    public Task<ApiCallResult<PlatformCustomerDetail>> GetCustomerAsync(string token,Guid tenantId,CancellationToken ct)=>SendAsync<PlatformCustomerDetail>(CreateAuthorized(HttpMethod.Get,$"api/v1/platform/customers/{tenantId}",token),false,ct);
+    public async Task<ApiCallResult<bool>> DecideStorageAsync(string token,Guid tenantId,Guid requestId,DecideStorageRequest body,CancellationToken ct){using var m=CreateAuthorized(HttpMethod.Post,$"api/v1/platform/customers/{tenantId}/storage-requests/{requestId}/decision",token);m.Content=JsonContent.Create(body);return await SendAsync<bool>(m,false,ct,true);}
+    public async Task<ApiCallResult<bool>> GrantStorageAsync(string token,Guid tenantId,ManualStorageGrant body,CancellationToken ct){using var m=CreateAuthorized(HttpMethod.Post,$"api/v1/platform/customers/{tenantId}/storage-grants",token);m.Content=JsonContent.Create(body);return await SendAsync<bool>(m,false,ct,true);}
     public Task<ApiCallResult<RenewalPage>> GetRenewalsAsync(string token,Guid tenantId,DateOnly? from,DateOnly? to,Guid? ownerId,string? contractType,string? counterparty,string? status,bool mine,bool withoutOwner,int page,int pageSize,CancellationToken cancellationToken)
     {
         var query=new Dictionary<string,string?> { ["from"]=from?.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture),["to"]=to?.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture),["ownerId"]=ownerId?.ToString(),["contractType"]=contractType,["counterparty"]=counterparty,["status"]=status,["mine"]=mine?"true":null,["withoutOwner"]=withoutOwner?"true":null,["page"]=page.ToString(CultureInfo.InvariantCulture),["pageSize"]=pageSize.ToString(CultureInfo.InvariantCulture)};

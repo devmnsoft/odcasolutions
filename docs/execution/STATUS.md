@@ -300,3 +300,32 @@ Ainda pendentes nesta entrega: transporte de e-mail de produção/worker com lea
 - CA1305 permanece corrigido com datas `DateOnly` invariáveis na query e montagem legível. CA1512 permanece corrigido com `ThrowIfNegative`, mantendo zero e o cálculo a partir da data-base.
 - A API agora rejeita intervalos invertidos. O evento de cumprimento preserva data efetiva, observação e identificador da evidência; a reabertura limpa apenas a projeção atual de cumprimento, mantendo o evento histórico e respeitando o `CHECK` do banco.
 - `npm run build` e `git diff --check` passaram. Restore, build e testes .NET não foram executados porque o SDK 10.0.400 não existe no contêiner e o instalador oficial respondeu HTTP 403. PostgreSQL descartável, HTTP autenticado, navegador e capturas continuam não aprovados.
+
+## Central do cliente, consumo e concessões auditadas (15/09/2026)
+
+### Implementado
+
+- A central **Plano e consumo** consulta a versão imutável do plano vinculada à assinatura e separa vagas ativas, convites reservados, limite contratado, capacidade adicional vigente, bytes persistidos, reservas e disponibilidade. Falha da API apresenta indisponibilidade e nunca é convertida em zero.
+- Pacotes adicionais são versionados e pedidos preservam snapshot de nome, quantidade, unidade, preço/moeda opcionais e condições. As propostas iniciais permanecem em `draft`: não há preço, checkout, PIX ou pagamento fictício. O fluxo operacional começa quando um administrador publica uma versão configurada.
+- Aprovação e concessão manual são operações exclusivas do SuperAdministrador com ator real, justificativa, idempotência, bloqueio concorrente, movimento imutável e auditoria. Aprovar duas vezes não duplica capacidade.
+- O upload passa a recalcular a cota efetiva (plano da assinatura + concessões vigentes), serializa a reserva na linha de consumo, confirma a reserva e grava o movimento somente com a versão persistida. A leitura continua disponível quando a capacidade está excedida; somente novas gravações deixam de reservar.
+- A administração global lista clientes com documento mascarado, plano, estados independentes, usuários, consumo, pendências e atividade; detalhes deixam explícito o tenant afetado e não implementam impersonação.
+
+### Regras e limitações comerciais
+
+- Concessão de capacidade não equivale a pagamento. Faturas/pagamentos e prorrata não existem operacionalmente no checkout atual e não foram simulados.
+- Capacidade em bytes é um limite vigente; OCR e envelopes permanecem créditos consumíveis separados. Exclusão lógica de documento não reduz consumo físico.
+- Troca de plano ainda não possui fluxo comercial existente completo; nenhum cálculo de prorrata ou aplicação automática foi inventado. Bloqueio administrativo continua separado do estado comercial da assinatura e do vínculo do usuário.
+- Expiração automática de reservas abandonadas e contabilização dos demais produtores de arquivo (PDF gerado/cópia/evidência) exigem integração nos respectivos workers; a tabela e os movimentos foram preparados, mas somente o upload de documento está conectado nesta entrega.
+
+### Validação desta execução
+
+- `npm run build`, verificação independente dos checksums das 18 migrations e `git diff --check` foram executados.
+- O contêiner não contém `dotnet` nem PostgreSQL de teste; portanto restore/build/testes .NET, concorrência PostgreSQL real, HTTP autenticado e captura de navegador não são declarados aprovados.
+
+### Execução local
+
+1. Instale o SDK indicado em `global.json` e PostgreSQL 18.
+2. Execute `pwsh ./scripts/setup-local.ps1` e configure `development-runtime.json` conforme o exemplo da API.
+3. Execute `dotnet restore Odca.sln --locked-mode`, `dotnet run --project src/Odca.Bootstrap` e depois os perfis API/Web/Worker.
+4. Publique uma versão de pacote somente após configurar condições comerciais; as propostas distribuídas são rascunhos intencionais.
