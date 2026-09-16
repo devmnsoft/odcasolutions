@@ -3,6 +3,7 @@ using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
+using Odca.Application.Tenancy;
 using Odca.Contracts.DocumentImports;
 
 namespace Odca.Api.Controllers;
@@ -10,7 +11,10 @@ namespace Odca.Api.Controllers;
 [ApiController]
 [Authorize(Policy = "PasswordChanged")]
 [Route("api/v1/organizations/{tenantId:guid}/contract-imports")]
-public sealed class ContractImportsController(NpgsqlDataSource dataSource) : ControllerBase
+public sealed class ContractImportsController(
+    NpgsqlDataSource dataSource,
+    IConfiguration configuration,
+    ILogger<ContractImportsController> logger) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> List(Guid tenantId, [FromQuery] string? status, [FromQuery] Guid? requester,
@@ -26,10 +30,28 @@ public sealed class ContractImportsController(NpgsqlDataSource dataSource) : Con
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(connection, actor.Value, tenantId, "tenant.imports.read", ct)) return Forbid();
         await using var tx = await connection.BeginTransactionAsync(ct); await SetTenant(connection, tenantId, tx, ct);
-        var timeZoneId = await connection.ExecuteScalarAsync<string>(new CommandDefinition(
+        var timeZoneId = await connection.QuerySingleOrDefaultAsync<string?>(new CommandDefinition(
             "SELECT timezone FROM odca.tenants WHERE id=@tenantId",
             new { tenantId }, tx, cancellationToken: ct));
-        var range = CreateUtcRange(from, to, timeZoneId);
+        (DateTimeOffset? FromInclusive, DateTimeOffset? ToExclusive) range;
+        try
+        {
+            var timeZone = TimeZonePolicy.Resolve(timeZoneId, configuration["TimeZone:DefaultId"]);
+            range = CreateUtcRange(from, to, timeZone);
+        }
+        catch (TimeZoneConfigurationException exception)
+        {
+            logger.LogError(exception, "Configuração de fuso indisponível para tenant={TenantId}; motivo={Reason}.", tenantId, exception.Error);
+            return Problem(statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "A configuração de data da organização está indisponível.",
+                detail: "Contate o administrador para corrigir o fuso horário configurado.");
+        }
+        catch (InvalidOperationException exception)
+        {
+            logger.LogError(exception, "Limite local inválido para tenant={TenantId}.", tenantId);
+            return Problem(statusCode: StatusCodes.Status422UnprocessableEntity,
+                title: "O intervalo informado não pode ser convertido no fuso da organização.");
+        }
         var args = new { tenantId, status, requester, actor = actor.Value, mine, awaitingReview, range.FromInclusive, range.ToExclusive };
         const string filter = """
             WHERE i.tenant_id=@tenantId
@@ -56,9 +78,11 @@ public sealed class ContractImportsController(NpgsqlDataSource dataSource) : Con
     internal static (DateTimeOffset? FromInclusive, DateTimeOffset? ToExclusive) CreateUtcRange(
         DateOnly? from,
         DateOnly? to,
-        string timeZoneId)
+        TimeZoneInfo timeZone)
     {
-        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+        if (from.HasValue && to.HasValue && from.Value > to.Value)
+            throw new ArgumentException("A data final deve ser igual ou posterior à data inicial.", nameof(to));
+
         return (
             from is null ? null : StartOfDayUtc(from.Value, timeZone),
             to is null || to == DateOnly.MaxValue ? null : StartOfDayUtc(to.Value.AddDays(1), timeZone));
@@ -69,6 +93,12 @@ public sealed class ContractImportsController(NpgsqlDataSource dataSource) : Con
         var local = date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
         if (timeZone.IsInvalidTime(local))
             throw new InvalidOperationException($"O início do dia {date:yyyy-MM-dd} não existe no fuso configurado.");
+        if (timeZone.IsAmbiguousTime(local))
+        {
+            // An inclusive start must choose the first instant bearing this local clock value.
+            var earliestOffset = timeZone.GetAmbiguousTimeOffsets(local).Max();
+            return new DateTimeOffset(local, earliestOffset).ToUniversalTime();
+        }
         return new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(local, timeZone));
     }
 

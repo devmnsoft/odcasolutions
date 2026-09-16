@@ -97,6 +97,21 @@ Em terminal interativo, `run-local.ps1` encaminha automaticamente ao setup se o 
 3. recompile a solução depois de aplicar as correções dos diagnósticos reais;
 4. reinicie os projetos necessários pelo perfil de vários projetos **ODCA local**.
 
+Para diagnosticar DLLs bloqueadas, o comando abaixo lista e tenta encerrar normalmente
+somente processos cuja linha de comando contém o caminho deste checkout e um projeto
+ODCA. Ele não encerra outros processos `dotnet`; processos sem encerramento normal são
+apenas informados. Use `-Force` somente depois de conferir a lista exibida:
+
+```powershell
+.\scripts\stop-local.ps1
+.\scripts\stop-local.ps1 -Force
+```
+
+Validação específica no Windows: pare a depuração, execute o comando acima e confirme
+o encerramento do Worker; compile; inicie API e Worker; encerre-os normalmente; então
+compile novamente e confirme que `Odca.Application.dll` e `Odca.Configuration.dll`
+não permanecem bloqueadas.
+
 Se uma compilação normal ainda apontar artefatos inconsistentes, feche esses processos, remova apenas `bin` e `obj` dos projetos citados, restaure e recompile. Preserve `development-runtime.json`, chaves de Data Protection, uploads e dados do PostgreSQL.
 
 Também é possível iniciar API e Web em terminais separados:

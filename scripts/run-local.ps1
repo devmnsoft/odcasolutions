@@ -36,8 +36,9 @@ $projects = @(
 $processes = @()
 try {
     foreach ($project in $projects) {
-        # Relative project names keep Start-Process argument handling safe when the repository path contains spaces.
-        $arguments = @('run', '--project', $project.Path, '--launch-profile', $project.Profile)
+        # The absolute project path lets stop-local.ps1 prove that the process belongs to this checkout.
+        $projectPath = Join-Path $repositoryRoot $project.Path
+        $arguments = @('run', '--project', ('"{0}"' -f $projectPath), '--launch-profile', $project.Profile)
         $processes += Start-Process dotnet -ArgumentList $arguments -WorkingDirectory $repositoryRoot -NoNewWindow -PassThru
         Write-Host ("{0} iniciado (PID {1})." -f $project.Name, $processes[-1].Id)
     }
