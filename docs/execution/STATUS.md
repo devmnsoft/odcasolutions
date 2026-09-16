@@ -1,5 +1,14 @@
 # Status de execução
 
+## Consumo e aplicação de renovações (16/09/2026)
+
+- Estado inicial desta entrega: branch `work`, SHA `b3b3d8c2b452254797384a8781cc4e54bbfcb35c`, árvore limpa e nenhum `AGENTS.md` presente no checkout ou diretório pai.
+- As actions de solicitação agora possuem nomes de negócio sem ocultar `ControllerBase.Request`/`Controller.Request`; as URLs públicas permanecem explícitas e o POST do BFF exige antiforgery.
+- Pacotes sem preço e moeda válidos não são oferecidos nem aceitos. A idempotência compara pacote e quantidade no mesmo tenant, impedindo que a mesma chave seja reutilizada silenciosamente com outro payload; o snapshot comercial continua calculado no servidor.
+- O repositório alinha parâmetros públicos à interface, preserva nomes SQL explícitos, propaga cancelamento até delegates e commit/rollback e usa o retorno concreto `Task<int>` do helper Dapper.
+- O worker usa lock transacional entre instâncias, verifica versão, tenant, request, linhas afetadas e registro único da aplicação antes do commit. Conflitos são persistidos como tal e nenhuma aplicação parcial é confirmada.
+- O SDK .NET 10.0.400 e PostgreSQL descartável não estão disponíveis neste contêiner; a tentativa de obter o instalador oficial retornou HTTP 403. Builds/testes .NET/PostgreSQL e captura autenticada permanecem gates não executados localmente.
+
 ## Política canônica e jornada de vistas pessoais (14/09/2026)
 
 - Estado inicial registrado: branch `work`, SHA `1e0a470ed78f6151da7e284474f8e99d395ba58f`; árvore inicialmente limpa.

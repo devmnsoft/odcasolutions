@@ -17,7 +17,7 @@ public sealed class ConsumptionController(IConsumptionRepository repository) : C
     [HttpGet("api/v1/storage-packages")]
     public async Task<IActionResult> Packages(CancellationToken ct)=>Ok(await repository.ListPackagesAsync(ct));
     [HttpPost("api/v1/organizations/{tenantId:guid}/storage-requests")]
-    public async Task<IActionResult> Request(Guid tenantId,[FromBody]CreateStorageRequest request,CancellationToken ct){var actor=Actor();if(actor is null)return Unauthorized();if(request.Quantity is<1 or>100||request.IdempotencyKey==Guid.Empty)return ValidationProblem();var value=await repository.RequestStorageAsync(actor.Value,tenantId,request,ct);return value is null?Forbid():Created($"api/v1/organizations/{tenantId}/storage-requests/{value.Id}",value);}
+    public async Task<IActionResult> SubmitStorageRequest(Guid tenantId,[FromBody]CreateStorageRequest request,CancellationToken ct){var actor=Actor();if(actor is null)return Unauthorized();if(request.Quantity is<1 or>100||request.IdempotencyKey==Guid.Empty)return ValidationProblem();var value=await repository.RequestStorageAsync(actor.Value,tenantId,request,ct);return value is null?Forbid():Created($"api/v1/organizations/{tenantId}/storage-requests/{value.Id}",value);}
 
     [Authorize(Policy="PlatformAdministrator")]
     [HttpGet("api/v1/platform/customers")]

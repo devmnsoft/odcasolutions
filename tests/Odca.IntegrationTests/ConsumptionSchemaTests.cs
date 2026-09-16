@@ -22,6 +22,14 @@ public sealed class ConsumptionSchemaTests
     }
 
     [Fact]
+    public void RenewalApplicationIsVersionedAndRecordedOnce()
+    {
+        Assert.Contains("UNIQUE(tenant_id,request_id)", Sql, StringComparison.Ordinal);
+        Assert.Contains("base_contract_version bigint NOT NULL", Sql, StringComparison.Ordinal);
+        Assert.Contains("application_status text NOT NULL", Sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void StorageCapacityAndConsumableCreditsAreSeparateResources()
     {
         Assert.Contains("resource_type IN('storage_capacity','storage_usage','signature_credit','ocr_credit')", Sql, StringComparison.Ordinal);
