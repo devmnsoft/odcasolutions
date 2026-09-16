@@ -12,19 +12,21 @@
 }
 <header class="page-heading"><div><span class="eyebrow">IMPORTAÇÃO ASSISTIDA</span><h1>@root.GetProperty("display_name").GetString()</h1><p>Revise cada origem. Valores extraídos nunca são confirmados sem sua decisão.</p></div><details class="help-panel"><summary>Como usar</summary><p>Compare a sugestão com a página indicada, aceite, edite ou rejeite. Salve a revisão antes da confirmação.</p></details></header>
 <ol class="import-progress" aria-label="Progresso"><li class="done">Documento</li><li class="current">Dados contratuais</li><li>Partes</li><li>Obrigações</li><li>Confirmação</li></ol>
-<div class="review-workspace">
-    <section class="document-pane"><header><h2>Documento original</h2><span>@root.GetProperty("security_status").GetString()</span></header>
+<div class="review-mobile-tabs" role="group" aria-label="Alternar painel"><button type="button" class="button button-quiet" data-review-tab="document">Documento</button><button type="button" class="button button-quiet" data-review-tab="data">Dados</button></div>
+<div class="review-summary" role="status"><strong>@Model.GetProperty("suggestions").EnumerateArray().Count()</strong> campos encontrados. Estados possíveis: não revisado, aceito, corrigido ou rejeitado.</div>
+<div class="review-workspace" data-review-workspace>
+    <section class="document-pane" data-review-panel="document"><header><h2>Documento original</h2><span>@root.GetProperty("security_status").GetString()</span></header>
         <iframe title="Pré-visualização autorizada do documento" src="@Url.Action("Preview",new{tenantId,contractId,documentId,versionId})"></iframe>
         <p class="muted">Use os controles do visualizador para navegar e ampliar. O servidor revalida tenant e permissão.</p>
     </section>
-    <section class="suggestion-pane" data-import-review data-save-url="@(extractionId.HasValue ? Url.Action("SaveReview",new{tenantId,importId,contractId,extractionId}) : null)" data-contract-version="@contractVersion"><h2>Sugestões</h2>
+    <section class="suggestion-pane" data-review-panel="data" data-import-review data-save-url="@(extractionId.HasValue ? Url.Action("SaveReview",new{tenantId,importId,contractId,extractionId}) : null)" data-contract-version="@contractVersion"><h2>Sugestões</h2>
     @Html.AntiForgeryToken()
     @if(!Model.GetProperty("suggestions").EnumerateArray().Any()){<p>Nenhuma sugestão automática. A revisão manual continua disponível.</p>}
     @foreach(var suggestion in Model.GetProperty("suggestions").EnumerateArray()){
-        <article class="suggestion-card" data-suggestion-id="@suggestion.GetProperty("id").GetGuid()"><header><strong>@suggestion.GetProperty("field_name").GetString()</strong><span>@suggestion.GetProperty("method").GetString()</span></header>
+        <article class="suggestion-card" data-suggestion-id="@suggestion.GetProperty("id").GetGuid()"><header><strong>@suggestion.GetProperty("field_name").GetString()</strong><span>Método: @suggestion.GetProperty("method").GetString() · Estado: @suggestion.GetProperty("review_status").GetString()</span></header>
             <label>Valor extraído<input value="@suggestion.GetProperty("extracted_value").GetString()" readonly /></label>
-            <label>Valor confirmado<input data-reviewed-value value="@(suggestion.TryGetProperty("reviewed_value",out var reviewed)?reviewed.GetString():suggestion.GetProperty("normalized_value").GetString())" /></label>
-            <blockquote>@suggestion.GetProperty("evidence").GetString()</blockquote><p>Página @(suggestion.TryGetProperty("page_number",out var page)&&page.ValueKind!=System.Text.Json.JsonValueKind.Null?page.GetInt32().ToString():"não identificada")</p>
+            <label>Valor escolhido para o contrato <small>(edite para informar manualmente)</small><input data-reviewed-value value="@(suggestion.TryGetProperty("reviewed_value",out var reviewed)?reviewed.GetString():suggestion.GetProperty("normalized_value").GetString())" /></label>
+            <blockquote><strong>Trecho de origem:</strong> @suggestion.GetProperty("evidence").GetString()</blockquote><p>Página @(suggestion.TryGetProperty("page_number",out var page)&&page.ValueKind!=System.Text.Json.JsonValueKind.Null?page.GetInt32().ToString():"não identificada")</p>
             <fieldset><legend>Decisão</legend><label><input type="radio" value="accepted" name="decision-@suggestion.GetProperty("id").GetGuid()" /> Aceitar</label><label><input type="radio" value="edited" name="decision-@suggestion.GetProperty("id").GetGuid()" /> Editar</label><label><input type="radio" value="rejected" name="decision-@suggestion.GetProperty("id").GetGuid()" /> Rejeitar</label></fieldset>
         </article>}
         <p data-review-message role="status"></p>@if(extractionId.HasValue){<button class="button button-primary" type="button" data-save-review>Salvar revisão</button>}else{<p>Solicite a extração segura antes de revisar sugestões.</p>}

@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Odca.Web.Services;
-using Odca.Contracts.Imports;
+using Odca.Contracts.DocumentImports;
 
 namespace Odca.Web.Controllers;
 

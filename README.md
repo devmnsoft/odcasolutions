@@ -181,3 +181,19 @@ API e Worker devem compartilhar o mesmo `DataProtection:KeysPath` persistente e 
 ### Biblioteca e estúdio de contratos
 
 Com uma organização selecionada, abra `/organizacoes/{tenantId}/estudio`. O catálogo mostra somente modelos publicados autorizados. Ao usar um modelo, informe o título, confirme os campos no painel direito e edite os blocos do documento; o autosave usa debounce e versão otimista. O botão **Gerar versão** somente aceita campos obrigatórios confirmados e cria um snapshot imutável ligado à versão original do modelo. O estado detalhado, recursos suportados e dependências de PDF estão em `docs/execution/CONTRACT_STUDIO.md`.
+
+### Importação assistida
+
+A central autenticada fica em `/organizacoes/{tenantId}/importacoes`; as rotas HTTP
+continuam em `/api/v1/organizations/{tenantId}/contract-imports`. Os DTOs públicos
+estão no namespace `Odca.Contracts.DocumentImports` (a mudança corrige CA1716 sem
+alterar nomes JSON ou URLs). A revisão mantém documento e sugestões lado a lado,
+exibe página, trecho, método e estado quando fornecidos pelo extrator, e exige uma
+decisão explícita antes da confirmação. O servidor volta a validar pendências,
+ordem da vigência, moeda associada a valor e prazo de comunicação antes de confirmar.
+
+Para validar localmente, configure PostgreSQL e as ferramentas de documento descritas
+acima, execute o Bootstrap, inicie API, Web e Worker e acesse a central por uma conta
+com as permissões `tenant.imports.read`, `tenant.imports.manage` e
+`tenant.imports.confirm`. Arquivos permanecem fora de `wwwroot` e a pré-visualização
+passa pelo BFF autenticado.
