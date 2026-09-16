@@ -4,6 +4,7 @@ using Npgsql;
 using Odca.Configuration;
 
 var builder = Host.CreateApplicationBuilder(args);
+builder.Services.Configure<HostOptions>(options => options.ShutdownTimeout = TimeSpan.FromMinutes(2));
 var localConfiguration = LocalRuntimeConfiguration.Add(builder.Configuration, builder.Environment, args);
 Console.WriteLine($"Configuração: ambiente={localConfiguration.Environment}; caminho={localConfiguration.Path ?? "não utilizado"}.");
 builder.Services.AddHostedService<Worker>();

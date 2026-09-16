@@ -100,13 +100,26 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
     private string StoragePath(string key) => Path.Combine(Path.GetFullPath(configuration["Documents:StoragePath"] ?? "./private-documents"), key.Replace('/', Path.DirectorySeparatorChar));
     private static async Task ScanResult(NpgsqlConnection c, Guid id, string status, string engine, CancellationToken ct)
         => _ = await c.ExecuteAsync(new CommandDefinition("UPDATE odca.document_versions SET security_status=@status,security_checked_at=now(),security_engine=@engine WHERE id=@id", new { id, status, engine }, cancellationToken: ct));
-    private static async Task<int> Run(string executable, IReadOnlyList<string> arguments, TimeSpan timeout, CancellationToken ct)
+    internal static async Task<int> Run(string executable, IReadOnlyList<string> arguments, TimeSpan timeout, CancellationToken ct)
     {
         var start = new ProcessStartInfo(executable) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
         foreach (var argument in arguments) start.ArgumentList.Add(argument);
         using var process = Process.Start(start) ?? throw new InvalidOperationException("process-start-failed");
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct); limit.CancelAfter(timeout);
-        await process.WaitForExitAsync(limit.Token); return process.ExitCode;
+        try
+        {
+            await process.WaitForExitAsync(limit.Token);
+            return process.ExitCode;
+        }
+        catch (OperationCanceledException)
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+                await process.WaitForExitAsync(CancellationToken.None);
+            }
+            throw;
+        }
     }
     private sealed record VersionItem(Guid Id, Guid TenantId, string StorageKey, string DetectedType);
     private sealed record JobItem(Guid Id, Guid TenantId, Guid ContractId, Guid VersionId, Guid LeaseToken);

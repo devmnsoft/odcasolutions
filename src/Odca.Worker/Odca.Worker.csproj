@@ -14,6 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Odca.IntegrationTests" />
     <ProjectReference Include="..\Odca.Application\Odca.Application.csproj" />
     <ProjectReference Include="..\Odca.Infrastructure\Odca.Infrastructure.csproj" />
     <ProjectReference Include="..\Odca.Configuration\Odca.Configuration.csproj" />
