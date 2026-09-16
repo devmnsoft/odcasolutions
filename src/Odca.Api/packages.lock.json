@@ -99,6 +99,7 @@
       "odca.application": {
         "type": "Project",
         "dependencies": {
+          "Odca.Contracts": "[1.0.0, )",
           "Odca.Domain": "[1.0.0, )"
         }
       },
