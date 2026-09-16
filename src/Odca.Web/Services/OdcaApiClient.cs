@@ -507,9 +507,11 @@ public sealed class OdcaApiClient(HttpClient client)
         message.Content = JsonContent.Create(request); return await SendAsync<JsonElement>(message, false, ct);
     }
 
-    public async Task<ApiCallResult<bool>> SetStudioCommentStateAsync(string token, Guid tenantId, Guid draftId, Guid commentId, string action, CancellationToken ct)
+    public async Task<ApiCallResult<bool>> SetStudioCommentStateAsync(string token, Guid tenantId, Guid draftId, Guid commentId, string operation, ChangeStudioCommentStateRequest request, CancellationToken ct)
     {
-        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/comments/{commentId}/{action}", token);
+        if (operation is not ("resolve" or "reopen")) throw new ArgumentOutOfRangeException(nameof(operation));
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/comments/{commentId}/{operation}", token);
+        message.Content = JsonContent.Create(request);
         return await SendAsync<bool>(message, false, ct, emptyBodyIsSuccess: true);
     }
 

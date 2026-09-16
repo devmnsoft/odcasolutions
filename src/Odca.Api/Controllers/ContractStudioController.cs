@@ -208,7 +208,18 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     {
         var actor = Actor(); if (actor is null) return Unauthorized(); await using var c = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(c, actor.Value, tenantId, "tenant.contract_drafts.read", ct)) return Forbid(); await using var tx = await c.BeginTransactionAsync(ct); await SetTenant(c, tenantId, actor.Value, tx, ct);
-        var rows = await c.QueryAsync<StudioCommentItem>(new CommandDefinition("SELECT m.id AS Id,m.generated_version_id AS VersionId,m.draft_revision AS DraftRevision,m.reference AS Reference,m.body AS Body,m.author_id AS AuthorId,u.display_name AS Author,m.parent_id AS ParentId,m.created_at AS CreatedAt,(m.resolved_at IS NOT NULL) AS Resolved,m.resolved_at AS ResolvedAt,m.reference_located AS ReferenceLocated FROM odca.studio_comments m JOIN odca.users u ON u.id=m.author_id WHERE m.tenant_id=@tenantId AND m.draft_id=@draftId AND m.deleted_at IS NULL AND (@includeResolved OR m.resolved_at IS NULL) ORDER BY m.created_at", new { tenantId, draftId, includeResolved }, tx, cancellationToken: ct));
+        var rows = await c.QueryAsync<StudioCommentItem>(new CommandDefinition("""
+            SELECT m.id AS Id,m.generated_version_id AS VersionId,m.draft_revision AS DraftRevision,m.reference AS Reference,m.body AS Body,
+              m.author_id AS AuthorId,u.display_name AS Author,m.parent_id AS ParentId,m.created_at AS CreatedAt,
+              (m.resolved_at IS NOT NULL) AS Resolved,m.resolved_at AS ResolvedAt,m.reference_located AS ReferenceLocated,
+              resolver.display_name AS ResolvedBy,coalesce(last_event.occurred_at,m.created_at) AS LastMovementAt,v.version_number AS OriginVersion
+            FROM odca.studio_comments m JOIN odca.users u ON u.id=m.author_id
+            LEFT JOIN odca.users resolver ON resolver.id=m.resolved_by
+            LEFT JOIN odca.generated_contract_versions v ON v.tenant_id=m.tenant_id AND v.id=m.generated_version_id
+            LEFT JOIN LATERAL (SELECT occurred_at FROM odca.studio_comment_events e WHERE e.tenant_id=m.tenant_id AND e.comment_id=m.id ORDER BY e.id DESC LIMIT 1) last_event ON true
+            WHERE m.tenant_id=@tenantId AND m.draft_id=@draftId AND m.deleted_at IS NULL AND (@includeResolved OR m.resolved_at IS NULL)
+            ORDER BY coalesce(last_event.occurred_at,m.created_at) DESC,m.id
+            """, new { tenantId, draftId, includeResolved }, tx, cancellationToken: ct));
         await tx.CommitAsync(ct); return Ok(rows.AsList());
     }
 
@@ -221,11 +232,42 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         if (!inserted) return NotFound(); await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.contract_events(tenant_id,contract_id,actor_id,event_type,details) SELECT tenant_id,contract_id,@actor,'comment.created',jsonb_build_object('commentId',@id,'reference',@reference) FROM odca.contract_drafts WHERE tenant_id=@tenantId AND id=@draftId", new { tenantId, draftId, actor, id, reference=request.Reference }, tx, cancellationToken: ct)); await tx.CommitAsync(ct); return Created($"/api/v1/organizations/{tenantId}/studio/drafts/{draftId}/comments/{id}", new { id });
     }
 
-    [HttpPost("drafts/{draftId:guid}/comments/{commentId:guid}/{action:regex(^(resolve|reopen)$)}")]
-    public async Task<IActionResult> SetCommentState(Guid tenantId, Guid draftId, Guid commentId, string action, CancellationToken ct)
+    [HttpPost("drafts/{draftId:guid}/comments/{commentId:guid}/resolve")]
+    public Task<IActionResult> ResolveCommentAsync(Guid tenantId, Guid draftId, Guid commentId, [FromBody] ChangeStudioCommentStateRequest request, CancellationToken ct)
+        => ChangeCommentStateAsync(tenantId, draftId, commentId, request, resolve: true, ct);
+
+    [HttpPost("drafts/{draftId:guid}/comments/{commentId:guid}/reopen")]
+    public Task<IActionResult> ReopenCommentAsync(Guid tenantId, Guid draftId, Guid commentId, [FromBody] ChangeStudioCommentStateRequest request, CancellationToken ct)
+        => ChangeCommentStateAsync(tenantId, draftId, commentId, request, resolve: false, ct);
+
+    private async Task<IActionResult> ChangeCommentStateAsync(Guid tenantId, Guid draftId, Guid commentId, ChangeStudioCommentStateRequest request, bool resolve, CancellationToken ct)
     {
-        var actor = Actor(); if (actor is null) return Unauthorized(); await using var c = await dataSource.OpenConnectionAsync(ct); if (!await Allowed(c, actor.Value, tenantId, "tenant.contract_drafts.manage", ct)) return Forbid(); await using var tx = await c.BeginTransactionAsync(ct); await SetTenant(c, tenantId, actor.Value, tx, ct);
-        var count = await c.ExecuteAsync(new CommandDefinition(action == "resolve" ? "UPDATE odca.studio_comments SET resolved_at=now(),resolved_by=@actor WHERE tenant_id=@tenantId AND draft_id=@draftId AND id=@commentId AND resolved_at IS NULL AND deleted_at IS NULL" : "UPDATE odca.studio_comments SET resolved_at=NULL,resolved_by=NULL WHERE tenant_id=@tenantId AND draft_id=@draftId AND id=@commentId AND resolved_at IS NOT NULL AND deleted_at IS NULL", new { actor, tenantId, draftId, commentId }, tx, cancellationToken: ct)); if (count != 1) return Conflict(); await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.studio_comment_events(tenant_id,comment_id,actor_id,event_type) VALUES(@tenantId,@commentId,@actor,@action)", new { tenantId, commentId, actor, action }, tx, cancellationToken: ct)); await tx.CommitAsync(ct); return NoContent();
+        var actor = Actor(); if (actor is null) return Unauthorized();
+        if (!resolve && string.IsNullOrWhiteSpace(request.Observation))
+            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]> { ["observation"] = ["Informe a justificativa para reabrir a pendência."] }));
+        if (request.Observation?.Trim().Length > 4000) return ValidationProblem();
+        await using var c = await dataSource.OpenConnectionAsync(ct); if (!await Allowed(c, actor.Value, tenantId, "tenant.contract_drafts.manage", ct)) return Forbid();
+        await using var tx = await c.BeginTransactionAsync(ct); await SetTenant(c, tenantId, actor.Value, tx, ct);
+        var current = await c.QuerySingleOrDefaultAsync<CommentStateRow>(new CommandDefinition("""
+            SELECT m.resolved_at IS NOT NULL AS Resolved,m.reference AS Reference,m.draft_revision AS DraftRevision,m.contract_id AS ContractId
+            FROM odca.studio_comments m JOIN odca.contract_drafts d ON d.tenant_id=m.tenant_id AND d.id=m.draft_id AND d.contract_id=m.contract_id
+            JOIN odca.contracts c ON c.tenant_id=d.tenant_id AND c.id=d.contract_id
+            WHERE m.tenant_id=@tenantId AND m.draft_id=@draftId AND m.id=@commentId AND m.deleted_at IS NULL FOR UPDATE
+            """, new { tenantId, draftId, commentId }, tx, cancellationToken: ct));
+        if (current is null) return NotFound();
+        if (current.Resolved == resolve) { await tx.CommitAsync(ct); return NoContent(); }
+        if (current.Resolved != request.ExpectedResolved) return Conflict(new { title = "A pendência foi atualizada por outra pessoa. Atualize os dados e tente novamente." });
+        var action = resolve ? "resolve" : "reopen";
+        var count = await c.ExecuteAsync(new CommandDefinition(resolve
+            ? "UPDATE odca.studio_comments SET resolved_at=now(),resolved_by=@actor WHERE tenant_id=@tenantId AND draft_id=@draftId AND id=@commentId AND resolved_at IS NULL AND deleted_at IS NULL"
+            : "UPDATE odca.studio_comments SET resolved_at=NULL,resolved_by=NULL WHERE tenant_id=@tenantId AND draft_id=@draftId AND id=@commentId AND resolved_at IS NOT NULL AND deleted_at IS NULL",
+            new { actor, tenantId, draftId, commentId }, tx, cancellationToken: ct));
+        if (count != 1) return Conflict(new { title = "A pendência foi atualizada por outra pessoa." });
+        await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.studio_comment_events(tenant_id,comment_id,actor_id,event_type) VALUES(@tenantId,@commentId,@actor,@action)", new { tenantId, commentId, actor, action }, tx, cancellationToken: ct));
+        if (!string.IsNullOrWhiteSpace(request.Observation))
+            await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.studio_comments(tenant_id,contract_id,draft_id,draft_revision,author_id,parent_id,reference,body) VALUES(@tenantId,@contractId,@draftId,@draftRevision,@actor,@commentId,@reference,@body)", new { tenantId, current.ContractId, draftId, current.DraftRevision, actor, commentId, current.Reference, body = request.Observation.Trim() }, tx, cancellationToken: ct));
+        await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.contract_events(tenant_id,contract_id,actor_id,event_type,details) VALUES(@tenantId,@contractId,@actor,@eventType,jsonb_build_object('commentId',@commentId))", new { tenantId, current.ContractId, actor, eventType = $"comment.{action}", commentId }, tx, cancellationToken: ct));
+        await tx.CommitAsync(ct); return NoContent();
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive=true, Converters={new JsonStringEnumConverter()} };
@@ -239,5 +281,6 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     private sealed record SaveRow(long Version,Guid ClientRevision,DateTimeOffset SavedAt);
     private sealed record VersionRow(Guid Id,Guid ContractId,string Content,string Sha256,string Status);
     private sealed record ComparisonRow(Guid Id,Guid ContractId,int Number,string Author,DateTimeOffset CreatedAt,string Status,string Content,string Fields,string Values);
+    private sealed record CommentStateRow(bool Resolved,string Reference,long DraftRevision,Guid ContractId);
     private static StudioVersionItem ToItem(ComparisonRow row)=>new(row.Id,row.Number,row.Author,row.CreatedAt,row.Status);
 }
