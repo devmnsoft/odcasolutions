@@ -14,9 +14,10 @@ public sealed class StudioController(OdcaApiClient api) : Controller
     public async Task<IActionResult> Index(Guid tenantId,string? search,int page=1,CancellationToken ct=default)
     {
         var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
+        ViewData["Title"]="Modelos de contrato";ViewData["TenantId"]=tenantId;ViewData["Search"]=search;
         var result=await api.GetStudioTemplatesAsync(token,tenantId,search,page,ct);
-        if(!result.Succeeded)return result.Status==ApiCallStatus.Forbidden?Forbid():View("~/Views/Shared/ServiceUnavailable.cshtml");
-        ViewData["Title"]="Modelos de contrato";ViewData["TenantId"]=tenantId;ViewData["Search"]=search;return View(result.Value!);
+        if(!result.Succeeded){if(result.Status==ApiCallStatus.Forbidden)return Forbid();ViewData["LoadError"]=result.UserMessage("Não foi possível carregar o catálogo.");return View(new TemplateCatalogPage([],Math.Max(1,page),12,0));}
+        return View(result.Value!);
     }
     [HttpPost("minutas")]
     public async Task<IActionResult> Create(Guid tenantId,Guid templateId,string title,string? reference,CancellationToken ct)

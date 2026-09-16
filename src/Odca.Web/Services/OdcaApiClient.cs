@@ -26,10 +26,19 @@ public sealed class OdcaApiClient(HttpClient client)
         if (!response.IsSuccessStatusCode) return (response.StatusCode, null, null);
         return (response.StatusCode, await response.Content.ReadAsByteArrayAsync(ct), response.Content.Headers.ContentType?.MediaType);
     }
-    public Task<ApiCallResult<ContractImportPage>> GetContractImportsAsync(string token, Guid tenantId, string? status, bool mine, bool awaitingReview, CancellationToken ct)
+    public Task<ApiCallResult<ContractImportPage>> GetContractImportsAsync(string token, Guid tenantId, string? status, bool mine, bool awaitingReview, DateOnly? from, DateOnly? to, CancellationToken ct)
     {
-        var query = $"status={Uri.EscapeDataString(status ?? string.Empty)}&mine={mine.ToString().ToLowerInvariant()}&awaitingReview={awaitingReview.ToString().ToLowerInvariant()}";
-        return SendAsync<ContractImportPage>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contract-imports?{query}", token), false, ct);
+        var query = new Dictionary<string, string?>
+        {
+            ["status"] = status,
+            ["mine"] = mine ? "true" : null,
+            ["awaitingReview"] = awaitingReview ? "true" : null,
+            ["from"] = from?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            ["to"] = to?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+        };
+        var encoded = string.Join('&', query.Where(item => !string.IsNullOrWhiteSpace(item.Value))
+            .Select(item => $"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(item.Value!)}"));
+        return SendAsync<ContractImportPage>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contract-imports?{encoded}", token), false, ct);
     }
 
     public Task<ApiCallResult<JsonElement>> GetContractImportAsync(string token, Guid tenantId, Guid importId, CancellationToken ct) =>

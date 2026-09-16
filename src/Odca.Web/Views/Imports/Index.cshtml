@@ -2,6 +2,9 @@
 @{
     var tenantId = (Guid)ViewData["TenantId"]!;
     var status = ViewData["Status"] as string;
+    var from = ViewData["From"] as DateOnly?;
+    var to = ViewData["To"] as DateOnly?;
+    var loadFailed = ViewData["LoadError"] is string;
 }
 <header class="page-heading">
     <div><span class="eyebrow">CONTRATOS</span><h1>Central de importações</h1><p>Acompanhe a análise, retome revisões e confirme somente dados conferidos.</p></div>
@@ -11,9 +14,17 @@
     <label>Estado<select name="status"><option value="">Todos</option>@foreach(var item in new[]{"security_review","queued","processing","awaiting_review","confirmed","failed","cancelled"}){<option value="@item" selected="@(status==item)">@item.Replace('_',' ')</option>}</select></label>
     <label class="check-label"><input type="checkbox" name="mine" value="true" checked="@((bool)ViewData["Mine"]!)" /> Minhas importações</label>
     <label class="check-label"><input type="checkbox" name="awaitingReview" value="true" checked="@((bool)ViewData["AwaitingReview"]!)" /> Aguardando revisão</label>
+    <label>De<input type="date" name="from" value="@from?.ToString("yyyy-MM-dd")" /></label>
+    <label>Até<input type="date" name="to" value="@to?.ToString("yyyy-MM-dd")" aria-describedby="date-error" /></label>
     <button class="button button-primary" type="submit">Filtrar</button>
+    @if(loadFailed){<button class="button button-quiet" type="submit">Tentar novamente</button>}
 </form>
-@if (Model.Items.Count == 0)
+@if(ViewData["DateError"] is string dateError){<p id="date-error" class="field-error" role="alert">@dateError</p>}
+@if(ViewData["LoadError"] is string loadError)
+{
+    <section class="error" role="alert"><strong>Não foi possível carregar.</strong> @loadError</section>
+}
+else if (ViewData["DateError"] is null && Model.Items.Count == 0)
 {
     <section class="empty-state"><h2>Nenhuma importação corresponde aos filtros</h2><p>Falhas permanecem visíveis ao selecionar “Todos”.</p></section>
 }

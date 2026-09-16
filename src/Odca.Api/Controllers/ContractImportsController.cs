@@ -18,18 +18,27 @@ public sealed class ContractImportsController(NpgsqlDataSource dataSource) : Con
         [FromQuery] DateOnly? from = null, [FromQuery] DateOnly? to = null, CancellationToken ct = default)
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
+        if (from.HasValue && to.HasValue && from.Value > to.Value)
+            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
+            {
+                ["to"] = ["A data final deve ser igual ou posterior à data inicial."]
+            }));
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(connection, actor.Value, tenantId, "tenant.imports.read", ct)) return Forbid();
         await using var tx = await connection.BeginTransactionAsync(ct); await SetTenant(connection, tenantId, tx, ct);
-        var args = new { tenantId, status, requester, actor, mine, awaitingReview, from, toExclusive = to?.AddDays(1) };
+        var timeZoneId = await connection.ExecuteScalarAsync<string>(new CommandDefinition(
+            "SELECT timezone FROM odca.tenants WHERE id=@tenantId",
+            new { tenantId }, tx, cancellationToken: ct));
+        var range = CreateUtcRange(from, to, timeZoneId);
+        var args = new { tenantId, status, requester, actor = actor.Value, mine, awaitingReview, range.FromInclusive, range.ToExclusive };
         const string filter = """
             WHERE i.tenant_id=@tenantId
               AND (CAST(@status AS text) IS NULL OR i.status=CAST(@status AS text))
               AND (@requester IS NULL OR i.requested_by=@requester)
               AND (NOT @mine OR i.requested_by=@actor)
               AND (NOT @awaitingReview OR i.status='awaiting_review')
-              AND (@from IS NULL OR i.created_at>=@from)
-              AND (@toExclusive IS NULL OR i.created_at<@toExclusive)
+              AND (CAST(@FromInclusive AS timestamptz) IS NULL OR i.created_at>=CAST(@FromInclusive AS timestamptz))
+              AND (CAST(@ToExclusive AS timestamptz) IS NULL OR i.created_at<CAST(@ToExclusive AS timestamptz))
             """;
         var items = await connection.QueryAsync<ContractImportListItem>(new CommandDefinition("""
             SELECT i.id AS Id,v.display_name AS DocumentName,u.display_name AS Requester,i.created_at AS CreatedAt,
@@ -42,6 +51,25 @@ public sealed class ContractImportsController(NpgsqlDataSource dataSource) : Con
         var total = await connection.ExecuteScalarAsync<int>(new CommandDefinition(
             "SELECT count(*)::integer FROM odca.contract_imports i " + filter, args, tx, cancellationToken: ct));
         await tx.CommitAsync(ct); return Ok(new ContractImportPage(items.AsList(), total));
+    }
+
+    internal static (DateTimeOffset? FromInclusive, DateTimeOffset? ToExclusive) CreateUtcRange(
+        DateOnly? from,
+        DateOnly? to,
+        string timeZoneId)
+    {
+        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+        return (
+            from is null ? null : StartOfDayUtc(from.Value, timeZone),
+            to is null || to == DateOnly.MaxValue ? null : StartOfDayUtc(to.Value.AddDays(1), timeZone));
+    }
+
+    private static DateTimeOffset StartOfDayUtc(DateOnly date, TimeZoneInfo timeZone)
+    {
+        var local = date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
+        if (timeZone.IsInvalidTime(local))
+            throw new InvalidOperationException($"O início do dia {date:yyyy-MM-dd} não existe no fuso configurado.");
+        return new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(local, timeZone));
     }
 
     [HttpPost]
