@@ -51,4 +51,12 @@ public sealed class TimeZonePolicyTests
 
         Assert.Equal(TimeZoneConfigurationError.Unavailable, exception.Error);
     }
+
+    [Fact]
+    public void EmptyApplicationDefaultIsRejectedWhenOrganizationValueIsAbsent()
+    {
+        var exception = Assert.Throws<TimeZoneConfigurationException>(() => TimeZonePolicy.Resolve(null, "   "));
+
+        Assert.Equal(TimeZoneConfigurationError.Empty, exception.Error);
+    }
 }
