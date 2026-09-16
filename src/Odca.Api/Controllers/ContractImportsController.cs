@@ -11,7 +11,7 @@ namespace Odca.Api.Controllers;
 [ApiController]
 [Authorize(Policy = "PasswordChanged")]
 [Route("api/v1/organizations/{tenantId:guid}/contract-imports")]
-public sealed class ContractImportsController(
+public sealed partial class ContractImportsController(
     NpgsqlDataSource dataSource,
     IConfiguration configuration,
     ILogger<ContractImportsController> logger) : ControllerBase
@@ -41,14 +41,14 @@ public sealed class ContractImportsController(
         }
         catch (TimeZoneConfigurationException exception)
         {
-            logger.LogError(exception, "Configuração de fuso indisponível para tenant={TenantId}; motivo={Reason}.", tenantId, exception.Error);
+            LogTimeZoneConfigurationUnavailable(logger, exception, tenantId, exception.Error);
             return Problem(statusCode: StatusCodes.Status503ServiceUnavailable,
                 title: "A configuração de data da organização está indisponível.",
                 detail: "Contate o administrador para corrigir o fuso horário configurado.");
         }
         catch (InvalidOperationException exception)
         {
-            logger.LogError(exception, "Limite local inválido para tenant={TenantId}.", tenantId);
+            LogInvalidLocalRange(logger, exception, tenantId);
             return Problem(statusCode: StatusCodes.Status422UnprocessableEntity,
                 title: "O intervalo informado não pode ser convertido no fuso da organização.");
         }
@@ -236,6 +236,13 @@ public sealed class ContractImportsController(
     private static Task<int> SetTenant(NpgsqlConnection c, Guid tenant, NpgsqlTransaction tx, CancellationToken ct) => c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@value,true)", new { value = tenant.ToString() }, tx, cancellationToken: ct));
     private static (string Status, string Step) State(string security, string? extraction) =>
         security switch { "pending" or "scanning" => ("security_review", "document"), "rejected" or "scan_failed" => ("failed", "document"), _ => extraction switch { null => ("received", "document"), "queued" => ("queued", "document"), "processing" => ("processing", "document"), "ready_for_review" => ("awaiting_review", "contract_data"), _ => ("failed", "document") } };
+
+    [LoggerMessage(EventId = 2101, Level = LogLevel.Error, Message = "Configuração de fuso indisponível para tenant={TenantId}; motivo={Reason}.")]
+    private static partial void LogTimeZoneConfigurationUnavailable(ILogger logger, Exception exception, Guid tenantId, TimeZoneConfigurationError reason);
+
+    [LoggerMessage(EventId = 2102, Level = LogLevel.Error, Message = "Limite local inválido para tenant={TenantId}.")]
+    private static partial void LogInvalidLocalRange(ILogger logger, Exception exception, Guid tenantId);
+
     private sealed record ImportSource(Guid VersionId, Guid ContractId, string Sha256, string SecurityStatus, Guid? JobId, string? JobStatus);
     internal sealed record ContractForValidation(string Title, DateOnly? StartDate, DateOnly? EndDate, decimal? Value, string? Currency, int? RenewalNoticeDays);
     private sealed record ConfirmableImport(string Status, long ReviewVersion, Guid? ResultContractId, Guid ContractId, string SecurityStatus, string ExtractionStatus);
