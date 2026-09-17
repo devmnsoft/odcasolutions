@@ -51,8 +51,8 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
         Guid viewerId,
         bool canReadTenant,
         Guid? ownerId,
-        DateOnly from,
-        DateOnly to,
+        DateOnly windowStart,
+        DateOnly windowEnd,
         CancellationToken cancellationToken) =>
         QueryAsync(
             tenantId,
@@ -62,10 +62,10 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
             canReadTenant,
             contractId: null,
             ownerId,
-            today: from,
-            renewalWindowEnd: to,
-            windowFrom: from,
-            windowTo: to,
+            today: windowStart,
+            renewalWindowEnd: windowEnd,
+            windowFrom: windowStart,
+            windowTo: windowEnd,
             cancellationToken);
 
     private async Task<IReadOnlyList<OperationalInboxRow>> QueryAsync(

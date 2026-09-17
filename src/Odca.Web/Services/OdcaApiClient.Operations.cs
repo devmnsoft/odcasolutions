@@ -1,14 +1,52 @@
-using System.Globalization;
 using Odca.Contracts.Operations;
 
 namespace Odca.Web.Services;
 
-// Cole estes métodos em OdcaApiClient (classe sealed existente).
-// using Odca.Contracts.Operations;
-
-public static class OdcaApiClientOperations
+public sealed partial class OdcaApiClient
 {
-    public static string InboxPath(
+    public Task<ApiCallResult<OperationalInboxPageDto>> GetInboxAsync(
+        string token,
+        Guid tenantId,
+        string scope,
+        string? kind,
+        string? urgency,
+        Guid? contractId,
+        Guid? ownerId,
+        int page,
+        int pageSize,
+        CancellationToken ct) =>
+        SendAsync<OperationalInboxPageDto>(
+            CreateAuthorized(
+                HttpMethod.Get,
+                InboxPath(tenantId, scope, kind, urgency, contractId, ownerId, page, pageSize),
+                token),
+            false,
+            ct);
+
+    public Task<ApiCallResult<MonthlyAgendaPageDto>> GetAgendaAsync(
+        string token,
+        Guid tenantId,
+        int year,
+        int month,
+        string scope,
+        Guid? ownerId,
+        CancellationToken ct) =>
+        SendAsync<MonthlyAgendaPageDto>(
+            CreateAuthorized(HttpMethod.Get, AgendaPath(tenantId, year, month, scope, ownerId), token),
+            false,
+            ct);
+
+    public Task<ApiCallResult<ContractSheetDto>> GetContractSheetAsync(
+        string token,
+        Guid tenantId,
+        Guid contractId,
+        CancellationToken ct) =>
+        SendAsync<ContractSheetDto>(
+            CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contracts/{contractId}/sheet", token),
+            false,
+            ct);
+
+    private static string InboxPath(
         Guid tenantId,
         string scope,
         string? kind,
@@ -25,30 +63,26 @@ public static class OdcaApiClientOperations
             ["urgency"] = urgency,
             ["contractId"] = contractId?.ToString(),
             ["ownerId"] = ownerId?.ToString(),
-            ["page"] = page.ToString(CultureInfo.InvariantCulture),
-            ["pageSize"] = pageSize.ToString(CultureInfo.InvariantCulture)
+            ["page"] = page.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["pageSize"] = pageSize.ToString(System.Globalization.CultureInfo.InvariantCulture)
         };
-        var encoded = string.Join('&', query
-            .Where(item => !string.IsNullOrWhiteSpace(item.Value))
-            .Select(item => $"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(item.Value!)}"));
-        return $"api/v1/organizations/{tenantId}/inbox?{encoded}";
+        return $"api/v1/organizations/{tenantId}/inbox?{JoinQuery(query)}";
     }
 
-    public static string AgendaPath(Guid tenantId, int year, int month, string scope, Guid? ownerId)
+    private static string AgendaPath(Guid tenantId, int year, int month, string scope, Guid? ownerId)
     {
         var query = new Dictionary<string, string?>
         {
-            ["year"] = year.ToString(CultureInfo.InvariantCulture),
-            ["month"] = month.ToString(CultureInfo.InvariantCulture),
+            ["year"] = year.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["month"] = month.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["scope"] = scope,
             ["ownerId"] = ownerId?.ToString()
         };
-        var encoded = string.Join('&', query
-            .Where(item => !string.IsNullOrWhiteSpace(item.Value))
-            .Select(item => $"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(item.Value!)}"));
-        return $"api/v1/organizations/{tenantId}/agenda?{encoded}";
+        return $"api/v1/organizations/{tenantId}/agenda?{JoinQuery(query)}";
     }
 
-    public static string SheetPath(Guid tenantId, Guid contractId) =>
-        $"api/v1/organizations/{tenantId}/contracts/{contractId}/sheet";
+    private static string JoinQuery(Dictionary<string, string?> query) =>
+        string.Join('&', query
+            .Where(item => !string.IsNullOrWhiteSpace(item.Value))
+            .Select(item => $"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(item.Value!)}"));
 }

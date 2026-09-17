@@ -38,8 +38,8 @@ public interface IMonthlyAgendaRepository
         Guid viewerId,
         bool canReadTenant,
         Guid? ownerId,
-        DateOnly from,
-        DateOnly to,
+        DateOnly windowStart,
+        DateOnly windowEnd,
         CancellationToken cancellationToken);
 }
 

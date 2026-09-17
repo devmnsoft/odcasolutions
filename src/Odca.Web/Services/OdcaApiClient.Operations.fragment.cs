@@ -1,4 +1,7 @@
- 
+
+
+using Odca.Contracts.Operations;
+using Odca.Web.Services;
 
 public Task<ApiCallResult<OperationalInboxPageDto>> GetInboxAsync(
     string token, Guid tenantId, string scope, string? kind, string? urgency,
