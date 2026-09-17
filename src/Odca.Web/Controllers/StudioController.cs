@@ -11,13 +11,33 @@ namespace Odca.Web.Controllers;
 public sealed class StudioController(OdcaApiClient api) : Controller
 {
     [HttpGet("")]
-    public async Task<IActionResult> Index(Guid tenantId,string? search,int page=1,CancellationToken ct=default)
+    public async Task<IActionResult> Index(Guid tenantId,string? search,string? type,string? scope,int page=1,CancellationToken ct=default)
     {
         var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
-        ViewData["Title"]="Modelos de contrato";ViewData["TenantId"]=tenantId;ViewData["Search"]=search;
-        var result=await api.GetStudioTemplatesAsync(token,tenantId,search,page,ct);
+        ViewData["Title"]="Modelos de contrato";ViewData["TenantId"]=tenantId;ViewData["Search"]=search;ViewData["Type"]=type;ViewData["Scope"]=scope;
+        var result=await api.GetStudioTemplatesAsync(token,tenantId,search,type,scope,page,ct);
         if(!result.Succeeded){if(result.Status==ApiCallStatus.Forbidden)return Forbid();ViewData["LoadError"]=result.UserMessage("Não foi possível carregar o catálogo.");return View(new TemplateCatalogPage([],Math.Max(1,page),12,0));}
         return View(result.Value!);
+    }
+    [HttpPost("biblioteca-oficial")]
+    public async Task<IActionResult> InstallOfficial(Guid tenantId,string? search,string? type,string? scope,CancellationToken ct)
+    {
+        var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
+        var result=await api.InstallOfficialStudioTemplatesAsync(token,tenantId,ct);
+        TempData[result.Succeeded?"StudioSuccess":"StudioError"]=result.Succeeded
+            ? (result.Value!.Installed==0?$"Os {result.Value.AlreadyPresent} modelos oficiais já estavam disponíveis.":$"{result.Value.Installed} modelo(s) oficial(is) publicado(s) para esta organização.")
+            : result.ErrorDetail??result.ErrorTitle??"Não foi possível instalar a biblioteca oficial.";
+        return RedirectToAction(nameof(Index),new{tenantId,search,type,scope});
+    }
+    [HttpPost("modelos/{templateId:guid}/duplicar")]
+    public async Task<IActionResult> Duplicate(Guid tenantId,Guid templateId,string? search,string? type,string? scope,CancellationToken ct)
+    {
+        var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
+        var result=await api.DuplicateStudioTemplateAsync(token,tenantId,templateId,ct);
+        TempData[result.Succeeded?"StudioSuccess":"StudioError"]=result.Succeeded
+            ?"Cópia particular criada como rascunho. Publique-a depois de revisar o conteúdo."
+            :result.ErrorDetail??result.ErrorTitle??"Não foi possível duplicar o modelo.";
+        return RedirectToAction(nameof(Index),new{tenantId,search,type,scope});
     }
     [HttpPost("minutas")]
     public async Task<IActionResult> Create(Guid tenantId,Guid templateId,string title,string? reference,CancellationToken ct)
