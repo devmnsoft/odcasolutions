@@ -27,3 +27,5 @@ public sealed record StudioCommentItem(Guid Id, Guid? VersionId, long DraftRevis
 public sealed record CreateTemplateRequest(string Name, string? Description, string ContractType, string Scope, JsonElement Content, JsonElement Fields);
 public sealed record UpdateTemplateRequest(string Name, string? Description, string ContractType, JsonElement Content, JsonElement Fields, long ExpectedVersion);
 public sealed record TemplateMutationResponse(Guid Id, int Version, long RowVersion, string Status);
+public sealed record TemplatePreview(Guid Id, string Name, string? Description, string ContractType, string Scope, string Status, int Version, JsonElement Fields, IReadOnlyList<string> FieldLabels);
+public sealed record OfficialTemplateInstallResponse(int Installed, int AlreadyPresent, IReadOnlyList<string> Names);
