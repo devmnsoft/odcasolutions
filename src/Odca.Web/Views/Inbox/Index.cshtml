@@ -1,0 +1,91 @@
+@model Odca.Web.Models.InboxWorkspaceViewModel
+@{
+    var tenantId = ViewData["TenantId"];
+    var q = Context.Request.Query;
+}
+<header class="renewal-heading">
+    <div>
+        <p class="eyebrow">Central operacional</p>
+        <h1>Caixa unificada</h1>
+        <p class="muted">Revisões, obrigações e avisos de renovação no mesmo ranking. Não é uma lista paralela de tarefas.</p>
+    </div>
+    <a class="button button-quiet" asp-controller="Agenda" asp-action="Index" asp-route-tenantId="@tenantId">Abrir agenda</a>
+</header>
+
+<section class="renewal-cards" aria-label="Resumo">
+    <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-urgency="Overdue"><strong>@Model.Page.Overdue</strong><span>Atrasadas</span></a>
+    <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-urgency="DueToday"><strong>@Model.Page.DueToday</strong><span>Vencem hoje</span></a>
+    <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-urgency="DueThisWeek"><strong>@Model.Page.DueThisWeek</strong><span>Nesta semana</span></a>
+    <span><strong>@Model.Page.Total</strong><span>Itens visíveis</span></span>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <p class="validation-summary" role="alert">@Model.Error</p>
+}
+
+<details class="filter-panel" open>
+    <summary>Filtros</summary>
+    <form method="get" class="renewal-filters">
+        <label>Escopo
+            <select name="scope">
+                <option value="mine" selected="@(Model.Scope=="mine")">Minhas pendências</option>
+                <option value="organization" selected="@(Model.Scope=="organization")">Organização</option>
+            </select>
+        </label>
+        <label>Tipo
+            <select name="kind">
+                <option value="">Todos</option>
+                <option value="Obligation" selected="@(Model.Kind=="Obligation")">Obrigação</option>
+                <option value="Review" selected="@(Model.Kind=="Review")">Revisão</option>
+                <option value="Renewal" selected="@(Model.Kind=="Renewal")">Renovação</option>
+            </select>
+        </label>
+        <label>Urgência
+            <select name="urgency">
+                <option value="">Todas</option>
+                <option value="Overdue" selected="@(Model.Urgency=="Overdue")">Atrasada</option>
+                <option value="DueToday" selected="@(Model.Urgency=="DueToday")">Hoje</option>
+                <option value="DueThisWeek" selected="@(Model.Urgency=="DueThisWeek")">Semana</option>
+                <option value="Upcoming" selected="@(Model.Urgency=="Upcoming")">Próximas</option>
+            </select>
+        </label>
+        <button class="button button-primary">Aplicar</button>
+    </form>
+</details>
+
+<section class="renewal-list" aria-live="polite">
+    @if (Model.Page.Items.Count == 0)
+    {
+        <div class="empty-state"><strong>Nada pendente neste recorte</strong><p>Ajuste o escopo ou o tipo. A caixa não inventa tarefa.</p></div>
+    }
+    else
+    {
+        foreach (var item in Model.Page.Items)
+        {
+            <article class="renewal-row">
+                <div>
+                    <span class="status-label">@item.Kind · @item.Urgency</span>
+                    <h3>@item.Title</h3>
+                    <p>@item.ContractTitle · @(item.OwnerName ?? "Sem responsável")</p>
+                </div>
+                <dl>
+                    <div><dt>Prazo</dt><dd>@(item.DueOn?.ToString("dd/MM/yyyy") ?? "Sem data")</dd></div>
+                    <div><dt>Situação</dt><dd>@item.Status</dd></div>
+                </dl>
+                <div class="next-action"><a class="button button-quiet" href="@item.OpenUrl">Abrir</a></div>
+            </article>
+        }
+    }
+</section>
+<nav class="pagination" aria-label="Paginação">
+    @if (Model.Page.Page > 1)
+    {
+        <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-page="@(Model.Page.Page-1)" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency">Anterior</a>
+    }
+    <span>Página @Model.Page.Page</span>
+    @if (Model.Page.Page * Model.Page.PageSize < Model.Page.Total)
+    {
+        <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-page="@(Model.Page.Page+1)" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency">Próxima</a>
+    }
+</nav>

@@ -1,0 +1,173 @@
+using Dapper;
+using Npgsql;
+using Odca.Application.Operations;
+using Odca.Application.Renewals;
+using Odca.Contracts.Operations;
+
+namespace Odca.Infrastructure.Operations;
+
+public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : IContractSheetRepository
+{
+    public async Task<ContractSheetDto?> GetAsync(
+        Guid tenantId,
+        Guid contractId,
+        Guid viewerId,
+        bool canReadTenant,
+        DateOnly today,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await connection.ExecuteAsync(new CommandDefinition(
+            """
+            SELECT set_config('odca.tenant_id', @tenant, true),
+                   set_config('odca.actor_id', @actor, true);
+            """,
+            new { tenant = tenantId.ToString(), actor = viewerId.ToString() },
+            transaction,
+            cancellationToken: cancellationToken));
+
+        var header = await connection.QuerySingleOrDefaultAsync<SheetHeader>(new CommandDefinition(
+            """
+            SELECT c.id AS ContractId, c.title AS Title,
+                   c.end_date AS EndsOn, c.version AS Version,
+                   c.owner_id AS OwnerId, c.renewal_notice_amount AS NoticeAmount,
+                   c.renewal_notice_unit AS NoticeUnit
+              FROM odca.contracts c
+             WHERE c.tenant_id = @tenantId AND c.id = @contractId
+            """,
+            new { tenantId, contractId },
+            transaction,
+            cancellationToken: cancellationToken));
+        if (header is null)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return null;
+        }
+
+        if (!canReadTenant && header.OwnerId != viewerId)
+        {
+            var sharesObligation = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
+                """
+                SELECT EXISTS(
+                    SELECT 1 FROM odca.contract_obligations
+                     WHERE tenant_id = @tenantId AND contract_id = @contractId
+                       AND owner_id = @viewerId AND deleted_at IS NULL)
+                """,
+                new { tenantId, contractId, viewerId },
+                transaction,
+                cancellationToken: cancellationToken));
+            if (!sharesObligation)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return null;
+            }
+        }
+
+        var documents = (await connection.QueryAsync<ContractSheetDocumentDto>(new CommandDefinition(
+            """
+            SELECT d.id AS DocumentId, v.id AS VersionId, d.title AS Name,
+                   v.security_status AS SafetyState, v.created_at AS UpdatedAt
+              FROM odca.contract_documents d
+              JOIN odca.document_versions v
+                ON v.document_id = d.id AND v.tenant_id = d.tenant_id
+               AND v.version_number = (
+                    SELECT max(x.version_number)
+                      FROM odca.document_versions x
+                     WHERE x.document_id = d.id AND x.tenant_id = d.tenant_id)
+             WHERE d.tenant_id = @tenantId AND d.contract_id = @contractId AND d.deleted_at IS NULL
+             ORDER BY v.created_at DESC
+             LIMIT 8
+            """,
+            new { tenantId, contractId },
+            transaction,
+            cancellationToken: cancellationToken))).AsList();
+
+        var review = await connection.QuerySingleOrDefaultAsync<ContractSheetReviewDto>(new CommandDefinition(
+            """
+            SELECT r.id AS ReviewId, r.status AS Status, s.reviewer_id AS CurrentReviewerId,
+                   u.display_name AS CurrentReviewerName, r.due_at AS DueAt
+              FROM odca.contract_reviews r
+              LEFT JOIN odca.contract_review_steps s
+                ON s.review_id = r.id AND s.tenant_id = r.tenant_id AND s.status = 'current'
+              LEFT JOIN odca.users u ON u.id = s.reviewer_id
+             WHERE r.tenant_id = @tenantId AND r.contract_id = @contractId
+               AND r.status IN ('in_review','changes_requested')
+             ORDER BY r.opened_at DESC
+             LIMIT 1
+            """,
+            new { tenantId, contractId },
+            transaction,
+            cancellationToken: cancellationToken));
+
+        var obligations = (await connection.QueryAsync<OperationalInboxRow>(new CommandDefinition(
+            """
+            SELECT 'Obligation'::text AS Kind, o.id AS SourceId, o.tenant_id AS TenantId,
+                   o.contract_id AS ContractId, c.title AS ContractTitle, o.title AS Title,
+                   o.owner_id AS OwnerId, u.display_name AS OwnerName, o.due_date AS DueOn, o.status AS Status
+              FROM odca.contract_obligations o
+              JOIN odca.contracts c ON c.id = o.contract_id AND c.tenant_id = o.tenant_id
+              JOIN odca.users u ON u.id = o.owner_id
+             WHERE o.tenant_id = @tenantId AND o.contract_id = @contractId
+               AND o.deleted_at IS NULL AND o.status IN ('open','in_progress')
+               AND (@canReadTenant OR o.owner_id = @viewerId)
+             ORDER BY o.due_date, o.id
+            """,
+            new { tenantId, contractId, viewerId, canReadTenant },
+            transaction,
+            cancellationToken: cancellationToken))).AsList();
+
+        await transaction.CommitAsync(cancellationToken);
+
+        var unit = string.Equals(header.NoticeUnit, "calendar_months", StringComparison.Ordinal)
+            ? RenewalNoticeUnit.CalendarMonths
+            : RenewalNoticeUnit.CalendarDays;
+        var noticeDue = RenewalRules.NoticeDueOn(header.EndsOn, header.NoticeAmount, unit);
+        var windowEnd = RenewalRules.ThreeMonthWindowEnd(today);
+        var renewal = header.EndsOn is null
+            ? null
+            : new ContractSheetRenewalDto(
+                header.EndsOn,
+                noticeDue,
+                header.EndsOn.Value <= windowEnd,
+                header.EndsOn.Value < today ? "expired" : "expiring");
+
+        var open = obligations
+            .Select(row => OperationalInboxService.Map(row, today, tenantId))
+            .ToArray();
+
+        var inWindow = renewal?.InThreeMonthWindow == true;
+        var recommendations = ContractWorkspacePolicy.Recommend(
+                contractType: null,
+                hasOpenReview: review is not null,
+                inThreeMonthWindow: inWindow,
+                currentEnd: header.EndsOn,
+                proposedEnd: null)
+            .Select(item => new OfficialTemplateRecommendationDto(item.Key, item.Name, item.ContractType, item.Reason))
+            .ToArray();
+
+        return new ContractSheetDto(
+            header.ContractId,
+            header.Title,
+            header.EndsOn.HasValue && header.EndsOn.Value < today ? "expired" : "active",
+            null,
+            header.EndsOn,
+            documents,
+            review,
+            open,
+            renewal,
+            header.Version,
+            null,
+            recommendations,
+            CanInstallOfficialLibrary: false);
+    }
+
+    private sealed record SheetHeader(
+        Guid ContractId,
+        string Title,
+        DateOnly? EndsOn,
+        long Version,
+        Guid? OwnerId,
+        int? NoticeAmount,
+        string? NoticeUnit);
+}

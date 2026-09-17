@@ -1,0 +1,43 @@
+@model Odca.Web.Models.AgendaWorkspaceViewModel
+@{
+    var tenantId = ViewData["TenantId"];
+    var previous = Model.Page.From.AddDays(-1);
+    var next = Model.Page.To.AddDays(1);
+}
+<header class="renewal-heading">
+    <div>
+        <p class="eyebrow">Agenda mensal</p>
+        <h1>@Model.Page.From.ToString("MMMM yyyy")</h1>
+        <p class="muted">Somente a janela @Model.Page.From.ToString("dd/MM") – @Model.Page.To.ToString("dd/MM"). O navegador não recebe o catálogo inteiro.</p>
+    </div>
+    <nav>
+        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@previous.Year" asp-route-month="@previous.Month" asp-route-scope="@Model.Scope">Mês anterior</a>
+        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@next.Year" asp-route-month="@next.Month" asp-route-scope="@Model.Scope">Próximo mês</a>
+    </nav>
+</header>
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <p class="validation-summary" role="alert">@Model.Error</p>
+}
+<p>@Model.Page.Total ocorrência(s) no mês.</p>
+@foreach (var day in Model.Page.Days)
+{
+    <section class="renewal-list">
+        <div class="list-header"><h2>@day.Day.ToString("dd/MM/yyyy")</h2><span>@day.Items.Count</span></div>
+        @foreach (var item in day.Items)
+        {
+            <article class="renewal-row">
+                <div>
+                    <span class="status-label">@item.Kind</span>
+                    <h3>@item.Title</h3>
+                    <p>@item.ContractTitle</p>
+                </div>
+                <div class="next-action"><a class="button button-quiet" href="@item.OpenUrl">Abrir</a></div>
+            </article>
+        }
+    </section>
+}
+@if (Model.Page.Days.Count == 0)
+{
+    <div class="empty-state"><strong>Nenhum vencimento neste mês</strong><p>Avance o mês ou abra a caixa operacional.</p></div>
+}

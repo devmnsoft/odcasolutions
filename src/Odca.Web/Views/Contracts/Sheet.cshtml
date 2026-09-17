@@ -1,0 +1,97 @@
+@model Odca.Web.Models.ContractSheetViewModel
+@{
+    var tenantId = ViewData["TenantId"];
+    var sheet = Model.Sheet;
+}
+@if (sheet is null)
+{
+    <div class="empty-state"><strong>Ficha indisponível</strong><p>@(Model.Error ?? "O contrato não está no contexto atual.")</p></div>
+    return;
+}
+<header class="renewal-heading">
+    <div>
+        <p class="eyebrow">Ficha operacional</p>
+        <h1>@sheet.Title</h1>
+        <p class="muted">@sheet.Status · término @(sheet.EndsOn?.ToString("dd/MM/yyyy") ?? "não informado") · versão @sheet.Version</p>
+    </div>
+    <a class="button button-quiet" asp-controller="Inbox" asp-action="Index" asp-route-tenantId="@tenantId">Voltar à caixa</a>
+</header>
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <p class="validation-summary" role="alert">@Model.Error</p>
+}
+
+<section class="renewal-cards" aria-label="Renovação">
+    <div><strong>@(sheet.Renewal?.EndsOn?.ToString("dd/MM") ?? "—")</strong><span>Término</span></div>
+    <div><strong>@(sheet.Renewal?.NoticeDueOn?.ToString("dd/MM") ?? "—")</strong><span>Aviso</span></div>
+    <div><strong>@(sheet.Renewal?.InThreeMonthWindow == true ? "Sim" : "Não")</strong><span>Janela de 3 meses</span></div>
+</section>
+
+<section class="renewal-list">
+    <div class="list-header"><h2>Revisão corrente</h2></div>
+    @if (sheet.CurrentReview is null)
+    {
+        <p class="muted">Nenhuma revisão aberta nesta versão.</p>
+    }
+    else
+    {
+        <article class="renewal-row">
+            <div>
+                <span class="status-label">@sheet.CurrentReview.Status</span>
+                <h3>@(sheet.CurrentReview.CurrentReviewerName ?? "Sem revisor corrente")</h3>
+            </div>
+            <dl><div><dt>Prazo</dt><dd>@(sheet.CurrentReview.DueAt?.ToString("dd/MM/yyyy") ?? "—")</dd></div></dl>
+        </article>
+    }
+</section>
+
+<section class="renewal-list">
+    <div class="list-header"><h2>Obrigações abertas</h2><span>@sheet.OpenObligations.Count</span></div>
+    @foreach (var item in sheet.OpenObligations)
+    {
+        <article class="renewal-row">
+            <div><span class="status-label">@item.Urgency</span><h3>@item.Title</h3><p>@(item.OwnerName ?? "—")</p></div>
+            <dl><div><dt>Prazo</dt><dd>@(item.DueOn?.ToString("dd/MM/yyyy") ?? "—")</dd></div></dl>
+        </article>
+    }
+</section>
+
+<section class="renewal-list">
+    <div class="list-header"><h2>Minutas oficiais sugeridas</h2></div>
+    @if (sheet.RecommendedTemplates is null || sheet.RecommendedTemplates.Count == 0)
+    {
+        <p class="muted">Nenhuma minuta adicional enquanto houver revisão aberta fora da janela de renovação.</p>
+    }
+    else
+    {
+        @foreach (var template in sheet.RecommendedTemplates)
+        {
+            <article class="renewal-row">
+                <div>
+                    <span class="status-label">@template.ContractType</span>
+                    <h3>@template.Name</h3>
+                    <p>@template.Reason</p>
+                </div>
+                <a class="button button-quiet" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-type="@template.ContractType">Abrir no Estúdio</a>
+            </article>
+        }
+    }
+    @if (sheet.CanInstallOfficialLibrary)
+    {
+        <form method="post" asp-action="InstallOfficialLibrary" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId">
+            @Html.AntiForgeryToken()
+            <button class="button button-primary" type="submit">Instalar biblioteca oficial</button>
+        </form>
+    }
+</section>
+
+<section class="renewal-list">
+    <div class="list-header"><h2>Documentos recentes</h2></div>
+    @foreach (var document in sheet.Documents)
+    {
+        <article class="renewal-row">
+            <div><span class="status-label">@document.SafetyState</span><h3>@document.Name</h3></div>
+            <dl><div><dt>Atualizado</dt><dd>@document.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</dd></div></dl>
+        </article>
+    }
+</section>
