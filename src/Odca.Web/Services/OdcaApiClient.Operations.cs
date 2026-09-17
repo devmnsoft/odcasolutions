@@ -46,6 +46,12 @@ public sealed partial class OdcaApiClient
             false,
             ct);
 
+    public Task<ApiCallResult<Odca.Contracts.Studio.OfficialTemplateInstallResponse>> InstallOfficialStudioTemplatesAsync(
+        string token, Guid tenantId, CancellationToken ct) =>
+        SendAsync<Odca.Contracts.Studio.OfficialTemplateInstallResponse>(
+            CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/templates/official", token),
+            true, ct);
+
     private static string InboxPath(
         Guid tenantId,
         string scope,

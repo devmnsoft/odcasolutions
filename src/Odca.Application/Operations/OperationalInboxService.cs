@@ -66,7 +66,7 @@ public sealed class OperationalInboxService(IOperationalInboxRepository reposito
             mapped.Count(item => item.Urgency == nameof(OperationalUrgency.DueThisWeek)));
     }
 
-    internal static OperationalInboxItemDto Map(OperationalInboxRow row, DateOnly today, Guid tenantId)
+    public static OperationalInboxItemDto Map(OperationalInboxRow row, DateOnly today, Guid tenantId)
     {
         var urgency = OperationalInbox.Classify(row.DueOn, today);
         var path = row.Kind switch

@@ -17,7 +17,7 @@ using Odca.Contracts.DocumentImports;
 
 namespace Odca.Web.Services;
 
-public sealed class OdcaApiClient(HttpClient client)
+public sealed partial class OdcaApiClient(HttpClient client)
 {
     public async Task<(HttpStatusCode Status, byte[]? Content, string? ContentType)> GetDocumentPreviewAsync(string token, Guid tenantId, Guid contractId, Guid documentId, Guid versionId, CancellationToken ct)
     {
