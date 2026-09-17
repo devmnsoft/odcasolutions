@@ -1,8 +1,9 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\Odca.Infrastructure\Odca.Infrastructure.csproj" />
     <ProjectReference Include="..\Odca.Configuration\Odca.Configuration.csproj" />
+    <ProjectReference Include="..\Odca.Domain\Odca.Domain.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
