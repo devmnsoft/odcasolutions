@@ -13,6 +13,12 @@ public sealed class PasswordPolicyTests
     }
 
     [Theory]
+    [InlineData("OdcaAdmin#2026Local")]
+    [InlineData("OdcaCliente#2026Local")]
+    public void DocumentedDevelopmentPasswordsSatisfyPolicy(string password) =>
+        Assert.Empty(PasswordPolicy.Validate(password));
+
+    [Theory]
     [InlineData("curta")]
     [InlineData("somenteletrasminusculas")]
     [InlineData("SOMENTELETRASMAIUSCULAS")]
