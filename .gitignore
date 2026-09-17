@@ -18,3 +18,4 @@ development-runtime.json.backup-*
 development-runtime.json.tmp-*
 .development-runtime-*.tmp
 private-documents/
+database/development/local-access.env
