@@ -22,4 +22,13 @@ public sealed class RenewalRulesTests
     [Fact]
     public void ContractWithoutEndHasNoNoticeDeadline()
         => Assert.Null(RenewalRules.NoticeDueOn(null,3,RenewalNoticeUnit.CalendarMonths));
+
+    [Fact]
+    public void ProposalEffectiveDateIsComparedToProvidedToday()
+    {
+        var today = new DateOnly(2026, 9, 17);
+        RenewalRules.ValidateProposal(today, new DateOnly(2026, 12, 31), today, today, new DateOnly(2027, 12, 31));
+        Assert.Throws<ArgumentException>(() =>
+            RenewalRules.ValidateProposal(today, new DateOnly(2026, 12, 31), today.AddDays(-1), today, new DateOnly(2027, 12, 31)));
+    }
 }

@@ -8,7 +8,7 @@ public sealed class OfficialContractTemplatesTests
     public void OfficialLibraryParsesAgainstCanonicalSchema()
     {
         OfficialContractTemplates.EnsureValid();
-        Assert.Equal(4, OfficialContractTemplates.All.Count);
+        Assert.Equal(6, OfficialContractTemplates.All.Count);
         Assert.Equal(OfficialContractTemplates.All.Count, OfficialContractTemplates.All.Select(item => item.Key).Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(OfficialContractTemplates.All.Count, OfficialContractTemplates.All.Select(item => item.Name).Distinct(StringComparer.Ordinal).Count());
     }
@@ -17,6 +17,8 @@ public sealed class OfficialContractTemplatesTests
     [InlineData("nda")]
     [InlineData("services")]
     [InlineData("amendment")]
+    [InlineData("supply")]
+    [InlineData("lease")]
     public void KnownTypesSurviveAllowlist(string type) =>
         Assert.Equal(type, OfficialContractTemplates.NormalizeType(type));
 

@@ -9,11 +9,12 @@ INSERT INTO odca.users
     (id, email, email_normalized, login_normalized, display_name, password_hash,
      must_change_password, is_platform_administrator, email_verified_at)
 SELECT @AdministratorId, @AdministratorEmail, @AdministratorNormalized,
-       @AdministratorNormalized, @AdministratorName, @AdministratorHash, true, true, now()
+       @AdministratorNormalized, @AdministratorName, @AdministratorHash,
+       @AdministratorMustChangePassword, true, now()
 WHERE NOT EXISTS (SELECT 1 FROM odca.users WHERE email_normalized=@AdministratorNormalized);
 
 UPDATE odca.users
-   SET password_hash=@AdministratorHash, must_change_password=true,
+   SET password_hash=@AdministratorHash, must_change_password=@AdministratorMustChangePassword,
        security_version=security_version+1, failed_login_count=0,
        locked_until=NULL, password_changed_at=NULL, updated_at=now()
  WHERE id=@AdministratorId AND @RotateAdministrator;
@@ -24,11 +25,11 @@ INSERT INTO odca.users
     (id, email, email_normalized, login_normalized, display_name, password_hash,
      must_change_password, is_platform_administrator, email_verified_at)
 SELECT @ClientId, @ClientEmail, @ClientNormalized, @ClientNormalized,
-       @ClientName, @ClientHash, true, false, now()
+       @ClientName, @ClientHash, @ClientMustChangePassword, false, now()
 WHERE NOT EXISTS (SELECT 1 FROM odca.users WHERE email_normalized=@ClientNormalized);
 
 UPDATE odca.users
-   SET password_hash=@ClientHash, must_change_password=true,
+   SET password_hash=@ClientHash, must_change_password=@ClientMustChangePassword,
        security_version=security_version+1, failed_login_count=0,
        locked_until=NULL, password_changed_at=NULL, updated_at=now()
  WHERE id=@ClientId AND @RotateClient;
