@@ -100,11 +100,10 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         using var response=await http.SendAsync(message,ct);
         if(response.IsSuccessStatusCode)
         {
-            if(response.Content.Headers.ContentLength==0) return new ApiCallResult<T>(true,ApiCallStatus.Success,default,null,null);
-            var value=await response.Content.ReadFromJsonAsync<T>(ct);
-            return new ApiCallResult<T>(true,ApiCallStatus.Success,value,null,null);
+            var value=await response.Content.ReadFromJsonAsync<T>(cancellationToken:ct);
+            return new ApiCallResult<T>(ApiCallStatus.Success,value);
         }
-        var status=response.StatusCode==System.Net.HttpStatusCode.Forbidden?ApiCallStatus.Forbidden:response.StatusCode==System.Net.HttpStatusCode.Conflict?ApiCallStatus.Conflict:ApiCallStatus.Unprocessable;
-        return new ApiCallResult<T>(false,status,default,"Não foi possível concluir a operação.",null);
+        var status=response.StatusCode==System.Net.HttpStatusCode.Forbidden?ApiCallStatus.Forbidden:response.StatusCode==System.Net.HttpStatusCode.Conflict?ApiCallStatus.Conflict:response.StatusCode==System.Net.HttpStatusCode.NotFound?ApiCallStatus.NotFound:ApiCallStatus.InvalidRequest;
+        return new ApiCallResult<T>(status,default,"Não foi possível concluir a operação.");
     }
 }
