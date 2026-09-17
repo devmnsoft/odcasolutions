@@ -508,6 +508,7 @@
       "odca.application": {
         "type": "Project",
         "dependencies": {
+          "Odca.Contracts": "[1.0.0, )",
           "Odca.Domain": "[1.0.0, )"
         }
       },
@@ -535,6 +536,14 @@
           "Odca.Application": "[1.0.0, )",
           "Odca.Domain": "[1.0.0, )",
           "System.IdentityModel.Tokens.Jwt": "[8.22.0, )"
+        }
+      },
+      "odca.worker": {
+        "type": "Project",
+        "dependencies": {
+          "Odca.Application": "[1.0.0, )",
+          "Odca.Configuration": "[1.0.0, )",
+          "Odca.Infrastructure": "[1.0.0, )"
         }
       }
     }
