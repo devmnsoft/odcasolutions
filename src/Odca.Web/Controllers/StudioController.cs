@@ -1,3 +1,5 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,14 +10,14 @@ namespace Odca.Web.Controllers;
 
 [Authorize]
 [Route("organizacoes/{tenantId:guid}/estudio")]
-public sealed class StudioController(OdcaApiClient api) : Controller
+public sealed class StudioController(OdcaApiClient api, IConfiguration configuration) : Controller
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(Guid tenantId,string? search,string? type,string? scope,int page=1,CancellationToken ct=default)
     {
         var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
         ViewData["Title"]="Modelos de contrato";ViewData["TenantId"]=tenantId;ViewData["Search"]=search;ViewData["Type"]=type;ViewData["Scope"]=scope;
-        var result=await api.GetStudioTemplatesAsync(token,tenantId,search,type,scope,page,ct);
+        var result=await GetCatalogAsync(token,tenantId,search,type,scope,page,ct);
         if(!result.Succeeded){if(result.Status==ApiCallStatus.Forbidden)return Forbid();ViewData["LoadError"]=result.UserMessage("Não foi possível carregar o catálogo.");return View(new TemplateCatalogPage([],Math.Max(1,page),12,0));}
         return View(result.Value!);
     }
@@ -23,7 +25,7 @@ public sealed class StudioController(OdcaApiClient api) : Controller
     public async Task<IActionResult> InstallOfficial(Guid tenantId,string? search,string? type,string? scope,CancellationToken ct)
     {
         var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
-        var result=await api.InstallOfficialStudioTemplatesAsync(token,tenantId,ct);
+        var result=await SendCatalogAsync<OfficialTemplateInstallResponse>(HttpMethod.Post,$"api/v1/organizations/{tenantId}/studio/templates/official",token,ct);
         TempData[result.Succeeded?"StudioSuccess":"StudioError"]=result.Succeeded
             ? (result.Value!.Installed==0?$"Os {result.Value.AlreadyPresent} modelos oficiais já estavam disponíveis.":$"{result.Value.Installed} modelo(s) oficial(is) publicado(s) para esta organização.")
             : result.ErrorDetail??result.ErrorTitle??"Não foi possível instalar a biblioteca oficial.";
@@ -33,7 +35,7 @@ public sealed class StudioController(OdcaApiClient api) : Controller
     public async Task<IActionResult> Duplicate(Guid tenantId,Guid templateId,string? search,string? type,string? scope,CancellationToken ct)
     {
         var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
-        var result=await api.DuplicateStudioTemplateAsync(token,tenantId,templateId,ct);
+        var result=await SendCatalogAsync<TemplateMutationResponse>(HttpMethod.Post,$"api/v1/organizations/{tenantId}/studio/templates/{templateId}/duplicate",token,ct);
         TempData[result.Succeeded?"StudioSuccess":"StudioError"]=result.Succeeded
             ?"Cópia particular criada como rascunho. Publique-a depois de revisar o conteúdo."
             :result.ErrorDetail??result.ErrorTitle??"Não foi possível duplicar o modelo.";
@@ -64,7 +66,6 @@ public sealed class StudioController(OdcaApiClient api) : Controller
     public async Task<IActionResult> Reviewers(Guid tenantId,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Unauthorized();var r=await api.GetStudioReviewersAsync(token,tenantId,ct);return r.Succeeded?Json(r.Value):StatusCode(422,new{title=r.ErrorTitle});}
     [HttpPost("revisoes")]
     public async Task<IActionResult> SubmitReview(Guid tenantId,[FromBody]SubmitReviewRequest request,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Unauthorized();var r=await api.SubmitStudioReviewAsync(token,tenantId,request,ct);return r.Succeeded?Json(r.Value):StatusCode(r.Status==ApiCallStatus.Conflict?409:422,new{title=r.ErrorTitle,detail=r.ErrorDetail});}
-
     [HttpGet("minutas/{draftId:guid}/versoes")]
     public async Task<IActionResult> Versions(Guid tenantId,Guid draftId,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Unauthorized();var r=await api.GetStudioVersionsAsync(token,tenantId,draftId,ct);return r.Succeeded?Json(r.Value):StatusCode(422,new{title=r.ErrorTitle});}
     [HttpGet("comparar")]
@@ -80,4 +81,30 @@ public sealed class StudioController(OdcaApiClient api) : Controller
     [HttpPost("minutas/{draftId:guid}/comentarios/{commentId:guid}/reopen")]
     public Task<IActionResult> ReopenCommentAsync(Guid tenantId,Guid draftId,Guid commentId,[FromBody]ChangeStudioCommentStateRequest request,CancellationToken ct)=>ChangeCommentStateAsync(tenantId,draftId,commentId,"reopen",request,ct);
     private async Task<IActionResult> ChangeCommentStateAsync(Guid tenantId,Guid draftId,Guid commentId,string operation,ChangeStudioCommentStateRequest request,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Unauthorized();var r=await api.SetStudioCommentStateAsync(token,tenantId,draftId,commentId,operation,request,ct);return r.Succeeded?NoContent():StatusCode(r.Status==ApiCallStatus.Conflict?409:422,new{title=r.ErrorTitle,detail=r.ErrorDetail});}
+
+    private async Task<ApiCallResult<TemplateCatalogPage>> GetCatalogAsync(string token,Guid tenantId,string? search,string? type,string? scope,int page,CancellationToken ct)
+    {
+        var query=new List<string>{$"page={page}"};
+        if(!string.IsNullOrWhiteSpace(search))query.Add($"search={Uri.EscapeDataString(search)}");
+        if(!string.IsNullOrWhiteSpace(type))query.Add($"type={Uri.EscapeDataString(type)}");
+        if(!string.IsNullOrWhiteSpace(scope))query.Add($"scope={Uri.EscapeDataString(scope)}");
+        return await SendCatalogAsync<TemplateCatalogPage>(HttpMethod.Get,$"api/v1/organizations/{tenantId}/studio/templates?{string.Join('&',query)}",token,ct);
+    }
+
+    private async Task<ApiCallResult<T>> SendCatalogAsync<T>(HttpMethod method,string path,string token,CancellationToken ct)
+    {
+        var baseUrl=configuration["Api:BaseUrl"]??throw new InvalidOperationException("Api:BaseUrl não foi configurada.");
+        using var http=new HttpClient{BaseAddress=new Uri(baseUrl),Timeout=TimeSpan.FromSeconds(15)};
+        using var message=new HttpRequestMessage(method,path);
+        message.Headers.Authorization=new AuthenticationHeaderValue("Bearer",token);
+        using var response=await http.SendAsync(message,ct);
+        if(response.IsSuccessStatusCode)
+        {
+            if(response.Content.Headers.ContentLength==0) return new ApiCallResult<T>(true,ApiCallStatus.Success,default,null,null);
+            var value=await response.Content.ReadFromJsonAsync<T>(ct);
+            return new ApiCallResult<T>(true,ApiCallStatus.Success,value,null,null);
+        }
+        var status=response.StatusCode==System.Net.HttpStatusCode.Forbidden?ApiCallStatus.Forbidden:response.StatusCode==System.Net.HttpStatusCode.Conflict?ApiCallStatus.Conflict:ApiCallStatus.Unprocessable;
+        return new ApiCallResult<T>(false,status,default,"Não foi possível concluir a operação.",null);
+    }
 }
