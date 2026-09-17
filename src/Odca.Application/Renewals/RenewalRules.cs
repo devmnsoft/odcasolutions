@@ -14,9 +14,12 @@ public static class RenewalRules
 
     public static DateOnly ThreeMonthWindowEnd(DateOnly today) => today.AddMonths(3);
 
-    public static void ValidateProposal(DateOnly? currentEnd, DateOnly effectiveOn, DateOnly? proposedStart, DateOnly? proposedEnd)
+    public static void ValidateProposal(DateOnly? currentEnd, DateOnly effectiveOn, DateOnly? proposedStart, DateOnly? proposedEnd) =>
+        ValidateProposal(DateOnly.FromDateTime(DateTime.UtcNow), currentEnd, effectiveOn, proposedStart, proposedEnd);
+
+    public static void ValidateProposal(DateOnly today, DateOnly? currentEnd, DateOnly effectiveOn, DateOnly? proposedStart, DateOnly? proposedEnd)
     {
-        if (effectiveOn < DateOnly.FromDateTime(DateTime.UtcNow))
+        if (effectiveOn < today)
             throw new ArgumentException("Datas retroativas não são aceitas nesta entrega.", nameof(effectiveOn));
         if (proposedStart.HasValue && proposedEnd.HasValue && proposedEnd < proposedStart)
             throw new ArgumentException("A vigência proposta é inválida.", nameof(proposedEnd));
