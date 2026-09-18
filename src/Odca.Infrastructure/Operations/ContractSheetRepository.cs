@@ -1,5 +1,6 @@
 using Dapper;
 using Npgsql;
+using Odca.Application.Contracts;
 using Odca.Application.Operations;
 using Odca.Application.Renewals;
 using Odca.Contracts.Operations;
@@ -30,10 +31,13 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
         var header = await connection.QuerySingleOrDefaultAsync<SheetHeader>(new CommandDefinition(
             """
             SELECT c.id AS ContractId, c.title AS Title,
-                   c.end_date AS EndsOn, c.version AS Version,
-                   c.owner_id AS OwnerId, c.renewal_notice_amount AS NoticeAmount,
+                   c.start_date AS StartsOn, c.end_date AS EndsOn, c.version AS Version,
+                   c.contract_type AS ContractType,
+                   c.owner_id AS OwnerId, u.display_name AS OwnerName,
+                   c.renewal_notice_amount AS NoticeAmount,
                    c.renewal_notice_unit AS NoticeUnit
               FROM odca.contracts c
+              LEFT JOIN odca.users u ON u.id = c.owner_id
              WHERE c.tenant_id = @tenantId AND c.id = @contractId
             """,
             new { tenantId, contractId },
@@ -117,6 +121,40 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             transaction,
             cancellationToken: cancellationToken))).AsList();
 
+        var hasImportAwaitingReview = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
+            """
+            SELECT EXISTS(
+                SELECT 1 FROM odca.contract_imports i
+                JOIN odca.document_versions v ON v.id = i.document_version_id AND v.tenant_id = i.tenant_id
+                WHERE i.tenant_id = @tenantId AND i.status = 'awaiting_review'
+                  AND (v.contract_id = @contractId OR i.result_contract_id = @contractId))
+            """,
+            new { tenantId, contractId },
+            transaction,
+            cancellationToken: cancellationToken));
+
+        var canManageTemplates = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
+            """
+            SELECT odca.tenant_actor_has_permission(@viewerId, @tenantId, 'tenant.templates.manage')
+                   OR odca.tenant_actor_has_permission(@viewerId, @tenantId, 'tenant.contract_drafts.manage')
+            """,
+            new { tenantId, viewerId },
+            transaction,
+            cancellationToken: cancellationToken));
+
+        var officialNames = OfficialContractTemplates.All.Select(t => t.Name).ToArray();
+        var publishedCount = await connection.ExecuteScalarAsync<int>(new CommandDefinition(
+            """
+            SELECT count(*)::int
+              FROM odca.contract_templates t
+             WHERE t.status = 'published'
+               AND (t.scope = 'global' OR t.owner_tenant_id = @tenantId)
+               AND t.name = ANY(@officialNames)
+            """,
+            new { tenantId, officialNames },
+            transaction,
+            cancellationToken: cancellationToken));
+
         await transaction.CommitAsync(cancellationToken);
 
         var unit = string.Equals(header.NoticeUnit, "calendar_months", StringComparison.Ordinal)
@@ -138,7 +176,7 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
 
         var inWindow = renewal?.InThreeMonthWindow == true;
         var recommendations = ContractWorkspacePolicy.Recommend(
-                contractType: null,
+                contractType: header.ContractType,
                 hasOpenReview: review is not null,
                 inThreeMonthWindow: inWindow,
                 currentEnd: header.EndsOn,
@@ -146,28 +184,35 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             .Select(item => new OfficialTemplateRecommendationDto(item.Key, item.Name, item.ContractType, item.Reason))
             .ToArray();
 
+        var canInstallOfficialLibrary = ContractWorkspacePolicy.CanInstallOfficialLibrary(canManageTemplates, publishedCount);
+
         return new ContractSheetDto(
             header.ContractId,
             header.Title,
             header.EndsOn.HasValue && header.EndsOn.Value < today ? "expired" : "active",
-            null,
+            header.StartsOn,
             header.EndsOn,
             documents,
             review,
             open,
             renewal,
             header.Version,
-            null,
+            header.ContractType,
+            header.OwnerName,
             recommendations,
-            CanInstallOfficialLibrary: false);
+            canInstallOfficialLibrary,
+            hasImportAwaitingReview);
     }
 
     private sealed record SheetHeader(
         Guid ContractId,
         string Title,
+        DateOnly? StartsOn,
         DateOnly? EndsOn,
         long Version,
+        string? ContractType,
         Guid? OwnerId,
+        string? OwnerName,
         int? NoticeAmount,
         string? NoticeUnit);
 }

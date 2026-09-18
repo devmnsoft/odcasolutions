@@ -95,6 +95,7 @@ public sealed class ContractReview
         EnsureCurrent(actorId, expectedRevision);
         if (!explicitlyConfirmed) throw new ContractReviewRuleException("Confirme explicitamente a aprovação.");
         CurrentStep!.Decide(ReviewStepStatus.Approved, actorId, now, null);
+        Revision++;
         var next = steps.FirstOrDefault(x => x.Status == ReviewStepStatus.Waiting);
         if (next is null) TransitionTo(ContractReviewStatus.InternallyApproved, actorId, now, null);
         else { next.Start(); Revision++; events.Add(new("review.step.started", next.ReviewerId, now, null)); }

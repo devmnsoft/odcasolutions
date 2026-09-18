@@ -9,14 +9,16 @@ public static class SavedViewFilterPolicy
     {
         ["obligations"] = ["scope", "contractId", "ownerId", "category", "status", "from", "to", "search"],
         ["reviews"] = ["scope", "contractId", "reviewerId", "requesterId", "status", "from", "to", "search"],
-        ["contracts"] = ["ownerId", "status", "renewalFrom", "renewalTo", "search"]
+        ["contracts"] = ["ownerId", "status", "renewalFrom", "renewalTo", "search"],
+        ["inbox"] = ["scope", "kind", "urgency", "contractId", "ownerId"]
     };
 
     private static readonly Dictionary<string, HashSet<string>> Sorts = new(StringComparer.Ordinal)
     {
         ["obligations"] = ["due_date", "-due_date", "title", "-title"],
         ["reviews"] = ["due_date", "-due_date", "updated_at", "-updated_at"],
-        ["contracts"] = ["title", "-title", "end_date", "-end_date"]
+        ["contracts"] = ["title", "-title", "end_date", "-end_date"],
+        ["inbox"] = ["due_date", "-due_date"]
     };
 
     private static readonly HashSet<string> ReservedRouteKeys = new(StringComparer.OrdinalIgnoreCase)
@@ -75,7 +77,9 @@ public static class SavedViewFilterPolicy
                 error = "As datas devem usar o formato AAAA-MM-DD.";
                 return false;
             }
-            if ((listingType == "obligations" && key == "scope" && value is not ("mine" or "organization")) ||
+            if (((listingType is "obligations" or "inbox") && key == "scope" && value is not ("mine" or "organization")) ||
+                (listingType == "inbox" && key == "kind" && value is not ("Obligation" or "Review" or "Renewal")) ||
+                (listingType == "inbox" && key == "urgency" && value is not ("Overdue" or "DueToday" or "DueThisWeek" or "Upcoming")) ||
                 (listingType == "obligations" && key == "category" && !ObligationCategories.Contains(value)) ||
                 (listingType == "obligations" && key == "status" && !ObligationStatuses.Contains(value)))
             {
