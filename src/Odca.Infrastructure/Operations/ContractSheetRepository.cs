@@ -155,6 +155,18 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             transaction,
             cancellationToken: cancellationToken));
 
+        var draftId = await connection.ExecuteScalarAsync<Guid?>(new CommandDefinition(
+            """
+            SELECT d.id
+              FROM odca.contract_drafts d
+             WHERE d.tenant_id = @tenantId AND d.contract_id = @contractId
+             ORDER BY d.updated_at DESC
+             LIMIT 1
+            """,
+            new { tenantId, contractId },
+            transaction,
+            cancellationToken: cancellationToken));
+
         await transaction.CommitAsync(cancellationToken);
 
         var unit = string.Equals(header.NoticeUnit, "calendar_months", StringComparison.Ordinal)
@@ -201,7 +213,8 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             header.OwnerName,
             recommendations,
             canInstallOfficialLibrary,
-            hasImportAwaitingReview);
+            hasImportAwaitingReview,
+            draftId);
     }
 
     private sealed record SheetHeader(

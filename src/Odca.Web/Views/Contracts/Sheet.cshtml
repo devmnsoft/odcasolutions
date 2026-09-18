@@ -6,6 +6,20 @@
     var error = TempData["ContractSheetError"] as string ?? Model.Error;
     var todayStr = DateTime.UtcNow.ToString("yyyy-MM-dd");
     var isAmendmentRequired = sheet?.Renewal?.InThreeMonthWindow == true;
+    var returnUrl = tenantId is not null && sheet is not null
+        ? Odca.Web.Controllers.ContractsController.BuildReturnUrl(
+            (Guid)tenantId,
+            sheet.ContractId,
+            "#revisao",
+            Model.FromSource,
+            Model.Year,
+            Model.Month,
+            Model.Scope,
+            Model.Kind,
+            Model.Urgency,
+            Model.ViewId,
+            Model.SelectedObligationId)
+        : string.Empty;
 }
 @if (sheet is null)
 {
@@ -22,11 +36,13 @@
         <nav class="breadcrumb-trail" aria-label="Navegação estrutural">
             @if (Model.FromSource == "agenda")
             {
-                <a asp-controller="Agenda" asp-action="Index" asp-route-tenantId="@tenantId">← Agenda</a>
+                <a asp-controller="Agenda" asp-action="Index" asp-route-tenantId="@tenantId"
+                   asp-route-year="@Model.Year" asp-route-month="@Model.Month" asp-route-scope="@Model.Scope">← Agenda</a>
             }
             else
             {
-                <a asp-controller="Inbox" asp-action="Index" asp-route-tenantId="@tenantId">← Caixa operacional</a>
+                <a asp-controller="Inbox" asp-action="Index" asp-route-tenantId="@tenantId"
+                   asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId">← Caixa operacional</a>
             }
             <span>/ Contratos</span>
         </nav>
@@ -94,7 +110,10 @@
 <!-- PAINEL DE PROPOSTA DE RENOVAÇÃO / ADITIVO -->
 <details class="filter-panel" style="margin-top:1rem;">
     <summary><strong>Registrar proposta de alteração ou renovação</strong> (Apenas proposta · Efeito em vigência somente na formalização)</summary>
-    <form method="post" asp-action="CreateRenewalProposal" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" style="margin-top:1rem; display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:0.75rem;">
+    <form method="post" asp-action="CreateRenewalProposal" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+          asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+          asp-route-scope="@Model.Scope" asp-route-kindFilter="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
+          style="margin-top:1rem; display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:0.75rem;">
         @Html.AntiForgeryToken()
         <input type="hidden" name="contractVersion" value="@sheet.Version" />
         
@@ -125,7 +144,7 @@
         </label>
 
         <label>Responsável
-            <select name="responsibleId">
+            <select name="responsibleId" required>
                 <option value="">Selecione um membro</option>
                 @foreach (var m in Model.ActiveMembers)
                 {
@@ -148,39 +167,176 @@
 
         <div style="grid-column: 1 / -1; display:flex; gap:0.75rem; align-items:center;">
             <button class="button button-primary" type="submit">Registrar proposta</button>
-            <span class="muted" style="font-size:0.875rem;">Esta ação não altera a vigência imediatamente; cria proposta sujeita ao fluxo de aprovação e formalização.</span>
+            <span class="muted" style="font-size:0.875rem;">Esta ação cria proposta operacional. Formalização e aplicação ocorrem exclusivamente na Central de Renovações.</span>
         </div>
     </form>
 </details>
 
-<!-- SEÇÃO REVISÃO CORRENTE -->
+<!-- SEÇÃO REVISÃO E MINUTA EM ANDAMENTO -->
 <section id="revisao" class="renewal-list" style="margin-top:2rem;">
     <div class="list-header">
-        <h2>Revisão em andamento</h2>
-        <span>@(sheet.CurrentReview is null ? "Nenhuma pendente" : sheet.CurrentReview.Status)</span>
+        <h2>Revisão e Minuta em Andamento</h2>
+        @if (sheet.DraftId.HasValue)
+        {
+            <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+                <a class="button button-primary" href="/organizacoes/@tenantId/estudio/minutas/@sheet.DraftId.Value?returnUrl=@Uri.EscapeDataString(returnUrl)">
+                    Abrir minuta no Estúdio
+                </a>
+                <a class="button button-quiet" href="/organizacoes/@tenantId/estudio/minutas/@sheet.DraftId.Value/checklist?version=@sheet.Version" target="_blank">
+                    Checklist
+                </a>
+                <a class="button button-quiet" href="/organizacoes/@tenantId/estudio/comparar" target="_blank">
+                    Comparar versões
+                </a>
+            </div>
+        }
     </div>
+
     @if (sheet.CurrentReview is null)
     {
-        <p class="muted">Não há revisão de rascunho aberta vinculada a este contrato.</p>
+        <div class="empty-state" style="margin-top:0.75rem;">
+            <strong>Nenhuma revisão formal aberta</strong>
+            <p>Este contrato não possui fluxo de revisão em trâmite no momento.</p>
+            @if (sheet.DraftId.HasValue)
+            {
+                <p class="muted">Você pode trabalhar no rascunho da minuta diretamente pelo Estúdio de Contratos.</p>
+            }
+        </div>
     }
     else
     {
-        <article class="renewal-row" style="background:#fcfcfc;">
+        <div class="renewal-cards" style="margin-top:1rem; margin-bottom:1rem;">
             <div>
-                <span class="status-label">@sheet.CurrentReview.Status</span>
-                <h3>Revisor atual: @(sheet.CurrentReview.CurrentReviewerName ?? "Sem revisor designado")</h3>
-                <p class="muted">Identificador de revisão operacional em trâmite interno.</p>
+                <strong>@sheet.CurrentReview.Status</strong>
+                <span>Status da revisão</span>
             </div>
-            <dl>
-                <div>
-                    <dt>Prazo limite</dt>
-                    <dd>@(sheet.CurrentReview.DueAt?.ToString("dd/MM/yyyy HH:mm") ?? "Sem prazo definido")</dd>
+            <div>
+                <strong>@(sheet.CurrentReview.CurrentReviewerName ?? "Sem revisor designado")</strong>
+                <span>Revisor atual</span>
+            </div>
+            <div>
+                <strong>@(sheet.CurrentReview.DueAt?.ToString("dd/MM/yyyy HH:mm") ?? "Sem prazo")</strong>
+                <span>Prazo limite</span>
+            </div>
+        </div>
+    }
+
+    <!-- FORMULÁRIO DE ENCAMINHAMENTO DE REVISÃO -->
+    @if (sheet.DraftId.HasValue)
+    {
+        <details class="filter-panel" style="margin-bottom:1rem;" @(sheet.CurrentReview is null ? "open" : "")>
+            <summary><strong>Encaminhar versão para revisão formal</strong></summary>
+            @if (Model.Versions.Count == 0)
+            {
+                <div class="empty-state" style="margin-top:0.75rem;">
+                    <p>Nenhuma versão numerada foi gerada ainda para esta minuta.</p>
+                    <a class="button button-quiet" href="/organizacoes/@tenantId/estudio/minutas/@sheet.DraftId.Value?returnUrl=@Uri.EscapeDataString(returnUrl)">
+                        Gerar versão no Estúdio
+                    </a>
                 </div>
-            </dl>
-        </article>
-        <p class="muted" style="font-size:0.875rem; margin-top:0.5rem;">
-            * Com revisão aberta fora da janela de renovação, minutas primárias adicionais são suspensas até conclusão.
-        </p>
+            }
+            else
+            {
+                <form method="post" asp-action="SubmitReview" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+                      asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+                      asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
+                      style="margin-top:1rem; display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:0.75rem;">
+                    @Html.AntiForgeryToken()
+                    <label>Versão a revisar
+                        <select name="generatedVersionId" required>
+                            @foreach (var v in Model.Versions)
+                            {
+                                <option value="@v.Id">Versão @v.Number (@v.Status) — @v.Author</option>
+                            }
+                        </select>
+                    </label>
+
+                    <label>Revisor designado
+                        <select name="reviewerId" required>
+                            @foreach (var r in Model.Reviewers)
+                            {
+                                <option value="@r.Id">@r.Name</option>
+                            }
+                        </select>
+                    </label>
+
+                    <label>Prazo limite (opcional)
+                        <input type="datetime-local" name="dueAt" />
+                    </label>
+
+                    <label style="grid-column: 1 / -1;">Instruções para o revisor
+                        <textarea name="instructions" rows="2" placeholder="Ex.: Verificar cláusula de SLA e rescisão motivada"></textarea>
+                    </label>
+
+                    <div style="grid-column: 1 / -1; display:flex; gap:0.5rem; align-items:center;">
+                        <button class="button button-primary" type="submit">Encaminhar para revisão</button>
+                    </div>
+                </form>
+            }
+        </details>
+    }
+
+    <!-- COMENTÁRIOS NO RASCUNHO -->
+    @if (sheet.DraftId.HasValue)
+    {
+        <details class="filter-panel" style="margin-top:1rem;" open>
+            <summary><strong>Comentários contextuais na minuta</strong> <span class="muted">(Comentário não equivale à aprovação formal)</span></summary>
+            <div style="margin-top:1rem;">
+                <form method="post" asp-action="AddComment" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+                      asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+                      asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
+                      style="display:flex; flex-direction:column; gap:0.5rem; margin-bottom:1rem;">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="draftId" value="@sheet.DraftId.Value" />
+                    <input type="hidden" name="draftRevision" value="@sheet.Version" />
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:0.75rem;">
+                        <label>Referência (cláusula ou seção)
+                            <input type="text" name="reference" placeholder="Ex.: Cláusula 3.2" maxlength="100" />
+                        </label>
+                    </div>
+                    <label>Comentário
+                        <textarea name="body" rows="2" required placeholder="Insira seu apontamento operacional"></textarea>
+                    </label>
+                    <div>
+                        <button class="button button-quiet" type="submit">Adicionar comentário</button>
+                    </div>
+                </form>
+
+                @if (Model.Comments.Count > 0)
+                {
+                    <div style="display:flex; flex-direction:column; gap:0.75rem; margin-top:1rem;">
+                        @foreach (var comment in Model.Comments)
+                        {
+                            <div style="border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; padding: 0.75rem; background: var(--card-bg, #ffffff);">
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.25rem;">
+                                    <div>
+                                        <strong>@comment.Author</strong>
+                                        <span class="badge @(comment.Resolved ? "badge-success" : "badge-warning")" style="margin-left:0.5rem;">
+                                            @(comment.Resolved ? "Resolvido" : "Pendente")
+                                        </span>
+                                        <span class="muted" style="margin-left:0.5rem;">Ref: @comment.Reference</span>
+                                    </div>
+                                    <span class="muted" style="font-size:0.85rem;">@comment.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
+                                </div>
+                                <p style="margin: 0.5rem 0; white-space:pre-wrap;">@comment.Body</p>
+                                <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+                                    <form method="post" asp-action="ChangeCommentState" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+                                          asp-route-draftId="@sheet.DraftId.Value" asp-route-commentId="@comment.Id" asp-route-operation="@(comment.Resolved ? "reopen" : "resolve")"
+                                          asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+                                          asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="currentResolved" value="@comment.Resolved.ToString().ToLowerInvariant()" />
+                                        <button class="button button-quiet" type="submit" style="font-size:0.85rem;">
+                                            @(comment.Resolved ? "Reabrir pendência" : "Marcar como resolvido")
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </details>
     }
 </section>
 
@@ -197,7 +353,10 @@
     <!-- FORMULÁRIO DE NOVA OBRIGAÇÃO -->
     <details class="filter-panel" style="margin-bottom:1rem;">
         <summary><strong>+ Adicionar nova obrigação para este contrato</strong></summary>
-        <form method="post" asp-action="CreateObligation" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" style="margin-top:1rem; display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:0.75rem;">
+        <form method="post" asp-action="CreateObligation" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+              asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+              asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
+              style="margin-top:1rem; display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:0.75rem;">
             @Html.AntiForgeryToken()
             <label>Título da obrigação
                 <input type="text" name="title" required maxlength="160" placeholder="Ex.: Entrega de relatório mensal" />
@@ -282,10 +441,18 @@
                     </div>
                 </dl>
                 <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+                    <!-- BOTÃO HISTÓRICO (DRAWER) -->
+                    <button type="button" class="button button-quiet btn-history-drawer"
+                            data-id="@item.SourceId" data-title="@item.Title">
+                        Ver histórico
+                    </button>
+
                     <!-- AÇÃO INICIAR -->
                     @if (item.Status == "open")
                     {
-                        <form method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="start">
+                        <form method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="start"
+                              asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+                              asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="version" value="1" />
                             <button class="button button-quiet" type="submit">Iniciar</button>
@@ -296,11 +463,13 @@
                     <details style="position:relative;">
                         <summary class="button button-quiet" style="cursor:pointer;">Cumprir</summary>
                         <div style="position:absolute; right:0; top:100%; z-index:10; background:white; border:1px solid #ccc; padding:1rem; min-width:280px; box-shadow:0 4px 12px rgba(0,0,0,0.15); border-radius:4px;">
-                            <form method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="fulfill">
+                            <form method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="fulfill"
+                                  asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+                                  asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="version" value="1" />
-                                <label style="display:block; font-size:0.875rem;">Data de efetivação
-                                    <input type="date" name="effectiveAt" value="@todayStr" required style="width:100%;" />
+                                <label style="display:block; font-size:0.875rem;">Data de efetivação (vazio = fuso da organização)
+                                    <input type="date" name="effectiveAt" value="@todayStr" style="width:100%;" />
                                 </label>
                                 <label style="display:block; font-size:0.875rem; margin-top:0.5rem;">Documento de evidência (versão segura)
                                     <select name="evidenceDocumentVersionId" style="width:100%;">
@@ -323,7 +492,9 @@
                     <details style="position:relative;">
                         <summary class="button button-quiet" style="cursor:pointer;">Reagendar</summary>
                         <div style="position:absolute; right:0; top:100%; z-index:10; background:white; border:1px solid #ccc; padding:1rem; min-width:280px; box-shadow:0 4px 12px rgba(0,0,0,0.15); border-radius:4px;">
-                            <form method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="reschedule">
+                            <form method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="reschedule"
+                                  asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+                                  asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="version" value="1" />
                                 <label style="display:block; font-size:0.875rem;">Novo prazo
@@ -341,7 +512,9 @@
                     <details style="position:relative;">
                         <summary class="button button-quiet" style="cursor:pointer;">Reatribuir</summary>
                         <div style="position:absolute; right:0; top:100%; z-index:10; background:white; border:1px solid #ccc; padding:1rem; min-width:280px; box-shadow:0 4px 12px rgba(0,0,0,0.15); border-radius:4px;">
-                            <form method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="reassign">
+                            <form method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="reassign"
+                                  asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+                                  asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="version" value="1" />
                                 <label style="display:block; font-size:0.875rem;">Novo responsável
@@ -365,7 +538,9 @@
                     <details style="position:relative;">
                         <summary class="button button-quiet" style="cursor:pointer;">Cancelar</summary>
                         <div style="position:absolute; right:0; top:100%; z-index:10; background:white; border:1px solid #ccc; padding:1rem; min-width:280px; box-shadow:0 4px 12px rgba(0,0,0,0.15); border-radius:4px;">
-                            <form method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="cancel">
+                            <form method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="cancel"
+                                  asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+                                  asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="version" value="1" />
                                 <label style="display:block; font-size:0.875rem;">Motivo do cancelamento
@@ -387,14 +562,16 @@
         <h2>Minutas operacionais sugeridas</h2>
         @if (sheet.CanInstallOfficialLibrary)
         {
-            <form method="post" asp-action="InstallOfficialLibrary" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId">
+            <form method="post" asp-action="InstallOfficialLibrary" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+                  asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+                  asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId">
                 @Html.AntiForgeryToken()
                 <button class="button button-primary" type="submit">Instalar biblioteca oficial</button>
             </form>
         }
     </div>
     <p class="muted" style="font-size:0.875rem; margin-bottom:1rem;">
-        Modelos são pontos de partida operacionais recomendados pelo contexto contratual. Revise antes de usar; não constituem parecer jurídico nem garantia de conformidade.
+        Modelos são pontos de partida operacionais recomendados pelo contexto contratual. Revisar antes de usar; não constituem parecer jurídico nem garantia de conformidade.
     </p>
 
     @if (sheet.RecommendedTemplates is null || sheet.RecommendedTemplates.Count == 0)
@@ -415,7 +592,9 @@
                     <p>@template.Reason</p>
                 </div>
                 <div style="display:flex; gap:0.5rem; align-items:center;">
-                    <form method="post" asp-action="StartOfficialDraft" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId">
+                    <form method="post" asp-action="StartOfficialDraft" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+                          asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+                          asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="officialKey" value="@template.Key" />
                         <input type="hidden" name="sheetVersion" value="@sheet.Version" />
@@ -457,3 +636,143 @@
         }
     }
 </section>
+
+<!-- DRAWER DE HISTÓRICO DE OBRIGAÇÕES -->
+<div id="history-backdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:100;"></div>
+<aside id="history-drawer" aria-labelledby="history-drawer-title" aria-modal="true" role="dialog" style="display:none; position:fixed; top:0; right:0; width:min(440px, 100vw); height:100vh; background:#fff; z-index:101; box-shadow:-4px 0 20px rgba(0,0,0,0.15); padding:1.5rem; overflow-y:auto; box-sizing:border-box;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:0.75rem; margin-bottom:1rem;">
+        <h3 id="history-drawer-title" style="margin:0; font-size:1.125rem;">Histórico da obrigação</h3>
+        <button type="button" id="history-drawer-close" class="button button-quiet" style="padding:0.25rem 0.5rem;" aria-label="Fechar histórico">✕</button>
+    </div>
+    <div id="history-drawer-subtitle" class="muted" style="font-size:0.875rem; margin-bottom:1rem;"></div>
+    <div id="history-drawer-content" role="region" aria-live="polite">
+        <p class="muted">Carregando histórico...</p>
+    </div>
+</aside>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const backdrop = document.getElementById('history-backdrop');
+    const drawer = document.getElementById('history-drawer');
+    const closeBtn = document.getElementById('history-drawer-close');
+    const content = document.getElementById('history-drawer-content');
+    const subtitle = document.getElementById('history-drawer-subtitle');
+
+    function closeDrawer() {
+        if (backdrop) backdrop.style.display = 'none';
+        if (drawer) drawer.style.display = 'none';
+    }
+
+    closeBtn?.addEventListener('click', closeDrawer);
+    backdrop?.addEventListener('click', closeDrawer);
+
+    document.querySelectorAll('.btn-history-drawer').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = btn.getAttribute('data-id');
+            const title = btn.getAttribute('data-title');
+            if (!id) return;
+
+            if (subtitle) subtitle.textContent = title || '';
+            if (content) content.textContent = 'Carregando histórico...';
+            if (backdrop) backdrop.style.display = 'block';
+            if (drawer) drawer.style.display = 'block';
+
+            try {
+                const response = await fetch(`/organizacoes/@tenantId/obrigacoes/${id}/historico`);
+                if (!content) return;
+                content.textContent = '';
+
+                if (response.status === 403) {
+                    const alert = document.createElement('div');
+                    alert.className = 'validation-summary';
+                    alert.textContent = 'Acesso restrito: você não possui permissão para visualizar o histórico desta obrigação (somente o responsável ou usuários com tenant.obligations.read_all).';
+                    content.appendChild(alert);
+                    return;
+                }
+
+                if (response.status === 404) {
+                    const p = document.createElement('p');
+                    p.className = 'muted';
+                    p.textContent = 'Histórico não encontrado ou obrigação excluída.';
+                    content.appendChild(p);
+                    return;
+                }
+
+                if (!response.ok) {
+                    const p = document.createElement('p');
+                    p.className = 'muted';
+                    p.textContent = 'Não foi possível consultar o histórico no momento.';
+                    content.appendChild(p);
+                    return;
+                }
+
+                const data = await response.json();
+                const items = data.events || data.Items || [];
+                if (items.length === 0) {
+                    const p = document.createElement('p');
+                    p.className = 'muted';
+                    p.textContent = 'Nenhum evento registrado até o momento.';
+                    content.appendChild(p);
+                    return;
+                }
+
+                const list = document.createElement('div');
+                list.style.display = 'flex';
+                list.style.flexDirection = 'column';
+                list.style.gap = '0.75rem';
+
+                items.forEach(ev => {
+                    const card = document.createElement('article');
+                    card.style.border = '1px solid #e0e0e0';
+                    card.style.borderRadius = '4px';
+                    card.style.padding = '0.75rem';
+                    card.style.background = '#fafafa';
+
+                    const header = document.createElement('div');
+                    header.style.display = 'flex';
+                    header.style.justifyContent = 'space-between';
+                    header.style.marginBottom = '0.25rem';
+
+                    const typeSpan = document.createElement('strong');
+                    typeSpan.textContent = ev.eventType || ev.EventType || 'Evento';
+                    header.appendChild(typeSpan);
+
+                    const dateSpan = document.createElement('span');
+                    dateSpan.className = 'muted';
+                    dateSpan.style.fontSize = '0.75rem';
+                    const dt = ev.occurredAt || ev.OccurredAt;
+                    dateSpan.textContent = dt ? new Date(dt).toLocaleString('pt-BR') : '';
+                    header.appendChild(dateSpan);
+
+                    card.appendChild(header);
+
+                    const actorP = document.createElement('p');
+                    actorP.style.margin = '0.25rem 0';
+                    actorP.style.fontSize = '0.875rem';
+                    const actorBold = document.createElement('strong');
+                    actorBold.textContent = ev.actor || ev.Actor || 'Sistema';
+                    actorP.appendChild(document.createTextNode('Por: '));
+                    actorP.appendChild(actorBold);
+                    card.appendChild(actorP);
+
+                    const details = ev.details || ev.Details;
+                    if (details) {
+                        const detP = document.createElement('div');
+                        detP.className = 'muted';
+                        detP.style.fontSize = '0.8125rem';
+                        detP.style.whiteSpace = 'pre-wrap';
+                        detP.textContent = typeof details === 'string' ? details : JSON.stringify(details);
+                        card.appendChild(detP);
+                    }
+
+                    list.appendChild(card);
+                });
+
+                content.appendChild(list);
+            } catch (err) {
+                if (content) content.textContent = 'Erro ao carregar o histórico.';
+            }
+        });
+    });
+});
+</script>

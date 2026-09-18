@@ -30,6 +30,32 @@ public static class ContractWorkspacePolicy
     public static bool CanInstallOfficialLibrary(bool canManageDrafts, int publishedOfficialCount) =>
         canManageDrafts && publishedOfficialCount < OfficialContractTemplates.All.Count;
 
+    public static bool CanStartOfficialDraft(
+        string officialKey,
+        bool hasOpenReview,
+        bool inThreeMonthWindow,
+        DateOnly? currentEnd,
+        DateOnly? proposedEnd,
+        out string? error)
+    {
+        error = null;
+        var isAmendment = string.Equals(officialKey, AmendmentKey, StringComparison.OrdinalIgnoreCase);
+
+        if (hasOpenReview && !isAmendment)
+        {
+            error = "Não é permitido iniciar nova minuta (como NDA, serviços, fornecimento ou locação) enquanto houver revisão aberta no contrato.";
+            return false;
+        }
+
+        if (isAmendment && !RequiresAmendment(inThreeMonthWindow, currentEnd, proposedEnd))
+        {
+            error = "Termo aditivo só é permitido quando a vigência estiver na janela de renovação ou houver proposta de alteração de prazo.";
+            return false;
+        }
+
+        return true;
+    }
+
     public static IReadOnlyList<OfficialTemplateRecommendation> Recommend(
         string? contractType,
         bool hasOpenReview,

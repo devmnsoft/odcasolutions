@@ -44,6 +44,47 @@ public sealed class ContractStudioCatalogController(NpgsqlDataSource dataSource)
         return Ok(new TemplatePreview(row.Id, row.Name, row.Description, row.ContractType, row.Scope, row.Status, row.Version, fields, labels));
     }
 
+    [HttpGet("templates/official/{key}")]
+    public async Task<IActionResult> OfficialTemplate(Guid tenantId, string key, CancellationToken ct)
+    {
+        var actor = Actor(); if (actor is null) return Unauthorized();
+        await using var connection = await dataSource.OpenConnectionAsync(ct);
+        if (!await Allowed(connection, actor.Value, tenantId, "tenant.templates.read", ct)) return Forbid();
+
+        var officialDef = OfficialContractTemplates.All.FirstOrDefault(x => string.Equals(x.Key, key, StringComparison.OrdinalIgnoreCase));
+        var initialName = officialDef?.Name;
+
+        var row = await connection.QuerySingleOrDefaultAsync<TemplatePreviewRow>(new CommandDefinition("""
+            SELECT t.id AS Id, t.name AS Name, t.description AS Description, t.contract_type AS ContractType,
+                   t.scope AS Scope, t.status AS Status, t.current_version AS Version, v.fields::text AS Fields
+              FROM odca.contract_templates t
+              JOIN odca.contract_template_versions v ON v.template_id = t.id AND v.version_number = t.current_version
+             WHERE t.status = 'published'
+               AND (t.scope = 'global' OR t.owner_tenant_id = @tenantId)
+               AND (
+                   EXISTS (
+                       SELECT 1 FROM odca.audit_events a
+                        WHERE a.entity_id = t.id
+                          AND a.entity_type = 'contract_template'
+                          AND (a.tenant_id = @tenantId OR t.scope = 'global')
+                          AND a.action = 'template.official_installed'
+                          AND a.metadata->>'key' = @key
+                   )
+                   OR (
+                       @initialName IS NOT NULL AND t.name = @initialName
+                   )
+               )
+             ORDER BY t.published_at DESC NULLS LAST, t.created_at DESC
+             LIMIT 1
+            """, new { tenantId, key, initialName }, cancellationToken: ct));
+
+        if (row is null) return NotFound();
+        var fields = JsonSerializer.Deserialize<JsonElement>(row.Fields);
+        var labels = JsonSerializer.Deserialize<ContractFieldDefinition[]>(row.Fields, JsonOptions)?
+            .Select(item => item.Label).ToArray() ?? [];
+        return Ok(new TemplatePreview(row.Id, row.Name, row.Description, row.ContractType, row.Scope, row.Status, row.Version, fields, labels));
+    }
+
     [HttpPost("templates/official")]
     public async Task<IActionResult> InstallOfficial(Guid tenantId, CancellationToken ct)
     {

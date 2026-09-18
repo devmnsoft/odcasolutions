@@ -1,5 +1,16 @@
 # Próxima execução
 
+## Continuação após Ficha Acionável: Revisão, Comentários, Histórico e Resolução por Chave (18/09/2026)
+
+Parta da branch `feat/ficha-revisao-historico-chave` recompilável com 0 erros/avisos e 136 testes de domínio aprovados.
+Execute validações ponta a ponta com PostgreSQL descartável cobrindo:
+1. Abertura do drawer de histórico para dono da obrigação e retorno 403 restrito no drawer para usuário sem permissão `tenant.obligations.read_all` mantendo a ficha intacta.
+2. Resolução de minuta oficial após renomeação do título no catálogo, confirmando resolução por chave `metadata->>'key' = @key`.
+3. Submissão de revisão pelo painel `#revisao` e adição/resolução de comentários contextuais.
+4. Tentativa de iniciar minuta primária (NDA) com contrato em revisão (`in_review` / `changes_requested`) retornando 400 BadRequest.
+5. Cumprimento de obrigação sem `EffectiveAt` comprovando uso da data civil no fuso do tenant (sem `UtcNow`).
+6. Navegação preservando parâmetros de origem (`from=agenda&year=...` ou `from=caixa&scope=...`) na ida e volta da ficha.
+
 ## Continuação após Ficha Acionável, Minutas Oficiais e Contexto Operacional (18/09/2026)
 
 Parta da branch `feat/ficha-acionavel-minuta-contexto` recompilável com 0 erros/avisos e 132 testes de domínio aprovados.

@@ -1,5 +1,32 @@
 # Status de execução
 
+## Ficha acionável: revisão, comentários, histórico seguro e resolução por chave (18/09/2026)
+
+- Estado da entrega: branch `feat/ficha-revisao-historico-chave` a partir de `codex/s00-foundation` @ `600915e7`.
+- Drawer de histórico de obrigação:
+  - Consumo via `GET /organizacoes/{tenantId}/obrigacoes/{id}/historico`.
+  - Renderização estritamente segura usando DOM APIs (`createElement`, `textContent`), sem `innerHTML`.
+  - Controle de acesso com dono da obrigação ou permissão `tenant.obligations.read_all` (403 restrito no drawer sem quebrar a ficha).
+- Painel `#revisao`:
+  - Link direto para o rascunho no Estúdio preservando `returnUrl` integral.
+  - Submissão de versão para revisão reutilizando `api.SubmitStudioReviewAsync` (POST `revisao/submeter`).
+  - Adição e alteração de estado (resolve/reopen) de comentários contextuais no rascunho com aviso explícito "comentário ≠ aprovação".
+  - Tratamento de colisão/conflito 409 recarregando a ficha com mensagem de erro amigável sem perder o contexto.
+  - Atalhos diretos para Checklist e Comparação de versões.
+- Resolução de minutas oficiais por Key:
+  - Lookup resiliente a renomeações de título via `odca.audit_events.metadata->>'key' = @key` através do endpoint `GET /api/v1/organizations/{tenantId}/studio/templates/official/{key}`.
+  - Proibido `FirstOrDefault(x => x.Name == título)`.
+  - Retry de instalação sob demanda caso `CanInstallOfficialLibrary` seja verdadeiro.
+  - Bloqueio 400 BadRequest para minutas primárias (NDA, serviços, fornecimento, locação) se houver revisão aberta (`in_review` ou `changes_requested`).
+  - Termo aditivo (`contract-amendment`) permitido apenas se `RequiresAmendment` (janela de renovação ou alteração de prazo).
+- Data civil do fuso horário no cumprimento de obrigação:
+  - Quando `EffectiveAt` for omitido em `fulfill`, calcula a data civil do tenant via `(now() AT TIME ZONE timezone)::date` com fallback seguro `TimeZonePolicy.Resolve(tenantInfo.Timezone, ...)`. Proibido `DateTimeOffset.UtcNow`.
+- Preservação da query de retorno:
+  - `from`, `year`, `month`, `scope`, `kind`, `urgency`, `viewId`, `obrigacao` preservados em formulários POST e links da ficha ("Voltar à caixa" / "Voltar à agenda").
+- Build e testes:
+  - `dotnet build Odca.sln -c Release`: 0 erros, 0 avisos.
+  - `dotnet test tests/Odca.Domain.Tests/Odca.Domain.Tests.csproj -c Release`: 136/136 testes aprovados.
+
 ## Ficha acionável do contrato, biblioteca de minutas oficiais e contexto operacional (18/09/2026)
 
 - Estado da entrega: branch `feat/ficha-acionavel-minuta-contexto` criada a partir de `codex/s00-foundation`.
