@@ -29,4 +29,13 @@ public sealed class ContractSheetViewModel
     public IReadOnlyList<TeamMemberResponse> ActiveMembers { get; init; } = [];
     public Guid? SelectedObligationId { get; init; }
     public string? FromSource { get; init; }
+    public int? Year { get; init; }
+    public int? Month { get; init; }
+    public string? Scope { get; init; }
+    public string? Kind { get; init; }
+    public string? Urgency { get; init; }
+    public Guid? ViewId { get; init; }
+    public IReadOnlyList<Odca.Contracts.Studio.StudioCommentItem> Comments { get; init; } = [];
+    public IReadOnlyList<Odca.Contracts.Studio.StudioVersionItem> Versions { get; init; } = [];
+    public IReadOnlyList<Odca.Contracts.Studio.StudioReviewerItem> Reviewers { get; init; } = [];
 }

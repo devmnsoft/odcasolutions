@@ -78,4 +78,64 @@ public sealed class ContractWorkspacePolicyTests
         Assert.False(ContractWorkspacePolicy.RequiresAmendment(
             false, new DateOnly(2027, 1, 1), new DateOnly(2027, 1, 1)));
     }
+
+    [Fact]
+    public void CanStartOfficialDraftRejectsNonAmendmentWhenReviewIsOpen()
+    {
+        var allowed = ContractWorkspacePolicy.CanStartOfficialDraft(
+            ContractWorkspacePolicy.NdaUnilateralKey,
+            hasOpenReview: true,
+            inThreeMonthWindow: false,
+            currentEnd: null,
+            proposedEnd: null,
+            out var error);
+
+        Assert.False(allowed);
+        Assert.Contains("revisão aberta", error);
+    }
+
+    [Fact]
+    public void CanStartOfficialDraftAllowsAmendmentWhenReviewIsOpenAndInWindow()
+    {
+        var allowed = ContractWorkspacePolicy.CanStartOfficialDraft(
+            ContractWorkspacePolicy.AmendmentKey,
+            hasOpenReview: true,
+            inThreeMonthWindow: true,
+            currentEnd: new DateOnly(2026, 12, 31),
+            proposedEnd: null,
+            out var error);
+
+        Assert.True(allowed);
+        Assert.Null(error);
+    }
+
+    [Fact]
+    public void CanStartOfficialDraftRejectsAmendmentWhenOutsideWindowAndNoEndChange()
+    {
+        var allowed = ContractWorkspacePolicy.CanStartOfficialDraft(
+            ContractWorkspacePolicy.AmendmentKey,
+            hasOpenReview: false,
+            inThreeMonthWindow: false,
+            currentEnd: new DateOnly(2027, 1, 1),
+            proposedEnd: new DateOnly(2027, 1, 1),
+            out var error);
+
+        Assert.False(allowed);
+        Assert.Contains("janela de renovação", error);
+    }
+
+    [Fact]
+    public void CanStartOfficialDraftAllowsPrimaryDraftWhenNoOpenReview()
+    {
+        var allowed = ContractWorkspacePolicy.CanStartOfficialDraft(
+            ContractWorkspacePolicy.ServicesKey,
+            hasOpenReview: false,
+            inThreeMonthWindow: false,
+            currentEnd: null,
+            proposedEnd: null,
+            out var error);
+
+        Assert.True(allowed);
+        Assert.Null(error);
+    }
 }

@@ -459,6 +459,9 @@ public sealed partial class OdcaApiClient(HttpClient client)
     public Task<ApiCallResult<TemplateCatalogPage>> GetStudioTemplatesAsync(string token, Guid tenantId, string? search, int page, CancellationToken ct) =>
         SendAsync<TemplateCatalogPage>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/studio/templates?search={Uri.EscapeDataString(search ?? string.Empty)}&page={page}", token), false, ct);
 
+    public Task<ApiCallResult<TemplatePreview>> GetOfficialStudioTemplateByKeyAsync(string token, Guid tenantId, string key, CancellationToken ct) =>
+        SendAsync<TemplatePreview>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/studio/templates/official/{Uri.EscapeDataString(key)}", token), false, ct);
+
     public async Task<ApiCallResult<JsonElement>> CreateStudioDraftAsync(string token, Guid tenantId, CreateDraftRequest request, CancellationToken ct)
     {
         using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/drafts", token);
