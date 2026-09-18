@@ -1,6 +1,31 @@
 # Status de execução
 
-## Consumo e aplicação de renovações (16/09/2026)
+## Ficha acionável do contrato, biblioteca de minutas oficiais e contexto operacional (18/09/2026)
+
+- Estado da entrega: branch `feat/ficha-acionavel-minuta-contexto` criada a partir de `codex/s00-foundation`.
+- Catálogo canônico de 6 minutas oficiais consolidado em `OfficialContractTemplates`:
+  1. `nda-unilateral` ("Acordo de Confidencialidade (NDA) — Unilateral")
+  2. `nda-mutual` ("Acordo de Confidencialidade (NDA) — Mútuo")
+  3. `services-agreement` ("Contrato de Prestação de Serviços Técnicos")
+  4. `contract-amendment` ("Termo Aditivo Contratual")
+  5. `supply-agreement` ("Contrato de Fornecimento de Bens")
+  6. `lease-agreement` ("Contrato de Locação de Imóvel Comercial")
+- Ficha acionável do contrato (`/sheet`):
+  - Ações diretas em obrigações: iniciar (`start`), cumprir (`fulfill`), cancelar (`cancel`), reabrir (`reopen`), reprogramar (`reschedule`), reatribuir (`reassign`) e criar obrigação manual com validação de versão otimista e redirecionamento para âncora `#obrigacoes`.
+  - Proposta de alteração/renovação (`POST /proposta-renovacao`): registro sem efeito direto na vigência até formalização, obrigatoriedade de aditivo (`amendment`) na janela de 3 meses ou alteração de data final, validação de responsável e idempotência.
+  - Rascunhos de minutas oficiais (`POST /rascunho-oficial`): criação direta de rascunho de minuta oficial via API de estúdio com base no catálogo oficial do tenant (com instalação automática se permitido quando catálogo incompleto).
+  - Instalação sob demanda da biblioteca oficial (`POST /biblioteca-oficial`) autorizada por permissão.
+  - Contexto de importação aguardando revisão destacado na ficha via chip de alerta direto para importações.
+- Visibilidade e RLS:
+  - `scope=organization` na caixa operacional exige permissão estrita `tenant.obligations.read_all` retornando 403 `Forbid()` (sem degradação silenciosa para `mine`). Contratos de outros tenants retornam 404 `NotFound`.
+  - Links profundos canônicos com âncora (`?obrigacao={id}&from=caixa#obrigacoes`, `#revisao`, `#renovacao`).
+- Separação de camadas:
+  - `Odca.Web` estritamente desacoplado de `Odca.Application` (usings removidos, regras de roteamento e catálogo mapeados localmente).
+- Testes e compilação:
+  - `dotnet build Odca.sln -c Release`: 0 erros, 0 avisos.
+  - `dotnet test tests/Odca.Domain.Tests/Odca.Domain.Tests.csproj -c Release`: 132/132 testes aprovados.
+- Fora de escopo preservado: sem editor visual, sem PDF rastreável, sem OCR, sem séries recorrentes ("esta e futuras"), sem dashboard consolidado de tarefas, sem billing/PIX, sem impersonation, sem sessão de suporte, sem migração de banco alterando snapshots 001–019.
+
 
 - Estado inicial desta entrega: branch `work`, SHA `b3b3d8c2b452254797384a8781cc4e54bbfcb35c`, árvore limpa e nenhum `AGENTS.md` presente no checkout ou diretório pai.
 - As actions de solicitação agora possuem nomes de negócio sem ocultar `ControllerBase.Request`/`Controller.Request`; as URLs públicas permanecem explícitas e o POST do BFF exige antiforgery.

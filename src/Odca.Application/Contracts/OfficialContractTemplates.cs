@@ -23,7 +23,9 @@ public static class OfficialContractTemplates
         NdaUnilateral(),
         NdaMutual(),
         ServicesAgreement(),
-        ContractAmendment()
+        ContractAmendment(),
+        SupplyAgreement(),
+        LeaseAgreement()
     ];
 
     public static string? NormalizeType(string? value) =>
@@ -201,6 +203,96 @@ public static class OfficialContractTemplates
             new("effective_date", "Início do aditivo", ContractFieldType.Date, true),
             new("change_summary", "Resumo da alteração", ContractFieldType.LongText, true),
             new("jurisdiction", "Foro", ContractFieldType.Choice, true, ["São Paulo/SP", "Rio de Janeiro/RJ", "Brasília/DF"])
+        ]);
+
+    private static OfficialContractTemplate SupplyAgreement() => new(
+        "supply-agreement",
+        "Contrato de Fornecimento",
+        "Minuta operacional de fornecimento contínuo com volume, preço e prazo de aviso estruturados. Confirme campos antes de gerar versão.",
+        "supply",
+        Document(
+            Heading("Contrato de Fornecimento"),
+            Paragraph(
+                Text("Fornecedor: "),
+                Field("supplier_name"),
+                Text(", documento "),
+                Field("supplier_document"),
+                Text(". Comprador: "),
+                Field("buyer_name"),
+                Text(", documento "),
+                Field("buyer_document"),
+                Text(".")),
+            Paragraph(Text("Objeto e especificações dos produtos: "), Field("product_description")),
+            Paragraph(
+                Text("Preço unitário: "),
+                Field("unit_price"),
+                Text(" sob condições de entrega "),
+                Field("delivery_terms"),
+                Text(". Vigência de "),
+                Field("start_date"),
+                Text(" a "),
+                Field("end_date"),
+                Text(".")),
+            Paragraph(
+                Text("Foro: "),
+                Field("jurisdiction"),
+                Text(". Este modelo é um ponto de partida operacional e não substitui parecer jurídico."))),
+        [
+            new("supplier_name", "Fornecedor", ContractFieldType.ShortText, true),
+            new("supplier_document", "Documento do fornecedor", ContractFieldType.BrazilianDocument, true),
+            new("buyer_name", "Comprador", ContractFieldType.ShortText, true),
+            new("buyer_document", "Documento do comprador", ContractFieldType.BrazilianDocument, true),
+            new("product_description", "Especificação dos produtos", ContractFieldType.LongText, true),
+            new("unit_price", "Preço unitário", ContractFieldType.Currency, true),
+            new("delivery_terms", "Condições de entrega", ContractFieldType.Choice, true, ["mensal", "quinzenal", "sob demanda", "em lote único"]),
+            new("start_date", "Início", ContractFieldType.Date, true),
+            new("end_date", "Término", ContractFieldType.Date, true),
+            new("jurisdiction", "Foro", ContractFieldType.Choice, true, ["São Paulo/SP", "Rio de Janeiro/RJ", "Brasília/DF", "Belo Horizonte/MG"])
+        ]);
+
+    private static OfficialContractTemplate LeaseAgreement() => new(
+        "lease-agreement",
+        "Contrato de Locação Operacional",
+        "Minuta operacional de locação de bem móvel ou imóvel com objeto, aluguel e denúncia estruturados. Confirme campos antes de gerar versão.",
+        "lease",
+        Document(
+            Heading("Contrato de Locação Operacional"),
+            Paragraph(
+                Text("Locador: "),
+                Field("lessor_name"),
+                Text(", documento "),
+                Field("lessor_document"),
+                Text(". Locatário: "),
+                Field("lessee_name"),
+                Text(", documento "),
+                Field("lessee_document"),
+                Text(".")),
+            Paragraph(Text("Objeto e descrição do bem locado: "), Field("property_description")),
+            Paragraph(
+                Text("Aluguel: "),
+                Field("rent_amount"),
+                Text(" com pagamento "),
+                Field("payment_terms"),
+                Text(". Vigência de "),
+                Field("start_date"),
+                Text(" a "),
+                Field("end_date"),
+                Text(".")),
+            Paragraph(
+                Text("Foro: "),
+                Field("jurisdiction"),
+                Text(". Este modelo é um ponto de partida operacional e não substitui parecer jurídico."))),
+        [
+            new("lessor_name", "Locador", ContractFieldType.ShortText, true),
+            new("lessor_document", "Documento do locador", ContractFieldType.BrazilianDocument, true),
+            new("lessee_name", "Locatário", ContractFieldType.ShortText, true),
+            new("lessee_document", "Documento do locatário", ContractFieldType.BrazilianDocument, true),
+            new("property_description", "Descrição do bem", ContractFieldType.LongText, true),
+            new("rent_amount", "Aluguel", ContractFieldType.Currency, true),
+            new("payment_terms", "Condições de pagamento", ContractFieldType.Choice, true, ["mensal até o dia 5", "mensal até o dia 10", "mensal até o dia 20", "trimestral"]),
+            new("start_date", "Início", ContractFieldType.Date, true),
+            new("end_date", "Término", ContractFieldType.Date, true),
+            new("jurisdiction", "Foro", ContractFieldType.Choice, true, ["São Paulo/SP", "Rio de Janeiro/RJ", "Brasília/DF", "Porto Alegre/RS"])
         ]);
 
     private static string Document(params string[] blocks) =>

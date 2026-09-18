@@ -52,6 +52,43 @@ public sealed partial class OdcaApiClient
             CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/templates/official", token),
             true, ct);
 
+    public async Task<ApiCallResult<object>> CreateObligationAsync(
+        string token,
+        Guid tenantId,
+        Guid contractId,
+        Odca.Contracts.Obligations.CreateObligationRequest body,
+        CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/obligations/contracts/{contractId}", token);
+        message.Content = System.Net.Http.Json.JsonContent.Create(body);
+        return await SendAsync<object>(message, false, ct);
+    }
+
+    public async Task<ApiCallResult<object>> PerformObligationActionAsync(
+        string token,
+        Guid tenantId,
+        Guid obligationId,
+        string operation,
+        Odca.Contracts.Obligations.ObligationActionRequest body,
+        CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/obligations/{obligationId}/{operation}", token);
+        message.Content = System.Net.Http.Json.JsonContent.Create(body);
+        return await SendAsync<object>(message, false, ct);
+    }
+
+    public async Task<ApiCallResult<object>> CreateRenewalProposalAsync(
+        string token,
+        Guid tenantId,
+        Guid contractId,
+        Odca.Contracts.Renewals.CreateRenewalRequest body,
+        CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/renewals/contracts/{contractId}", token);
+        message.Content = System.Net.Http.Json.JsonContent.Create(body);
+        return await SendAsync<object>(message, false, ct);
+    }
+
     private static string InboxPath(
         Guid tenantId,
         string scope,

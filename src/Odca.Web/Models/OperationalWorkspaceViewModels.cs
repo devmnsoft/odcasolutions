@@ -1,4 +1,6 @@
 using Odca.Contracts.Operations;
+using Odca.Contracts.Tenancy;
+using Odca.Contracts.SavedViews;
 
 namespace Odca.Web.Models;
 
@@ -9,6 +11,8 @@ public sealed class InboxWorkspaceViewModel
     public string? Kind { get; init; }
     public string? Urgency { get; init; }
     public string? Error { get; init; }
+    public IReadOnlyList<SavedViewItem> Views { get; init; } = [];
+    public SavedViewItem? CurrentView { get; init; }
 }
 
 public sealed class AgendaWorkspaceViewModel
@@ -22,4 +26,7 @@ public sealed class ContractSheetViewModel
 {
     public ContractSheetDto? Sheet { get; init; }
     public string? Error { get; init; }
+    public IReadOnlyList<TeamMemberResponse> ActiveMembers { get; init; } = [];
+    public Guid? SelectedObligationId { get; init; }
+    public string? FromSource { get; init; }
 }

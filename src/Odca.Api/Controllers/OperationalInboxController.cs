@@ -42,6 +42,9 @@ public sealed class OperationalInboxController(
         var readAllRenewals = await Allowed(connection, actor.Value, tenantId, "tenant.renewals.read", ct);
 
         var organization = scope.Equals("organization", StringComparison.OrdinalIgnoreCase);
+        if (organization && !readAllObligations)
+            return Forbid();
+
         var pageDto = await inbox.QueryAsync(
             tenantId,
             actor.Value,
@@ -69,8 +72,14 @@ public sealed class OperationalInboxController(
         if (!await Allowed(connection, actor.Value, tenantId, "tenant.obligations.read", ct))
             return Forbid();
 
-        var canReadTenant = scope.Equals("organization", StringComparison.OrdinalIgnoreCase)
-            && await Allowed(connection, actor.Value, tenantId, "tenant.obligations.read_all", ct);
+        var organization = scope.Equals("organization", StringComparison.OrdinalIgnoreCase);
+        var canReadTenant = false;
+        if (organization)
+        {
+            canReadTenant = await Allowed(connection, actor.Value, tenantId, "tenant.obligations.read_all", ct);
+            if (!canReadTenant)
+                return Forbid();
+        }
 
         try
         {

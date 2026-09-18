@@ -87,5 +87,25 @@ public sealed record ContractSheetDto(
     ContractSheetRenewalDto? Renewal,
     long Version,
     string? ContractType = null,
+    string? OwnerName = null,
     IReadOnlyList<OfficialTemplateRecommendationDto>? RecommendedTemplates = null,
-    bool CanInstallOfficialLibrary = false);
+    bool CanInstallOfficialLibrary = false,
+    bool HasImportAwaitingReview = false);
+
+public sealed record StartOfficialDraftRequest(string OfficialKey, long SheetVersion);
+
+public sealed record StartOfficialDraftResponse(
+    Guid DraftId,
+    string OfficialKey,
+    string RedirectPath);
+
+public sealed record CreateSheetRenewalProposalRequest(
+    string Kind,
+    DateOnly? ProposedStartDate,
+    DateOnly? ProposedEndDate,
+    DateOnly EffectiveOn,
+    string Reason,
+    long ContractVersion,
+    Guid? ResponsibleId,
+    decimal? ProposedValue,
+    string? Currency);

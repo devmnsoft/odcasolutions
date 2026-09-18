@@ -71,9 +71,9 @@ public sealed class OperationalInboxService(IOperationalInboxRepository reposito
         var urgency = OperationalInbox.Classify(row.DueOn, today);
         var path = row.Kind switch
         {
-            OperationalWorkKind.Obligation => $"/organizacoes/{tenantId}/obrigacoes",
-            OperationalWorkKind.Review => $"/organizacoes/{tenantId}/contratos/{row.ContractId}",
-            _ => $"/organizacoes/{tenantId}/contratos/{row.ContractId}"
+            OperationalWorkKind.Obligation => $"/organizacoes/{tenantId}/contratos/{row.ContractId}?obrigacao={row.SourceId}&from=caixa#obrigacoes",
+            OperationalWorkKind.Review => $"/organizacoes/{tenantId}/contratos/{row.ContractId}?from=caixa#revisao",
+            _ => $"/organizacoes/{tenantId}/contratos/{row.ContractId}?from=caixa#renovacao"
         };
         return new OperationalInboxItemDto(
             row.Kind.ToString(),

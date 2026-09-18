@@ -2,65 +2,407 @@
 @{
     var tenantId = ViewData["TenantId"];
     var sheet = Model.Sheet;
+    var notice = TempData["ContractSheetNotice"] as string;
+    var error = TempData["ContractSheetError"] as string ?? Model.Error;
+    var todayStr = DateTime.UtcNow.ToString("yyyy-MM-dd");
+    var isAmendmentRequired = sheet?.Renewal?.InThreeMonthWindow == true;
 }
 @if (sheet is null)
 {
-    <div class="empty-state"><strong>Ficha indisponível</strong><p>@(Model.Error ?? "O contrato não está no contexto atual.")</p></div>
+    <div class="empty-state">
+        <strong>Ficha indisponível</strong>
+        <p>@(error ?? "O contrato não está acessível no contexto do usuário ou organização atual.")</p>
+        <a class="button button-quiet" asp-controller="Inbox" asp-action="Index" asp-route-tenantId="@tenantId">Ir para a caixa operacional</a>
+    </div>
     return;
 }
+
 <header class="renewal-heading">
     <div>
-        <p class="eyebrow">Ficha operacional</p>
-        <h1>@sheet.Title</h1>
-        <p class="muted">@sheet.Status · término @(sheet.EndsOn?.ToString("dd/MM/yyyy") ?? "não informado") · versão @sheet.Version</p>
+        <nav class="breadcrumb-trail" aria-label="Navegação estrutural">
+            @if (Model.FromSource == "agenda")
+            {
+                <a asp-controller="Agenda" asp-action="Index" asp-route-tenantId="@tenantId">← Agenda</a>
+            }
+            else
+            {
+                <a asp-controller="Inbox" asp-action="Index" asp-route-tenantId="@tenantId">← Caixa operacional</a>
+            }
+            <span>/ Contratos</span>
+        </nav>
+        <div style="display:flex; align-items:center; gap: 0.75rem; flex-wrap:wrap;">
+            <h1>@sheet.Title</h1>
+            @if (sheet.HasImportAwaitingReview)
+            {
+                <a class="status-label" style="background:#fff3cd; color:#856404; text-decoration:none; font-weight:600;"
+                   asp-controller="Imports" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-awaitingReview="true">
+                    ⚠ Importação aguardando revisão
+                </a>
+            }
+        </div>
+        <p class="muted">
+            Situação: <strong>@sheet.Status</strong> ·
+            Vigência: @(sheet.StartsOn?.ToString("dd/MM/yyyy") ?? "Início n/d") a @(sheet.EndsOn?.ToString("dd/MM/yyyy") ?? "Sem término") ·
+            Tipo: @(sheet.ContractType ?? "Geral") ·
+            Responsável: @(sheet.OwnerName ?? "Não atribuído") ·
+            Versão otimista: @sheet.Version
+        </p>
     </div>
-    <a class="button button-quiet" asp-controller="Inbox" asp-action="Index" asp-route-tenantId="@tenantId">Voltar à caixa</a>
+    <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+        <a class="button button-quiet" href="#obrigacoes">Obrigações</a>
+        <a class="button button-quiet" href="#renovacao">Renovação</a>
+        <a class="button button-quiet" href="#revisao">Revisão</a>
+        <a class="button button-quiet" href="#minutas">Minutas</a>
+        <a class="button button-quiet" asp-controller="Renewals" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-search="@sheet.Title">Central de renovações</a>
+    </div>
 </header>
-@if (!string.IsNullOrWhiteSpace(Model.Error))
+
+@if (!string.IsNullOrWhiteSpace(notice))
 {
-    <p class="validation-summary" role="alert">@Model.Error</p>
+    <div class="banner-notice" role="status" style="background:#e8f5e9; color:#1b5e20; padding:0.75rem 1rem; border-radius:4px; margin-bottom:1rem;">
+        @notice
+    </div>
 }
 
-<section class="renewal-cards" aria-label="Renovação">
-    <div><strong>@(sheet.Renewal?.EndsOn?.ToString("dd/MM") ?? "—")</strong><span>Término</span></div>
-    <div><strong>@(sheet.Renewal?.NoticeDueOn?.ToString("dd/MM") ?? "—")</strong><span>Aviso</span></div>
-    <div><strong>@(sheet.Renewal?.InThreeMonthWindow == true ? "Sim" : "Não")</strong><span>Janela de 3 meses</span></div>
+@if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="validation-summary" role="alert">
+        @error
+    </div>
+}
+
+<!-- SEÇÃO RENOVAÇÃO -->
+<section id="renovacao" class="renewal-cards" aria-label="Indicadores de vigência e renovação" style="margin-top:1.5rem;">
+    <div>
+        <strong>@(sheet.StartsOn?.ToString("dd/MM/yyyy") ?? "—")</strong>
+        <span>Início da vigência</span>
+    </div>
+    <div>
+        <strong>@(sheet.Renewal?.EndsOn?.ToString("dd/MM/yyyy") ?? "—")</strong>
+        <span>Término da vigência</span>
+    </div>
+    <div>
+        <strong>@(sheet.Renewal?.NoticeDueOn?.ToString("dd/MM/yyyy") ?? "—")</strong>
+        <span>Aviso prévio limite</span>
+    </div>
+    <div>
+        <strong>@(sheet.Renewal?.InThreeMonthWindow == true ? "Sim" : "Não")</strong>
+        <span>Janela de 3 meses</span>
+    </div>
 </section>
 
-<section class="renewal-list">
-    <div class="list-header"><h2>Revisão corrente</h2></div>
+<!-- PAINEL DE PROPOSTA DE RENOVAÇÃO / ADITIVO -->
+<details class="filter-panel" style="margin-top:1rem;">
+    <summary><strong>Registrar proposta de alteração ou renovação</strong> (Apenas proposta · Efeito em vigência somente na formalização)</summary>
+    <form method="post" asp-action="CreateRenewalProposal" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" style="margin-top:1rem; display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:0.75rem;">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="contractVersion" value="@sheet.Version" />
+        
+        <label>Tipo de alteração
+            <select name="kind" required>
+                @if (isAmendmentRequired)
+                {
+                    <option value="amendment" selected>Aditivo contratual (Obrigatório na janela)</option>
+                }
+                else
+                {
+                    <option value="renewal">Renovação de vigência</option>
+                    <option value="amendment">Aditivo (alteração de escopo/valor/prazo)</option>
+                }
+            </select>
+        </label>
+
+        <label>Efeito a partir de (EffectiveOn)
+            <input type="date" name="effectiveOn" value="@todayStr" required />
+        </label>
+
+        <label>Início proposto
+            <input type="date" name="proposedStartDate" value="@(sheet.StartsOn?.ToString("yyyy-MM-dd"))" />
+        </label>
+
+        <label>Novo término proposto
+            <input type="date" name="proposedEndDate" value="@(sheet.EndsOn?.AddYears(1).ToString("yyyy-MM-dd"))" />
+        </label>
+
+        <label>Responsável
+            <select name="responsibleId">
+                <option value="">Selecione um membro</option>
+                @foreach (var m in Model.ActiveMembers)
+                {
+                    <option value="@m.UserId">@m.Name (@m.Email)</option>
+                }
+            </select>
+        </label>
+
+        <label>Valor proposto
+            <input type="number" step="0.01" min="0" name="proposedValue" placeholder="0.00" />
+        </label>
+
+        <label>Moeda
+            <input type="text" name="currency" maxlength="3" value="BRL" style="text-transform:uppercase;" />
+        </label>
+
+        <label style="grid-column: 1 / -1;">Justificativa / Motivo da alteração
+            <textarea name="reason" rows="2" required placeholder="Descreva o motivo da renovação ou alteração contratual"></textarea>
+        </label>
+
+        <div style="grid-column: 1 / -1; display:flex; gap:0.75rem; align-items:center;">
+            <button class="button button-primary" type="submit">Registrar proposta</button>
+            <span class="muted" style="font-size:0.875rem;">Esta ação não altera a vigência imediatamente; cria proposta sujeita ao fluxo de aprovação e formalização.</span>
+        </div>
+    </form>
+</details>
+
+<!-- SEÇÃO REVISÃO CORRENTE -->
+<section id="revisao" class="renewal-list" style="margin-top:2rem;">
+    <div class="list-header">
+        <h2>Revisão em andamento</h2>
+        <span>@(sheet.CurrentReview is null ? "Nenhuma pendente" : sheet.CurrentReview.Status)</span>
+    </div>
     @if (sheet.CurrentReview is null)
     {
-        <p class="muted">Nenhuma revisão aberta nesta versão.</p>
+        <p class="muted">Não há revisão de rascunho aberta vinculada a este contrato.</p>
     }
     else
     {
-        <article class="renewal-row">
+        <article class="renewal-row" style="background:#fcfcfc;">
             <div>
                 <span class="status-label">@sheet.CurrentReview.Status</span>
-                <h3>@(sheet.CurrentReview.CurrentReviewerName ?? "Sem revisor corrente")</h3>
+                <h3>Revisor atual: @(sheet.CurrentReview.CurrentReviewerName ?? "Sem revisor designado")</h3>
+                <p class="muted">Identificador de revisão operacional em trâmite interno.</p>
             </div>
-            <dl><div><dt>Prazo</dt><dd>@(sheet.CurrentReview.DueAt?.ToString("dd/MM/yyyy") ?? "—")</dd></div></dl>
+            <dl>
+                <div>
+                    <dt>Prazo limite</dt>
+                    <dd>@(sheet.CurrentReview.DueAt?.ToString("dd/MM/yyyy HH:mm") ?? "Sem prazo definido")</dd>
+                </div>
+            </dl>
         </article>
+        <p class="muted" style="font-size:0.875rem; margin-top:0.5rem;">
+            * Com revisão aberta fora da janela de renovação, minutas primárias adicionais são suspensas até conclusão.
+        </p>
     }
 </section>
 
-<section class="renewal-list">
-    <div class="list-header"><h2>Obrigações abertas</h2><span>@sheet.OpenObligations.Count</span></div>
-    @foreach (var item in sheet.OpenObligations)
+<!-- SEÇÃO OBRIGAÇÕES -->
+<section id="obrigacoes" class="renewal-list" style="margin-top:2rem;">
+    <div class="list-header">
+        <h2>Obrigações contratuais</h2>
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+            <a class="button button-quiet" asp-controller="Obligations" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId">Ver na central de obrigações</a>
+            <span>@sheet.OpenObligations.Count aberta(s)</span>
+        </div>
+    </div>
+
+    <!-- FORMULÁRIO DE NOVA OBRIGAÇÃO -->
+    <details class="filter-panel" style="margin-bottom:1rem;">
+        <summary><strong>+ Adicionar nova obrigação para este contrato</strong></summary>
+        <form method="post" asp-action="CreateObligation" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" style="margin-top:1rem; display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:0.75rem;">
+            @Html.AntiForgeryToken()
+            <label>Título da obrigação
+                <input type="text" name="title" required maxlength="160" placeholder="Ex.: Entrega de relatório mensal" />
+            </label>
+            <label>Parte devedora / obrigada
+                <input type="text" name="obligatedParty" required maxlength="120" placeholder="Ex.: Contratada" />
+            </label>
+            <label>Categoria
+                <select name="category" required>
+                    <option value="delivery">Entrega</option>
+                    <option value="document">Documento</option>
+                    <option value="renewal">Renovação</option>
+                    <option value="communication">Comunicação</option>
+                    <option value="financial">Obrigação financeira</option>
+                    <option value="other">Outra</option>
+                </select>
+            </label>
+            <label>Prioridade
+                <select name="priority" required>
+                    <option value="low">Baixa</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="high">Alta</option>
+                    <option value="critical">Crítica</option>
+                </select>
+            </label>
+            <label>Prazo de cumprimento
+                <input type="date" name="dueDate" required value="@todayStr" />
+            </label>
+            <label>Responsável interno
+                <select name="ownerId" required>
+                    <option value="">Selecione o responsável</option>
+                    @foreach (var m in Model.ActiveMembers)
+                    {
+                        <option value="@m.UserId">@m.Name (@m.Email)</option>
+                    }
+                </select>
+            </label>
+            <label>Valor (se financeira)
+                <input type="number" step="0.01" min="0" name="amount" placeholder="0.00" />
+            </label>
+            <label>Moeda
+                <input type="text" name="currency" maxlength="3" value="BRL" style="text-transform:uppercase;" />
+            </label>
+            <label style="grid-column: 1 / -1;">Justificativa pós-vigência (obrigatória se o prazo for posterior ao término @(sheet.EndsOn?.ToString("dd/MM/yyyy") ?? "não informado"))
+                <input type="text" name="postTermReason" maxlength="500" placeholder="Justifique o dever posterior ao término" />
+            </label>
+            <label style="grid-column: 1 / -1; display:flex; align-items:center; gap:0.5rem;">
+                <input type="checkbox" name="evidenceRequired" value="true" />
+                <span>Exigir evidência documental segura anexada para cumprimento</span>
+            </label>
+            <label style="grid-column: 1 / -1;">Instruções ou descrição
+                <textarea name="description" rows="2" placeholder="Detalhes operacionais para o cumprimento"></textarea>
+            </label>
+            <div style="grid-column: 1 / -1;">
+                <button class="button button-primary" type="submit">Criar obrigação</button>
+            </div>
+        </form>
+    </details>
+
+    @if (sheet.OpenObligations.Count == 0)
     {
-        <article class="renewal-row">
-            <div><span class="status-label">@item.Urgency</span><h3>@item.Title</h3><p>@(item.OwnerName ?? "—")</p></div>
-            <dl><div><dt>Prazo</dt><dd>@(item.DueOn?.ToString("dd/MM/yyyy") ?? "—")</dd></div></dl>
-        </article>
+        <div class="empty-state">
+            <strong>Nenhuma obrigação pendente</strong>
+            <p>Todas as obrigações deste contrato foram cumpridas ou não há pendências cadastradas.</p>
+        </div>
+    }
+    else
+    {
+        @foreach (var item in sheet.OpenObligations)
+        {
+            var isSelected = Model.SelectedObligationId == item.SourceId;
+            <article class="renewal-row @(isSelected ? "selected-row" : null)" style="@(isSelected ? "border: 2px solid #0056b3; background:#f0f7ff;" : null)">
+                <div>
+                    <span class="status-label">@item.Urgency · @item.Status</span>
+                    <h3>@item.Title</h3>
+                    <p>Responsável: <strong>@(item.OwnerName ?? "Não atribuído")</strong></p>
+                </div>
+                <dl>
+                    <div>
+                        <dt>Prazo</dt>
+                        <dd>@(item.DueOn?.ToString("dd/MM/yyyy") ?? "Sem data")</dd>
+                    </div>
+                </dl>
+                <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+                    <!-- AÇÃO INICIAR -->
+                    @if (item.Status == "open")
+                    {
+                        <form method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="start">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="version" value="1" />
+                            <button class="button button-quiet" type="submit">Iniciar</button>
+                        </form>
+                    }
+
+                    <!-- AÇÃO CUMPRIR -->
+                    <details style="position:relative;">
+                        <summary class="button button-quiet" style="cursor:pointer;">Cumprir</summary>
+                        <div style="position:absolute; right:0; top:100%; z-index:10; background:white; border:1px solid #ccc; padding:1rem; min-width:280px; box-shadow:0 4px 12px rgba(0,0,0,0.15); border-radius:4px;">
+                            <form method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="fulfill">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="version" value="1" />
+                                <label style="display:block; font-size:0.875rem;">Data de efetivação
+                                    <input type="date" name="effectiveAt" value="@todayStr" required style="width:100%;" />
+                                </label>
+                                <label style="display:block; font-size:0.875rem; margin-top:0.5rem;">Documento de evidência (versão segura)
+                                    <select name="evidenceDocumentVersionId" style="width:100%;">
+                                        <option value="">Sem anexo</option>
+                                        @foreach (var doc in sheet.Documents.Where(d => d.SafetyState == "safe"))
+                                        {
+                                            <option value="@doc.VersionId">@doc.Name</option>
+                                        }
+                                    </select>
+                                </label>
+                                <label style="display:block; font-size:0.875rem; margin-top:0.5rem;">Nota de cumprimento
+                                    <input type="text" name="note" placeholder="Observações" style="width:100%;" />
+                                </label>
+                                <button class="button button-primary" type="submit" style="margin-top:0.75rem; width:100%;">Confirmar cumprimento</button>
+                            </form>
+                        </div>
+                    </details>
+
+                    <!-- AÇÃO REAGENDAR -->
+                    <details style="position:relative;">
+                        <summary class="button button-quiet" style="cursor:pointer;">Reagendar</summary>
+                        <div style="position:absolute; right:0; top:100%; z-index:10; background:white; border:1px solid #ccc; padding:1rem; min-width:280px; box-shadow:0 4px 12px rgba(0,0,0,0.15); border-radius:4px;">
+                            <form method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="reschedule">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="version" value="1" />
+                                <label style="display:block; font-size:0.875rem;">Novo prazo
+                                    <input type="date" name="dueDate" required style="width:100%;" />
+                                </label>
+                                <label style="display:block; font-size:0.875rem; margin-top:0.5rem;">Motivo do reagendamento
+                                    <input type="text" name="reason" required placeholder="Justificativa" style="width:100%;" />
+                                </label>
+                                <button class="button button-primary" type="submit" style="margin-top:0.75rem; width:100%;">Reagendar</button>
+                            </form>
+                        </div>
+                    </details>
+
+                    <!-- AÇÃO REATRIBUIR -->
+                    <details style="position:relative;">
+                        <summary class="button button-quiet" style="cursor:pointer;">Reatribuir</summary>
+                        <div style="position:absolute; right:0; top:100%; z-index:10; background:white; border:1px solid #ccc; padding:1rem; min-width:280px; box-shadow:0 4px 12px rgba(0,0,0,0.15); border-radius:4px;">
+                            <form method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="reassign">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="version" value="1" />
+                                <label style="display:block; font-size:0.875rem;">Novo responsável
+                                    <select name="ownerId" required style="width:100%;">
+                                        <option value="">Selecione</option>
+                                        @foreach (var m in Model.ActiveMembers.Where(m => m.UserId != item.OwnerId))
+                                        {
+                                            <option value="@m.UserId">@m.Name</option>
+                                        }
+                                    </select>
+                                </label>
+                                <label style="display:block; font-size:0.875rem; margin-top:0.5rem;">Motivo da reatribuição
+                                    <input type="text" name="reason" required placeholder="Justificativa" style="width:100%;" />
+                                </label>
+                                <button class="button button-primary" type="submit" style="margin-top:0.75rem; width:100%;">Reatribuir</button>
+                            </form>
+                        </div>
+                    </details>
+
+                    <!-- AÇÃO CANCELAR -->
+                    <details style="position:relative;">
+                        <summary class="button button-quiet" style="cursor:pointer;">Cancelar</summary>
+                        <div style="position:absolute; right:0; top:100%; z-index:10; background:white; border:1px solid #ccc; padding:1rem; min-width:280px; box-shadow:0 4px 12px rgba(0,0,0,0.15); border-radius:4px;">
+                            <form method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="cancel">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="version" value="1" />
+                                <label style="display:block; font-size:0.875rem;">Motivo do cancelamento
+                                    <input type="text" name="reason" required placeholder="Justificativa" style="width:100%;" />
+                                </label>
+                                <button class="button button-quiet" style="margin-top:0.75rem; width:100%; color:red;" type="submit">Confirmar cancelamento</button>
+                            </form>
+                        </div>
+                    </details>
+                </div>
+            </article>
+        }
     }
 </section>
 
-<section class="renewal-list">
-    <div class="list-header"><h2>Minutas oficiais sugeridas</h2></div>
+<!-- SEÇÃO MINUTAS SUGERIDAS -->
+<section id="minutas" class="renewal-list" style="margin-top:2rem;">
+    <div class="list-header">
+        <h2>Minutas operacionais sugeridas</h2>
+        @if (sheet.CanInstallOfficialLibrary)
+        {
+            <form method="post" asp-action="InstallOfficialLibrary" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId">
+                @Html.AntiForgeryToken()
+                <button class="button button-primary" type="submit">Instalar biblioteca oficial</button>
+            </form>
+        }
+    </div>
+    <p class="muted" style="font-size:0.875rem; margin-bottom:1rem;">
+        Modelos são pontos de partida operacionais recomendados pelo contexto contratual. Revise antes de usar; não constituem parecer jurídico nem garantia de conformidade.
+    </p>
+
     @if (sheet.RecommendedTemplates is null || sheet.RecommendedTemplates.Count == 0)
     {
-        <p class="muted">Nenhuma minuta adicional enquanto houver revisão aberta fora da janela de renovação.</p>
+        <div class="empty-state">
+            <strong>Nenhuma minuta sugerida no momento</strong>
+            <p>Enquanto houver revisão aberta fora da janela de renovação, minutas primárias são ocultadas.</p>
+        </div>
     }
     else
     {
@@ -72,26 +414,46 @@
                     <h3>@template.Name</h3>
                     <p>@template.Reason</p>
                 </div>
-                <a class="button button-quiet" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-type="@template.ContractType">Abrir no Estúdio</a>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <form method="post" asp-action="StartOfficialDraft" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="officialKey" value="@template.Key" />
+                        <input type="hidden" name="sheetVersion" value="@sheet.Version" />
+                        <button class="button button-primary" type="submit">Gerar rascunho oficial</button>
+                    </form>
+                    <a class="button button-quiet" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-type="@template.ContractType">Ver no Estúdio</a>
+                </div>
             </article>
         }
     }
-    @if (sheet.CanInstallOfficialLibrary)
-    {
-        <form method="post" asp-action="InstallOfficialLibrary" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId">
-            @Html.AntiForgeryToken()
-            <button class="button button-primary" type="submit">Instalar biblioteca oficial</button>
-        </form>
-    }
 </section>
 
-<section class="renewal-list">
-    <div class="list-header"><h2>Documentos recentes</h2></div>
-    @foreach (var document in sheet.Documents)
+<!-- SEÇÃO DOCUMENTOS RECENTES -->
+<section id="documentos" class="renewal-list" style="margin-top:2rem;">
+    <div class="list-header">
+        <h2>Documentos recentes</h2>
+        <span>@sheet.Documents.Count documento(s)</span>
+    </div>
+    @if (sheet.Documents.Count == 0)
     {
-        <article class="renewal-row">
-            <div><span class="status-label">@document.SafetyState</span><h3>@document.Name</h3></div>
-            <dl><div><dt>Atualizado</dt><dd>@document.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</dd></div></dl>
-        </article>
+        <p class="muted">Nenhum documento anexado a este contrato.</p>
+    }
+    else
+    {
+        @foreach (var document in sheet.Documents)
+        {
+            <article class="renewal-row">
+                <div>
+                    <span class="status-label">@document.SafetyState</span>
+                    <h3>@document.Name</h3>
+                </div>
+                <dl>
+                    <div>
+                        <dt>Última atualização</dt>
+                        <dd>@document.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</dd>
+                    </div>
+                </dl>
+            </article>
+        }
     }
 </section>

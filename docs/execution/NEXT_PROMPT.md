@@ -1,6 +1,15 @@
 # Próxima execução
 
-## Continuação após política canônica de vistas
+## Continuação após Ficha Acionável, Minutas Oficiais e Contexto Operacional (18/09/2026)
+
+Parta da branch `feat/ficha-acionavel-minuta-contexto` recompilável com 0 erros/avisos e 132 testes de domínio aprovados.
+Execute testes ponta a ponta com PostgreSQL descartável cobrindo:
+1. Mutação de obrigações concorrentes com colisão de `RowVersion` na ficha.
+2. Criação de proposta de aditivo/renovação a partir da ficha com verificação da transação e concorrência na `odca.contract_change_requests`.
+3. Instalação e abertura de minuta oficial a partir da ficha validando idempotência e geração do rascunho com parâmetros contextuais.
+4. Validação de isolamento cross-tenant e verificação de 403 para usuários sem `tenant.obligations.read_all` no escopo organizacional.
+5. Capturas de tela responsivas (360px, 768px, 1280px, 1440px) da nova Ficha do Contrato nas seções `#obrigacoes`, `#renovacao`, `#revisao` e `#minutas`.
+
 
 Execute primeiro a suíte com SDK .NET 10.0.400 e PostgreSQL 18 descartável/role restrita. Prove isolamento por proprietário e tenant, revogação de acesso, referência indisponível, atualização concorrente, duas definições de padrão, inativação do padrão e repetição de criação. Em seguida modele datas relativas com `TimeProvider` e fuso persistido da organização, sem congelá-las como datas absolutas, e conecte os formulários de tratamento preservando `viewId`, filtros, ordenação e página de retorno. Só declare a jornada completa após HTTP autenticado e QA/capturas em 360, 768, 1280 e 1440 px e zoom 200%.
 

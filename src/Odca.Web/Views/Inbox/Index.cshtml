@@ -1,7 +1,8 @@
 @model Odca.Web.Models.InboxWorkspaceViewModel
 @{
     var tenantId = ViewData["TenantId"];
-    var q = Context.Request.Query;
+    var notice = TempData["SavedViewNotice"] as string;
+    var error = TempData["SavedViewError"] as string ?? Model.Error;
 }
 <header class="renewal-heading">
     <div>
@@ -9,23 +10,63 @@
         <h1>Caixa unificada</h1>
         <p class="muted">Revisões, obrigações e avisos de renovação no mesmo ranking. Não é uma lista paralela de tarefas.</p>
     </div>
-    <a class="button button-quiet" asp-controller="Agenda" asp-action="Index" asp-route-tenantId="@tenantId">Abrir agenda</a>
+    <div style="display:flex; gap:0.5rem; align-items:center;">
+        <a class="button button-quiet" asp-controller="Agenda" asp-action="Index" asp-route-tenantId="@tenantId">Abrir agenda</a>
+    </div>
 </header>
 
+@if (!string.IsNullOrWhiteSpace(notice))
+{
+    <div class="banner-notice" role="status" style="background:#e8f5e9; color:#1b5e20; padding:0.75rem 1rem; border-radius:4px; margin-bottom:1rem;">
+        @notice
+    </div>
+}
+
+@if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="validation-summary" role="alert">
+        @error
+    </div>
+}
+
 <section class="renewal-cards" aria-label="Resumo">
-    <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-urgency="Overdue"><strong>@Model.Page.Overdue</strong><span>Atrasadas</span></a>
-    <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-urgency="DueToday"><strong>@Model.Page.DueToday</strong><span>Vencem hoje</span></a>
-    <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-urgency="DueThisWeek"><strong>@Model.Page.DueThisWeek</strong><span>Nesta semana</span></a>
+    <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="Overdue">
+        <strong>@Model.Page.Overdue</strong><span>Atrasadas</span>
+    </a>
+    <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="DueToday">
+        <strong>@Model.Page.DueToday</strong><span>Vencem hoje</span>
+    </a>
+    <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="DueThisWeek">
+        <strong>@Model.Page.DueThisWeek</strong><span>Nesta semana</span>
+    </a>
     <span><strong>@Model.Page.Total</strong><span>Itens visíveis</span></span>
 </section>
 
-@if (!string.IsNullOrWhiteSpace(Model.Error))
+<!-- VISTAS PESSOAIS -->
+@if (Model.Views.Count > 0)
 {
-    <p class="validation-summary" role="alert">@Model.Error</p>
+    <div class="active-filters" style="margin-top:1rem;" aria-label="Vistas salvas">
+        <span><strong>Minhas vistas:</strong></span>
+        @foreach (var view in Model.Views)
+        {
+            var isCurrent = Model.CurrentView?.Id == view.Id;
+            <a class="filter-chip @(isCurrent ? "active" : null)" asp-action="OpenView" asp-route-tenantId="@tenantId" asp-route-viewId="@view.Id"
+               style="@(isCurrent ? "font-weight:bold; background:#0056b3; color:white;" : null)">
+                @view.Name @(view.IsDefault ? "★" : null)
+            </a>
+        }
+        @if (Model.CurrentView is not null)
+        {
+            <form method="post" asp-action="DeactivateView" asp-route-tenantId="@tenantId" asp-route-viewId="@Model.CurrentView.Id" style="display:inline;">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="clear-filters" style="border:none; background:none; cursor:pointer; color:red;">Excluir vista</button>
+            </form>
+        }
+    </div>
 }
 
-<details class="filter-panel" open>
-    <summary>Filtros</summary>
+<details class="filter-panel" open style="margin-top:1rem;">
+    <summary>Filtros da caixa</summary>
     <form method="get" class="renewal-filters">
         <label>Escopo
             <select name="scope">
@@ -50,14 +91,31 @@
                 <option value="Upcoming" selected="@(Model.Urgency=="Upcoming")">Próximas</option>
             </select>
         </label>
-        <button class="button button-primary">Aplicar</button>
+        <button class="button button-primary" type="submit">Aplicar</button>
+        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">Limpar</a>
     </form>
+
+    <!-- FORMULÁRIO PARA SALVAR VISTA -->
+    <details style="margin-top:0.75rem; border-top:1px solid #e0e0e0; padding-top:0.5rem;">
+        <summary style="cursor:pointer; font-size:0.875rem;">Salvar estes filtros como vista pessoal</summary>
+        <form method="post" asp-action="SaveView" asp-route-tenantId="@tenantId" style="margin-top:0.5rem; display:flex; gap:0.5rem; align-items:center;">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="scope" value="@Model.Scope" />
+            <input type="hidden" name="kind" value="@Model.Kind" />
+            <input type="hidden" name="urgency" value="@Model.Urgency" />
+            <input type="text" name="name" required placeholder="Nome da vista (ex: Críticas da Semana)" maxlength="80" style="flex:1;" />
+            <button class="button button-quiet" type="submit">Salvar vista</button>
+        </form>
+    </details>
 </details>
 
-<section class="renewal-list" aria-live="polite">
+<section class="renewal-list" aria-live="polite" style="margin-top:1.5rem;">
     @if (Model.Page.Items.Count == 0)
     {
-        <div class="empty-state"><strong>Nada pendente neste recorte</strong><p>Ajuste o escopo ou o tipo. A caixa não inventa tarefa.</p></div>
+        <div class="empty-state">
+            <strong>Nada pendente neste recorte</strong>
+            <p>Ajuste o escopo ou o tipo. A caixa reflete as pendências vigentes sem inventar tarefas.</p>
+        </div>
     }
     else
     {
@@ -73,11 +131,12 @@
                     <div><dt>Prazo</dt><dd>@(item.DueOn?.ToString("dd/MM/yyyy") ?? "Sem data")</dd></div>
                     <div><dt>Situação</dt><dd>@item.Status</dd></div>
                 </dl>
-                <div class="next-action"><a class="button button-quiet" href="@item.OpenUrl">Abrir</a></div>
+                <div class="next-action"><a class="button button-quiet" href="@item.OpenUrl">Abrir na ficha</a></div>
             </article>
         }
     }
 </section>
+
 <nav class="pagination" aria-label="Paginação">
     @if (Model.Page.Page > 1)
     {

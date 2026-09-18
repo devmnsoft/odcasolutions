@@ -54,7 +54,7 @@ public sealed class StructuredContractDocument
 
         var occurrences = new Dictionary<string, int>(StringComparer.Ordinal);
         ValidateNode(root, definitions, occurrences, isRoot: true);
-        return new(root.ToJsonString(new JsonSerializerOptions { WriteIndented = false }), occurrences);
+        return new(root.ToJsonString(new JsonSerializerOptions { WriteIndented = false, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }), occurrences);
     }
 
     public static void ValidateValues(

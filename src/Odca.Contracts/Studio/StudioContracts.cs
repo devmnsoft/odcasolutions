@@ -5,6 +5,7 @@ namespace Odca.Contracts.Studio;
 public sealed record TemplateCatalogItem(Guid Id, string Name, string? Description, string ContractType, string Scope, string Status, int Version, string Author, DateTimeOffset CreatedAt, DateTimeOffset? PublishedAt);
 public sealed record TemplateCatalogPage(IReadOnlyList<TemplateCatalogItem> Items, int Page, int PageSize, int Total);
 public sealed record CreateDraftRequest(Guid TemplateId, string Title, string? Reference);
+public sealed record DraftCreatedResponse(Guid Id, Guid ContractId);
 public sealed record DraftResponse(Guid Id, Guid ContractId, string Title, Guid SourceTemplateId, Guid SourceTemplateVersionId, JsonElement Content, JsonElement Fields, JsonElement Values, long Version, Guid? LastClientRevision, DateTimeOffset UpdatedAt);
 public sealed record SaveDraftRequest(JsonElement Content, JsonElement Fields, JsonElement Values, long ExpectedVersion, Guid ClientRevision);
 public sealed record SaveDraftResponse(long Version, Guid ClientRevision, DateTimeOffset SavedAt);
