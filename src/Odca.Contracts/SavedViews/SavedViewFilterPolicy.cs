@@ -7,10 +7,10 @@ public static class SavedViewFilterPolicy
 {
     private static readonly Dictionary<string, HashSet<string>> Filters = new(StringComparer.Ordinal)
     {
-        ["obligations"] = ["scope", "contractId", "ownerId", "category", "status", "from", "to", "search"],
-        ["reviews"] = ["scope", "contractId", "reviewerId", "requesterId", "status", "from", "to", "search"],
-        ["contracts"] = ["ownerId", "status", "renewalFrom", "renewalTo", "search"],
-        ["inbox"] = ["scope", "kind", "urgency", "contractId", "ownerId"]
+        ["obligations"] = ["scope", "contractId", "ownerId", "category", "status", "from", "to", "search", "relativeDate"],
+        ["reviews"] = ["scope", "contractId", "reviewerId", "requesterId", "status", "from", "to", "search", "relativeDate"],
+        ["contracts"] = ["ownerId", "status", "renewalFrom", "renewalTo", "search", "relativeDate"],
+        ["inbox"] = ["scope", "kind", "urgency", "contractId", "ownerId", "relativeDate"]
     };
 
     private static readonly Dictionary<string, HashSet<string>> Sorts = new(StringComparer.Ordinal)
@@ -44,7 +44,7 @@ public static class SavedViewFilterPolicy
         out string? error)
     {
         normalized = new(StringComparer.Ordinal);
-        normalizedSort = sort ?? DefaultSort(listingType);
+        normalizedSort = string.IsNullOrWhiteSpace(sort) ? DefaultSort(listingType) : sort;
         error = null;
         if (!Filters.TryGetValue(listingType, out var allowed) ||
             !Sorts.TryGetValue(listingType, out var sorts))
@@ -77,9 +77,38 @@ public static class SavedViewFilterPolicy
                 error = "As datas devem usar o formato AAAA-MM-DD.";
                 return false;
             }
+            if (key == "relativeDate")
+            {
+                if (!RelativeDateResolver.IsValidToken(value))
+                {
+                    error = "A vista contém uma definição de data relativa inválida.";
+                    return false;
+                }
+                value = RelativeDateResolver.NormalizeToken(value);
+            }
+            if (listingType == "inbox" && key == "urgency")
+            {
+                if (RelativeDateResolver.IsValidToken(value))
+                {
+                    var mapped = RelativeDateResolver.MapToUrgency(value);
+                    if (mapped is not null)
+                    {
+                        value = mapped;
+                    }
+                    else if (value is not ("Overdue" or "DueToday" or "DueThisWeek" or "Upcoming"))
+                    {
+                        error = "A vista contém um valor não permitido.";
+                        return false;
+                    }
+                }
+                else if (value is not ("Overdue" or "DueToday" or "DueThisWeek" or "Upcoming"))
+                {
+                    error = "A vista contém um valor não permitido.";
+                    return false;
+                }
+            }
             if (((listingType is "obligations" or "inbox") && key == "scope" && value is not ("mine" or "organization")) ||
                 (listingType == "inbox" && key == "kind" && value is not ("Obligation" or "Review" or "Renewal")) ||
-                (listingType == "inbox" && key == "urgency" && value is not ("Overdue" or "DueToday" or "DueThisWeek" or "Upcoming")) ||
                 (listingType == "obligations" && key == "category" && !ObligationCategories.Contains(value)) ||
                 (listingType == "obligations" && key == "status" && !ObligationStatuses.Contains(value)))
             {
@@ -87,6 +116,14 @@ public static class SavedViewFilterPolicy
                 return false;
             }
             normalized[key] = value;
+        }
+
+        if (normalized.ContainsKey("relativeDate") &&
+            (normalized.ContainsKey("from") || normalized.ContainsKey("to") ||
+             normalized.ContainsKey("renewalFrom") || normalized.ContainsKey("renewalTo")))
+        {
+            error = "Não é permitido o uso concomitante de data relativa e datas absolutas na mesma vista.";
+            return false;
         }
 
         if ((TryDate(normalized, "from", out var from) && TryDate(normalized, "to", out var to) && from > to) ||

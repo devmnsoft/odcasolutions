@@ -1,5 +1,24 @@
 # Próxima execução
 
+## Continuação após Vistas da Caixa, Datas Relativas e Refinamento de UI da Ficha (19/09/2026)
+
+Parta da branch `feat/workspace-ui-vistas-datas` recompilável com 0 erros/avisos e 175 testes de domínio aprovados.
+Execute validações ponta a ponta com PostgreSQL 18 descartável cobrindo:
+1. Ciclo completo de vistas salvas na caixa operacional:
+   - Salvar vista com token relativo (`relativeDate=dueThisWeek`).
+   - Abrir vista e validar que cards de urgência e links de paginação conservam `viewId`.
+   - Tornar padrão (`POST /vistas/{viewId}/padrao`) com verificação de concorrência (`RowVersion`) e checagem de isolamento cross-tenant / outro proprietário (retornando 404 para vistas alheias e 409 em versão defasada).
+   - Inativar vista e confirmar que deixa de ser listada nas vistas ativas.
+2. Comprovação da data civil do tenant:
+   - Validação em banco com tenant em `America/Sao_Paulo` (UTC-3) às 01:30 UTC: data civil correspondente a D-1 (sem `DateTime.UtcNow`).
+   - Proposta de alteração/renovação na ficha pré-populada com a data civil do tenant.
+   - Navegação do link de proposta da ficha para a central `/renovacoes` filtrada por título e formalização exclusiva na central de renovações.
+3. Acessibilidade e responsividade da interface:
+   - Navegação por teclado: Skip-link -> Voltar -> Título -> Subnav sticky -> Seções da ficha (`#obrigacoes`, `#renovacao`, `#revisao`, `#minutas`) -> Ações.
+   - Tracking automático de `aria-current="true"` no subnav conforme scroll / hash.
+   - Inspeção visual em breakpoints 360px (mobile stack), 768px (tablet 2 colunas na caixa), 1280px e 1440px (desktop 4 colunas).
+   - Validação de ausência total de atributos `style=` inline nas views migradas.
+
 ## Continuação após Ficha Acionável: Revisão, Comentários, Histórico e Resolução por Chave (18/09/2026)
 
 Parta da branch `feat/ficha-revisao-historico-chave` recompilável com 0 erros/avisos e 136 testes de domínio aprovados.

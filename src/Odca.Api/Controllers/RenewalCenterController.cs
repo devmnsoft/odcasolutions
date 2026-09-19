@@ -45,7 +45,7 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
         var items = await c.QueryAsync<RenewalListItem>(new CommandDefinition(projection + "SELECT ContractId,RequestId,Name,Counterparty,OwnerName,EndDate,DecisionDueOn,Status,NextAction,DaysRemaining,ContractVersion FROM projected " + filter + " ORDER BY COALESCE(DecisionDueOn,EndDate),Name LIMIT @pageSize OFFSET @offset", args, tx, cancellationToken: ct));
         var counts = await c.QuerySingleAsync<CountRow>(new CommandDefinition(projection + "SELECT count(*) FILTER(WHERE Status='expiring')::int AS Expiring,count(*) FILTER(WHERE Status='expired')::int AS Expired,count(*) FILTER(WHERE Status='draft')::int AS Preparing,count(*) FILTER(WHERE Status='in_review')::int AS InReview,count(*) FILTER(WHERE Status='formalized')::int AS Scheduled,count(*) FILTER(WHERE Status='cancelled')::int AS NotRenewing FROM projected " + filter, args, tx, cancellationToken: ct));
         await tx.CommitAsync(ct);
-        return Ok(new RenewalPage(items.AsList(), new(counts.Expiring, counts.Expired, counts.Preparing, counts.InReview, counts.Scheduled, counts.NotRenewing), page, pageSize, total));
+        return Ok(new RenewalPage(items.AsList(), new(counts.Expiring, counts.Expired, counts.Preparing, counts.InReview, counts.Scheduled, counts.NotRenewing), page, pageSize, total, Today: today));
     }
 
     [HttpPost("contracts/{contractId:guid}")]

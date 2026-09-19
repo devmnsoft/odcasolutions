@@ -214,7 +214,8 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             recommendations,
             canInstallOfficialLibrary,
             hasImportAwaitingReview,
-            draftId);
+            draftId,
+            Today: today);
     }
 
     private sealed record SheetHeader(

@@ -16,7 +16,11 @@ public sealed class RenewalsController(OdcaApiClient api) : Controller
         if(from.HasValue&&to.HasValue&&from>to){ModelState.AddModelError(nameof(to),"O fim do período deve ser posterior ao início.");Response.StatusCode=400;}
         var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
         var result=await api.GetRenewalsAsync(token,tenantId,from,to,ownerId,contractType,counterparty,status,mine,withoutOwner,page,20,ct);
-        if(result.Status==ApiCallStatus.Unauthorized)return Challenge();if(result.Status==ApiCallStatus.Forbidden)return Forbid();if(!result.Succeeded||result.Value is null){Response.StatusCode=503;return View("ServiceUnavailable");}
-        ViewData["TenantId"]=tenantId;return View(new RenewalWorkspaceViewModel(result.Value,DateOnly.FromDateTime(DateTime.UtcNow)));
+        if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (!result.Succeeded || result.Value is null) { Response.StatusCode = 503; return View("ServiceUnavailable"); }
+        ViewData["TenantId"] = tenantId;
+        var today = result.Value.Today ?? DateOnly.FromDateTime(DateTime.Today);
+        return View(new RenewalWorkspaceViewModel(result.Value, today));
     }
 }

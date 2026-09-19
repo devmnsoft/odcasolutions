@@ -62,6 +62,7 @@ public sealed class InboxController(OdcaApiClient api) : Controller
         string scope = "mine",
         string? kind = null,
         string? urgency = null,
+        string? relativeDate = null,
         Guid? contractId = null,
         Guid? ownerId = null,
         CancellationToken ct = default)
@@ -73,6 +74,7 @@ public sealed class InboxController(OdcaApiClient api) : Controller
         Add(filters, "scope", scope);
         Add(filters, "kind", kind);
         Add(filters, "urgency", urgency);
+        Add(filters, "relativeDate", relativeDate);
         Add(filters, "contractId", contractId?.ToString());
         Add(filters, "ownerId", ownerId?.ToString());
 
@@ -84,7 +86,8 @@ public sealed class InboxController(OdcaApiClient api) : Controller
             ? "Vista pessoal salva para a caixa operacional."
             : "Não foi possível salvar a vista da caixa. Confira o nome e os filtros.";
 
-        return RedirectToAction(nameof(Index), new { tenantId, scope, kind, urgency, contractId, ownerId });
+        var savedViewId = result.Succeeded ? result.Value?.Id : null;
+        return RedirectToAction(nameof(Index), new { tenantId, scope, kind, urgency, contractId, ownerId, viewId = savedViewId });
     }
 
     [HttpGet("vistas/{viewId:guid}")]
@@ -96,6 +99,7 @@ public sealed class InboxController(OdcaApiClient api) : Controller
         var result = await api.GetSavedViewAsync(token, tenantId, viewId, ct);
         if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (result.Status == ApiCallStatus.NotFound) return NotFound();
         if (!result.Succeeded || result.Value is null)
         {
             TempData["SavedViewError"] = "Esta vista não está disponível.";
@@ -104,6 +108,42 @@ public sealed class InboxController(OdcaApiClient api) : Controller
 
         var route = BuildSavedViewRoute(tenantId, result.Value);
         return RedirectToAction(nameof(Index), route);
+    }
+
+    [HttpPost("vistas/{viewId:guid}/padrao")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetDefaultView(Guid tenantId, Guid viewId, [FromForm] long? version = null, CancellationToken ct = default)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+
+        var viewResult = await api.GetSavedViewAsync(token, tenantId, viewId, ct);
+        if (viewResult.Status == ApiCallStatus.Unauthorized) return Challenge();
+        if (viewResult.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (viewResult.Status == ApiCallStatus.NotFound || !viewResult.Succeeded || viewResult.Value is null)
+            return NotFound();
+
+        var targetVersion = version ?? viewResult.Value.Version;
+        var updateRequest = new UpdateSavedViewRequest(
+            viewResult.Value.Name,
+            IsDefault: true,
+            Version: targetVersion);
+
+        var result = await api.UpdateSavedViewAsync(token, tenantId, viewId, updateRequest, ct);
+        if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (result.Status == ApiCallStatus.NotFound) return NotFound();
+        if (result.Status == ApiCallStatus.Conflict)
+        {
+            TempData["SavedViewError"] = "A vista foi alterada em outra sessão (versão divergente).";
+            return StatusCode(409);
+        }
+
+        TempData[result.Succeeded ? "SavedViewNotice" : "SavedViewError"] = result.Succeeded
+            ? "Vista definida como padrão para a caixa operacional."
+            : "Não foi possível definir a vista como padrão.";
+
+        return RedirectToAction(nameof(OpenView), new { tenantId, viewId });
     }
 
     [HttpPost("vistas/{viewId:guid}/inativar")]
@@ -116,6 +156,7 @@ public sealed class InboxController(OdcaApiClient api) : Controller
         var result = await api.DeactivateSavedViewAsync(token, tenantId, viewId, ct);
         if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (result.Status == ApiCallStatus.NotFound) return NotFound();
 
         TempData[result.Succeeded ? "SavedViewNotice" : "SavedViewError"] = result.Succeeded
             ? "Vista inativada."
@@ -124,7 +165,7 @@ public sealed class InboxController(OdcaApiClient api) : Controller
         return RedirectToAction(nameof(Index), new { tenantId });
     }
 
-    private static RouteValueDictionary BuildSavedViewRoute(Guid tenantId, SavedViewItem view)
+    public static RouteValueDictionary BuildSavedViewRoute(Guid tenantId, SavedViewItem view)
     {
         var route = new RouteValueDictionary();
         if (!SavedViewFilterPolicy.TryNormalize(view.ListingType, view.Filters, view.Sort, out var filters, out _, out _))

@@ -1,5 +1,37 @@
 # Status de execução
 
+## Vistas da caixa, datas relativas e refinamento de UI da ficha (19/09/2026)
+
+- Estado da entrega: branch `feat/workspace-ui-vistas-datas` a partir de `codex/s00-foundation` @ `0c1ef9c6`.
+- Vistas da caixa no módulo v014:
+  - Salvar vista da caixa operacional (`POST /vistas/salvar` com `listingType=inbox`).
+  - Abrir vista (`GET /vistas/{viewId}`), alternar com chip ativo.
+  - Tornar padrão (`POST /vistas/{viewId}/padrao`) com checagem de concorrência (`RowVersion`) e isolamento tenant + dono (retorna 404 para vista de outro usuário/tenant e 409 em conflito de versão).
+  - Inativar vista (`POST /vistas/{viewId}/inativar`).
+  - Indicador textual explícito `(Padrão)` além de estrelas nos chips de vistas.
+  - Paginação e cards de urgência levam `viewId` preservado na URL; `page` nunca é gravado no JSON da vista.
+  - Allowlist server-side em `SavedViewFilterPolicy` para `listingType=inbox`: `scope`, `kind`, `urgency`, `contractId`, `ownerId`, `relativeDate`.
+- Datas relativas dinâmicas:
+  - Tokens suportados: `today`, `overdue`, `dueToday`, `dueThisWeek`, `nextDays:N` (0 <= N <= 365).
+  - Resolução no servidor em `RelativeDateResolver` utilizando `TimeProvider` e fuso horário civil do tenant (`tenants.timezone`).
+  - Proibido persistir `DateOnly` absoluto no JSON quando data relativa for utilizada; proibido uso concomitante de data relativa com datas absolutas (`from`/`to`).
+  - `dueThisWeek` mapeia para a urgência `DueThisWeek` e avança na virada de meia-noite civil do tenant (`TimeProvider`).
+- Data default de proposta e "hoje" na ficha e renovações:
+  - Ficha do contrato expõe `sheet.Today` derivado de `(now() AT TIME ZONE tenants.timezone)::date` do banco.
+  - Proposta de alteração/renovação utiliza `sheet.Today` como valor inicial padrão (sem `DateTime.UtcNow`).
+  - Central de renovações (`/renovacoes`) utiliza data civil do tenant retornada pela API (`Today`).
+  - Link de proposta na ficha direciona para `/renovacoes` filtrado por título (formalização/aplicação exclusivamente lá; sem `/apply` na ficha).
+  - Regra de negócio: 403 em `scope=organization` sem `tenant.obligations.read_all` mantido intacto.
+- Acessibilidade e Estilo Semântico (sem inline `style=`):
+  - Removidos todos os atributos inline `style=` de `Views/Inbox/Index.cshtml`, `Views/Agenda/Index.cshtml` e `Views/Contracts/Sheet.cshtml`.
+  - Subnav da ficha (`#obrigacoes #renovacao #revisao #minutas`) sticky com tracking de `aria-current="true"` baseado na hash via JavaScript e suporte a teclado.
+  - Chip de importação com texto + status-label sem depender apenas de emojis.
+  - Grid responsivo: stack < 768px; Inbox com 1 coluna < 768px, 2 colunas 768–1279px, 4 colunas >= 1280px.
+  - Focus visível e sequência de tabulação consistente.
+- Build e testes:
+  - `dotnet build Odca.sln -c Release`: 0 avisos, 0 erros.
+  - `dotnet test tests/Odca.Domain.Tests/Odca.Domain.Tests.csproj -c Release`: 175/175 testes aprovados.
+
 ## Ficha acionável: revisão, comentários, histórico seguro e resolução por chave (18/09/2026)
 
 - Estado da entrega: branch `feat/ficha-revisao-historico-chave` a partir de `codex/s00-foundation` @ `600915e7`.

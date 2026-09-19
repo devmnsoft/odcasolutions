@@ -91,7 +91,8 @@ public sealed record ContractSheetDto(
     IReadOnlyList<OfficialTemplateRecommendationDto>? RecommendedTemplates = null,
     bool CanInstallOfficialLibrary = false,
     bool HasImportAwaitingReview = false,
-    Guid? DraftId = null);
+    Guid? DraftId = null,
+    DateOnly? Today = null);
 
 public sealed record StartOfficialDraftRequest(string OfficialKey, long SheetVersion);
 
