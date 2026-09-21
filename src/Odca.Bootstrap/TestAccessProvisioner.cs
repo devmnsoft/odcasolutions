@@ -40,7 +40,7 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
             throw new FileNotFoundException("O SQL de provisionamento de Development não foi encontrado.", seedSqlPath);
 
         var seedSql = string.Join(Environment.NewLine, (await File.ReadAllLinesAsync(seedSqlPath))
-            .Where(line => !line.TrimStart().StartsWith("\\", StringComparison.Ordinal)));
+            .Where(line => !line.TrimStart().StartsWith('\\')));
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
         await using var transaction = await connection.BeginTransactionAsync();
