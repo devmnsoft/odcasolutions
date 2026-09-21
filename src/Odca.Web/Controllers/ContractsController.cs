@@ -571,6 +571,7 @@ public sealed class ContractsController(OdcaApiClient api) : Controller
 
         var contentType = preview.ContentType ?? "application/octet-stream";
         var fileName = doc.Name.Contains('.') ? doc.Name : $"{doc.Name}.bin";
-        return File(preview.Content, contentType, fileName);
+        Response.Headers.ContentDisposition = $"inline; filename*=UTF-8''{Uri.EscapeDataString(fileName)}";
+        return File(preview.Content, contentType);
     }
 }

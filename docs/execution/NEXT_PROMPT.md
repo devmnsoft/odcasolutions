@@ -1,5 +1,18 @@
 # Próxima execução
 
+## Retomada obrigatória do gate do MVP operacional (21/09/2026)
+
+Parta de `feat/mvp-operacional-validacao-superadmin`. Em um agente com .NET SDK 10.0.400 e PostgreSQL 18 descartável, execute primeiro restore bloqueado, build Release e toda a suíte. Crie exclusivamente um banco `odca_test*` e a role `odca_test_app_login` sem privilégios elevados; aplique 001–019, reaplique, confira checksums e execute os cenários A × B/RLS e pool.
+
+Prioridades ainda abertas, sem presumir aprovação pela validação estática deste incremento:
+
+1. Exercitar por HTTP os três logins de desenvolvimento e as restrições de menu/endpoint do cliente e do operador.
+2. Cobrir o endpoint de documentos comprovando que contexto de ator e tenant, autorização e consulta acontecem na mesma transação, inclusive após reutilização da conexão; provar `safe` inline, quarentena e 403.
+3. Implementar e validar a Central do Superadministrador restante (usuários, módulos, planos, bloqueios, cobranças, consumo e auditoria), sem assumir identidade de cliente.
+4. Implementar sessão temporária de suporte com MFA recente, propósito, escopo mínimo, expiração, revogação, ator real e trilha imutável.
+5. Implementar a operação autenticada de direitos LGPD, incluindo triagem, identidade, prazo, resposta, exportação revisada, retenção/legal hold e histórico.
+6. Executar QA real em 360, 768, 1280 e 1440 px e zoom 200%, registrando capturas somente depois de API, Web, Worker e PostgreSQL estarem operacionais.
+
 ## Continuação após Documentos, Importação, Confirmações e Agenda (21/09/2026)
 
 Parta da branch `feat/documentos-importacao-confirmacoes` com compilação 100% limpa (0 erros, 0 avisos) e 184 testes de domínio aprovados.

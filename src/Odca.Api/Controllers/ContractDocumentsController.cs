@@ -19,9 +19,9 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
         await using var connection = await dataSource.OpenConnectionAsync(ct);
-        if (!await Allowed(connection, actor.Value, tenantId, "tenant.contracts.read", ct)) return Forbid();
         await using var transaction = await connection.BeginTransactionAsync(ct);
-        await SetTenant(connection, tenantId, transaction, ct);
+        await SetContext(connection, actor.Value, tenantId, transaction, ct);
+        if (!await Allowed(connection, transaction, actor.Value, tenantId, "tenant.contracts.read", ct)) return Forbid();
         var rows = await connection.QueryAsync(new CommandDefinition("""
             SELECT d.id, d.title, v.id AS version_id, v.version_number, v.display_name, v.detected_type,
                    v.byte_size, v.security_status, v.uploaded_at, v.uploaded_by
@@ -42,12 +42,15 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
         long maximumFileBytes;
         await using (var limitsConnection = await dataSource.OpenConnectionAsync(ct))
         {
-            if (!await Allowed(limitsConnection, actor.Value, tenantId, "tenant.documents.manage", ct)) return Forbid();
+            await using var limitsTransaction = await limitsConnection.BeginTransactionAsync(ct);
+            await SetContext(limitsConnection, actor.Value, tenantId, limitsTransaction, ct);
+            if (!await Allowed(limitsConnection, limitsTransaction, actor.Value, tenantId, "tenant.documents.manage", ct)) return Forbid();
             maximumFileBytes = await limitsConnection.ExecuteScalarAsync<long>(new CommandDefinition("""
                 SELECT COALESCE(max(e.limit_value) FILTER(WHERE e.entitlement_code='file_bytes'),0)
                   FROM odca.subscriptions s JOIN odca.plan_entitlements e ON e.plan_version_id=s.plan_version_id
                  WHERE s.tenant_id=@tenantId AND s.status='active'
-                """,new{tenantId},cancellationToken:ct));
+                """,new{tenantId},limitsTransaction,cancellationToken:ct));
+            await limitsTransaction.CommitAsync(ct);
         }
         if (maximumFileBytes<=0) return Conflict(new ProblemDetails{Title="Upload indisponível",Detail="A assinatura não possui um limite de arquivo ativo."});
         if (file.Length>maximumFileBytes) return Problem(statusCode:413,title:"Arquivo excede o limite do plano.",detail:$"O limite atual é {maximumFileBytes} bytes.");
@@ -79,9 +82,9 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
             }
             var versionId = Guid.NewGuid(); var logicalId = documentId ?? Guid.NewGuid(); var storageObjectKey = $"{tenantId:N}/{contractId:N}/{versionId:N}";
             await using var connection = await dataSource.OpenConnectionAsync(ct);
-            if (!await Allowed(connection, actor.Value, tenantId, "tenant.documents.manage", ct)) return Forbid();
             await using var transaction = await connection.BeginTransactionAsync(ct);
-            await SetTenant(connection, tenantId, transaction, ct);
+            await SetContext(connection, actor.Value, tenantId, transaction, ct);
+            if (!await Allowed(connection, transaction, actor.Value, tenantId, "tenant.documents.manage", ct)) return Forbid();
             var contractExists = await connection.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.contracts WHERE tenant_id=@tenantId AND id=@contractId)", new { tenantId, contractId }, transaction, cancellationToken: ct));
             if (!contractExists) return NotFound();
             var operationKey = Request.Headers.TryGetValue("Idempotency-Key", out var suppliedKey) && Guid.TryParse(suppliedKey, out var parsedKey) ? parsedKey : versionId;
@@ -142,9 +145,9 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
         await using var connection = await dataSource.OpenConnectionAsync(ct);
-        if (!await Allowed(connection, actor.Value, tenantId, "tenant.documents.download", ct)) return Forbid();
         await using var transaction = await connection.BeginTransactionAsync(ct);
-        await SetTenant(connection, tenantId, transaction, ct);
+        await SetContext(connection, actor.Value, tenantId, transaction, ct);
+        if (!await Allowed(connection, transaction, actor.Value, tenantId, "tenant.documents.download", ct)) return Forbid();
         var item = await connection.QuerySingleOrDefaultAsync<StoredVersion>(new CommandDefinition("SELECT storage_key AS StorageKey,display_name AS DisplayName,detected_type AS DetectedType,security_status AS SecurityStatus FROM odca.document_versions WHERE tenant_id=@tenantId AND contract_id=@contractId AND document_id=@documentId AND id=@versionId", new { tenantId, contractId, documentId, versionId }, transaction, cancellationToken: ct));
         if (item is null) return NotFound();
         if (item.SecurityStatus != "safe") return Conflict(new ProblemDetails { Title = "Arquivo indisponível", Detail = "O arquivo somente é liberado após uma análise de segurança concluída." });
@@ -159,8 +162,9 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
         await using var connection = await dataSource.OpenConnectionAsync(ct);
-        if (!await Allowed(connection, actor.Value, tenantId, "tenant.extractions.request", ct)) return Forbid();
-        await using var transaction = await connection.BeginTransactionAsync(ct); await SetTenant(connection, tenantId, transaction, ct);
+        await using var transaction = await connection.BeginTransactionAsync(ct);
+        await SetContext(connection, actor.Value, tenantId, transaction, ct);
+        if (!await Allowed(connection, transaction, actor.Value, tenantId, "tenant.extractions.request", ct)) return Forbid();
         var safe = await connection.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.document_versions WHERE tenant_id=@tenantId AND contract_id=@contractId AND document_id=@documentId AND id=@versionId AND security_status='safe')", new { tenantId, contractId, documentId, versionId }, transaction, cancellationToken: ct));
         if (!safe) return Conflict(new ProblemDetails { Title = "A versão ainda não foi aprovada pela análise de segurança." });
         var id = Guid.NewGuid(); await connection.ExecuteAsync(new CommandDefinition("INSERT INTO odca.extraction_jobs(id,tenant_id,contract_id,version_id,requested_by) VALUES(@id,@tenantId,@contractId,@versionId,@actor)", new { id, tenantId, contractId, versionId, actor }, transaction, cancellationToken: ct)); await transaction.CommitAsync(ct);
@@ -172,9 +176,9 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
         await using var connection = await dataSource.OpenConnectionAsync(ct);
-        if (!await Allowed(connection, actor.Value, tenantId, "tenant.extractions.review", ct)) return Forbid();
         await using var transaction = await connection.BeginTransactionAsync(ct);
-        await SetTenant(connection, tenantId, transaction, ct);
+        await SetContext(connection, actor.Value, tenantId, transaction, ct);
+        if (!await Allowed(connection, transaction, actor.Value, tenantId, "tenant.extractions.review", ct)) return Forbid();
         var job = await connection.QuerySingleOrDefaultAsync(new CommandDefinition("SELECT id,status,attempt_count,failure_code,version_id,completed_at FROM odca.extraction_jobs WHERE tenant_id=@tenantId AND contract_id=@contractId AND id=@extractionId", new { tenantId, contractId, extractionId }, transaction, cancellationToken: ct));
         if (job is null) return NotFound();
         var suggestions = await connection.QueryAsync(new CommandDefinition("SELECT s.id,s.field_name,s.extracted_value,s.normalized_value,s.evidence,s.page_number,s.method,s.review_status,s.reviewed_value FROM odca.extraction_suggestions s JOIN odca.extraction_results r ON r.id=s.result_id AND r.tenant_id=s.tenant_id WHERE r.job_id=@extractionId ORDER BY s.field_name,s.id", new { extractionId }, transaction, cancellationToken: ct));
@@ -188,8 +192,9 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
         var actor = Actor(); if (actor is null) return Unauthorized();
         if (request.Decisions.Count is 0 or > 30 || request.Decisions.Any(x => x.Status is not ("accepted" or "edited" or "rejected"))) return ValidationProblem();
         await using var connection = await dataSource.OpenConnectionAsync(ct);
-        if (!await Allowed(connection, actor.Value, tenantId, "tenant.extractions.apply", ct)) return Forbid();
-        await using var tx = await connection.BeginTransactionAsync(ct); await SetTenant(connection, tenantId, tx, ct);
+        await using var tx = await connection.BeginTransactionAsync(ct);
+        await SetContext(connection, actor.Value, tenantId, tx, ct);
+        if (!await Allowed(connection, tx, actor.Value, tenantId, "tenant.extractions.apply", ct)) return Forbid();
         var prior = await connection.QuerySingleOrDefaultAsync<string>(new CommandDefinition("SELECT status FROM odca.extraction_reviews WHERE tenant_id=@tenantId AND idempotency_key=@key", new { tenantId, key = request.IdempotencyKey }, tx, cancellationToken: ct));
         if (prior == "applied") { await tx.CommitAsync(ct); return Ok(new { status = "applied", repeated = true }); }
         var currentVersion = await connection.ExecuteScalarAsync<long?>(new CommandDefinition("SELECT version FROM odca.contracts WHERE tenant_id=@tenantId AND id=@contractId FOR UPDATE", new { tenantId, contractId }, tx, cancellationToken: ct));
@@ -222,8 +227,8 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
     }
 
     private Guid? Actor() => Guid.TryParse(User.FindFirstValue("sub"), out var id) ? id : null;
-    private static Task<bool> Allowed(NpgsqlConnection c, Guid actor, Guid tenant, string permission, CancellationToken ct) => c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT odca.tenant_actor_has_permission(@actor,@tenant,@permission)", new { actor, tenant, permission }, cancellationToken: ct));
-    private static Task<int> SetTenant(NpgsqlConnection c, Guid tenant, NpgsqlTransaction tx, CancellationToken ct) => c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@value,true)", new { value = tenant.ToString() }, tx, cancellationToken: ct));
+    private static Task<bool> Allowed(NpgsqlConnection c, NpgsqlTransaction tx, Guid actor, Guid tenant, string permission, CancellationToken ct) => c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT odca.tenant_actor_has_permission(@actor,@tenant,@permission)", new { actor, tenant, permission }, tx, cancellationToken: ct));
+    private static Task<int> SetContext(NpgsqlConnection c, Guid actor, Guid tenant, NpgsqlTransaction tx, CancellationToken ct) => c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.user_id',@actor,true),set_config('odca.tenant_id',@tenant,true)", new { actor = actor.ToString(), tenant = tenant.ToString() }, tx, cancellationToken: ct));
     private static string Mime(string type) => type switch { "pdf" => "application/pdf", "png" => "image/png", "jpeg" => "image/jpeg", "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document", _ => "application/octet-stream" };
     private sealed record StoredVersion(string StorageKey, string DisplayName, string DetectedType, string SecurityStatus);
     private sealed record ExistingReservation(Guid Id,string Status);
