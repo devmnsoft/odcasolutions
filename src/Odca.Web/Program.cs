@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.DataProtection;
 using System.Threading.RateLimiting;
 using Odca.Web.Services;
+using Odca.Web.Middleware;
 using Odca.Web.Security;
 using Odca.Configuration;
 
@@ -55,12 +56,15 @@ builder.Services.AddHttpClient<OdcaApiClient>(client =>
         ?? throw new InvalidOperationException("Api:BaseUrl não foi configurada."));
     client.Timeout = TimeSpan.FromSeconds(15);
 });
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IUserTenantContext, UserTenantContext>();
 
 var app = builder.Build();
 
+app.UseMiddleware<BffErrorHandlingMiddleware>();
+
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
 

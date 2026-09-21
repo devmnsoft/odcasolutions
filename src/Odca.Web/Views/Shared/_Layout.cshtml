@@ -1,3 +1,4 @@
+@inject Odca.Web.Services.IUserTenantContext TenantContext
 @{
     var authenticated = User.Identity?.IsAuthenticated == true;
     var pendingAccess = authenticated &&
@@ -11,6 +12,26 @@
     var avatarText = string.IsNullOrWhiteSpace(displayName) ? "?" : displayName.Trim()[0].ToString().ToUpperInvariant();
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
     var activeTenantId = ViewContext.RouteData.Values["tenantId"]?.ToString();
+    var activeContractId = ViewContext.RouteData.Values["contractId"]?.ToString();
+
+    Guid? parsedTenantId = Guid.TryParse(activeTenantId, out var parsedGuid) ? parsedGuid : null;
+    Odca.Web.Services.UserTenantAccess? activeAccess = null;
+    if (authenticated)
+    {
+        activeAccess = await TenantContext.GetCurrentOrFirstActiveAsync(parsedTenantId);
+    }
+    var hasActiveMembership = activeAccess?.IsActiveMembership == true;
+    var tenantIdForLinks = activeAccess?.TenantId.ToString() ?? activeTenantId;
+    if (organizationName is null && activeAccess is not null)
+    {
+        organizationName = activeAccess.OrganizationName;
+    }
+
+    var canReadObligations = activeAccess?.HasAnyPermission("tenant.obligations.read", "tenant.obligations.read_all") == true;
+    var canReadRenewals = activeAccess?.HasPermission("tenant.renewals.read") == true;
+    var canReadStudio = activeAccess?.HasAnyPermission("tenant.templates.read", "tenant.contract_drafts.read") == true;
+    var canReadImports = activeAccess?.HasPermission("tenant.imports.read") == true;
+    var canReadOrganization = activeAccess?.HasAnyPermission("tenant.organization.read", "tenant.organization.manage") == true;
 }
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -32,8 +53,8 @@
                     <button class="icon-button sidebar-collapse" type="button" data-sidebar-collapse aria-label="Recolher menu" aria-expanded="true"><span aria-hidden="true">‹</span></button>
                 </div>
                 <div class="context-card">
-                    <span class="context-label">@(isPlatform ? "PLATAFORMA" : "ORGANIZAÇÃO ATIVA")</span>
-                    <strong>@(isPlatform ? "Administração ODCA" : organizationName ?? "Escolha uma organização")</strong>
+                    <span class="context-label">@(isPlatform && string.IsNullOrWhiteSpace(activeTenantId) ? "PLATAFORMA" : "ORGANIZAÇÃO ATIVA")</span>
+                    <strong>@(isPlatform && string.IsNullOrWhiteSpace(activeTenantId) ? "Administração ODCA" : organizationName ?? "Escolha uma organização")</strong>
                 </div>
                 <nav class="side-nav">
                     @if (isPlatform)
@@ -41,20 +62,71 @@
                         <a class="nav-item @(controller == "Home" ? "active" : null)" aria-label="Visão global" aria-current="@(controller == "Home" ? "page" : null)" asp-controller="Home" asp-action="Index"><span aria-hidden="true">⌂</span><span>Visão global</span></a>
                         <a class="nav-item @(controller == "Plans" ? "active" : null)" aria-label="Catálogo de planos" aria-current="@(controller == "Plans" ? "page" : null)" asp-controller="Plans" asp-action="Index"><span aria-hidden="true">▦</span><span>Catálogo de planos</span></a>
                         <a class="nav-item @(controller == "Customers" ? "active" : null)" asp-controller="Customers" asp-action="Index"><span aria-hidden="true">▣</span><span>Clientes e consumo</span></a>
+                        @if (!string.IsNullOrWhiteSpace(tenantIdForLinks) && hasActiveMembership)
+                        {
+                            @if (canReadObligations)
+                            {
+                                <a class="nav-item @(controller == "Inbox" ? "active" : null)" aria-label="Caixa operacional" aria-current="@(controller == "Inbox" ? "page" : null)" asp-controller="Inbox" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">◫</span><span>Caixa</span></a>
+                                <a class="nav-item @(controller == "Agenda" ? "active" : null)" aria-label="Agenda mensal" aria-current="@(controller == "Agenda" ? "page" : null)" asp-controller="Agenda" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">▦</span><span>Agenda</span></a>
+                                <a class="nav-item @(controller == "Obligations" ? "active" : null)" aria-label="Central de obrigações" aria-current="@(controller == "Obligations" ? "page" : null)" asp-controller="Obligations" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">✓</span><span>Obrigações</span></a>
+                            }
+                            @if (canReadRenewals)
+                            {
+                                <a class="nav-item @(controller == "Renewals" ? "active" : null)" aria-label="Central de renovações e aditivos" aria-current="@(controller == "Renewals" ? "page" : null)" asp-controller="Renewals" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">↻</span><span>Renovações e aditivos</span></a>
+                            }
+                            @if (canReadStudio)
+                            {
+                                <a class="nav-item @(controller == "Studio" ? "active" : null)" aria-label="Modelos e estúdio" aria-current="@(controller == "Studio" ? "page" : null)" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">▤</span><span>Modelos e minutas</span></a>
+                            }
+                            @if (canReadImports)
+                            {
+                                <a class="nav-item @(controller == "Imports" ? "active" : null)" aria-label="Central de importações" aria-current="@(controller == "Imports" ? "page" : null)" asp-controller="Imports" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">⇧</span><span>Importações</span></a>
+                            }
+                            @if (canReadObligations && !string.IsNullOrWhiteSpace(activeContractId))
+                            {
+                                <a class="nav-item @(controller == "Contracts" ? "active" : null)" aria-label="Ficha do contrato" aria-current="@(controller == "Contracts" ? "page" : null)" asp-controller="Contracts" asp-action="Sheet" asp-route-tenantId="@tenantIdForLinks" asp-route-contractId="@activeContractId"><span aria-hidden="true">📄</span><span>Ficha</span></a>
+                            }
+                            @if (canReadOrganization)
+                            {
+                                <a class="nav-item @(controller == "Consumption" ? "active" : null)" asp-controller="Consumption" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">◫</span><span>Plano e consumo</span></a>
+                            }
+                        }
                     }
                     else
                     {
                         <a class="nav-item @(controller == "Onboarding" ? "active" : null)" aria-label="Visão geral" aria-current="@(controller == "Onboarding" ? "page" : null)" asp-controller="Onboarding" asp-action="CustomerHome"><span aria-hidden="true">⌂</span><span>Visão geral</span></a>
-                        <a class="nav-item @(controller == "Organizations" ? "active" : null)" aria-label="Equipe e perfis" aria-current="@(controller == "Organizations" ? "page" : null)" asp-controller="Organizations" asp-action="Index"><span aria-hidden="true">◎</span><span>Equipe e perfis</span></a>
-                        @if (!string.IsNullOrWhiteSpace(activeTenantId))
+                        @if (canReadOrganization)
                         {
-                            <a class="nav-item @(controller == "Inbox" ? "active" : null)" aria-label="Caixa operacional" aria-current="@(controller == "Inbox" ? "page" : null)" asp-controller="Inbox" asp-action="Index" asp-route-tenantId="@activeTenantId"><span aria-hidden="true">◫</span><span>Caixa</span></a>
-                            <a class="nav-item @(controller == "Agenda" ? "active" : null)" aria-label="Agenda mensal" aria-current="@(controller == "Agenda" ? "page" : null)" asp-controller="Agenda" asp-action="Index" asp-route-tenantId="@activeTenantId"><span aria-hidden="true">▦</span><span>Agenda</span></a>
-                            <a class="nav-item @(controller == "Obligations" ? "active" : null)" aria-label="Central de obrigações" aria-current="@(controller == "Obligations" ? "page" : null)" asp-controller="Obligations" asp-action="Index" asp-route-tenantId="@activeTenantId"><span aria-hidden="true">✓</span><span>Obrigações</span></a>
-                            <a class="nav-item @(controller == "Renewals" ? "active" : null)" aria-label="Central de renovações e aditivos" aria-current="@(controller == "Renewals" ? "page" : null)" asp-controller="Renewals" asp-action="Index" asp-route-tenantId="@activeTenantId"><span aria-hidden="true">↻</span><span>Renovações e aditivos</span></a>
-                            <a class="nav-item @(controller == "Studio" ? "active" : null)" aria-label="Modelos e estúdio" aria-current="@(controller == "Studio" ? "page" : null)" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@activeTenantId"><span aria-hidden="true">▤</span><span>Modelos e minutas</span></a>
-                            <a class="nav-item @(controller == "Imports" ? "active" : null)" aria-label="Central de importações" aria-current="@(controller == "Imports" ? "page" : null)" asp-controller="Imports" asp-action="Index" asp-route-tenantId="@activeTenantId"><span aria-hidden="true">⇧</span><span>Importações</span></a>
-                            <a class="nav-item @(controller == "Consumption" ? "active" : null)" asp-controller="Consumption" asp-action="Index" asp-route-tenantId="@activeTenantId"><span aria-hidden="true">◫</span><span>Plano e consumo</span></a>
+                            <a class="nav-item @(controller == "Organizations" ? "active" : null)" aria-label="Equipe e perfis" aria-current="@(controller == "Organizations" ? "page" : null)" asp-controller="Organizations" asp-action="Index"><span aria-hidden="true">◎</span><span>Equipe e perfis</span></a>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(tenantIdForLinks) && hasActiveMembership)
+                        {
+                            @if (canReadObligations)
+                            {
+                                <a class="nav-item @(controller == "Inbox" ? "active" : null)" aria-label="Caixa operacional" aria-current="@(controller == "Inbox" ? "page" : null)" asp-controller="Inbox" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">◫</span><span>Caixa</span></a>
+                                <a class="nav-item @(controller == "Agenda" ? "active" : null)" aria-label="Agenda mensal" aria-current="@(controller == "Agenda" ? "page" : null)" asp-controller="Agenda" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">▦</span><span>Agenda</span></a>
+                                <a class="nav-item @(controller == "Obligations" ? "active" : null)" aria-label="Central de obrigações" aria-current="@(controller == "Obligations" ? "page" : null)" asp-controller="Obligations" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">✓</span><span>Obrigações</span></a>
+                            }
+                            @if (canReadRenewals)
+                            {
+                                <a class="nav-item @(controller == "Renewals" ? "active" : null)" aria-label="Central de renovações e aditivos" aria-current="@(controller == "Renewals" ? "page" : null)" asp-controller="Renewals" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">↻</span><span>Renovações e aditivos</span></a>
+                            }
+                            @if (canReadStudio)
+                            {
+                                <a class="nav-item @(controller == "Studio" ? "active" : null)" aria-label="Modelos e estúdio" aria-current="@(controller == "Studio" ? "page" : null)" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">▤</span><span>Modelos e minutas</span></a>
+                            }
+                            @if (canReadImports)
+                            {
+                                <a class="nav-item @(controller == "Imports" ? "active" : null)" aria-label="Central de importações" aria-current="@(controller == "Imports" ? "page" : null)" asp-controller="Imports" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">⇧</span><span>Importações</span></a>
+                            }
+                            @if (canReadObligations && !string.IsNullOrWhiteSpace(activeContractId))
+                            {
+                                <a class="nav-item @(controller == "Contracts" ? "active" : null)" aria-label="Ficha do contrato" aria-current="@(controller == "Contracts" ? "page" : null)" asp-controller="Contracts" asp-action="Sheet" asp-route-tenantId="@tenantIdForLinks" asp-route-contractId="@activeContractId"><span aria-hidden="true">📄</span><span>Ficha</span></a>
+                            }
+                            @if (canReadOrganization)
+                            {
+                                <a class="nav-item @(controller == "Consumption" ? "active" : null)" asp-controller="Consumption" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">◫</span><span>Plano e consumo</span></a>
+                            }
                         }
                     }
                     <a class="nav-item" aria-label="Privacidade" asp-controller="Privacy" asp-action="Index"><span aria-hidden="true">◇</span><span>Privacidade</span></a>

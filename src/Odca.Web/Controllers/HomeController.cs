@@ -41,6 +41,20 @@ public sealed class HomeController(OdcaApiClient apiClient) : Controller
 
         if (result.Status == ApiCallStatus.Forbidden)
         {
+            var orgsResult = await apiClient.GetOrganizationsAsync(token, cancellationToken);
+            if (orgsResult.Succeeded && orgsResult.Value is { Length: > 0 } orgs)
+            {
+                var operatorOrg = orgs.FirstOrDefault(o =>
+                    string.Equals(o.Status, "active", StringComparison.OrdinalIgnoreCase) &&
+                    (o.Permissions?.Contains("tenant.obligations.read") == true ||
+                     o.Permissions?.Contains("tenant.obligations.read_all") == true));
+
+                if (operatorOrg is not null)
+                {
+                    return RedirectToAction("Index", "Inbox", new { tenantId = operatorOrg.Id });
+                }
+            }
+
             var customerHome = await apiClient.GetCustomerHomeAsync(token, cancellationToken);
             return customerHome.Succeeded
                 ? RedirectToAction("CustomerHome", "Onboarding")
@@ -54,6 +68,16 @@ public sealed class HomeController(OdcaApiClient apiClient) : Controller
         }
 
         return View(result.Value);
+    }
+
+    [AllowAnonymous]
+    [HttpGet("erro-indisponivel")]
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    public IActionResult ServiceUnavailable([FromQuery] Guid? tenantId)
+    {
+        Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+        ViewData["TenantId"] = tenantId;
+        return View("~/Views/Shared/ServiceUnavailable.cshtml");
     }
 
     [AllowAnonymous]

@@ -1,9 +1,37 @@
+@inject Odca.Web.Services.IUserTenantContext TenantContext
 @{
-    ViewData["Title"] = "Serviço indisponível";
+    ViewData["Title"] = "Página indisponível";
+    var routeTenant = ViewContext.RouteData.Values["tenantId"]?.ToString();
+    var viewDataTenant = ViewData["TenantId"]?.ToString();
+    var queryTenant = Context.Request.Query["tenantId"].ToString();
+    var tenantStr = !string.IsNullOrWhiteSpace(routeTenant)
+        ? routeTenant
+        : (!string.IsNullOrWhiteSpace(viewDataTenant) ? viewDataTenant : queryTenant);
+
+    Guid? resolvedTenantId = null;
+    if (Guid.TryParse(tenantStr, out var parsed))
+    {
+        resolvedTenantId = parsed;
+    }
+    else if (User.Identity?.IsAuthenticated == true)
+    {
+        var active = await TenantContext.GetCurrentOrFirstActiveAsync();
+        resolvedTenantId = active?.TenantId;
+    }
 }
-<section class="card narrow" role="alert">
-    <p class="eyebrow">Indisponibilidade temporária</p>
-    <h1>Não foi possível carregar os dados agora.</h1>
-    <p class="muted">Sua sessão local foi preservada. Aguarde alguns instantes e tente novamente.</p>
-    <a class="button button-link" asp-controller="Home" asp-action="Index">Tentar novamente</a>
-</section>
+
+<dialog id="unavailable-dialog" class="unavailable-dialog" role="alertdialog" open aria-labelledby="dialog-title" aria-describedby="dialog-desc">
+    <div class="dialog-content card">
+        <h2 id="dialog-title">Página indisponível</h2>
+        <p id="dialog-desc">Não foi possível abrir este recurso agora. O detalhe técnico foi registrado.</p>
+        <div class="dialog-actions">
+            <form method="dialog" style="display:inline;">
+                <button type="submit" class="button button-quiet" id="btn-close-dialog">Fechar</button>
+            </form>
+            @if (resolvedTenantId.HasValue)
+            {
+                <a class="button button-primary" id="btn-back-to-inbox" href="/organizacoes/@resolvedTenantId.Value/caixa">Voltar à caixa</a>
+            }
+        </div>
+    </div>
+</dialog>

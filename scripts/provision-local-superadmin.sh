@@ -10,6 +10,8 @@ ENV_FILE="$ROOT/database/development/local-access.env"
 
 ADMIN_EMAIL="${ODCA_DEV_ADMIN_EMAIL:-admin@odca.local}"
 ADMIN_PASSWORD="${ODCA_DEV_ADMIN_PASSWORD:-OdcaAdmin#2026Local}"
+OPERATOR_EMAIL="${ODCA_DEV_OPERATOR_EMAIL:-operador@odca.local}"
+OPERATOR_PASSWORD="${ODCA_DEV_OPERATOR_PASSWORD:-OdcaOperador#2026Local}"
 CLIENT_EMAIL="${ODCA_DEV_CLIENT_EMAIL:-cliente.teste@odca.local}"
 CLIENT_PASSWORD="${ODCA_DEV_CLIENT_PASSWORD:-OdcaCliente#2026Local}"
 APPLY_MIGRATIONS=0
@@ -22,6 +24,8 @@ if [[ -f "$ENV_FILE" ]]; then
   set +a
   ADMIN_EMAIL="${ODCA_DEV_ADMIN_EMAIL:-$ADMIN_EMAIL}"
   ADMIN_PASSWORD="${ODCA_DEV_ADMIN_PASSWORD:-$ADMIN_PASSWORD}"
+  OPERATOR_EMAIL="${ODCA_DEV_OPERATOR_EMAIL:-$OPERATOR_EMAIL}"
+  OPERATOR_PASSWORD="${ODCA_DEV_OPERATOR_PASSWORD:-$OPERATOR_PASSWORD}"
   CLIENT_EMAIL="${ODCA_DEV_CLIENT_EMAIL:-$CLIENT_EMAIL}"
   CLIENT_PASSWORD="${ODCA_DEV_CLIENT_PASSWORD:-$CLIENT_PASSWORD}"
 fi
@@ -35,6 +39,14 @@ done
 
 if [[ "$ADMIN_EMAIL" != "admin@odca.local" ]]; then
   echo "A identidade reservada do superadministrador local e admin@odca.local." >&2
+  exit 1
+fi
+if [[ "$OPERATOR_EMAIL" != "operador@odca.local" ]]; then
+  echo "A identidade reservada do operador local e operador@odca.local." >&2
+  exit 1
+fi
+if [[ "$CLIENT_EMAIL" != "cliente.teste@odca.local" ]]; then
+  echo "A identidade reservada do cliente local e cliente.teste@odca.local." >&2
   exit 1
 fi
 if [[ ! -f "$BOOTSTRAP" || ! -f "$RUNTIME" ]]; then
@@ -52,6 +64,7 @@ ARGS=(
   --environment Development
   --allow-postgres-development
   --administrator-password "$ADMIN_PASSWORD"
+  --operator-password "$OPERATOR_PASSWORD"
   --client-password "$CLIENT_PASSWORD"
 )
 if [[ "$REQUIRE_CHANGE" -eq 0 ]]; then
@@ -66,6 +79,8 @@ cat <<EOF
 Credenciais de Development confirmadas no banco (nao estao no codigo da API):
   Superadministrador  $ADMIN_EMAIL
   Senha               $ADMIN_PASSWORD
+  Operador            $OPERATOR_EMAIL
+  Senha               $OPERATOR_PASSWORD
   Cliente demo        $CLIENT_EMAIL
   Senha               $CLIENT_PASSWORD
 Web: https://localhost:7144/entrar
