@@ -44,7 +44,7 @@ Somente depois da conexão aprovada, execute separadamente os comandos abaixo, q
 
 ```powershell
 dotnet run --project src/Odca.Bootstrap -- migrate
-dotnet run --project src/Odca.Bootstrap -- provision-test-access --environment Development --allow-postgres-development
+dotnet run --project src/Odca.Bootstrap -- provision-test-access --environment Development --allow-postgres-development --rotate-passwords
 dotnet run --project src/Odca.Bootstrap -- show-login
 ```
 
@@ -70,6 +70,8 @@ dotnet run --project src/Odca.Bootstrap -- show-login
 ```powershell
 dotnet run --project src/Odca.Bootstrap -- provision-test-access --environment Development --allow-postgres-development --rotate-passwords
 ```
+
+O arquivo `database/development/seed-test-access.sql` também pode ser executado diretamente pelo `psql` 18 após `migrate`. Ele usa um bloco PL/pgSQL nativo, hashes ASP.NET Identity v3 compatíveis e recusa alvos não locais; o provisionador acima continua sendo o fluxo preferencial porque valida todos os pós-requisitos antes do commit. Consulte `docs/execution/LOCAL_ACCESS.md` para o comando e caminhos alternativos do cliente.
 
 `show-login` consulta o banco configurado e só exibe uma senha inicial local quando ela confere com o hash persistido. A senha precisa ser alterada no primeiro acesso. Para recuperação explícita somente do superadministrador:
 

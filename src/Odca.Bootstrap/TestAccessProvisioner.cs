@@ -14,6 +14,10 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
     public const string ClientInitialPassword = "K8@wR3!nF6#zP2$m";
     public const string DemoTenantName = "ODCA Cliente de Demonstração";
     public const string DemoTenantCode = "ODCA-DEMO-LOCAL";
+    private static readonly Guid AdministratorId = Guid.Parse("10000000-0000-4000-8000-000000000001");
+    private static readonly Guid OperatorId = Guid.Parse("10000000-0000-4000-8000-000000000002");
+    private static readonly Guid ClientId = Guid.Parse("10000000-0000-4000-8000-000000000003");
+    private static readonly Guid TenantId = Guid.Parse("20000000-0000-4000-8000-000000000001");
     private const string DemoGrantReason = "development-demo-access";
 
     public async Task<TestAccessResult> ProvisionAsync(
@@ -35,7 +39,8 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
         if (!File.Exists(seedSqlPath))
             throw new FileNotFoundException("O SQL de provisionamento de Development não foi encontrado.", seedSqlPath);
 
-        var seedSql = await File.ReadAllTextAsync(seedSqlPath);
+        var seedSql = string.Join(Environment.NewLine, (await File.ReadAllLinesAsync(seedSqlPath))
+            .Where(line => !line.TrimStart().StartsWith("\\", StringComparison.Ordinal)));
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
         await using var transaction = await connection.BeginTransactionAsync();
@@ -72,10 +77,10 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
                    string.Equals(clientPassword, operatorPassword, StringComparison.Ordinal));
         }
 
-        var administratorId = administrator?.Id ?? Guid.NewGuid();
-        var operatorId = operatorUser?.Id ?? Guid.NewGuid();
-        var clientId = client?.Id ?? Guid.NewGuid();
-        var tenantId = tenant?.Id ?? Guid.NewGuid();
+        var administratorId = administrator?.Id ?? AdministratorId;
+        var operatorId = operatorUser?.Id ?? OperatorId;
+        var clientId = client?.Id ?? ClientId;
+        var tenantId = tenant?.Id ?? TenantId;
         var administratorHash = updateAdministratorPassword
             ? Hash(administratorId, AdministratorEmail, "Administrador da plataforma", administratorPassword, true)
             : administrator!.PasswordHash;
@@ -92,35 +97,30 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
         if (planVersionId is null)
             throw new InvalidOperationException("Não existe versão Basic publicada e vigente; nenhuma concessão foi criada.");
 
-        await connection.ExecuteAsync(new CommandDefinition(seedSql, new
-        {
-            AdministratorId = administratorId,
-            AdministratorEmail,
-            AdministratorNormalized = Normalize(AdministratorEmail),
-            AdministratorName = "Administrador da plataforma",
-            AdministratorHash = administratorHash,
-            RotateAdministrator = updateAdministratorPassword,
-            OperatorId = operatorId,
-            OperatorEmail,
-            OperatorNormalized = Normalize(OperatorEmail),
-            OperatorName = "Operador da organização",
-            OperatorHash = operatorHash,
-            RotateOperator = rotateOperator,
-            ClientId = clientId,
-            ClientEmail,
-            ClientNormalized = Normalize(ClientEmail),
-            ClientName = "Cliente de demonstração",
-            ClientHash = clientHash,
-            RotateClient = updateClientPassword,
-            TenantId = tenantId,
-            TenantCode = DemoTenantCode,
-            TenantName = DemoTenantName,
-            PlanVersionId = planVersionId.Value,
-            GrantReason = DemoGrantReason,
-            AdministratorMustChangePassword = administratorMustChangePassword,
-            OperatorMustChangePassword = operatorMustChangePassword,
-            ClientMustChangePassword = clientMustChangePassword
-        }, transaction));
+        await connection.ExecuteAsync(new CommandDefinition(
+            "SET LOCAL odca.bootstrap_seed = 'on';", transaction: transaction));
+        await connection.ExecuteAsync(new CommandDefinition(seedSql, transaction: transaction));
+        const string rotateSql = """
+            UPDATE odca.users
+               SET password_hash=@hash, must_change_password=@mustChangePassword,
+                   security_version=security_version+1, failed_login_count=0,
+                   locked_until=NULL, password_changed_at=NULL, updated_at=now()
+             WHERE id=@id;
+            UPDATE odca.sessions SET revoked_at=COALESCE(revoked_at,now()) WHERE user_id=@id;
+            INSERT INTO odca.audit_events
+                (scope_type,tenant_id,actor_user_id,action,entity_type,entity_id,result,metadata)
+            VALUES (@scope,@tenantId,@id,'development.password.reset','user',@id,'success',
+                    jsonb_build_object('mustChangePassword',@mustChangePassword));
+            """;
+        if (updateAdministratorPassword)
+            await RotatePasswordAsync(connection, transaction, rotateSql, administratorId, administratorHash,
+                administratorMustChangePassword, "platform", null);
+        if (operatorCreated || rotateOperator)
+            await RotatePasswordAsync(connection, transaction, rotateSql, operatorId, operatorHash,
+                operatorMustChangePassword, "tenant", tenantId);
+        if (updateClientPassword)
+            await RotatePasswordAsync(connection, transaction, rotateSql, clientId, clientHash,
+                clientMustChangePassword, "tenant", tenantId);
 
         administrator = await FindUserAsync(connection, transaction, Normalize(AdministratorEmail))
             ?? throw new InvalidOperationException("A identidade superadministradora não foi persistida.");
@@ -146,6 +146,12 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
         return new(administratorPassword, clientPassword, administratorCreated, clientCreated,
             administratorMatches, clientMatches, verification, operatorPassword, operatorCreated, operatorMatches);
     }
+
+
+    private static Task RotatePasswordAsync(NpgsqlConnection connection, NpgsqlTransaction transaction,
+        string sql, Guid id, string hash, bool mustChangePassword, string scope, Guid? tenantId) =>
+        connection.ExecuteAsync(new CommandDefinition(sql,
+            new { id, hash, mustChangePassword, scope, tenantId }, transaction));
 
     private static async Task EnsureSchemaAsync(NpgsqlConnection connection, NpgsqlTransaction transaction)
     {
