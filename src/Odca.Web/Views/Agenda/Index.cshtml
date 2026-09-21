@@ -3,6 +3,7 @@
     var tenantId = ViewData["TenantId"];
     var previous = Model.Page.From.AddDays(-1);
     var next = Model.Page.To.AddDays(1);
+    var emptyNotice = TempData["AgendaEmptyNotice"] as string;
 }
 <header class="renewal-heading">
     <div>
@@ -15,9 +16,22 @@
         <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@next.Year" asp-route-month="@next.Month" asp-route-scope="@Model.Scope">Próximo mês</a>
     </nav>
 </header>
+@if (!string.IsNullOrWhiteSpace(emptyNotice))
+{
+    <div class="banner-notice-warning" role="status">@emptyNotice
+        <a class="button button-quiet" asp-controller="Inbox" asp-action="Index" asp-route-tenantId="@tenantId">Abrir caixa operacional</a>
+    </div>
+}
 @if (!string.IsNullOrWhiteSpace(Model.Error))
 {
     <p class="validation-summary" role="alert">@Model.Error</p>
+}
+@if (Model.Day.HasValue)
+{
+    <div class="active-filters" aria-label="Filtro de dia ativo">
+        <span>Filtrando: <strong>dia @Model.Day.Value</strong></span>
+        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@Model.Page.Year" asp-route-month="@Model.Page.Month" asp-route-scope="@Model.Scope">Remover filtro</a>
+    </div>
 }
 <p>@Model.Page.Total ocorrência(s) no mês.</p>
 @foreach (var day in Model.Page.Days)
@@ -39,5 +53,9 @@
 }
 @if (Model.Page.Days.Count == 0)
 {
-    <div class="empty-state"><strong>Nenhum vencimento neste mês</strong><p>Avance o mês ou abra a caixa operacional.</p></div>
+    <div class="empty-state">
+        <strong>Nenhum vencimento neste mês</strong>
+        <p>@(Model.Day.HasValue ? $"Nenhum item no dia {Model.Day.Value} do mês selecionado." : "Avance o mês ou abra a caixa operacional.")</p>
+        <a class="button button-quiet" asp-controller="Inbox" asp-action="Index" asp-route-tenantId="@tenantId">Abrir caixa operacional</a>
+    </div>
 }

@@ -15,6 +15,7 @@ public sealed class AgendaController(OdcaApiClient api) : Controller
         Guid tenantId,
         int? year = null,
         int? month = null,
+        int? day = null,
         string scope = "mine",
         Guid? ownerId = null,
         CancellationToken ct = default)
@@ -31,10 +32,26 @@ public sealed class AgendaController(OdcaApiClient api) : Controller
         if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
 
+        var page = result.Value ?? new(year.Value, month.Value, new DateOnly(year.Value, month.Value, 1), new DateOnly(year.Value, month.Value, 1), [], 0);
+
+        // Filter days by ?day= if provided
+        if (day.HasValue && page.Days.Count > 0)
+        {
+            var filtered = page.Days.Where(d => d.Day.Day == day.Value).ToList();
+            page = page with { Days = filtered };
+        }
+
+        // Toast when switching to an empty month
+        if (page.Total == 0)
+        {
+            TempData["AgendaEmptyNotice"] = "Nenhum vencimento ou obrigação para o mês selecionado.";
+        }
+
         return View(new AgendaWorkspaceViewModel
         {
-            Page = result.Value ?? new(year.Value, month.Value, new DateOnly(year.Value, month.Value, 1), new DateOnly(year.Value, month.Value, 1), [], 0),
+            Page = page,
             Scope = scope,
+            Day = day,
             Error = result.Succeeded ? null : result.UserMessage("Não foi possível abrir a agenda do mês.")
         });
     }

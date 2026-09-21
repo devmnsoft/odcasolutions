@@ -54,17 +54,31 @@ public sealed class ContractStudioCatalogController(NpgsqlDataSource dataSource)
         var officialDef = OfficialContractTemplates.All.FirstOrDefault(x => string.Equals(x.Key, key, StringComparison.OrdinalIgnoreCase));
         if (officialDef is null) return NotFound();
 
-        var row = await connection.QuerySingleOrDefaultAsync<TemplatePreviewRow>(new CommandDefinition("""
+        var sql = """
             SELECT t.id AS Id, t.name AS Name, t.description AS Description, t.contract_type AS ContractType,
                    t.scope AS Scope, t.status AS Status, t.current_version AS Version, v.fields::text AS Fields
               FROM odca.contract_templates t
               JOIN odca.contract_template_versions v ON v.template_id = t.id AND v.version_number = t.current_version
              WHERE t.status = 'published'
-               AND (t.scope = 'global' OR t.owner_tenant_id = @tenantId)
-               AND t.name = @name
-             ORDER BY t.published_at DESC NULLS LAST, t.created_at DESC
-             LIMIT 1
-            """, new { tenantId, name = officialDef.Name }, cancellationToken: ct));
+               AND t.contract_type = @contractType
+               AND (t.scope = 'global' OR (t.scope = 'private' AND t.owner_tenant_id = @tenantId))
+            """;
+
+        if (string.Equals(officialDef.Key, "nda-unilateral", StringComparison.OrdinalIgnoreCase))
+        {
+            sql += " AND v.fields::text LIKE '%discloser_name%'";
+        }
+        else if (string.Equals(officialDef.Key, "nda-mutual", StringComparison.OrdinalIgnoreCase))
+        {
+            sql += " AND v.fields::text LIKE '%party_a_name%'";
+        }
+
+        sql += " ORDER BY t.published_at DESC NULLS LAST, t.created_at DESC LIMIT 1";
+
+        var row = await connection.QuerySingleOrDefaultAsync<TemplatePreviewRow>(new CommandDefinition(
+            sql,
+            new { tenantId, contractType = officialDef.ContractType },
+            cancellationToken: ct));
 
         if (row is null) return NotFound();
         var fields = JsonSerializer.Deserialize<JsonElement>(row.Fields);
@@ -89,12 +103,32 @@ public sealed class ContractStudioCatalogController(NpgsqlDataSource dataSource)
         var names = new List<string>();
         foreach (var template in OfficialContractTemplates.All)
         {
-            var exists = await connection.ExecuteScalarAsync<bool>(new CommandDefinition("""
+            var existsSql = """
                 SELECT EXISTS(
-                    SELECT 1 FROM odca.contract_templates
-                     WHERE name = @name AND status <> 'archived'
-                       AND (scope = 'global' OR owner_tenant_id = @tenantId))
-                """, new { template.Name, tenantId }, tx, cancellationToken: ct));
+                    SELECT 1 FROM odca.contract_templates t
+                    JOIN odca.contract_template_versions v ON v.template_id = t.id AND v.version_number = t.current_version
+                     WHERE t.contract_type = @contractType AND t.status <> 'archived'
+                       AND (t.scope = 'global' OR (t.scope = 'private' AND t.owner_tenant_id = @tenantId))
+                """;
+            if (string.Equals(template.Key, "nda-unilateral", StringComparison.OrdinalIgnoreCase))
+            {
+                existsSql += " AND v.fields::text LIKE '%discloser_name%')";
+            }
+            else if (string.Equals(template.Key, "nda-mutual", StringComparison.OrdinalIgnoreCase))
+            {
+                existsSql += " AND v.fields::text LIKE '%party_a_name%')";
+            }
+            else
+            {
+                existsSql += ")";
+            }
+
+            var exists = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
+                existsSql,
+                new { contractType = template.ContractType, tenantId },
+                tx,
+                cancellationToken: ct));
+
             if (exists) { present++; continue; }
             var id = Guid.NewGuid();
             var versionId = Guid.NewGuid();

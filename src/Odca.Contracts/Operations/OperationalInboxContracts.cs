@@ -92,7 +92,8 @@ public sealed record ContractSheetDto(
     bool CanInstallOfficialLibrary = false,
     bool HasImportAwaitingReview = false,
     Guid? DraftId = null,
-    DateOnly? Today = null);
+    DateOnly? Today = null,
+    Guid? ImportId = null);
 
 public sealed record StartOfficialDraftRequest(string OfficialKey, long SheetVersion);
 
