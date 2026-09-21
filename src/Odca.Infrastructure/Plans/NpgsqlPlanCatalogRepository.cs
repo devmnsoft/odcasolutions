@@ -8,12 +8,12 @@ public sealed class NpgsqlPlanCatalogRepository(NpgsqlDataSource dataSource) : I
 {
     private const string PublishedPlanProjection = """
         SELECT p.id AS "Id", p.code AS "Code", p.version AS "Version", p.display_name AS "DisplayName",
-               max(e.limit_value) FILTER (WHERE e.entitlement_code = 'active_seats')::integer AS "ActiveSeats",
+               max(e.limit_value) FILTER (WHERE e.entitlement_code = 'active_seats') AS "ActiveSeats",
                max(e.limit_value) FILTER (WHERE e.entitlement_code = 'storage_bytes') AS "StorageBytes",
                max(e.limit_value) FILTER (WHERE e.entitlement_code = 'user_storage_bytes') AS "UserStorageBytes",
                max(e.limit_value) FILTER (WHERE e.entitlement_code = 'file_bytes') AS "FileBytes",
-               max(e.limit_value) FILTER (WHERE e.entitlement_code = 'ocr_pages_monthly')::integer AS "OcrPagesMonthly",
-               max(e.limit_value) FILTER (WHERE e.entitlement_code = 'signature_envelopes_monthly')::integer AS "SignatureEnvelopesMonthly"
+               max(e.limit_value) FILTER (WHERE e.entitlement_code = 'ocr_pages_monthly') AS "OcrPagesMonthly",
+               max(e.limit_value) FILTER (WHERE e.entitlement_code = 'signature_envelopes_monthly') AS "SignatureEnvelopesMonthly"
           FROM odca.plan_versions p
           JOIN odca.plan_entitlements e ON e.plan_version_id = p.id AND e.enabled
          WHERE p.status = 'published'
@@ -59,32 +59,30 @@ public sealed class NpgsqlPlanCatalogRepository(NpgsqlDataSource dataSource) : I
             new CommandDefinition(sql, new { code }, cancellationToken: cancellationToken))).AsList();
         if (rows.Count > 1)
         {
-            throw new InvalidDataException("O catálogo contém mais de uma versão vigente para o plano solicitado.");
+            throw new InvalidDataException($"O catálogo contém mais de uma versão vigente para o plano '{code}'.");
         }
 
         var row = rows.SingleOrDefault();
-        return row is null ? null : new PlanCatalogSelection(row.Id, ToItem(row));
+        if (row is null)
+        {
+            return null;
+        }
+
+        return new PlanCatalogSelection(row.Id, ToItem(row));
     }
 
     private static PlanCatalogItem ToItem(PlanCatalogRow item)
     {
-        if (item.ActiveSeats is null || item.StorageBytes is null ||
-            item.UserStorageBytes is null || item.FileBytes is null ||
-            item.OcrPagesMonthly is null || item.SignatureEnvelopesMonthly is null)
-        {
-            throw new InvalidDataException("Um plano publicado não contém todos os limites obrigatórios.");
-        }
-
         return new PlanCatalogItem(
             item.Code,
             item.Version,
             item.DisplayName,
-            item.ActiveSeats.Value,
-            item.StorageBytes.Value,
-            item.UserStorageBytes.Value,
-            item.FileBytes.Value,
-            item.OcrPagesMonthly.Value,
-            item.SignatureEnvelopesMonthly.Value);
+            (int)item.ActiveSeats!.Value,
+            item.StorageBytes!.Value,
+            item.UserStorageBytes!.Value,
+            item.FileBytes!.Value,
+            (int)item.OcrPagesMonthly!.Value,
+            (int)item.SignatureEnvelopesMonthly!.Value);
     }
 
     private sealed class PlanCatalogRow
@@ -97,7 +95,7 @@ public sealed class NpgsqlPlanCatalogRepository(NpgsqlDataSource dataSource) : I
 
         public string DisplayName { get; init; } = string.Empty;
 
-        public int? ActiveSeats { get; init; }
+        public long? ActiveSeats { get; init; }
 
         public long? StorageBytes { get; init; }
 
@@ -105,8 +103,8 @@ public sealed class NpgsqlPlanCatalogRepository(NpgsqlDataSource dataSource) : I
 
         public long? FileBytes { get; init; }
 
-        public int? OcrPagesMonthly { get; init; }
+        public long? OcrPagesMonthly { get; init; }
 
-        public int? SignatureEnvelopesMonthly { get; init; }
+        public long? SignatureEnvelopesMonthly { get; init; }
     }
 }

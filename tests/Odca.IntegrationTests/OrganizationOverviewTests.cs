@@ -71,15 +71,13 @@ public sealed class OrganizationOverviewTests(DatabaseFixture database) : IClass
         Assert.NotNull(contract);
         Assert.Equal(LargeSeatLimit, contract.SeatLimit);
         Assert.Equal(LargeSeatLimit - 3, contract.AvailableSeats);
+        await CleanupAsync();
     }
 
-    private async Task SeedAsync()
+    private async Task CleanupAsync()
     {
-        var credential = new UserCredential(ActorId, "overview@odca.local", "Leitor do resumo", string.Empty,
-            1, false, false, null, false, null);
-        var hash = new AspNetPasswordService().Hash(credential, Password);
         const string sql = """
-            DELETE FROM odca.audit_events WHERE tenant_id IN (@tenantA, @tenantB);
+            DELETE FROM odca.audit_events WHERE tenant_id IN (@tenantA, @tenantB) OR actor_user_id IN (@actorId, @activeId, @blockedId);
             DELETE FROM odca.tenant_invitations WHERE tenant_id IN (@tenantA, @tenantB);
             DELETE FROM odca.member_roles WHERE tenant_id IN (@tenantA, @tenantB);
             DELETE FROM odca.role_permissions WHERE role_id IN (@roleA, @roleB);
@@ -91,7 +89,28 @@ public sealed class OrganizationOverviewTests(DatabaseFixture database) : IClass
             DELETE FROM odca.users WHERE id IN (@actorId, @activeId, @blockedId);
             DELETE FROM odca.plan_entitlements WHERE plan_version_id=@planId;
             DELETE FROM odca.plan_versions WHERE id=@planId;
+            """;
+        await using var connection = new NpgsqlConnection(database.AdminConnectionString);
+        await connection.ExecuteAsync(sql, new
+        {
+            actorId = ActorId,
+            tenantA = TenantA,
+            tenantB = TenantB,
+            activeId = Guid.Parse("71000000-0000-0000-0000-000000000002"),
+            blockedId = Guid.Parse("71000000-0000-0000-0000-000000000003"),
+            roleA = Guid.Parse("71000000-0000-0000-0000-000000000011"),
+            roleB = Guid.Parse("71000000-0000-0000-0000-000000000021"),
+            planId = Guid.Parse("71000000-0000-0000-0000-000000000030")
+        });
+    }
 
+    private async Task SeedAsync()
+    {
+        await CleanupAsync();
+        var credential = new UserCredential(ActorId, "overview@odca.local", "Leitor do resumo", string.Empty,
+            1, false, false, null, false, null);
+        var hash = new AspNetPasswordService().Hash(credential, Password);
+        const string sql = """
             INSERT INTO odca.users(id,email,email_normalized,login_normalized,display_name,password_hash,
                                    must_change_password,email_verified_at)
             VALUES (@actorId,'overview@odca.local','OVERVIEW@ODCA.LOCAL','OVERVIEW@ODCA.LOCAL','Leitor do resumo',@hash,false,now()),
@@ -108,7 +127,7 @@ public sealed class OrganizationOverviewTests(DatabaseFixture database) : IClass
             INSERT INTO odca.member_roles(tenant_id,user_id,role_id,assigned_by)
             VALUES (@tenantA,@actorId,@roleA,@actorId),(@tenantB,@actorId,@roleB,@actorId);
             INSERT INTO odca.plan_versions(id,code,version,display_name,status,effective_from)
-            VALUES (@planId,'integration-overview-bigint',1,'Plano sintético bigint','published',now());
+            VALUES (@planId,'integration-overview-bigint',1,'Plano sintético bigint','draft',now());
             INSERT INTO odca.plan_entitlements(plan_version_id,entitlement_code,limit_value,enabled)
             VALUES (@planId,'active_seats',@largeSeatLimit,true);
             INSERT INTO odca.subscriptions(tenant_id,plan_version_id,commercial_state,status,manual_grant_reason,created_by)

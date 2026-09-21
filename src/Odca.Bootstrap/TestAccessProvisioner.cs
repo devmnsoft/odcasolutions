@@ -225,11 +225,11 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
 public sealed record TestAccessVerification(
     bool AdministratorPersisted,
     bool ClientPersisted,
+    bool OperatorPersisted,
     bool MembershipActive,
     bool TenantAdministrator,
-    bool BasicPlanActive,
-    bool OperatorPersisted = true,
-    bool TenantOperator = true);
+    bool TenantOperator,
+    bool BasicPlanActive);
 
 public sealed record TestAccessResult(
     string AdministratorPassword,

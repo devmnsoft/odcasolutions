@@ -47,7 +47,7 @@ public static class DatabaseRoleProvisioner
         await connection.OpenAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         await using (var roleCommand = new NpgsqlCommand(
-            "SELECT set_config('odca.bootstrap_role', @roleName, true), set_config('odca.bootstrap_password', @password, true);",
+            "SELECT pg_advisory_xact_lock(hashtext('odca.bootstrap.role_provisioning')), set_config('odca.bootstrap_role', @roleName, true), set_config('odca.bootstrap_password', @password, true);",
             connection,
             transaction))
         {

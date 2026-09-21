@@ -64,9 +64,23 @@ public sealed class ContractImportDateRangeTests
     [Fact]
     public void ADaySkippedByTheTimeZoneIsRejected()
     {
-        var zone = TimeZoneInfo.FindSystemTimeZoneById("Pacific/Apia");
+        var rule = TimeZoneInfo.AdjustmentRule.CreateAdjustmentRule(
+            new DateTime(2026, 1, 1),
+            new DateTime(2026, 12, 31),
+            TimeSpan.FromHours(1),
+            TimeZoneInfo.TransitionTime.CreateFixedDateRule(new DateTime(1, 1, 1, 0, 0, 0), 10, 15),
+            TimeZoneInfo.TransitionTime.CreateFixedDateRule(new DateTime(1, 1, 1, 0, 0, 0), 11, 15));
+        var zone = TimeZoneInfo.CreateCustomTimeZone(
+            "Custom/SkipMidnight",
+            TimeSpan.Zero,
+            "Custom/SkipMidnight",
+            "Custom/SkipMidnight",
+            "Custom/SkipMidnight_DST",
+            [rule]);
+
+        Assert.True(zone.IsInvalidTime(new DateTime(2026, 10, 15, 0, 0, 0)));
 
         Assert.Throws<InvalidOperationException>(() => ContractImportsController.CreateUtcRange(
-            new DateOnly(2011, 12, 30), null, zone));
+            new DateOnly(2026, 10, 15), null, zone));
     }
 }

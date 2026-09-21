@@ -25,6 +25,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
     public async Task InitializeAsync()
     {
         (AdminConnectionString, AppConnectionString) = LoadConnections();
+        await EnsureDatabaseExistsAsync(AdminConnectionString);
         var sqlPath = FindFile("database", "odca.sql");
         var migrator = new DatabaseMigrator(sqlPath);
         await migrator.ApplyAsync(AdminConnectionString);
@@ -33,6 +34,22 @@ public sealed class DatabaseFixture : IAsyncLifetime
             ?? throw new InvalidOperationException("A conexão de teste da aplicação precisa de senha.");
         await DatabaseRoleProvisioner.ProvisionApplicationLoginAsync(AdminConnectionString, appPassword, TestRole);
         await ResetTestUserAsync();
+    }
+
+    private static async Task EnsureDatabaseExistsAsync(string adminConnectionString)
+    {
+        var builder = new NpgsqlConnectionStringBuilder(adminConnectionString);
+        var targetDb = builder.Database;
+        builder.Database = "postgres";
+        await using var connection = new NpgsqlConnection(builder.ConnectionString);
+        await connection.OpenAsync();
+        var exists = await connection.ExecuteScalarAsync<bool>(
+            "SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = @targetDb)",
+            new { targetDb });
+        if (!exists)
+        {
+            await connection.ExecuteAsync($"CREATE DATABASE \"{targetDb}\"");
+        }
     }
 
     public Task DisposeAsync() => Task.CompletedTask;
