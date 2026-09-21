@@ -1,5 +1,21 @@
 # Próxima execução
 
+## Retomada após o checkout `3c2d0ee` (21/09/2026)
+
+Use um executor que já forneça .NET SDK 10.0.400, Node.js 24+ e PostgreSQL 18
+descartável (nativo ou por container). O checkout atual não possui remoto
+configurado; antes de qualquer mudança funcional, configure a origem autorizada e
+confirme que `codex/s00-foundation` ainda contém ou descende de `3c2d0ee` sem
+descartar alterações locais.
+
+Repita, nessa ordem, restore bloqueado, build Release, build dos assets e toda a
+suíte. Depois crie somente um banco `odca_test*` com a role restrita
+`odca_test_app_login`; aplique e reaplique 001–019, valide checksums, RLS A × B e
+reuso do pool. Suba API, Web e Worker e só então prove login/MFA e permissões dos
+três usuários de desenvolvimento. Se qualquer passo falhar, corrija a causa raiz e
+repita o baseline antes de iniciar a Central do Superadministrador, suporte
+temporário, LGPD autenticada ou cobrança.
+
 ## Retomada obrigatória do gate do MVP operacional (21/09/2026)
 
 Parta de `feat/mvp-operacional-validacao-superadmin`. Em um agente com .NET SDK 10.0.400 e PostgreSQL 18 descartável, execute primeiro restore bloqueado, build Release e toda a suíte. Crie exclusivamente um banco `odca_test*` e a role `odca_test_app_login` sem privilégios elevados; aplique 001–019, reaplique, confira checksums e execute os cenários A × B/RLS e pool.
