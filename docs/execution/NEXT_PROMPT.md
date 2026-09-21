@@ -1,5 +1,19 @@
 # Próxima execução
 
+## Retomada após o checkout `17762a9` (21/09/2026)
+
+O gate foi reexecutado na branch `work`: somente a validação estática dos sete
+assets passou. O contêiner não oferece `dotnet`, `psql`, `pg_isready`, `docker` ou
+PostgreSQL, e o Node.js disponível é 20.20.2 em vez do requisito 24+. Não trate
+implementação ou testes presentes no repositório como evidência de execução.
+
+Retome em ambiente com .NET SDK 10.0.400, Node.js 24+ e PostgreSQL 18. Execute,
+nesta ordem, restore bloqueado, build Release, assets e toda a suíte; depois crie
+somente um banco `odca_test*` com `odca_test_app_login`, aplique e reaplique
+001–019, valide checksums, RLS A × B e ausência de vazamento pelo pool. Só após
+esses gates, suba API/Web/Worker, prove login e MFA reais e avance os blocos
+funcionais do MVP.
+
 ## Retomada após o checkout `3c2d0ee` (21/09/2026)
 
 Use um executor que já forneça .NET SDK 10.0.400, Node.js 24+ e PostgreSQL 18
