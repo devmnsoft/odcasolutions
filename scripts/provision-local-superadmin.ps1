@@ -1,11 +1,11 @@
 [CmdletBinding()]
 param(
     [string]$AdminEmail = 'admin@odca.local',
-    [string]$AdminPassword = 'OdcaAdmin#2026Local',
+    [string]$AdminPassword = 'V7!qM2#rL9@xT4$p',
     [string]$OperatorEmail = 'operador@odca.local',
     [string]$OperatorPassword = 'OdcaOperador#2026Local',
     [string]$ClientEmail = 'cliente.teste@odca.local',
-    [string]$ClientPassword = 'OdcaCliente#2026Local',
+    [string]$ClientPassword = 'K8@wR3!nF6#zP2$m',
     [switch]$ApplyMigrations,
     [switch]$RequireInitialPasswordChange
 )

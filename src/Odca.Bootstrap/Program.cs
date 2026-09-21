@@ -405,7 +405,7 @@ public static class BootstrapProgram
         EnsureInitialized(paths);
         var credentials = ReadJson<DevelopmentCredentials>(paths.CredentialsFile);
         var runtime = ReadJson<DevelopmentRuntime>(paths.RuntimeFile);
-        await ShowCredentialAsync(runtime.ConnectionStrings.DatabaseAdmin, "Superadministrador",
+        var administratorVerified = await ShowCredentialAsync(runtime.ConnectionStrings.DatabaseAdmin, "Superadministrador",
             TestAccessProvisioner.AdministratorEmail, credentials.SuperAdministratorPassword);
         if (!string.IsNullOrWhiteSpace(credentials.OperatorPassword))
         {
@@ -414,12 +414,17 @@ public static class BootstrapProgram
         }
         if (!string.IsNullOrWhiteSpace(credentials.ClientPassword))
         {
-            await ShowCredentialAsync(runtime.ConnectionStrings.DatabaseAdmin, "Cliente de demonstração",
+            var clientVerified = await ShowCredentialAsync(runtime.ConnectionStrings.DatabaseAdmin, "Cliente de demonstração",
                 TestAccessProvisioner.ClientEmail, credentials.ClientPassword);
+            if (!clientVerified)
+                throw new InvalidOperationException("A senha local do cliente não confere com o hash persistido.");
         }
+        else throw new InvalidOperationException("A senha local do cliente não está disponível; execute provision-test-access.");
+        if (!administratorVerified)
+            throw new InvalidOperationException("A senha local do superadministrador não confere com o hash persistido.");
     }
 
-    private static async Task ShowCredentialAsync(string connectionString, string label, string email, string password)
+    private static async Task<bool> ShowCredentialAsync(string connectionString, string label, string email, string password)
     {
         const string sql = """
             SELECT id AS Id, email AS Email, display_name AS DisplayName, password_hash AS PasswordHash,
@@ -435,7 +440,7 @@ public static class BootstrapProgram
         if (user is null)
         {
             Console.WriteLine("Senha local não exibida: a identidade não foi encontrada no banco configurado.");
-            return;
+            return false;
         }
 
         var matches = new AspNetPasswordService().Verify(
@@ -446,12 +451,13 @@ public static class BootstrapProgram
         {
             Console.WriteLine("Senha local não exibida: o arquivo está desatualizado em relação ao hash persistido.");
             Console.WriteLine("Use reset-password ou provision-test-access --rotate-passwords explicitamente.");
-            return;
+            return false;
         }
 
         Console.WriteLine($"Senha inicial local (conferida com o banco): {password}");
         Console.WriteLine($"Perfil: {(user.IsPlatformAdministrator ? "SuperAdministrador" : label)}");
         Console.WriteLine($"Troca inicial obrigatória: {(user.MustChangePassword ? "sim" : "não")}");
+        return true;
     }
 
     private static async Task ProvisionTestAccessAsync(LocalPaths paths, string[] args)
@@ -502,9 +508,9 @@ public static class BootstrapProgram
 
         Console.WriteLine($"Destino: host={target.Host}; porta={target.Port}; banco={target.Database}; ambiente=Development");
         var credentials = ReadJson<DevelopmentCredentials>(paths.CredentialsFile);
-        string? requestedAdministratorPassword = null;
+        string? requestedAdministratorPassword = TestAccessProvisioner.AdministratorInitialPassword;
         string? requestedOperatorPassword = null;
-        string? requestedClientPassword = null;
+        string? requestedClientPassword = TestAccessProvisioner.ClientInitialPassword;
 
         var adminPasswordIndex = Array.FindIndex(args, value => value.Equals("--administrator-password", StringComparison.OrdinalIgnoreCase));
         if (adminPasswordIndex >= 0 && adminPasswordIndex + 1 < args.Length)

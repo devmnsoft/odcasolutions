@@ -119,7 +119,7 @@ INSERT INTO odca.role_permissions (role_id, permission_code)
 SELECT r.id, p.code
   FROM odca.roles r CROSS JOIN odca.permissions p
  WHERE r.tenant_id=@TenantId AND r.code='tenant-client'
-   AND p.code IN ('tenant.organization.read', 'tenant.billing.read')
+   AND p.code LIKE 'tenant.%'
 ON CONFLICT (role_id, permission_code) DO NOTHING;
 
 INSERT INTO odca.member_roles (tenant_id, user_id, role_id, assigned_by)
