@@ -1,6 +1,43 @@
 # Status de execução
 
+## Acesso local de desenvolvimento, perfil de operador, landing e página indisponível (21/09/2026)
+
+- Estado da entrega: branch `feat/acesso-local-operador-indisponivel` a partir de `codex/s00-foundation` @ `89fbbb8`.
+- Provisionamento e usuários de desenvolvimento:
+  - Suporte completo às 3 identidades reservadas: `admin@odca.local`, `operador@odca.local` e `cliente.teste@odca.local`.
+  - Seed SQL (`database/development/seed-test-access.sql`) e `TestAccessProvisioner`:
+    - Role `tenant-operator` criada com o conjunto completo de permissões operacionais (`tenant.obligations.read|read_all|manage|fulfill|reopen|cancel|assign`, `tenant.documents.download`, `tenant.renewals.read|prepare`, `tenant.templates.read`, `tenant.contract_drafts.read`, `tenant.reviews.read`, `tenant.imports.read`, `tenant.saved_views.manage`).
+    - Role `tenant-client` com permissões não-operacionais (`tenant.organization.read`, `tenant.billing.read`).
+    - Membership ativo do superadministrador vinculado ao tenant de demonstração (sem criar segundo tenant), viabilizando `activeTenantId` para navegação.
+  - Scripts `scripts/provision-local-superadmin.ps1` e `.sh`:
+    - Validação de identidades reservadas: bloqueio contra e-mails divergentes.
+    - Suporte a `--operator-password`, `$env:ODCA_DEV_OPERATOR_PASSWORD` e `--allow-immediate-login`.
+    - Exibição de senhas locais confirmadas no banco via `show-login` (nenhuma senha mantida em código ou controllers).
+- Landing no BFF (`HomeController`):
+  - Operador autenticado com `tenant.obligations.read` é redirecionado automaticamente para `/organizacoes/{tenantId}/caixa`.
+  - Cliente autenticado sem permissão operacional é redirecionado para `/cliente` (`CustomerHome`).
+- Navegação e menu de permissões (`_Layout.cshtml` + `IUserTenantContext`):
+  - `UserTenantContext` injetado como serviço com cache por requisição em `HttpContext.Items`.
+  - Menu operacional condicionado a `membership active` no tenant.
+  - Cada link operacional é filtrado estritamente por permissão específica (`obligations.read`, `renewals.read`, `templates.read`, `contract_drafts.read`, `imports.read`, `organization.read/manage`).
+  - Item "Ficha" é exibido no menu exclusivamente quando a rota possui `contractId`.
+  - Cliente não visualiza Caixa, Agenda, Obrigações, Renovações, Minutas, Importações ou Ficha.
+- Tratamento de indisponibilidade e auditoria técnica (`BffErrorHandlingMiddleware` + `ServiceUnavailable.cshtml`):
+  - Middleware intercepta exceções e respostas 500/503 no BFF.
+  - Registro estruturado no `ILogger.LogError` via `[LoggerMessage]` (CA1848 compliant) com tipo da exceção, mensagem, inner exception, path, tenantId, sub do JWT e request id (zero senhas em log).
+  - Diálogo `<dialog class="unavailable-dialog" role="alertdialog" open aria-labelledby="dialog-title" aria-describedby="dialog-desc">`:
+    - Título: `Página indisponível`.
+    - Texto: `Não foi possível abrir este recurso agora. O detalhe técnico foi registrado.`
+    - Botões: `Fechar` (nativo via `<form method="dialog">` e script) e `Voltar à caixa` (quando `tenantId` está disponível na rota, query ou sessão).
+    - UI limpa e estéril: sem stack trace, SQL, connection string, token ou hash.
+  - 401 preserva Challenge, 403 preserva Forbid, e 404 preserva página de não encontrado (sem disparar o diálogo 5xx).
+- Build e testes:
+  - `dotnet build Odca.sln -c Release`: 0 erros, 0 avisos.
+  - `dotnet test tests/Odca.Domain.Tests/Odca.Domain.Tests.csproj -c Release`: 179/179 testes aprovados.
+  - Novos testes unitários em `BffAccessAndIndisponibilidadeTests.cs` e integração em `DevelopmentAccessProvisioningTests.cs`.
+
 ## Vistas da caixa, datas relativas e refinamento de UI da ficha (19/09/2026)
+
 
 - Estado da entrega: branch `feat/workspace-ui-vistas-datas` a partir de `codex/s00-foundation` @ `0c1ef9c6`.
 - Vistas da caixa no módulo v014:
