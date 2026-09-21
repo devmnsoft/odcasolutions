@@ -23,4 +23,35 @@ public sealed class RenewalsController(OdcaApiClient api) : Controller
         var today = result.Value.Today ?? DateOnly.FromDateTime(DateTime.Today);
         return View(new RenewalWorkspaceViewModel(result.Value, today));
     }
+
+    [HttpPost("{requestId:guid}/aplicar")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Apply(Guid tenantId, Guid requestId, long rowVersion, CancellationToken ct = default)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+
+        var result = await api.ApplyRenewalAsync(token, tenantId, requestId, new Odca.Contracts.Renewals.ApplyRenewalRequest(rowVersion), ct);
+        if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+
+        if (result.Status == ApiCallStatus.Conflict)
+        {
+            TempData["Conflict"] = "O registro mudou. Recarregue.";
+            return RedirectToAction(nameof(Index), new { tenantId });
+        }
+
+        if (result.Succeeded)
+        {
+            TempData["Success"] = result.Value?.EndsOn is { } endsOn
+                ? $"Alteração aplicada com sucesso. Nova vigência até {endsOn:dd/MM/yyyy}."
+                : "Alteração de vigência aplicada com sucesso.";
+        }
+        else
+        {
+            TempData["Error"] = result.UserMessage("Não foi possível aplicar a alteração de vigência.");
+        }
+
+        return RedirectToAction(nameof(Index), new { tenantId });
+    }
 }

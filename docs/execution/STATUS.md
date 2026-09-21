@@ -1,5 +1,40 @@
 # Status de execução
 
+## Avisos, confirmação e formalização/aplicação de renovação (21/09/2026)
+
+- Estado da entrega: branch `feat/avisos-confirmacao-renovacao` a partir de `codex/s00-foundation` @ `3bc6f58`.
+- Separação estrita de erros e ausência de captura 4xx no middleware:
+  - `BffErrorHandlingMiddleware` monitora estritamente exceções e status 500/503; códigos 400 (Bad Request) e 409 (Conflict) nunca são interceptados como indisponibilidade.
+  - 400 Bad Request exibe mensagens e validações diretamente no formulário (`asp-validation-summary`).
+  - 409 Conflict exibe diálogo modal com mensagem amigável: "O registro mudou. Recarregue." com botão de recarregar (`location.reload()`) e fechar.
+- Sistema de notificações e toasts (`_Toasts.cshtml`):
+  - Integrado ao `_Layout.cshtml` consumindo `TempData` de sucesso, erro, aviso e conflito.
+  - Sucesso (`role="status"`): auto-dismiss após 8s (8000ms) ou via botão de fechar.
+  - Erro (`role="alert"`): persiste na tela até ação explícita no botão "Fechar".
+  - Layout responsivo em `site.css`: fixo no canto inferior direito para desktop (>=768px), largura total na base da tela para mobile (<768px). Não obstrui a subnav sticky na ficha do contrato. Compatível com zoom 200%.
+  - Tecla Escape fecha notificações e diálogos.
+- Catálogo de modelos oficiais por chave:
+  - Consulta do catálogo oficial (`ContractStudioCatalogController.GetOfficial`) busca diretamente em `OfficialContractTemplates.All` por `key` e resolve o modelo em `odca.contract_templates` por `name`, eliminando dependência de `odca.audit_events`.
+- Diálogo nativo de confirmação (`_ConfirmDialog.cshtml`):
+  - `<dialog id="confirm-modal" data-confirm-dialog aria-modal="true">` reutilizado em todo o sistema via delegação de eventos em `dialogs.js` com suporte a `data-confirm-open`, `data-confirm-form`, `data-confirm-title`, `data-confirm-body` e `data-confirm-action`.
+  - Confirmação com nome visível do item implementada para:
+    - Cumprimento de obrigação (`fulfill`) com nome da obrigação.
+    - Cancelamento de obrigação (`cancel`) com nome da obrigação.
+    - Reabertura de obrigação/apontamento (`reopen`) com nome do apontamento/obrigação.
+    - Registro de proposta de renovação/aditivo na ficha com título do contrato e aviso de que a proposta deixa de ser apenas intenção e tem efeito em vigência somente após formalização e aplicação.
+  - Tecla Escape fecha o diálogo e restaura o foco ao botão de origem.
+- Formalização e aplicação exclusiva na Central de Renovações (`/renovacoes`):
+  - Proibido `/apply` na ficha do contrato; aplicação restrita a `/organizacoes/{tenantId}/renovacoes/{requestId}/aplicar`.
+  - Diálogo de confirmação com texto estrito: *"Isto altera a vigência. A proposta deixa de ser só intenção."*.
+  - Toast de sucesso exibe o `ends_on` resultante da nova vigência.
+  - Aplicação transacional com bloqueio pessimista `FOR UPDATE OF r,c` em `ApplyCore`: em caso de conflito de versão (409), aborta a operação sem aplicação parcial.
+- Menu do cliente de demonstração restrito:
+  - Usuário demo (`cliente.teste@odca.local`, role `tenant-client`) não visualiza menu operacional (Caixa, Agenda, Obrigações, Renovações e aditivos, Modelos e minutas, Importações, Ficha do contrato).
+- Validação e testes:
+  - `dotnet build Odca.sln -c Release`: 0 avisos, 0 erros.
+  - `dotnet test tests/Odca.Domain.Tests/Odca.Domain.Tests.csproj -c Release`: 184/184 testes aprovados (100% passando).
+  - Novos testes unitários em `AvisosEConfirmacaoRenovacaoTests.cs` cobrindo separação de erro 400/409, `ApplyRenewalResponse` com `EndsOn`, busca por chave do catálogo e restrições de menu do cliente demo.
+
 ## Acesso local de desenvolvimento, perfil de operador, landing e página indisponível (21/09/2026)
 
 - Estado da entrega: branch `feat/acesso-local-operador-indisponivel` a partir de `codex/s00-foundation` @ `89fbbb8`.

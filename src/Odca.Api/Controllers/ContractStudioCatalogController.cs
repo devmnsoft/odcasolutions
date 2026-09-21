@@ -52,7 +52,7 @@ public sealed class ContractStudioCatalogController(NpgsqlDataSource dataSource)
         if (!await Allowed(connection, actor.Value, tenantId, "tenant.templates.read", ct)) return Forbid();
 
         var officialDef = OfficialContractTemplates.All.FirstOrDefault(x => string.Equals(x.Key, key, StringComparison.OrdinalIgnoreCase));
-        var initialName = officialDef?.Name;
+        if (officialDef is null) return NotFound();
 
         var row = await connection.QuerySingleOrDefaultAsync<TemplatePreviewRow>(new CommandDefinition("""
             SELECT t.id AS Id, t.name AS Name, t.description AS Description, t.contract_type AS ContractType,
@@ -61,22 +61,10 @@ public sealed class ContractStudioCatalogController(NpgsqlDataSource dataSource)
               JOIN odca.contract_template_versions v ON v.template_id = t.id AND v.version_number = t.current_version
              WHERE t.status = 'published'
                AND (t.scope = 'global' OR t.owner_tenant_id = @tenantId)
-               AND (
-                   EXISTS (
-                       SELECT 1 FROM odca.audit_events a
-                        WHERE a.entity_id = t.id
-                          AND a.entity_type = 'contract_template'
-                          AND (a.tenant_id = @tenantId OR t.scope = 'global')
-                          AND a.action = 'template.official_installed'
-                          AND a.metadata->>'key' = @key
-                   )
-                   OR (
-                       @initialName IS NOT NULL AND t.name = @initialName
-                   )
-               )
+               AND t.name = @name
              ORDER BY t.published_at DESC NULLS LAST, t.created_at DESC
              LIMIT 1
-            """, new { tenantId, key, initialName }, cancellationToken: ct));
+            """, new { tenantId, name = officialDef.Name }, cancellationToken: ct));
 
         if (row is null) return NotFound();
         var fields = JsonSerializer.Deserialize<JsonElement>(row.Fields);

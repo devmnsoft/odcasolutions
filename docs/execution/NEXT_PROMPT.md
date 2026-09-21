@@ -1,5 +1,27 @@
 # Próxima execução
 
+## Continuação após Avisos, Confirmação e Formalização/Aplicação de Renovação (21/09/2026)
+
+Parta da branch `feat/avisos-confirmacao-renovacao` com compilação 100% limpa (0 erros, 0 avisos) e 184 testes de domínio aprovados.
+Execute validações ponta a ponta com PostgreSQL 18 descartável cobrindo:
+1. Ciclo de formalização e aplicação na Central de Renovações (`/renovacoes`):
+   - Proposta formalizada aciona o diálogo: *"Isto altera a vigência. A proposta deixa de ser só intenção."*.
+   - Confirmação envia POST para `/organizacoes/{tenantId}/renovacoes/{requestId}/aplicar`.
+   - Toast de sucesso exibe: *"Alteração aplicada com sucesso. Nova vigência até DD/MM/AAAA."* (baseado no `ends_on` resultante).
+   - Teste de concorrência com versão alterada (409 Conflict): exibe o diálogo modal *"O registro mudou. Recarregue."* sem aplicação parcial da nova vigência.
+2. Diálogos de confirmação com nome visível:
+   - Cumprir obrigação (`fulfill`) exibe nome da obrigação.
+   - Cancelar obrigação (`cancel`) exibe nome da obrigação.
+   - Reabrir obrigação/apontamento (`reopen`) exibe identificador/nome do item.
+   - Registrar proposta na ficha do contrato exibe título do contrato.
+   - Tecla Escape fecha todos os modais e cancela a submissão.
+3. Teste de perfil e restrições:
+   - Login com `cliente.teste@odca.local` (role `tenant-client`): confirmação de que o menu operacional (Caixa, Agenda, Obrigações, Renovações, Minutas, Importações, Ficha) não é renderizado.
+4. Verificação de toasts:
+   - Sucesso com auto-dismiss após 8 segundos (`role="status"`).
+   - Erro com persistência até clique em "Fechar" (`role="alert"`).
+   - Responsividade em mobile (<768px) e desktop (>=768px), compatível com zoom 200%.
+
 ## Continuação após Vistas da Caixa, Datas Relativas e Refinamento de UI da Ficha (19/09/2026)
 
 Parta da branch `feat/workspace-ui-vistas-datas` recompilável com 0 erros/avisos e 175 testes de domínio aprovados.

@@ -113,7 +113,7 @@
 <!-- PAINEL DE PROPOSTA DE RENOVAÇÃO / ADITIVO -->
 <details class="filter-panel">
     <summary><strong>Registrar proposta de alteração ou renovação</strong> (Apenas proposta · Efeito em vigência somente na formalização)</summary>
-    <form method="post" asp-action="CreateRenewalProposal" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+    <form id="renewal-proposal-form" method="post" asp-action="CreateRenewalProposal" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
           asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
           asp-route-scope="@Model.Scope" asp-route-kindFilter="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
           class="form-grid">
@@ -169,7 +169,10 @@
         </label>
 
         <div class="form-grid-full form-actions-row">
-            <button class="button button-primary" type="submit">Registrar proposta</button>
+            <button class="button button-primary" type="button" data-confirm-open data-confirm-form="renewal-proposal-form"
+                    data-confirm-title="Confirmar proposta de alteração"
+                    data-confirm-body="Deseja registrar uma proposta de alteração/renovação para o contrato '@sheet.Title'? A proposta deixa de ser apenas intenção e altera a vigência somente quando formalizada e aplicada na Central de Renovações."
+                    data-confirm-action="Registrar proposta">Registrar proposta</button>
             <a class="button button-quiet" asp-controller="Renewals" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-counterparty="@sheet.Title">Ver na Central de Renovações</a>
             <span class="muted">Formalizar e aplicar exclusivamente na Central de Renovações (sem /apply na ficha).</span>
         </div>
@@ -322,13 +325,16 @@
                                 </div>
                                 <p>@comment.Body</p>
                                 <div class="form-actions-row">
-                                    <form method="post" asp-action="ChangeCommentState" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+                                    <form id="comment-state-form-@comment.Id" method="post" asp-action="ChangeCommentState" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
                                           asp-route-draftId="@sheet.DraftId.Value" asp-route-commentId="@comment.Id" asp-route-operation="@(comment.Resolved ? "reopen" : "resolve")"
                                           asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
                                           asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="currentResolved" value="@comment.Resolved.ToString().ToLowerInvariant()" />
-                                        <button class="button button-quiet" type="submit">
+                                        <button class="button button-quiet" type="button" data-confirm-open data-confirm-form="comment-state-form-@comment.Id"
+                                                data-confirm-title="@(comment.Resolved ? "Reabrir apontamento" : "Resolver apontamento")"
+                                                data-confirm-body="Deseja realmente @(comment.Resolved ? "reabrir a pendência" : "resolver o apontamento") '@comment.Reference'?"
+                                                data-confirm-action="@(comment.Resolved ? "Reabrir pendência" : "Marcar como resolvido")">
                                             @(comment.Resolved ? "Reabrir pendência" : "Marcar como resolvido")
                                         </button>
                                     </form>
@@ -465,7 +471,7 @@
                     <details>
                         <summary class="button button-quiet">Cumprir</summary>
                         <div class="details-subpanel">
-                            <form method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="fulfill"
+                            <form id="fulfill-form-@item.SourceId" method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="fulfill"
                                   asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
                                   asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
                                   class="form-stack">
@@ -486,7 +492,10 @@
                                 <label>Nota de cumprimento
                                     <input type="text" name="note" placeholder="Observações" />
                                 </label>
-                                <button class="button button-primary" type="submit">Confirmar cumprimento</button>
+                                <button class="button button-primary" type="button" data-confirm-open data-confirm-form="fulfill-form-@item.SourceId"
+                                        data-confirm-title="Confirmar cumprimento"
+                                        data-confirm-body="Deseja registrar o cumprimento da obrigação '@item.Title'?"
+                                        data-confirm-action="Confirmar cumprimento">Confirmar cumprimento</button>
                             </form>
                         </div>
                     </details>
@@ -543,7 +552,7 @@
                     <details>
                         <summary class="button button-quiet">Cancelar</summary>
                         <div class="details-subpanel">
-                            <form method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="cancel"
+                            <form id="cancel-form-@item.SourceId" method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="cancel"
                                   asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
                                   asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
                                   class="form-stack">
@@ -552,7 +561,10 @@
                                 <label>Motivo do cancelamento
                                     <input type="text" name="reason" required placeholder="Justificativa" />
                                 </label>
-                                <button class="button button-danger" type="submit">Confirmar cancelamento</button>
+                                <button class="button button-danger" type="button" data-confirm-open data-confirm-form="cancel-form-@item.SourceId"
+                                        data-confirm-title="Confirmar cancelamento"
+                                        data-confirm-body="Deseja realmente cancelar a obrigação '@item.Title'?"
+                                        data-confirm-action="Confirmar cancelamento">Confirmar cancelamento</button>
                             </form>
                         </div>
                     </details>
