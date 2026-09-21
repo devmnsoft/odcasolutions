@@ -8,8 +8,10 @@ namespace Odca.Bootstrap;
 public sealed class TestAccessProvisioner(IPasswordService passwordService, string seedSqlPath)
 {
     public const string AdministratorEmail = "admin@odca.local";
+    public const string AdministratorInitialPassword = "V7!qM2#rL9@xT4$p";
     public const string OperatorEmail = "operador@odca.local";
     public const string ClientEmail = "cliente.teste@odca.local";
+    public const string ClientInitialPassword = "K8@wR3!nF6#zP2$m";
     public const string DemoTenantName = "ODCA Cliente de Demonstração";
     public const string DemoTenantCode = "ODCA-DEMO-LOCAL";
     private const string DemoGrantReason = "development-demo-access";
@@ -50,14 +52,20 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
         var administratorCreated = administrator is null;
         var operatorCreated = operatorUser is null;
         var clientCreated = client is null;
-        if (administratorCreated || rotateAdministrator)
+        var administratorPasswordDiffers = administrator is not null && requestedAdministratorPassword is not null &&
+            !passwordService.Verify(ToCredential(administrator), administrator.PasswordHash, requestedAdministratorPassword);
+        var clientPasswordDiffers = client is not null && requestedClientPassword is not null &&
+            !passwordService.Verify(ToCredential(client), client.PasswordHash, requestedClientPassword);
+        var updateAdministratorPassword = administratorCreated || rotateAdministrator || administratorPasswordDiffers;
+        var updateClientPassword = clientCreated || rotateClient || clientPasswordDiffers;
+        if (updateAdministratorPassword)
             administratorPassword = requestedAdministratorPassword ?? passwordFactory();
         if (operatorCreated || rotateOperator)
         {
             do { operatorPassword = requestedOperatorPassword ?? passwordFactory(); }
             while (string.Equals(operatorPassword, administratorPassword, StringComparison.Ordinal));
         }
-        if (clientCreated || rotateClient)
+        if (updateClientPassword)
         {
             do { clientPassword = requestedClientPassword ?? passwordFactory(); }
             while (string.Equals(clientPassword, administratorPassword, StringComparison.Ordinal) ||
@@ -68,13 +76,13 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
         var operatorId = operatorUser?.Id ?? Guid.NewGuid();
         var clientId = client?.Id ?? Guid.NewGuid();
         var tenantId = tenant?.Id ?? Guid.NewGuid();
-        var administratorHash = administratorCreated || rotateAdministrator
+        var administratorHash = updateAdministratorPassword
             ? Hash(administratorId, AdministratorEmail, "Administrador da plataforma", administratorPassword, true)
             : administrator!.PasswordHash;
         var operatorHash = operatorCreated || rotateOperator
             ? Hash(operatorId, OperatorEmail, "Operador da organização", operatorPassword!, false)
             : operatorUser!.PasswordHash;
-        var clientHash = clientCreated || rotateClient
+        var clientHash = updateClientPassword
             ? Hash(clientId, ClientEmail, "Cliente de demonstração", clientPassword!, false)
             : client!.PasswordHash;
 
@@ -91,7 +99,7 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
             AdministratorNormalized = Normalize(AdministratorEmail),
             AdministratorName = "Administrador da plataforma",
             AdministratorHash = administratorHash,
-            RotateAdministrator = rotateAdministrator,
+            RotateAdministrator = updateAdministratorPassword,
             OperatorId = operatorId,
             OperatorEmail,
             OperatorNormalized = Normalize(OperatorEmail),
@@ -103,7 +111,7 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
             ClientNormalized = Normalize(ClientEmail),
             ClientName = "Cliente de demonstração",
             ClientHash = clientHash,
-            RotateClient = rotateClient,
+            RotateClient = updateClientPassword,
             TenantId = tenantId,
             TenantCode = DemoTenantCode,
             TenantName = DemoTenantName,
@@ -127,9 +135,9 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
         var clientMatches = clientPassword is not null &&
             passwordService.Verify(ToCredential(client), client.PasswordHash, clientPassword);
         if (!AllVerified(verification) ||
-            (administratorCreated || rotateAdministrator) && (!administratorMatches || administrator.MustChangePassword != administratorMustChangePassword) ||
+            updateAdministratorPassword && (!administratorMatches || administrator.MustChangePassword != administratorMustChangePassword) ||
             (operatorCreated || rotateOperator) && (!operatorMatches || operatorUser.MustChangePassword != operatorMustChangePassword) ||
-            (clientCreated || rotateClient) && (!clientMatches || client.MustChangePassword != clientMustChangePassword))
+            updateClientPassword && (!clientMatches || client.MustChangePassword != clientMustChangePassword))
         {
             throw new InvalidOperationException("As pós-condições do provisionamento não foram confirmadas; transação revertida.");
         }

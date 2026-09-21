@@ -9,6 +9,13 @@ namespace Odca.IntegrationTests;
 public sealed class DevelopmentAccessProvisioningTests(DatabaseFixture database) : IClassFixture<DatabaseFixture>
 {
     [Fact]
+    public void RequiredDevelopmentPasswordsUseTheRealPasswordPolicy()
+    {
+        Assert.Empty(Odca.Domain.Identity.PasswordPolicy.Validate(TestAccessProvisioner.AdministratorInitialPassword));
+        Assert.Empty(Odca.Domain.Identity.PasswordPolicy.Validate(TestAccessProvisioner.ClientInitialPassword));
+    }
+
+    [Fact]
     public async Task ProvisionedAccountsAuthenticateFromDatabaseAndRemainRestricted()
     {
         var seed = FindRepositoryFile("database", "development", "seed-test-access.sql");

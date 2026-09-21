@@ -65,13 +65,15 @@ dotnet run --project src/Odca.Bootstrap -- show-login
 
 `init` cria segredos aleatórios em `%LOCALAPPDATA%\ODCA Solutions` e o `.env.local` ignorado pelo Git. Em sistemas Unix, os JSON locais são gravados com modo `0600`. Reexecutar não troca credenciais existentes. `migrate` aplica somente versões ausentes, sob lock e checksum, cria uma role de aplicação sem `SUPERUSER`/`BYPASSRLS` e preserva a senha do superadministrador já criado.
 
-`provision-test-access` exige `--environment Development`; a base genérica `postgres` exige ainda a confirmação explícita `--allow-postgres-development`, recusada fora de Development. O comando mostra apenas destino sanitizado e valida ou cria `admin@odca.local` como superadministrador e `cliente.teste@odca.local` como administrador da organização **ODCA Cliente de Demonstração**, com concessão local auditada do plano Basic vigente. A operação é transacional, relê perfil/vínculo/plano e confere senhas disponíveis pelo mesmo serviço usado no login. Uma conta comum preexistente nunca é promovida silenciosamente. Reexecução preserva senhas; para rotação explícita, use:
+`provision-test-access` exige `--environment Development`; a base genérica `postgres` exige ainda a confirmação explícita `--allow-postgres-development`, recusada fora de Development. O comando mostra apenas destino sanitizado e valida ou cria `admin@odca.local` como superadministrador e `cliente.teste@odca.local` com o perfil `tenant-client` da organização **ODCA Cliente de Demonstração**, com concessão local auditada do plano Basic vigente. A operação é transacional, relê perfil/vínculo/plano e confere as senhas obrigatórias pelo mesmo serviço usado no login, corrigindo o hash quando divergir. Uma conta comum preexistente nunca é promovida silenciosamente. Reexecuções cujo estado já está correto não alteram o hash; para rotação explícita das demais credenciais, use:
 
 ```powershell
 dotnet run --project src/Odca.Bootstrap -- provision-test-access --environment Development --allow-postgres-development --rotate-passwords
 ```
 
 `show-login` consulta o banco configurado e só exibe uma senha inicial local quando ela confere com o hash persistido. A senha precisa ser alterada no primeiro acesso. Para recuperação explícita somente do superadministrador:
+
+As credenciais reservadas deste ambiente são `admin@odca.local` / `V7!qM2#rL9@xT4$p` e `cliente.teste@odca.local` / `K8@wR3!nF6#zP2$m`. Elas existem exclusivamente no provisionador de Development: o banco recebe hashes ASP.NET Identity, nunca essas senhas em texto puro. O cliente de demonstração recebe a role tenant `tenant-client`, com as permissões tenant do catálogo atual, sem qualquer permissão global de plataforma.
 
 ```powershell
 dotnet run --project src/Odca.Bootstrap -- reset-password
