@@ -1,5 +1,13 @@
 # Status de execução
 
+## Gate do MVP operacional — contexto documental e auditoria local (21/09/2026)
+
+- Branch de trabalho: `feat/mvp-operacional-validacao-superadmin`, criada sobre o estado integrado de `codex/s00-foundation` (`01295a1`). O checkout fornecido não possui remoto configurado; portanto, pull/rebase remoto não pôde ser executado.
+- Auditoria do ambiente: os snapshots imutáveis 001–019, a solution e os lockfiles estão presentes. O contêiner não possui .NET 10.0.400, servidor PostgreSQL 18 nem Docker (somente `pg_config` 16), impedindo restore/build/testes .NET, banco descartável, login HTTP e QA autenticado. `npm run build` validou os sete assets Web.
+- O fluxo documental agora configura `odca.user_id` e `odca.tenant_id` com `set_config(..., true)` dentro da mesma transação usada pela autorização, leitura, upload, extração e aplicação. A consulta de limites do upload também passou a usar contexto e transação próprios, evitando depender de estado residual do pool.
+- O download pelo BFF mantém a dupla verificação de documento `safe` e autorização da API, mas passa a responder com `Content-Disposition: inline`; o nome visível é codificado e nenhum bearer token é enviado ao navegador.
+- Este incremento **não declara o MVP concluído**: Central completa do Superadministrador, suporte temporário, operação autenticada LGPD, prova PostgreSQL/RLS/login e capturas responsivas continuam bloqueados pelos gates descritos acima e permanecem na próxima execução.
+
 ## Documentos, importação, confirmações e agenda (21/09/2026)
 
 - Estado da entrega: branch `feat/documentos-importacao-confirmacoes` a partir de `codex/s00-foundation` @ `a4ca12c`.
