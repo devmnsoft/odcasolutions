@@ -1,5 +1,34 @@
 # Próxima execução
 
+## Continuação após Documentos, Importação, Confirmações e Agenda (21/09/2026)
+
+Parta da branch `feat/documentos-importacao-confirmacoes` com compilação 100% limpa (0 erros, 0 avisos) e 184 testes de domínio aprovados.
+Execute validações ponta a ponta com PostgreSQL 18 descartável cobrindo:
+1. Download seguro de documentos na ficha do contrato (#documentos):
+   - Documento `SafetyState == "safe"`: botão "Baixar" visível; clique serve o arquivo inline.
+   - Documento em quarentena: label "Quarentena" sem botão; redirect com toast *"Documento em análise de segurança. Download indisponível."*
+   - Tentativa de download via URL direta de documento não-safe: resposta 302 com TempData.
+   - Usuário sem permissão `tenant.documents.download` (via controle de acesso da API): 403.
+2. Chip de importação aguardando revisão na ficha:
+   - Com `ImportId` presente: chip navega direto para `/importacoes/{importId}` (tela de revisão).
+   - Sem `ImportId` (apenas `HasImportAwaitingReview`): fallback para `/importacoes?awaitingReview=true`.
+3. _ConfirmDialog nas ações de mutação:
+   - Iniciar obrigação (`start`): diálogo com nome da obrigação antes de submeter.
+   - Reagendar (`reschedule`): diálogo com nome da obrigação antes de submeter.
+   - Reatribuir (`reassign`): diálogo com nome da obrigação antes de submeter.
+   - Criar obrigação: diálogo com nome do contrato antes de submeter.
+   - Gerar rascunho oficial: diálogo com nome do template e contrato.
+   - Instalar biblioteca oficial: diálogo de confirmação antes de submeter.
+   - Tecla Escape cancela todos os diálogos sem submeter.
+4. Agenda com `?day=` e empty-state:
+   - `?day=15`: exibe apenas itens do dia 15 do mês; chip "Filtrando: dia 15" com botão remover.
+   - Mês sem itens: banner âmbar `role="status"` + link para caixa operacional.
+5. Faixa role=status na caixa (Inbox):
+   - `Overdue > 0`: banner amarelo com contagem e link `urgency=Overdue&viewId=...`.
+   - `Overdue == 0`: banner não renderizado.
+6. Template oficial pela Key (regression):
+   - GET `/estudio/catalog/{tenantId}/official/{key}`: retorna o modelo pelo `contract_type` canônico + scope, nunca pelo `name`. Renomear o campo `name` no banco não deve quebrar a resolução.
+
 ## Continuação após Avisos, Confirmação e Formalização/Aplicação de Renovação (21/09/2026)
 
 Parta da branch `feat/avisos-confirmacao-renovacao` com compilação 100% limpa (0 erros, 0 avisos) e 184 testes de domínio aprovados.

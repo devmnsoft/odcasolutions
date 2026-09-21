@@ -30,6 +30,17 @@
     </div>
 }
 
+@if (Model.Page.Overdue > 0)
+{
+    <div class="banner-notice-warning" role="status">
+        <strong>⚠ @Model.Page.Overdue item(ns) atrasado(s)</strong>
+        <a class="button button-quiet"
+           asp-action="Index" asp-route-tenantId="@tenantId"
+           asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind"
+           asp-route-urgency="Overdue" asp-route-viewId="@currentViewId">Ver atrasadas</a>
+    </div>
+}
+
 <section class="inbox-summary-cards" aria-label="Resumo">
     <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="Overdue" asp-route-viewId="@currentViewId">
         <strong>@Model.Page.Overdue</strong><span>Atrasadas</span>

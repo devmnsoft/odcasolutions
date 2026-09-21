@@ -529,4 +529,48 @@ public sealed class ContractsController(OdcaApiClient api) : Controller
 
         return Redirect(BuildReturnUrl(tenantId, contractId, "#revisao", from, year, month, scope, kind, urgency, viewId, obrigacao));
     }
+    [HttpGet("documentos/{documentId:guid}/versoes/{versionId:guid}/baixar")]
+    public async Task<IActionResult> DownloadDocument(
+        Guid tenantId,
+        Guid contractId,
+        Guid documentId,
+        Guid versionId,
+        [FromQuery] string? from = null,
+        [FromQuery] int? year = null,
+        [FromQuery] int? month = null,
+        [FromQuery] string? scope = null,
+        [FromQuery] string? kind = null,
+        [FromQuery] string? urgency = null,
+        [FromQuery] Guid? viewId = null,
+        CancellationToken ct = default)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+
+        // Validate permission early from sheet data
+        var sheetResult = await api.GetContractSheetAsync(token, tenantId, contractId, ct);
+        if (sheetResult.Status == ApiCallStatus.Unauthorized) return Challenge();
+        if (sheetResult.Status == ApiCallStatus.Forbidden) return Forbid();
+
+        var doc = sheetResult.Value?.Documents.FirstOrDefault(d => d.DocumentId == documentId && d.VersionId == versionId);
+        if (doc is null) return NotFound();
+
+        if (!string.Equals(doc.SafetyState, "safe", StringComparison.OrdinalIgnoreCase))
+        {
+            TempData["ContractSheetError"] = "Documento em análise de segurança. Download indisponível.";
+            return Redirect(BuildReturnUrl(tenantId, contractId, "#documentos", from, year, month, scope, kind, urgency, viewId, null));
+        }
+
+        var preview = await api.GetDocumentPreviewAsync(token, tenantId, contractId, documentId, versionId, ct);
+        if (preview.Content is null)
+        {
+            if (preview.Status == System.Net.HttpStatusCode.Forbidden) return Forbid();
+            TempData["ContractSheetError"] = "Não foi possível baixar o documento no momento.";
+            return Redirect(BuildReturnUrl(tenantId, contractId, "#documentos", from, year, month, scope, kind, urgency, viewId, null));
+        }
+
+        var contentType = preview.ContentType ?? "application/octet-stream";
+        var fileName = doc.Name.Contains('.') ? doc.Name : $"{doc.Name}.bin";
+        return File(preview.Content, contentType, fileName);
+    }
 }

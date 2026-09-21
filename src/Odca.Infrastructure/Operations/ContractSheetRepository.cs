@@ -121,17 +121,20 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             transaction,
             cancellationToken: cancellationToken))).AsList();
 
-        var hasImportAwaitingReview = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
+        var importId = await connection.ExecuteScalarAsync<Guid?>(new CommandDefinition(
             """
-            SELECT EXISTS(
-                SELECT 1 FROM odca.contract_imports i
-                JOIN odca.document_versions v ON v.id = i.document_version_id AND v.tenant_id = i.tenant_id
-                WHERE i.tenant_id = @tenantId AND i.status = 'awaiting_review'
-                  AND (v.contract_id = @contractId OR i.result_contract_id = @contractId))
+            SELECT i.id
+              FROM odca.contract_imports i
+              JOIN odca.document_versions v ON v.id = i.document_version_id AND v.tenant_id = i.tenant_id
+             WHERE i.tenant_id = @tenantId AND i.status = 'awaiting_review'
+               AND (v.contract_id = @contractId OR i.result_contract_id = @contractId)
+             ORDER BY i.created_at DESC
+             LIMIT 1
             """,
             new { tenantId, contractId },
             transaction,
             cancellationToken: cancellationToken));
+        var hasImportAwaitingReview = importId.HasValue;
 
         var canManageTemplates = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
             """
@@ -142,16 +145,21 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             transaction,
             cancellationToken: cancellationToken));
 
-        var officialNames = OfficialContractTemplates.All.Select(t => t.Name).ToArray();
         var publishedCount = await connection.ExecuteScalarAsync<int>(new CommandDefinition(
             """
-            SELECT count(*)::int
+            SELECT count(DISTINCT CASE 
+                WHEN t.contract_type IN ('non_disclosure_agreement', 'nda') AND t.fields::text LIKE '%"discloser_name"%' THEN 'nda-unilateral'
+                WHEN t.contract_type IN ('non_disclosure_agreement', 'nda') THEN 'nda-mutual'
+                WHEN t.contract_type IN ('service_agreement', 'services') THEN 'services-agreement'
+                WHEN t.contract_type IN ('amendment') THEN 'contract-amendment'
+                WHEN t.contract_type IN ('supply_agreement', 'supply') THEN 'supply-agreement'
+                WHEN t.contract_type IN ('lease_agreement', 'lease') THEN 'lease-agreement'
+                ELSE NULL END)::int
               FROM odca.contract_templates t
              WHERE t.status = 'published'
-               AND (t.scope = 'global' OR t.owner_tenant_id = @tenantId)
-               AND t.name = ANY(@officialNames)
+               AND (t.scope = 'global' OR (t.scope = 'private' AND t.owner_tenant_id = @tenantId))
             """,
-            new { tenantId, officialNames },
+            new { tenantId },
             transaction,
             cancellationToken: cancellationToken));
 
@@ -215,7 +223,8 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             canInstallOfficialLibrary,
             hasImportAwaitingReview,
             draftId,
-            Today: today);
+            Today: today,
+            ImportId: importId);
     }
 
     private sealed record SheetHeader(

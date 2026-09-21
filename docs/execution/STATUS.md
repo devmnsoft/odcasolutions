@@ -1,5 +1,32 @@
 # Status de execução
 
+## Documentos, importação, confirmações e agenda (21/09/2026)
+
+- Estado da entrega: branch `feat/documentos-importacao-confirmacoes` a partir de `codex/s00-foundation` @ `a4ca12c`.
+- Gates: `dotnet restore --locked-mode` ✔ · `dotnet build -c Release` ✔ · `dotnet test` 184/184 ✔.
+- Template oficial por Key canônica (type + scope), nunca por name nem audit_events:
+  - `ContractSheetRepository.cs`: `publishedCount` conta por `CASE WHEN contract_type IN (...) ... THEN 'key'` sem `AND t.name = ANY(...)`.
+  - `ContractStudioCatalogController.cs` (PR anterior): lookup usa `contract_type` e campo NDA discriminante; sem referência a `audit_events`.
+- ImportId resolvido no servidor:
+  - `ContractSheetRepository.cs`: query agora retorna `i.id` (`Guid?`) em vez de `EXISTS`; `HasImportAwaitingReview` derivado de `importId.HasValue`.
+  - `ContractSheetDto`: campo `ImportId: importId` passado ao DTO.
+  - `Sheet.cshtml`: chip navega para `/importacoes/{ImportId.Value}` (Review) quando `ImportId` existe, fallback para lista `?awaitingReview=true`.
+- _ConfirmDialog ligado em todas as ações de mutação na ficha:
+  - `start`, `reschedule`, `reassign`: botões trocados de `type=submit` para `type=button` com `data-confirm-open`; forms com `id` explícito.
+  - `CreateObligation`: form recebeu `id="create-obligation-form"`, botão com confirmação explícita.
+  - `StartOfficialDraft`: form com `id="draft-form-{key}"`, botão com confirmação e nome do template.
+  - `InstallOfficialLibrary`: form com `id="install-library-form"`, botão com confirmação.
+- #documentos — download seguro:
+  - `ContractsController.DownloadDocument` (GET): verifica `SafetyState == "safe"` via ficha; se quarentena, `TempData["ContractSheetError"]` e redirect `#documentos`. Se safe, retorna `File(bytes, contentType, fileName)`.
+  - `Sheet.cshtml`: seção #documentos renderiza botão "Baixar" apenas se `SafetyState == "safe"`; caso contrário, label "Quarentena".
+- Agenda — `?day=` e empty-state:
+  - `AgendaController`: aceita `int? day`; filtra `Days` por `d.Day.Day == day`; se `Total == 0`, seta `TempData["AgendaEmptyNotice"]`.
+  - `AgendaWorkspaceViewModel`: novo campo `int? Day`.
+  - `Agenda/Index.cshtml`: exibe banner `banner-notice-warning` quando mês vazio; chip de filtro de dia ativo com botão remover; empty-state com link para caixa.
+- Caixa — faixa role=status para atrasadas:
+  - `Inbox/Index.cshtml`: renderiza `<div class="banner-notice-warning" role="status">` com contagem e link `urgency=Overdue&viewId=...` quando `Model.Page.Overdue > 0`.
+  - `site.css`: `.banner-notice-warning` adicionado com cor âmbar (#fff3cd / #856404), flex.
+
 ## Avisos, confirmação e formalização/aplicação de renovação (21/09/2026)
 
 - Estado da entrega: branch `feat/avisos-confirmacao-renovacao` a partir de `codex/s00-foundation` @ `3bc6f58`.

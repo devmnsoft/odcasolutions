@@ -50,10 +50,20 @@
             <h1>@sheet.Title</h1>
             @if (sheet.HasImportAwaitingReview)
             {
-                <a class="chip-warning" asp-controller="Imports" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-awaitingReview="true">
-                    <span class="status-label">Importação</span>
-                    <span>Aguardando revisão</span>
-                </a>
+                @if (sheet.ImportId.HasValue)
+                {
+                    <a class="chip-warning" asp-controller="Imports" asp-action="Review" asp-route-tenantId="@tenantId" asp-route-importId="@sheet.ImportId.Value">
+                        <span class="status-label">Importação</span>
+                        <span>Aguardando revisão</span>
+                    </a>
+                }
+                else
+                {
+                    <a class="chip-warning" asp-controller="Imports" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-awaitingReview="true">
+                        <span class="status-label">Importação</span>
+                        <span>Aguardando revisão</span>
+                    </a>
+                }
             }
         </div>
         <p class="muted">
@@ -361,7 +371,7 @@
     <!-- FORMULÁRIO DE NOVA OBRIGAÇÃO -->
     <details class="filter-panel">
         <summary><strong>+ Adicionar nova obrigação para este contrato</strong></summary>
-        <form method="post" asp-action="CreateObligation" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+        <form id="create-obligation-form" method="post" asp-action="CreateObligation" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
               asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
               asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
               class="form-grid">
@@ -419,7 +429,11 @@
                 <textarea name="description" rows="2" placeholder="Detalhes operacionais para o cumprimento"></textarea>
             </label>
             <div class="form-grid-full">
-                <button class="button button-primary" type="submit">Criar obrigação</button>
+                <button class="button button-primary" type="button"
+                        data-confirm-open data-confirm-form="create-obligation-form"
+                        data-confirm-title="Confirmar criação de obrigação"
+                        data-confirm-body="Deseja criar a obrigação para o contrato '@sheet.Title'? Ela ficará disponível na caixa operacional após criação."
+                        data-confirm-action="Criar obrigação">Criar obrigação</button>
             </div>
         </form>
     </details>
@@ -458,12 +472,16 @@
                     <!-- AÇÃO INICIAR -->
                     @if (item.Status == "open")
                     {
-                        <form method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="start"
+                        <form id="start-form-@item.SourceId" method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="start"
                               asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
                               asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="version" value="1" />
-                            <button class="button button-quiet" type="submit">Iniciar</button>
+                            <button class="button button-quiet" type="button"
+                                    data-confirm-open data-confirm-form="start-form-@item.SourceId"
+                                    data-confirm-title="Confirmar início da obrigação"
+                                    data-confirm-body="Deseja iniciar a obrigação '@item.Title'?"
+                                    data-confirm-action="Iniciar">Iniciar</button>
                         </form>
                     }
 
@@ -504,7 +522,7 @@
                     <details>
                         <summary class="button button-quiet">Reagendar</summary>
                         <div class="details-subpanel">
-                            <form method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="reschedule"
+                            <form id="reschedule-form-@item.SourceId" method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="reschedule"
                                   asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
                                   asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
                                   class="form-stack">
@@ -516,7 +534,11 @@
                                 <label>Motivo do reagendamento
                                     <input type="text" name="reason" required placeholder="Justificativa" />
                                 </label>
-                                <button class="button button-primary" type="submit">Reagendar</button>
+                                <button class="button button-primary" type="button"
+                                        data-confirm-open data-confirm-form="reschedule-form-@item.SourceId"
+                                        data-confirm-title="Confirmar reagendamento"
+                                        data-confirm-body="Deseja reagendar a obrigação '@item.Title'?"
+                                        data-confirm-action="Reagendar">Reagendar</button>
                             </form>
                         </div>
                     </details>
@@ -525,7 +547,7 @@
                     <details>
                         <summary class="button button-quiet">Reatribuir</summary>
                         <div class="details-subpanel">
-                            <form method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="reassign"
+                            <form id="reassign-form-@item.SourceId" method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="reassign"
                                   asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
                                   asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
                                   class="form-stack">
@@ -543,7 +565,11 @@
                                 <label>Motivo da reatribuição
                                     <input type="text" name="reason" required placeholder="Justificativa" />
                                 </label>
-                                <button class="button button-primary" type="submit">Reatribuir</button>
+                                <button class="button button-primary" type="button"
+                                        data-confirm-open data-confirm-form="reassign-form-@item.SourceId"
+                                        data-confirm-title="Confirmar reatribuição"
+                                        data-confirm-body="Deseja reatribuir a obrigação '@item.Title' para outro responsável?"
+                                        data-confirm-action="Reatribuir">Reatribuir</button>
                             </form>
                         </div>
                     </details>
@@ -580,11 +606,15 @@
         <h2>Minutas operacionais sugeridas</h2>
         @if (sheet.CanInstallOfficialLibrary)
         {
-            <form method="post" asp-action="InstallOfficialLibrary" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+            <form id="install-library-form" method="post" asp-action="InstallOfficialLibrary" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
                   asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
                   asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId">
                 @Html.AntiForgeryToken()
-                <button class="button button-primary" type="submit">Instalar biblioteca oficial</button>
+                <button class="button button-primary" type="button"
+                        data-confirm-open data-confirm-form="install-library-form"
+                        data-confirm-title="Instalar biblioteca oficial"
+                        data-confirm-body="Deseja instalar os modelos oficiais de minutas para o tenant? Modelos já instalados não serão duplicados."
+                        data-confirm-action="Instalar biblioteca">Instalar biblioteca oficial</button>
             </form>
         }
     </div>
@@ -610,13 +640,17 @@
                     <p>@template.Reason</p>
                 </div>
                 <div class="form-actions-row">
-                    <form method="post" asp-action="StartOfficialDraft" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+                    <form id="draft-form-@template.Key" method="post" asp-action="StartOfficialDraft" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
                           asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
                           asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="officialKey" value="@template.Key" />
                         <input type="hidden" name="sheetVersion" value="@sheet.Version" />
-                        <button class="button button-primary" type="submit">Gerar rascunho oficial</button>
+                        <button class="button button-primary" type="button"
+                                data-confirm-open data-confirm-form="draft-form-@template.Key"
+                                data-confirm-title="Gerar rascunho oficial"
+                                data-confirm-body="Deseja criar um rascunho de '@template.Name' para o contrato '@sheet.Title'? A minuta será aberta no Estúdio para preenchimento e revisão."
+                                data-confirm-action="Gerar rascunho">Gerar rascunho oficial</button>
                     </form>
                     <a class="button button-quiet" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-type="@template.ContractType">Ver no Estúdio</a>
                 </div>
@@ -650,6 +684,21 @@
                         <dd>@document.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</dd>
                     </div>
                 </dl>
+                <div class="next-action">
+                    @if (document.SafetyState == "safe")
+                    {
+                        <a class="button button-quiet"
+                           asp-controller="Contracts" asp-action="DownloadDocument"
+                           asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+                           asp-route-documentId="@document.DocumentId" asp-route-versionId="@document.VersionId"
+                           asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+                           asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId">Baixar</a>
+                    }
+                    else
+                    {
+                        <span class="status-label muted" title="Documento em análise de segurança. Download indisponível.">Quarentena</span>
+                    }
+                </div>
             </article>
         }
     }
