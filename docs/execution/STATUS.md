@@ -1,5 +1,47 @@
 # Status de execução
 
+## Revalidação do gate no checkout `3c2d0ee` (21/09/2026)
+
+### Auditoria e sincronização
+
+- A execução começou sem alterações locais, na branch de trabalho `work`, exatamente
+  no commit solicitado `3c2d0ee9250afc3ee732316d3155fd9a82bdff3d`.
+- O checkout não possui remoto Git configurado nem referência local denominada
+  `codex/s00-foundation`. Por isso, `git fetch origin codex/s00-foundation` não pôde
+  sincronizar conteúdo. Como o `HEAD` já coincide com o commit indicado pelo prompt,
+  nenhum merge, reset ou descarte de alterações foi realizado.
+
+### Mapa do estado real
+
+- **Pronto com evidência neste ambiente:** `npm run build` validou os sete assets
+  Web e terminou com código zero.
+- **Parcial:** há implementação e testes versionados para autenticação/MFA,
+  permissões, documentos, contratos, consumo, privacidade, migrations e isolamento,
+  mas sua presença no repositório não foi tratada como prova de funcionamento.
+- **Quebrado:** não foi identificada uma regressão executável do produto neste ciclo;
+  o gate, contudo, permanece reprovado por não ser possível executar três dos quatro
+  comandos obrigatórios.
+- **Não validado por ambiente:** restore, build e testes .NET; PostgreSQL 18
+  descartável; aplicação/reaplicação e checksums das migrations 001–019; RLS A × B;
+  isolamento do pool; login HTTP dos três perfis; MFA; autorização; inicialização de
+  API, Web e Worker; e QA visual nos breakpoints/zoom exigidos.
+
+### Evidência e causa raiz do bloqueio
+
+- `dotnet restore Odca.sln --locked-mode`, `dotnet build Odca.sln --configuration
+  Release --no-restore` e `dotnet test Odca.sln --configuration Release --no-build`
+  terminaram com código 127 porque `dotnet` não existe no contêiner. Assim, a versão
+  obrigatória 10.0.400 também não pôde ser confirmada.
+- Não há `psql`, `postgres`, `pg_ctl`, `initdb`, `docker` ou `podman`. Não existe,
+  portanto, um mecanismo local disponível para criar o banco `odca_test*` em
+  PostgreSQL 18 e a role restrita `odca_test_app_login`.
+- O Node disponível é 20.20.2, abaixo do requisito `>=24` declarado pelo projeto.
+  Mesmo assim, o verificador de assets executou com sucesso; isso não substitui o
+  gate no runtime requerido.
+- Causa raiz: a imagem de execução não fornece os runtimes de .NET e PostgreSQL nem
+  um engine de contêiner. Em respeito ao gate entre blocos, nenhuma migration foi
+  alterada e nenhuma funcionalidade dos blocos B.1–B.6 foi iniciada.
+
 ## Revalidação do gate no checkout entregue (21/09/2026)
 
 - O checkout recebido está na branch de trabalho `work`, no commit solicitado
