@@ -16,6 +16,21 @@ public sealed class DevelopmentAccessProvisioningTests(DatabaseFixture database)
     }
 
     [Fact]
+    public void DevelopmentSeedIsNativePostgreSqlAndContainsNoDapperVariables()
+    {
+        var sql = File.ReadAllText(FindRepositoryFile("database", "development", "seed-test-access.sql"));
+
+        Assert.Contains("DO $seed$", sql, StringComparison.Ordinal);
+        Assert.Contains("\\set ON_ERROR_STOP on", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("@AdministratorId", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("@OperatorId", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("@ClientId", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("@TenantId", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain(TestAccessProvisioner.AdministratorInitialPassword, sql, StringComparison.Ordinal);
+        Assert.DoesNotContain(TestAccessProvisioner.ClientInitialPassword, sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ProvisionedAccountsAuthenticateFromDatabaseAndRemainRestricted()
     {
         var seed = FindRepositoryFile("database", "development", "seed-test-access.sql");
