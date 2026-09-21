@@ -1,5 +1,25 @@
 # Status de execução
 
+## Revalidação do gate no checkout entregue (21/09/2026)
+
+- O checkout recebido está na branch de trabalho `work`, no commit solicitado
+  `68e04bf950251bb53e9e9960e021eda3d1f434c9`, sem alterações locais no início da
+  execução. Esse commit coincide com a referência fornecida, embora o nome da
+  branch ativa não seja `codex/s00-foundation`.
+- `npm run build` foi reexecutado e validou os sete assets Web.
+- Os gates `dotnet restore Odca.sln --locked-mode`, `dotnet build Odca.sln
+  --configuration Release --no-restore` e `dotnet test Odca.sln --configuration
+  Release --no-build` foram iniciados, mas o contêiner não possui o executável
+  `dotnet`. A tentativa de obter o SDK 10.0.400 nos endereços oficiais foi
+  bloqueada pelo proxy do ambiente com HTTP 403.
+- O contêiner também não fornece `docker`, `podman` ou `psql`; portanto não foi
+  possível criar o PostgreSQL 18 descartável nem produzir evidência nova de
+  migrations, checksum, RLS A × B, isolamento do pool, login/MFA ou HTTP real.
+- Em cumprimento à ordem dos gates, nenhuma funcionalidade dependente foi
+  avançada e nenhuma homologação anterior foi promovida. O próximo incremento
+  deve começar em um executor com .NET 10.0.400 e PostgreSQL 18 (ou Docker),
+  repetir toda a matriz e somente então tratar as lacunas funcionais.
+
 ## Gate do MVP operacional — contexto documental e auditoria local (21/09/2026)
 
 - Branch de trabalho: `feat/mvp-operacional-validacao-superadmin`, criada sobre o estado integrado de `codex/s00-foundation` (`01295a1`). O checkout fornecido não possui remoto configurado; portanto, pull/rebase remoto não pôde ser executado.
