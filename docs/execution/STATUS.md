@@ -1,5 +1,39 @@
 # Status de execução
 
+## Auditoria obrigatória do MVP no checkout `17762a9` (21/09/2026)
+
+### Baseline executado antes de alterações
+
+- A execução começou limpa na branch `work`, em
+  `17762a90a60709a7d5ee3d171a7ec5ac7ba495ef`. Foram lidos o README, a
+  especificação, o status, backlog, próximo prompt, documentos de privacidade,
+  snapshots SQL 001–019, composição dos hosts e os controllers/services dos
+  domínios pedidos. A existência desses artefatos não foi considerada evidência
+  de funcionamento.
+- `npm run build` terminou com código zero e validou os sete assets. O runtime
+  disponível, entretanto, é Node.js 20.20.2, abaixo do Node.js 24+ exigido em
+  `package.json`; por isso o resultado é evidência estática, não aprovação do
+  ambiente suportado.
+- `dotnet restore Odca.sln --locked-mode`, `dotnet build Odca.sln
+  --configuration Release --no-restore` e `dotnet test Odca.sln --configuration
+  Release --no-build` foram realmente iniciados e terminaram com código 127:
+  não há executável `dotnet`, logo o SDK fixado 10.0.400 não pôde ser validado.
+- Também não existem `psql`, `pg_isready` ou `docker`. Não foi possível criar
+  um banco descartável `odca_test*` no PostgreSQL 18 com a role restrita
+  `odca_test_app_login`, aplicar/reaplicar migrations, validar checksums em banco,
+  provar RLS A × B, reuso do pool ou executar os testes de integração.
+
+### Decisão do gate
+
+- O gate obrigatório do Bloco A permanece **bloqueado por infraestrutura
+  externa**. Em particular, login/MFA, Web/API/Worker, autorização real e QA nos
+  breakpoints não foram executados nem inferidos da implementação existente.
+- Em cumprimento à ordem explícita do ciclo, nenhuma migration histórica foi
+  editada, nenhuma migration v020 foi necessária e nenhuma funcionalidade dos
+  blocos B.1–B.6 foi iniciada. O próximo executor deve fornecer exatamente .NET
+  SDK 10.0.400, Node.js 24+ e PostgreSQL 18 (ou engine de contêiner) e repetir o
+  baseline antes de qualquer avanço funcional.
+
 ## Revalidação do gate no checkout `3c2d0ee` (21/09/2026)
 
 ### Auditoria e sincronização
