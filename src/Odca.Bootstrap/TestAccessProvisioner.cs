@@ -148,7 +148,7 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
     }
 
 
-    private static Task RotatePasswordAsync(NpgsqlConnection connection, NpgsqlTransaction transaction,
+    private static Task<int> RotatePasswordAsync(NpgsqlConnection connection, NpgsqlTransaction transaction,
         string sql, Guid id, string hash, bool mustChangePassword, string scope, Guid? tenantId) =>
         connection.ExecuteAsync(new CommandDefinition(sql,
             new { id, hash, mustChangePassword, scope, tenantId }, transaction));
