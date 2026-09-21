@@ -13,44 +13,62 @@ public sealed class DevelopmentAccessProvisioningTests(DatabaseFixture database)
     {
         var seed = FindRepositoryFile("database", "development", "seed-test-access.sql");
         var provisioner = new TestAccessProvisioner(new AspNetPasswordService(), seed);
-        var generated = new Queue<string>(["Admin!Development2026-Unique", "Client!Development2026-Unique"]);
+        var generated = new Queue<string>([
+            "Admin!Development2026-Unique",
+            "Operator!Development2026-Unique",
+            "Client!Development2026-Unique"
+        ]);
         var first = await provisioner.ProvisionAsync(database.AdminConnectionString,
-            "unused-admin", null, true, true, generated.Dequeue);
+            "unused-admin", null, true, true, generated.Dequeue,
+            operatorPassword: null, rotateOperator: true);
 
         Assert.True(first.AdministratorPasswordMatches);
+        Assert.True(first.OperatorPasswordMatches);
         Assert.True(first.ClientPasswordMatches);
-        Assert.NotEqual(first.AdministratorPassword, first.ClientPassword);
+        Assert.NotEqual(first.AdministratorPassword, first.OperatorPassword);
+        Assert.NotEqual(first.OperatorPassword, first.ClientPassword);
         Assert.True(first.Verification.AdministratorPersisted);
+        Assert.True(first.Verification.OperatorPersisted);
         Assert.True(first.Verification.ClientPersisted);
         Assert.True(first.Verification.MembershipActive);
         Assert.True(first.Verification.TenantAdministrator);
+        Assert.True(first.Verification.TenantOperator);
         Assert.True(first.Verification.BasicPlanActive);
 
         var repeated = await provisioner.ProvisionAsync(database.AdminConnectionString,
             first.AdministratorPassword, first.ClientPassword, false, false,
-            () => throw new InvalidOperationException("A reexecução não deve gerar senha."));
+            () => throw new InvalidOperationException("A reexecução não deve gerar senha."),
+            operatorPassword: first.OperatorPassword, rotateOperator: false);
         Assert.False(repeated.AdministratorCreated);
+        Assert.False(repeated.OperatorCreated);
         Assert.False(repeated.ClientCreated);
         Assert.True(repeated.AdministratorPasswordMatches);
+        Assert.True(repeated.OperatorPasswordMatches);
         Assert.True(repeated.ClientPasswordMatches);
 
         var concurrent = await Task.WhenAll(Enumerable.Range(0, 2).Select(_ =>
             provisioner.ProvisionAsync(database.AdminConnectionString,
                 first.AdministratorPassword, first.ClientPassword, false, false,
-                () => throw new InvalidOperationException("A reexecução concorrente não deve gerar senha."))));
+                () => throw new InvalidOperationException("A reexecução concorrente não deve gerar senha."),
+                operatorPassword: first.OperatorPassword, rotateOperator: false)));
         Assert.All(concurrent, item =>
         {
             Assert.False(item.AdministratorCreated);
+            Assert.False(item.OperatorCreated);
             Assert.False(item.ClientCreated);
             Assert.True(item.Verification.MembershipActive);
+            Assert.True(item.Verification.TenantOperator);
         });
 
         await using var factory = database.CreateApi();
         using var http = factory.CreateClient();
         var admin = await LoginAsync(http, TestAccessProvisioner.AdministratorEmail, first.AdministratorPassword);
+        var op = await LoginAsync(http, TestAccessProvisioner.OperatorEmail, first.OperatorPassword!);
         var client = await LoginAsync(http, TestAccessProvisioner.ClientEmail, first.ClientPassword!);
         Assert.True(admin.MustChangePassword);
         Assert.True(admin.IsPlatformAdministrator);
+        Assert.True(op.MustChangePassword);
+        Assert.False(op.IsPlatformAdministrator);
         Assert.True(client.MustChangePassword);
         Assert.False(client.IsPlatformAdministrator);
 

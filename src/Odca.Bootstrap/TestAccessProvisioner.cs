@@ -8,6 +8,7 @@ namespace Odca.Bootstrap;
 public sealed class TestAccessProvisioner(IPasswordService passwordService, string seedSqlPath)
 {
     public const string AdministratorEmail = "admin@odca.local";
+    public const string OperatorEmail = "operador@odca.local";
     public const string ClientEmail = "cliente.teste@odca.local";
     public const string DemoTenantName = "ODCA Cliente de Demonstração";
     public const string DemoTenantCode = "ODCA-DEMO-LOCAL";
@@ -23,7 +24,11 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
         string? requestedAdministratorPassword = null,
         string? requestedClientPassword = null,
         bool administratorMustChangePassword = true,
-        bool clientMustChangePassword = true)
+        bool clientMustChangePassword = true,
+        string? operatorPassword = null,
+        bool rotateOperator = false,
+        string? requestedOperatorPassword = null,
+        bool operatorMustChangePassword = true)
     {
         if (!File.Exists(seedSqlPath))
             throw new FileNotFoundException("O SQL de provisionamento de Development não foi encontrado.", seedSqlPath);
@@ -37,26 +42,38 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
 
         await EnsureSchemaAsync(connection, transaction);
         var administrator = await FindUserAsync(connection, transaction, Normalize(AdministratorEmail));
+        var operatorUser = await FindUserAsync(connection, transaction, Normalize(OperatorEmail));
         var client = await FindUserAsync(connection, transaction, Normalize(ClientEmail));
         var tenant = await FindTenantAsync(connection, transaction);
-        await ValidateExistingAsync(connection, transaction, administrator, client, tenant);
+        await ValidateExistingAsync(connection, transaction, administrator, operatorUser, client, tenant);
 
         var administratorCreated = administrator is null;
+        var operatorCreated = operatorUser is null;
         var clientCreated = client is null;
         if (administratorCreated || rotateAdministrator)
             administratorPassword = requestedAdministratorPassword ?? passwordFactory();
+        if (operatorCreated || rotateOperator)
+        {
+            do { operatorPassword = requestedOperatorPassword ?? passwordFactory(); }
+            while (string.Equals(operatorPassword, administratorPassword, StringComparison.Ordinal));
+        }
         if (clientCreated || rotateClient)
         {
             do { clientPassword = requestedClientPassword ?? passwordFactory(); }
-            while (string.Equals(clientPassword, administratorPassword, StringComparison.Ordinal));
+            while (string.Equals(clientPassword, administratorPassword, StringComparison.Ordinal) ||
+                   string.Equals(clientPassword, operatorPassword, StringComparison.Ordinal));
         }
 
         var administratorId = administrator?.Id ?? Guid.NewGuid();
+        var operatorId = operatorUser?.Id ?? Guid.NewGuid();
         var clientId = client?.Id ?? Guid.NewGuid();
         var tenantId = tenant?.Id ?? Guid.NewGuid();
         var administratorHash = administratorCreated || rotateAdministrator
             ? Hash(administratorId, AdministratorEmail, "Administrador da plataforma", administratorPassword, true)
             : administrator!.PasswordHash;
+        var operatorHash = operatorCreated || rotateOperator
+            ? Hash(operatorId, OperatorEmail, "Operador da organização", operatorPassword!, false)
+            : operatorUser!.PasswordHash;
         var clientHash = clientCreated || rotateClient
             ? Hash(clientId, ClientEmail, "Cliente de demonstração", clientPassword!, false)
             : client!.PasswordHash;
@@ -75,6 +92,12 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
             AdministratorName = "Administrador da plataforma",
             AdministratorHash = administratorHash,
             RotateAdministrator = rotateAdministrator,
+            OperatorId = operatorId,
+            OperatorEmail,
+            OperatorNormalized = Normalize(OperatorEmail),
+            OperatorName = "Operador da organização",
+            OperatorHash = operatorHash,
+            RotateOperator = rotateOperator,
             ClientId = clientId,
             ClientEmail,
             ClientNormalized = Normalize(ClientEmail),
@@ -87,19 +110,25 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
             PlanVersionId = planVersionId.Value,
             GrantReason = DemoGrantReason,
             AdministratorMustChangePassword = administratorMustChangePassword,
+            OperatorMustChangePassword = operatorMustChangePassword,
             ClientMustChangePassword = clientMustChangePassword
         }, transaction));
 
         administrator = await FindUserAsync(connection, transaction, Normalize(AdministratorEmail))
             ?? throw new InvalidOperationException("A identidade superadministradora não foi persistida.");
+        operatorUser = await FindUserAsync(connection, transaction, Normalize(OperatorEmail))
+            ?? throw new InvalidOperationException("A identidade operadora não foi persistida.");
         client = await FindUserAsync(connection, transaction, Normalize(ClientEmail))
             ?? throw new InvalidOperationException("A identidade cliente não foi persistida.");
-        var verification = await VerifyAsync(connection, transaction, administratorId, clientId, tenantId);
+        var verification = await VerifyAsync(connection, transaction, administratorId, operatorId, clientId, tenantId);
         var administratorMatches = passwordService.Verify(ToCredential(administrator), administrator.PasswordHash, administratorPassword);
+        var operatorMatches = operatorPassword is not null &&
+            passwordService.Verify(ToCredential(operatorUser), operatorUser.PasswordHash, operatorPassword);
         var clientMatches = clientPassword is not null &&
             passwordService.Verify(ToCredential(client), client.PasswordHash, clientPassword);
         if (!AllVerified(verification) ||
             (administratorCreated || rotateAdministrator) && (!administratorMatches || administrator.MustChangePassword != administratorMustChangePassword) ||
+            (operatorCreated || rotateOperator) && (!operatorMatches || operatorUser.MustChangePassword != operatorMustChangePassword) ||
             (clientCreated || rotateClient) && (!clientMatches || client.MustChangePassword != clientMustChangePassword))
         {
             throw new InvalidOperationException("As pós-condições do provisionamento não foram confirmadas; transação revertida.");
@@ -107,7 +136,7 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
 
         await transaction.CommitAsync();
         return new(administratorPassword, clientPassword, administratorCreated, clientCreated,
-            administratorMatches, clientMatches, verification);
+            administratorMatches, clientMatches, verification, operatorPassword, operatorCreated, operatorMatches);
     }
 
     private static async Task EnsureSchemaAsync(NpgsqlConnection connection, NpgsqlTransaction transaction)
@@ -122,10 +151,12 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
     }
 
     private static async Task ValidateExistingAsync(NpgsqlConnection connection, NpgsqlTransaction transaction,
-        ProvisionedUser? administrator, ProvisionedUser? client, ProvisionedTenant? tenant)
+        ProvisionedUser? administrator, ProvisionedUser? operatorUser, ProvisionedUser? client, ProvisionedTenant? tenant)
     {
         if (administrator is not null && (!administrator.IsPlatformAdministrator || administrator.IsDeleted || administrator.LockedUntil is not null))
             throw new InvalidOperationException($"A identidade {AdministratorEmail} existe, mas não é um superadministrador ativo e desbloqueado; nenhuma alteração foi feita.");
+        if (operatorUser is not null && (operatorUser.IsPlatformAdministrator || operatorUser.IsDeleted || operatorUser.LockedUntil is not null))
+            throw new InvalidOperationException($"A identidade {OperatorEmail} existe com estado ou privilégio incompatível; nenhuma alteração foi feita.");
         if (client is not null && (client.IsPlatformAdministrator || client.IsDeleted || client.LockedUntil is not null))
             throw new InvalidOperationException($"A identidade {ClientEmail} existe com estado ou privilégio incompatível; nenhuma alteração foi feita.");
         if (tenant is not null && (tenant.DisplayName != DemoTenantName || tenant.IsDeleted || tenant.Status != "active"))
@@ -146,10 +177,6 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
             throw new InvalidOperationException($"A identidade {ClientEmail} não possui exatamente um vínculo ativo com a organização de demonstração; conta preservada.");
         if (tenant is null || memberships[0].TenantId != tenant.Id)
             throw new InvalidOperationException("O vínculo existente do cliente não corresponde à organização reservada.");
-        var hasExpectedRole = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
-            "SELECT EXISTS(SELECT 1 FROM odca.member_roles mr JOIN odca.roles r ON r.id=mr.role_id WHERE mr.tenant_id=@tenantId AND mr.user_id=@userId AND r.tenant_id=@tenantId AND r.code='tenant-administrator');",
-            new { tenantId = tenant.Id, userId = client.Id }, transaction));
-        if (!hasExpectedRole) throw new InvalidOperationException("O cliente existente não possui o perfil esperado; conta preservada.");
         var subscription = await connection.QuerySingleOrDefaultAsync<ExistingSubscription>(new CommandDefinition(
             "SELECT p.code AS PlanCode, s.status AS Status, s.commercial_state AS CommercialState, s.manual_grant_reason AS ManualGrantReason FROM odca.subscriptions s JOIN odca.plan_versions p ON p.id=s.plan_version_id WHERE s.tenant_id=@tenantId FOR UPDATE OF s;",
             new { tenantId = tenant.Id }, transaction));
@@ -171,11 +198,20 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
             new { code = DemoTenantCode }, transaction));
 
     private static Task<TestAccessVerification> VerifyAsync(NpgsqlConnection connection, NpgsqlTransaction transaction,
-        Guid administratorId, Guid clientId, Guid tenantId) => connection.QuerySingleAsync<TestAccessVerification>(new CommandDefinition(
-            "SELECT EXISTS(SELECT 1 FROM odca.users WHERE id=@administratorId AND is_platform_administrator AND NOT is_deleted) AS AdministratorPersisted, EXISTS(SELECT 1 FROM odca.users WHERE id=@clientId AND NOT is_platform_administrator AND NOT is_deleted AND locked_until IS NULL) AS ClientPersisted, ((SELECT count(*)=1 FROM odca.memberships WHERE user_id=@clientId) AND EXISTS(SELECT 1 FROM odca.memberships WHERE user_id=@clientId AND tenant_id=@tenantId AND status='active')) AS MembershipActive, EXISTS(SELECT 1 FROM odca.member_roles mr JOIN odca.roles r ON r.id=mr.role_id AND r.tenant_id=mr.tenant_id WHERE mr.tenant_id=@tenantId AND mr.user_id=@clientId AND r.code='tenant-administrator') AS TenantAdministrator, EXISTS(SELECT 1 FROM odca.subscriptions s JOIN odca.plan_versions p ON p.id=s.plan_version_id WHERE s.tenant_id=@tenantId AND s.status='active' AND s.commercial_state='active' AND s.manual_grant_reason=@reason AND p.code='basic') AS BasicPlanActive;",
-            new { administratorId, clientId, tenantId, reason = DemoGrantReason }, transaction));
+        Guid administratorId, Guid operatorId, Guid clientId, Guid tenantId) => connection.QuerySingleAsync<TestAccessVerification>(new CommandDefinition(
+            """
+            SELECT EXISTS(SELECT 1 FROM odca.users WHERE id=@administratorId AND is_platform_administrator AND NOT is_deleted) AS AdministratorPersisted,
+                   EXISTS(SELECT 1 FROM odca.users WHERE id=@clientId AND NOT is_platform_administrator AND NOT is_deleted AND locked_until IS NULL) AS ClientPersisted,
+                   EXISTS(SELECT 1 FROM odca.users WHERE id=@operatorId AND NOT is_platform_administrator AND NOT is_deleted AND locked_until IS NULL) AS OperatorPersisted,
+                   ((SELECT count(*)>=1 FROM odca.memberships WHERE user_id=@clientId) AND EXISTS(SELECT 1 FROM odca.memberships WHERE user_id=@clientId AND tenant_id=@tenantId AND status='active')) AS MembershipActive,
+                   EXISTS(SELECT 1 FROM odca.member_roles mr JOIN odca.roles r ON r.id=mr.role_id AND r.tenant_id=mr.tenant_id WHERE mr.tenant_id=@tenantId AND (mr.user_id=@administratorId OR mr.user_id=@clientId) AND r.code='tenant-administrator') AS TenantAdministrator,
+                   EXISTS(SELECT 1 FROM odca.member_roles mr JOIN odca.roles r ON r.id=mr.role_id AND r.tenant_id=mr.tenant_id WHERE mr.tenant_id=@tenantId AND mr.user_id=@operatorId AND r.code='tenant-operator') AS TenantOperator,
+                   EXISTS(SELECT 1 FROM odca.subscriptions s JOIN odca.plan_versions p ON p.id=s.plan_version_id WHERE s.tenant_id=@tenantId AND s.status='active' AND s.commercial_state='active' AND s.manual_grant_reason=@reason AND p.code='basic') AS BasicPlanActive;
+            """,
+            new { administratorId, operatorId, clientId, tenantId, reason = DemoGrantReason }, transaction));
 
-    private static bool AllVerified(TestAccessVerification value) => value.AdministratorPersisted && value.ClientPersisted && value.MembershipActive && value.TenantAdministrator && value.BasicPlanActive;
+    private static bool AllVerified(TestAccessVerification value) =>
+        value.AdministratorPersisted && value.ClientPersisted && value.OperatorPersisted && value.MembershipActive && value.TenantAdministrator && value.TenantOperator && value.BasicPlanActive;
     private static UserCredential ToCredential(ProvisionedUser user) => new(user.Id, user.Email, user.DisplayName, user.PasswordHash, user.SecurityVersion, user.MustChangePassword, user.IsPlatformAdministrator, user.MfaConfirmedAt is null ? null : new DateTimeOffset(DateTime.SpecifyKind(user.MfaConfirmedAt.Value, DateTimeKind.Utc)), user.IsDeleted, user.LockedUntil is null ? null : new DateTimeOffset(DateTime.SpecifyKind(user.LockedUntil.Value, DateTimeKind.Utc)));
     private static string Normalize(string email) => email.Trim().ToUpperInvariant();
 
@@ -186,6 +222,23 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
     private sealed record ExistingRole(string DisplayName, bool IsSystem);
 }
 
-public sealed record TestAccessVerification(bool AdministratorPersisted, bool ClientPersisted, bool MembershipActive, bool TenantAdministrator, bool BasicPlanActive);
+public sealed record TestAccessVerification(
+    bool AdministratorPersisted,
+    bool ClientPersisted,
+    bool MembershipActive,
+    bool TenantAdministrator,
+    bool BasicPlanActive,
+    bool OperatorPersisted = true,
+    bool TenantOperator = true);
 
-public sealed record TestAccessResult(string AdministratorPassword, string? ClientPassword, bool AdministratorCreated, bool ClientCreated, bool AdministratorPasswordMatches, bool ClientPasswordMatches, TestAccessVerification Verification);
+public sealed record TestAccessResult(
+    string AdministratorPassword,
+    string? ClientPassword,
+    bool AdministratorCreated,
+    bool ClientCreated,
+    bool AdministratorPasswordMatches,
+    bool ClientPasswordMatches,
+    TestAccessVerification Verification,
+    string? OperatorPassword = null,
+    bool OperatorCreated = false,
+    bool OperatorPasswordMatches = false);

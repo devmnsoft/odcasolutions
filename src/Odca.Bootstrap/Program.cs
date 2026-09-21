@@ -407,6 +407,11 @@ public static class BootstrapProgram
         var runtime = ReadJson<DevelopmentRuntime>(paths.RuntimeFile);
         await ShowCredentialAsync(runtime.ConnectionStrings.DatabaseAdmin, "Superadministrador",
             TestAccessProvisioner.AdministratorEmail, credentials.SuperAdministratorPassword);
+        if (!string.IsNullOrWhiteSpace(credentials.OperatorPassword))
+        {
+            await ShowCredentialAsync(runtime.ConnectionStrings.DatabaseAdmin, "Operador da organização",
+                TestAccessProvisioner.OperatorEmail, credentials.OperatorPassword);
+        }
         if (!string.IsNullOrWhiteSpace(credentials.ClientPassword))
         {
             await ShowCredentialAsync(runtime.ConnectionStrings.DatabaseAdmin, "Cliente de demonstração",
@@ -445,7 +450,7 @@ public static class BootstrapProgram
         }
 
         Console.WriteLine($"Senha inicial local (conferida com o banco): {password}");
-        Console.WriteLine($"Perfil: {(user.IsPlatformAdministrator ? "SuperAdministrador" : "Administrador da organização")}");
+        Console.WriteLine($"Perfil: {(user.IsPlatformAdministrator ? "SuperAdministrador" : label)}");
         Console.WriteLine($"Troca inicial obrigatória: {(user.MustChangePassword ? "sim" : "não")}");
     }
 
@@ -464,8 +469,8 @@ public static class BootstrapProgram
             ? args[rotateIndex + 1].ToLowerInvariant()
             : null;
         var rotateAll = args.Contains("--rotate-passwords", StringComparer.OrdinalIgnoreCase);
-        if (rotateAccount is not (null or "admin" or "client"))
-            throw new InvalidOperationException("--rotate-password aceita admin ou client.");
+        if (rotateAccount is not (null or "admin" or "client" or "operator"))
+            throw new InvalidOperationException("--rotate-password aceita admin, client ou operator.");
         var runtime = ReadJson<DevelopmentRuntime>(paths.RuntimeFile);
         if (!runtime.Security.AllowDevelopmentBootstrap)
         {
@@ -498,10 +503,28 @@ public static class BootstrapProgram
         Console.WriteLine($"Destino: host={target.Host}; porta={target.Port}; banco={target.Database}; ambiente=Development");
         var credentials = ReadJson<DevelopmentCredentials>(paths.CredentialsFile);
         string? requestedAdministratorPassword = null;
+        string? requestedOperatorPassword = null;
         string? requestedClientPassword = null;
+
+        var adminPasswordIndex = Array.FindIndex(args, value => value.Equals("--administrator-password", StringComparison.OrdinalIgnoreCase));
+        if (adminPasswordIndex >= 0 && adminPasswordIndex + 1 < args.Length)
+            requestedAdministratorPassword = args[adminPasswordIndex + 1];
+
+        var operatorPasswordIndex = Array.FindIndex(args, value => value.Equals("--operator-password", StringComparison.OrdinalIgnoreCase));
+        if (operatorPasswordIndex >= 0 && operatorPasswordIndex + 1 < args.Length)
+            requestedOperatorPassword = args[operatorPasswordIndex + 1];
+
+        var clientPasswordIndex = Array.FindIndex(args, value => value.Equals("--client-password", StringComparison.OrdinalIgnoreCase));
+        if (clientPasswordIndex >= 0 && clientPasswordIndex + 1 < args.Length)
+            requestedClientPassword = args[clientPasswordIndex + 1];
+
+        var allowImmediateLogin = args.Contains("--allow-immediate-login", StringComparer.OrdinalIgnoreCase);
+        var mustChange = !allowImmediateLogin;
+
         if (args.Contains("--prompt-passwords", StringComparer.OrdinalIgnoreCase))
         {
             requestedAdministratorPassword = ReadSecret("Senha inicial de admin@odca.local (entrada oculta): ");
+            requestedOperatorPassword = ReadSecret("Senha inicial de operador@odca.local (entrada oculta): ");
             requestedClientPassword = ReadSecret("Senha inicial de cliente.teste@odca.local (entrada oculta): ");
         }
         var provisioner = new TestAccessProvisioner(new AspNetPasswordService(),
@@ -509,12 +532,18 @@ public static class BootstrapProgram
         var result = await provisioner.ProvisionAsync(runtime.ConnectionStrings.DatabaseAdmin,
             credentials.SuperAdministratorPassword, credentials.ClientPassword,
             rotateAll || rotateAccount == "admin", rotateAll || rotateAccount == "client", GeneratePassword,
-            requestedAdministratorPassword, requestedClientPassword);
+            requestedAdministratorPassword, requestedClientPassword,
+            administratorMustChangePassword: mustChange, clientMustChangePassword: mustChange,
+            operatorPassword: credentials.OperatorPassword,
+            rotateOperator: rotateAll || rotateAccount == "operator",
+            requestedOperatorPassword: requestedOperatorPassword,
+            operatorMustChangePassword: mustChange);
 
         var updated = credentials with
         {
             SuperAdministratorEmail = TestAccessProvisioner.AdministratorEmail,
             SuperAdministratorPassword = result.AdministratorPassword,
+            OperatorPassword = result.OperatorPassword,
             ClientPassword = result.ClientPassword
         };
         try
@@ -530,8 +559,10 @@ public static class BootstrapProgram
 
         Console.WriteLine($"Persistência verificada: {(AllVerified(result.Verification) ? "sim" : "não")}");
         Console.WriteLine($"Superadministrador: {(result.AdministratorCreated ? "criado" : "já existente e validado")}");
+        Console.WriteLine($"Operador da organização: {(result.OperatorCreated ? "criado" : "já existente e validado")}");
         Console.WriteLine($"Cliente de demonstração: {(result.ClientCreated ? "criado" : "já existente e validado")}");
         Console.WriteLine($"Senha do superadministrador confere: {(result.AdministratorPasswordMatches ? "sim" : "não (arquivo local desatualizado; use --rotate-passwords)")}");
+        Console.WriteLine($"Senha do operador confere: {(result.OperatorPasswordMatches ? "sim" : "não (arquivo local ausente/desatualizado; use --rotate-passwords)")}");
         Console.WriteLine($"Senha do cliente confere: {(result.ClientPasswordMatches ? "sim" : "não (arquivo local ausente/desatualizado; use --rotate-passwords)")}");
         Console.WriteLine("Login HTTP aprovado: não executado por este comando.");
         Console.WriteLine("MFA: superadministrador deve concluir troca inicial e inscrição/desafio; configuração existente foi preservada.");
@@ -539,7 +570,7 @@ public static class BootstrapProgram
     }
 
     private static bool AllVerified(TestAccessVerification value) => value.AdministratorPersisted &&
-        value.ClientPersisted && value.MembershipActive && value.TenantAdministrator && value.BasicPlanActive;
+        value.OperatorPersisted && value.ClientPersisted && value.MembershipActive && value.TenantAdministrator && value.TenantOperator && value.BasicPlanActive;
 
     public static bool IsProvisionTargetAllowed(string environment, string? database, bool allowPostgresDevelopment) =>
         !string.Equals(database, "postgres", StringComparison.OrdinalIgnoreCase) ||
@@ -553,8 +584,8 @@ public static class BootstrapProgram
     {
         var accountIndex = Array.FindIndex(args, value => value.Equals("--account", StringComparison.OrdinalIgnoreCase));
         var account = accountIndex >= 0 && accountIndex + 1 < args.Length ? args[accountIndex + 1].ToLowerInvariant() : null;
-        if (account is not ("admin" or "client"))
-            throw new InvalidOperationException("Informe --account admin ou --account client.");
+        if (account is not ("admin" or "operator" or "client"))
+            throw new InvalidOperationException("Informe --account admin, --account operator ou --account client.");
 
         var forwarded = new List<string> { "provision-test-access", "--environment", "Development" };
         if (args.Contains("--allow-postgres-development", StringComparer.OrdinalIgnoreCase))
@@ -572,11 +603,14 @@ public static class BootstrapProgram
             Path.Combine(paths.RepositoryRoot, "database", "development", "seed-test-access.sql"));
         var result = await provisioner.ProvisionAsync(runtime.ConnectionStrings.DatabaseAdmin,
             credentials.SuperAdministratorPassword, credentials.ClientPassword,
-            account == "admin", account == "client", GeneratePassword);
+            account == "admin", account == "client", GeneratePassword,
+            operatorPassword: credentials.OperatorPassword,
+            rotateOperator: account == "operator");
         WriteJson(paths.CredentialsFile, credentials with
         {
             SuperAdministratorEmail = TestAccessProvisioner.AdministratorEmail,
             SuperAdministratorPassword = result.AdministratorPassword,
+            OperatorPassword = result.OperatorPassword,
             ClientPassword = result.ClientPassword
         });
     }
@@ -731,6 +765,7 @@ public static class BootstrapProgram
         string SuperAdministratorPassword,
         string PostgresAdminPassword,
         string ApplicationDatabasePassword,
+        string? OperatorPassword = null,
         string? ClientPassword = null);
 
     private sealed record LoginVerification(Guid Id, string Email, string DisplayName, string PasswordHash,

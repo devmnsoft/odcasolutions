@@ -216,3 +216,32 @@ body.sidebar-collapsed { --sidebar: 5rem; }
 .details-subpanel{margin-top:.75rem;border-top:1px solid #e0e0e0;padding-top:.5rem}
 .comment-card{border:1px solid var(--border-color,#e2e8f0);border-radius:6px;padding:.75rem;background:var(--card-bg,#fff)}
 :focus-visible{outline:3px solid #78a9ff;outline-offset:2px}
+
+/* Unavailable error dialog (role="alertdialog") */
+.unavailable-dialog {
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  padding: 1rem;
+  max-width: 32rem;
+  width: 90%;
+  box-shadow: 0 20px 40px rgba(16,42,67,.25);
+  margin: 3rem auto;
+}
+.unavailable-dialog::backdrop {
+  background: rgba(11, 32, 51, 0.6);
+  backdrop-filter: blur(2px);
+}
+.unavailable-dialog .dialog-content {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+}
+.unavailable-dialog .dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+

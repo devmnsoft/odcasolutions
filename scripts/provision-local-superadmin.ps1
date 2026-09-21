@@ -2,6 +2,8 @@
 param(
     [string]$AdminEmail = 'admin@odca.local',
     [string]$AdminPassword = 'OdcaAdmin#2026Local',
+    [string]$OperatorEmail = 'operador@odca.local',
+    [string]$OperatorPassword = 'OdcaOperador#2026Local',
     [string]$ClientEmail = 'cliente.teste@odca.local',
     [string]$ClientPassword = 'OdcaCliente#2026Local',
     [switch]$ApplyMigrations,
@@ -29,11 +31,16 @@ if (Test-Path $envFile) {
 
 if ($env:ODCA_DEV_ADMIN_EMAIL) { $AdminEmail = $env:ODCA_DEV_ADMIN_EMAIL }
 if ($env:ODCA_DEV_ADMIN_PASSWORD) { $AdminPassword = $env:ODCA_DEV_ADMIN_PASSWORD }
+if ($env:ODCA_DEV_OPERATOR_EMAIL) { $OperatorEmail = $env:ODCA_DEV_OPERATOR_EMAIL }
+if ($env:ODCA_DEV_OPERATOR_PASSWORD) { $OperatorPassword = $env:ODCA_DEV_OPERATOR_PASSWORD }
 if ($env:ODCA_DEV_CLIENT_EMAIL) { $ClientEmail = $env:ODCA_DEV_CLIENT_EMAIL }
 if ($env:ODCA_DEV_CLIENT_PASSWORD) { $ClientPassword = $env:ODCA_DEV_CLIENT_PASSWORD }
 
 if ($AdminEmail -ne 'admin@odca.local') {
     throw "A identidade reservada do superadministrador local e admin@odca.local. Encontrado '$AdminEmail'."
+}
+if ($OperatorEmail -ne 'operador@odca.local') {
+    throw "A identidade reservada do operador local e operador@odca.local. Encontrado '$OperatorEmail'."
 }
 if ($ClientEmail -ne 'cliente.teste@odca.local') {
     throw "A identidade reservada do cliente local e cliente.teste@odca.local. Encontrado '$ClientEmail'."
@@ -59,11 +66,13 @@ try {
         '--environment', 'Development',
         '--allow-postgres-development',
         '--administrator-password', $AdminPassword,
+        '--operator-password', $OperatorPassword,
         '--client-password', $ClientPassword
     )
     if (-not $RequireInitialPasswordChange) { $arguments += '--allow-immediate-login' }
 
     $env:ODCA_DEV_ADMIN_PASSWORD = $AdminPassword
+    $env:ODCA_DEV_OPERATOR_PASSWORD = $OperatorPassword
     $env:ODCA_DEV_CLIENT_PASSWORD = $ClientPassword
     & dotnet @arguments
     if ($LASTEXITCODE -ne 0) { throw 'Falha no provisionamento; o hash nao foi confirmado no banco.' }
@@ -75,6 +84,8 @@ try {
     Write-Host 'Credenciais de Development confirmadas no banco (nao estao no codigo da API):'
     Write-Host "  Superadministrador  $AdminEmail"
     Write-Host "  Senha               $AdminPassword"
+    Write-Host "  Operador            $OperatorEmail"
+    Write-Host "  Senha               $OperatorPassword"
     Write-Host "  Cliente demo        $ClientEmail"
     Write-Host "  Senha               $ClientPassword"
     Write-Host 'Web: https://localhost:7144/entrar'
