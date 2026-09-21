@@ -16,3 +16,5 @@ public sealed record RenewalRequestDetails(Guid Id, Guid ContractId, string Cont
     DateTimeOffset? FormalizedAt, string? FormalizationJustification);
 public sealed record FormalizeRenewalRequest(Guid EvidenceVersionId, DateOnly FormalizedOn, string Justification, long RowVersion);
 public sealed record ApplyRenewalRequest(long RowVersion);
+public sealed record ApplyRenewalResponse(bool Applied, long ContractVersion, bool ObligationsPreserved, DateOnly? EndsOn);
+

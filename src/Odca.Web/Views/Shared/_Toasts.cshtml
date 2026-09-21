@@ -1,0 +1,68 @@
+@{
+    var successMsg = TempData["Success"] as string 
+        ?? TempData["StudioSuccess"] as string 
+        ?? TempData["SavedViewNotice"] as string 
+        ?? TempData["ContractSheetNotice"] as string;
+
+    var errorMsg = TempData["Error"] as string 
+        ?? TempData["StudioError"] as string 
+        ?? TempData["SavedViewError"] as string 
+        ?? TempData["ContractSheetError"] as string;
+
+    var warningMsg = TempData["Warning"] as string 
+        ?? TempData["LogoutWarning"] as string;
+
+    var conflictMsg = TempData["Conflict"] as string;
+}
+
+@if (!string.IsNullOrWhiteSpace(conflictMsg))
+{
+    <dialog id="conflict-dialog" class="unavailable-dialog" role="alertdialog" open aria-modal="true" aria-labelledby="conflict-dialog-title" aria-describedby="conflict-dialog-desc">
+        <div class="dialog-content card">
+            <h2 id="conflict-dialog-title">Conflito de alteração</h2>
+            <p id="conflict-dialog-desc">@conflictMsg</p>
+            <div class="dialog-actions">
+                <button type="button" class="button button-primary" onclick="window.location.reload();">Recarregar</button>
+                <form method="dialog" style="display:inline;">
+                    <button type="submit" class="button button-quiet">Fechar</button>
+                </form>
+            </div>
+        </div>
+    </dialog>
+}
+
+@if (!string.IsNullOrWhiteSpace(successMsg) || !string.IsNullOrWhiteSpace(errorMsg) || !string.IsNullOrWhiteSpace(warningMsg))
+{
+    <aside class="toast-container" aria-label="Notificações do sistema" id="toast-container">
+        @if (!string.IsNullOrWhiteSpace(successMsg))
+        {
+            <div class="toast toast-success" role="status" data-toast-autodismiss="8000">
+                <div class="toast-body">
+                    <span class="toast-icon" aria-hidden="true">✓</span>
+                    <span class="toast-message">@successMsg</span>
+                </div>
+                <button type="button" class="toast-close" aria-label="Fechar notificação" onclick="this.closest('.toast').remove();">×</button>
+            </div>
+        }
+        @if (!string.IsNullOrWhiteSpace(warningMsg))
+        {
+            <div class="toast toast-warning" role="status">
+                <div class="toast-body">
+                    <span class="toast-icon" aria-hidden="true">⚠</span>
+                    <span class="toast-message">@warningMsg</span>
+                </div>
+                <button type="button" class="toast-close" aria-label="Fechar notificação" onclick="this.closest('.toast').remove();">×</button>
+            </div>
+        }
+        @if (!string.IsNullOrWhiteSpace(errorMsg))
+        {
+            <div class="toast toast-error" role="alert">
+                <div class="toast-body">
+                    <span class="toast-icon" aria-hidden="true">!</span>
+                    <span class="toast-message">@errorMsg</span>
+                </div>
+                <button type="button" class="button button-small button-quiet toast-close-btn" aria-label="Fechar mensagem de erro" onclick="this.closest('.toast').remove();">Fechar</button>
+            </div>
+        }
+    </aside>
+}

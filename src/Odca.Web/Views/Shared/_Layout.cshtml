@@ -27,10 +27,15 @@
         organizationName = activeAccess.OrganizationName;
     }
 
-    var canReadObligations = activeAccess?.HasAnyPermission("tenant.obligations.read", "tenant.obligations.read_all") == true;
-    var canReadRenewals = activeAccess?.HasPermission("tenant.renewals.read") == true;
-    var canReadStudio = activeAccess?.HasAnyPermission("tenant.templates.read", "tenant.contract_drafts.read") == true;
-    var canReadImports = activeAccess?.HasPermission("tenant.imports.read") == true;
+    var isClientDemo = string.Equals(User.Identity?.Name, "cliente.teste@odca.local", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(User.FindFirst("email")?.Value, "cliente.teste@odca.local", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value, "cliente.teste@odca.local", StringComparison.OrdinalIgnoreCase)
+        || User.IsInRole("tenant-client");
+
+    var canReadObligations = !isClientDemo && activeAccess?.HasAnyPermission("tenant.obligations.read", "tenant.obligations.read_all") == true;
+    var canReadRenewals = !isClientDemo && activeAccess?.HasPermission("tenant.renewals.read") == true;
+    var canReadStudio = !isClientDemo && activeAccess?.HasAnyPermission("tenant.templates.read", "tenant.contract_drafts.read") == true;
+    var canReadImports = !isClientDemo && activeAccess?.HasPermission("tenant.imports.read") == true;
     var canReadOrganization = activeAccess?.HasAnyPermission("tenant.organization.read", "tenant.organization.manage") == true;
 }
 <!DOCTYPE html>
@@ -164,6 +169,8 @@
         </header>
         <main class="page-shell" id="main-content">@RenderBody()</main>
     }
+    <partial name="_Toasts" />
+    <partial name="_ConfirmDialog" />
     <script src="~/js/navigation.js" asp-append-version="true"></script>
     <script src="~/js/forms.js" asp-append-version="true"></script>
     <script src="~/js/dialogs.js" asp-append-version="true"></script>

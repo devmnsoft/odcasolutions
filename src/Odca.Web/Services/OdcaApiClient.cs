@@ -64,6 +64,14 @@ public sealed partial class OdcaApiClient(HttpClient client)
         var encoded=string.Join('&',query.Where(x=>!string.IsNullOrWhiteSpace(x.Value)).Select(x=>$"{Uri.EscapeDataString(x.Key)}={Uri.EscapeDataString(x.Value!)}"));
         return SendAsync<RenewalPage>(CreateAuthorized(HttpMethod.Get,$"api/v1/organizations/{tenantId}/renewals?{encoded}",token),false,cancellationToken);
     }
+
+    public async Task<ApiCallResult<ApplyRenewalResponse>> ApplyRenewalAsync(string token, Guid tenantId, Guid requestId, ApplyRenewalRequest request, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/renewals/{requestId}/apply", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<ApplyRenewalResponse>(message, false, ct);
+    }
+
     public Task<ApiCallResult<SavedViewItem[]>> GetSavedViewsAsync(string token, Guid tenantId, string listingType, CancellationToken cancellationToken) =>
         SendAsync<SavedViewItem[]>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/saved-views?listingType={Uri.EscapeDataString(listingType)}", token), false, cancellationToken);
 
