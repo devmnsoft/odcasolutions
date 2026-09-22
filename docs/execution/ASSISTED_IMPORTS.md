@@ -4,7 +4,7 @@
 
 A central acompanha uma versão documental já recebida pela biblioteca segura do contrato. PDF, PNG, JPEG e DOCX operacional são os únicos formatos anunciados. Extensão e assinatura devem coincidir; imagens são limitadas a 12.000 pixels por dimensão e cada arquivo ao limite efetivo do plano (com teto persistido de 25 MiB). O original permanece no armazenamento privado e só é pré-visualizado depois do estado `safe`.
 
-O processamento produz **sugestões**, não cadastros. Aceitar, editar ou rejeitar cada sugestão continua sendo uma decisão do usuário. A confirmação bloqueia sugestões pendentes, revalida a versão da revisão, o tenant, as permissões, o estado do antivírus e o término da extração dentro da mesma transação PostgreSQL. Repetir a confirmação devolve o contrato já associado.
+O processamento produz **sugestões**, não cadastros. Aceitar, editar ou rejeitar cada sugestão continua sendo uma decisão do usuário. Quando não há extração, o mesmo painel permite conferir título, identificação, vigência, valor e moeda manualmente; a falta de OCR não bloqueia um documento já aprovado pelo antivírus. A confirmação bloqueia sugestões pendentes quando existirem e revalida a versão da revisão, o tenant, as permissões, o estado do antivírus e o término da extração, quando solicitada, dentro da mesma transação PostgreSQL. Repetir a confirmação devolve o contrato já associado.
 
 ## Dependências locais
 
@@ -38,6 +38,8 @@ PDF protegido ou corrompido é recusado pelo extrator e fica disponível para di
 2. Inicie API, Web e Worker com `scripts/run-local.ps1`.
 3. Envie o original pela biblioteca documental e solicite a extração.
 4. Registre a versão em `POST /api/v1/organizations/{tenantId}/contract-imports`.
-5. Abra `/organizacoes/{tenantId}/importacoes`, revise as sugestões e confirme somente depois de resolver pendências.
+5. Abra `/organizacoes/{tenantId}/importacoes`, confira os dados manualmente, revise eventuais sugestões e confirme somente depois de resolver pendências.
+
+Salvar a conferência usa versão otimista da importação e do contrato. Uma aba desatualizada recebe conflito em vez de sobrescrever a edição mais recente. Confirmar e cancelar bloqueiam a mesma linha de importação; somente um estado terminal é persistido. Depois da confirmação, a interface abre a ficha canônica, de onde revisão de consultoria, obrigação e histórico continuam nos fluxos existentes.
 
 O conteúdo integral e os trechos extraídos não devem ser registrados em logs. Diagnósticos persistidos usam códigos seguros. O recurso adiciona controles técnicos e trilha de auditoria, mas não constitui, isoladamente, declaração de conformidade integral com a LGPD.

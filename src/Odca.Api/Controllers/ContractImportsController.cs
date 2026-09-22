@@ -142,7 +142,8 @@ public sealed partial class ContractImportsController(
         var item = await c.QuerySingleOrDefaultAsync(new CommandDefinition("""
             SELECT i.id,i.status,i.current_step,i.review_version,i.processing_version,i.attempt_count,i.safe_diagnostic_code,
                    i.result_contract_id,v.document_id,v.id AS document_version_id,v.contract_id,c.version AS contract_version,v.display_name,v.detected_type,
-                   v.security_status,j.id AS extraction_job_id,j.status AS extraction_status
+                   v.security_status,j.id AS extraction_job_id,j.status AS extraction_status,
+                   c.title,c.reference,c.start_date,c.end_date,c.value,c.currency
               FROM odca.contract_imports i JOIN odca.document_versions v ON v.tenant_id=i.tenant_id AND v.id=i.document_version_id
               JOIN odca.contracts c ON c.tenant_id=v.tenant_id AND c.id=v.contract_id
               LEFT JOIN odca.extraction_jobs j ON j.tenant_id=i.tenant_id AND j.id=i.extraction_job_id
@@ -169,13 +170,13 @@ public sealed partial class ContractImportsController(
             SELECT i.status AS Status,i.review_version AS ReviewVersion,i.result_contract_id AS ResultContractId,
                    v.contract_id AS ContractId,v.security_status AS SecurityStatus,j.status AS ExtractionStatus
               FROM odca.contract_imports i JOIN odca.document_versions v ON v.tenant_id=i.tenant_id AND v.id=i.document_version_id
-              JOIN odca.extraction_jobs j ON j.tenant_id=i.tenant_id AND j.id=i.extraction_job_id
+              LEFT JOIN odca.extraction_jobs j ON j.tenant_id=i.tenant_id AND j.id=i.extraction_job_id
              WHERE i.tenant_id=@tenantId AND i.id=@importId FOR UPDATE OF i
             """, new { tenantId, importId }, tx, cancellationToken: ct));
         if (item is null) return NotFound();
         if (item.Status == "confirmed") { await tx.CommitAsync(ct); return Ok(new ContractImportResult(importId, item.ResultContractId!.Value, item.Status, true)); }
         if (item.ReviewVersion != request.ReviewVersion) return Conflict(new { title = "A revisão foi alterada em outra sessão.", currentVersion = item.ReviewVersion });
-        if (item.SecurityStatus != "safe" || item.ExtractionStatus != "ready_for_review") return Conflict(new { title = "O documento ainda não está aprovado e pronto para confirmação." });
+        if (item.SecurityStatus != "safe" || (item.ExtractionStatus is not null && item.ExtractionStatus != "ready_for_review")) return Conflict(new { title = "O documento ainda não está aprovado e pronto para confirmação." });
         var pending = await c.ExecuteScalarAsync<int>(new CommandDefinition("""
             SELECT count(*)::integer FROM odca.extraction_suggestions s JOIN odca.extraction_results r ON r.id=s.result_id AND r.tenant_id=s.tenant_id
             JOIN odca.contract_imports i ON i.extraction_job_id=r.job_id AND i.tenant_id=r.tenant_id
@@ -200,6 +201,45 @@ public sealed partial class ContractImportsController(
         await tx.CommitAsync(ct); return Ok(new ContractImportResult(importId, item.ContractId, "confirmed", false));
     }
 
+    [HttpPost("{importId:guid}/manual-data")]
+    public async Task<IActionResult> SaveManualData(Guid tenantId, Guid importId, SaveManualContractImport request, CancellationToken ct)
+    {
+        var actor = Actor(); if (actor is null) return Unauthorized();
+        var normalized = NormalizeManualData(request);
+        var issues = Validate(new ContractForValidation(normalized.Title, normalized.StartDate, normalized.EndDate, normalized.Value, normalized.Currency, null));
+        if (issues.Any(issue => issue.Severity == ImportIssueSeverity.Blocking))
+            return UnprocessableEntity(new { title = "Corrija os dados antes de continuar.", issues });
+
+        await using var c = await dataSource.OpenConnectionAsync(ct);
+        if (!await Allowed(c, actor.Value, tenantId, "tenant.imports.manage", ct)) return Forbid();
+        await using var tx = await c.BeginTransactionAsync(ct); await SetTenant(c, tenantId, tx, ct);
+        var item = await c.QuerySingleOrDefaultAsync<ManualImportTarget>(new CommandDefinition("""
+            SELECT i.status AS Status,i.review_version AS ReviewVersion,v.contract_id AS ContractId,v.security_status AS SecurityStatus
+              FROM odca.contract_imports i
+              JOIN odca.document_versions v ON v.tenant_id=i.tenant_id AND v.id=i.document_version_id
+             WHERE i.tenant_id=@tenantId AND i.id=@importId FOR UPDATE OF i
+            """, new { tenantId, importId }, tx, cancellationToken: ct));
+        if (item is null) return NotFound();
+        if (item.Status is "confirmed" or "cancelled") return Conflict(new { title = "A importação já foi encerrada." });
+        if (item.SecurityStatus != "safe") return Conflict(new { title = "Aguarde a inspeção de segurança do documento." });
+        if (item.ReviewVersion != normalized.ReviewVersion)
+            return Conflict(new { title = "Os dados foram alterados em outra sessão.", currentVersion = item.ReviewVersion });
+
+        await c.ExecuteAsync(new CommandDefinition("""
+            UPDATE odca.contracts
+               SET title=@Title,reference=@Reference,start_date=@StartDate,end_date=@EndDate,value=@Value,currency=@Currency,
+                   version=version+1,updated_at=now()
+             WHERE tenant_id=@tenantId AND id=@ContractId;
+            UPDATE odca.contract_imports
+               SET status='awaiting_review',current_step='confirmation',review_version=review_version+1,updated_at=now()
+             WHERE tenant_id=@tenantId AND id=@importId;
+            INSERT INTO odca.contract_import_events(tenant_id,import_id,actor_id,event_type,details)
+            VALUES(@tenantId,@importId,@actor,'manual_data_reviewed',jsonb_build_object('contractId',@ContractId));
+            """, new { tenantId, importId, actor, item.ContractId, normalized.Title, normalized.Reference, normalized.StartDate, normalized.EndDate, normalized.Value, normalized.Currency }, tx, cancellationToken: ct));
+        await tx.CommitAsync(ct);
+        return Ok(new { reviewVersion = item.ReviewVersion + 1, status = "awaiting_review" });
+    }
+
     [HttpPost("{importId:guid}/cancel")]
     public async Task<IActionResult> Cancel(Guid tenantId, Guid importId, CancellationToken ct)
     {
@@ -222,20 +262,34 @@ public sealed partial class ContractImportsController(
         var issues = new List<ImportValidationIssue>();
         if (contract is null || string.IsNullOrWhiteSpace(contract.Title))
             issues.Add(new("required-contract-data", ImportIssueSeverity.Blocking, "A identificação do contrato é obrigatória.", "title"));
+        else if (contract.Title.Trim().Length > 160)
+            issues.Add(new("title-too-long", ImportIssueSeverity.Blocking, "O título deve ter no máximo 160 caracteres.", "title"));
         if (contract?.StartDate is not null && contract.EndDate is not null && contract.EndDate < contract.StartDate)
             issues.Add(new("end-before-start", ImportIssueSeverity.Blocking, "O término não pode ser anterior ao início.", "end_date"));
         if (contract?.Value is not null && string.IsNullOrWhiteSpace(contract.Currency))
             issues.Add(new("missing-currency", ImportIssueSeverity.Blocking, "Informe a moeda do valor contratual.", "currency"));
+        if (contract?.Value is < 0)
+            issues.Add(new("negative-value", ImportIssueSeverity.Blocking, "O valor contratual não pode ser negativo.", "value"));
+        if (!string.IsNullOrWhiteSpace(contract?.Currency) &&
+            (contract.Currency.Length != 3 || contract.Currency.Any(character => character is < 'A' or > 'Z')))
+            issues.Add(new("invalid-currency", ImportIssueSeverity.Blocking, "Use o código de moeda ISO com três letras.", "currency"));
         if (contract?.RenewalNoticeDays is < 0)
             issues.Add(new("invalid-notice-period", ImportIssueSeverity.Blocking, "O prazo de comunicação não pode ser negativo.", "renewal_notice_days"));
         return issues;
     }
 
+    internal static SaveManualContractImport NormalizeManualData(SaveManualContractImport request) => request with
+    {
+        Title = request.Title?.Trim() ?? string.Empty,
+        Reference = string.IsNullOrWhiteSpace(request.Reference) ? null : request.Reference.Trim(),
+        Currency = string.IsNullOrWhiteSpace(request.Currency) ? null : request.Currency.Trim().ToUpperInvariant()
+    };
+
     private Guid? Actor() => Guid.TryParse(User.FindFirstValue("sub"), out var id) ? id : null;
     private static Task<bool> Allowed(NpgsqlConnection c, Guid actor, Guid tenant, string permission, CancellationToken ct) => c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT odca.tenant_actor_has_permission(@actor,@tenant,@permission)", new { actor, tenant, permission }, cancellationToken: ct));
     private static Task<int> SetTenant(NpgsqlConnection c, Guid tenant, NpgsqlTransaction tx, CancellationToken ct) => c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@value,true)", new { value = tenant.ToString() }, tx, cancellationToken: ct));
     private static (string Status, string Step) State(string security, string? extraction) =>
-        security switch { "pending" or "scanning" => ("security_review", "document"), "rejected" or "scan_failed" => ("failed", "document"), _ => extraction switch { null => ("received", "document"), "queued" => ("queued", "document"), "processing" => ("processing", "document"), "ready_for_review" => ("awaiting_review", "contract_data"), _ => ("failed", "document") } };
+        security switch { "pending" or "scanning" => ("security_review", "document"), "rejected" or "scan_failed" => ("failed", "document"), _ => extraction switch { null => ("awaiting_review", "contract_data"), "queued" => ("queued", "document"), "processing" => ("processing", "document"), "ready_for_review" => ("awaiting_review", "contract_data"), _ => ("failed", "document") } };
 
     // EventIds 2101/2102 reserved for contract-import list timezone diagnostics.
     [LoggerMessage(EventId = 2101, Level = LogLevel.Error, Message = "Configuração de fuso indisponível para tenant={TenantId}; motivo={Reason}.")]
@@ -246,5 +300,6 @@ public sealed partial class ContractImportsController(
 
     private sealed record ImportSource(Guid VersionId, Guid ContractId, string Sha256, string SecurityStatus, Guid? JobId, string? JobStatus);
     internal sealed record ContractForValidation(string Title, DateOnly? StartDate, DateOnly? EndDate, decimal? Value, string? Currency, int? RenewalNoticeDays);
-    private sealed record ConfirmableImport(string Status, long ReviewVersion, Guid? ResultContractId, Guid ContractId, string SecurityStatus, string ExtractionStatus);
+    private sealed record ConfirmableImport(string Status, long ReviewVersion, Guid? ResultContractId, Guid ContractId, string SecurityStatus, string? ExtractionStatus);
+    private sealed record ManualImportTarget(string Status, long ReviewVersion, Guid ContractId, string SecurityStatus);
 }
