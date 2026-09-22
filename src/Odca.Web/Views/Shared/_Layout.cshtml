@@ -61,13 +61,8 @@
                     {
                         <a class="nav-item @(controller == "Home" ? "active" : null)" aria-label="Visão global" aria-current="@(controller == "Home" ? "page" : null)" asp-controller="Home" asp-action="Index"><span aria-hidden="true">⌂</span><span>Visão global</span></a>
                         <a class="nav-item @(controller == "Customers" ? "active" : null)" asp-controller="Customers" asp-action="Index"><span aria-hidden="true">▣</span><span>Clientes</span></a>
-                        <a class="nav-item" asp-controller="Modules" asp-action="Index" asp-route-module="usuarios"><span aria-hidden="true">◎</span><span>Usuários</span></a>
-                        <a class="nav-item" asp-controller="Modules" asp-action="Index" asp-route-module="perfis"><span aria-hidden="true">◇</span><span>Perfis e permissões</span></a>
                         <a class="nav-item @(controller == "Plans" ? "active" : null)" aria-label="Catálogo de planos" aria-current="@(controller == "Plans" ? "page" : null)" asp-controller="Plans" asp-action="Index"><span aria-hidden="true">▦</span><span>Catálogo de planos</span></a>
-                        <a class="nav-item" asp-controller="Modules" asp-action="Index" asp-route-module="assinaturas"><span aria-hidden="true">≡</span><span>Assinaturas</span></a>
-                        <a class="nav-item" asp-controller="Modules" asp-action="Index" asp-route-module="cobrancas"><span aria-hidden="true">$</span><span>Cobranças e faturas</span></a>
                         <a class="nav-item @(controller == "Customers" ? "active" : null)" asp-controller="Customers" asp-action="Index"><span aria-hidden="true">◫</span><span>Consumo</span></a>
-                        <a class="nav-item" asp-controller="Modules" asp-action="Index" asp-route-module="contratos"><span aria-hidden="true">▤</span><span>Contratos</span></a>
                         @if (!string.IsNullOrWhiteSpace(tenantIdForLinks) && hasActiveMembership)
                         {
                             @if (canReadObligations)
@@ -97,8 +92,6 @@
                                 <a class="nav-item @(controller == "Consumption" ? "active" : null)" asp-controller="Consumption" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">◫</span><span>Plano e consumo</span></a>
                             }
                         }
-                        <a class="nav-item" asp-controller="Modules" asp-action="Index" asp-route-module="auditoria"><span aria-hidden="true">◉</span><span>Auditoria</span></a>
-                        <a class="nav-item" asp-controller="Modules" asp-action="Index" asp-route-module="configuracoes"><span aria-hidden="true">⚙</span><span>Configurações</span></a>
                     }
                     else
                     {
@@ -109,8 +102,6 @@
                         }
                         @if (!string.IsNullOrWhiteSpace(tenantIdForLinks) && hasActiveMembership)
                         {
-                            <a class="nav-item" asp-controller="Modules" asp-action="Index" asp-route-module="contratos"><span aria-hidden="true">▤</span><span>Contratos</span></a>
-                            <a class="nav-item" asp-controller="Modules" asp-action="Index" asp-route-module="documentos"><span aria-hidden="true">▧</span><span>Documentos</span></a>
                             @if (canReadObligations)
                             {
                                 <a class="nav-item @(controller == "Inbox" ? "active" : null)" aria-label="Caixa operacional" aria-current="@(controller == "Inbox" ? "page" : null)" asp-controller="Inbox" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">◫</span><span>Caixa</span></a>

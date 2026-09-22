@@ -14,7 +14,16 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
                    must_change_password AS "MustChangePassword",
                    is_platform_administrator AS "IsPlatformAdministrator",
                    mfa_confirmed_at AS "MfaConfirmedAt",
-                   is_deleted AS "IsDeleted", locked_until AS "LockedUntil"
+                   is_deleted AS "IsDeleted", locked_until AS "LockedUntil",
+                   (is_platform_administrator OR EXISTS (
+                       SELECT 1
+                         FROM odca.memberships m
+                         JOIN odca.tenants t ON t.id = m.tenant_id
+                        WHERE m.user_id = odca.users.id
+                          AND m.status = 'active'
+                          AND t.status = 'active'
+                          AND NOT t.is_deleted
+                   )) AS "HasActiveAccess"
             FROM odca.users
             WHERE email_normalized = @normalizedLogin OR login_normalized = @normalizedLogin
             LIMIT 1;
@@ -23,7 +32,7 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
         var row = await connection.QuerySingleOrDefaultAsync<UserCredentialRow>(
             new CommandDefinition(sql, new { normalizedLogin }, cancellationToken: cancellationToken));
-        return row?.ToModel();
+        return row is { HasActiveAccess: true } ? row.ToModel() : null;
     }
 
     public async Task<UserCredential?> FindByIdAsync(Guid userId, CancellationToken cancellationToken)
@@ -34,14 +43,23 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
                    must_change_password AS "MustChangePassword",
                    is_platform_administrator AS "IsPlatformAdministrator",
                    mfa_confirmed_at AS "MfaConfirmedAt",
-                   is_deleted AS "IsDeleted", locked_until AS "LockedUntil"
+                   is_deleted AS "IsDeleted", locked_until AS "LockedUntil",
+                   (is_platform_administrator OR EXISTS (
+                       SELECT 1
+                         FROM odca.memberships m
+                         JOIN odca.tenants t ON t.id = m.tenant_id
+                        WHERE m.user_id = odca.users.id
+                          AND m.status = 'active'
+                          AND t.status = 'active'
+                          AND NOT t.is_deleted
+                   )) AS "HasActiveAccess"
             FROM odca.users WHERE id = @userId;
             """;
 
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
         var row = await connection.QuerySingleOrDefaultAsync<UserCredentialRow>(
             new CommandDefinition(sql, new { userId }, cancellationToken: cancellationToken));
-        return row?.ToModel();
+        return row is { HasActiveAccess: true } ? row.ToModel() : null;
     }
 
     public async Task RecordFailedLoginAsync(Guid userId, DateTimeOffset occurredAt, CancellationToken cancellationToken)
@@ -125,6 +143,15 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
                    AND u.security_version = @securityVersion
                    AND NOT u.is_deleted
                    AND (u.locked_until IS NULL OR u.locked_until <= @now)
+                   AND (u.is_platform_administrator OR EXISTS (
+                       SELECT 1
+                         FROM odca.memberships m
+                         JOIN odca.tenants t ON t.id = m.tenant_id
+                        WHERE m.user_id = u.id
+                          AND m.status = 'active'
+                          AND t.status = 'active'
+                          AND NOT t.is_deleted
+                   ))
             );
             """;
 
@@ -539,6 +566,8 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
         public DateTime? MfaConfirmedAt { get; init; }
 
         public bool IsDeleted { get; init; }
+
+        public bool HasActiveAccess { get; init; }
 
         public DateTime? LockedUntil { get; init; }
 
