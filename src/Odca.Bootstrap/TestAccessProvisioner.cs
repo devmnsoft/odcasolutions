@@ -99,8 +99,6 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
         if (planVersionId is null)
             throw new InvalidOperationException("Não existe versão Basic publicada e vigente; nenhuma concessão foi criada.");
 
-        await connection.ExecuteAsync(new CommandDefinition(
-            "SET LOCAL odca.bootstrap_seed = 'on';", transaction: transaction));
         await connection.ExecuteAsync(new CommandDefinition(seedSql, transaction: transaction));
         const string rotateSql = """
             UPDATE odca.users

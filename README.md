@@ -71,7 +71,7 @@ dotnet run --project src/Odca.Bootstrap -- show-login
 dotnet run --project src/Odca.Bootstrap -- provision-test-access --environment Development --allow-postgres-development --rotate-passwords
 ```
 
-O arquivo `database/development/seed-test-access.sql` também pode ser executado diretamente pelo `psql` 18 após `migrate`. Ele usa um bloco PL/pgSQL nativo, hashes ASP.NET Identity v3 compatíveis e recusa alvos não locais; o provisionador acima continua sendo o fluxo preferencial porque valida todos os pós-requisitos antes do commit. Consulte `docs/execution/LOCAL_ACCESS.md` para o comando e caminhos alternativos do cliente.
+O arquivo `database/development/seed-test-access.sql` também pode ser executado diretamente pelo `psql` 18 após `migrate`. Ele usa um bloco PL/pgSQL nativo, hashes ASP.NET Identity v3 compatíveis e recusa alvos não locais. A primeira execução cria as contas reservadas; reexecuções preservam hash, MFA e sessões. Rotação de credenciais é feita somente pelo Bootstrap com `--rotate-passwords`. O provisionador continua sendo o fluxo preferencial porque valida todos os pós-requisitos antes do commit. Consulte `docs/execution/LOCAL_ACCESS.md` para o comando e caminhos alternativos do cliente.
 
 `show-login` consulta o banco configurado e só exibe uma senha inicial local quando ela confere com o hash persistido. A senha precisa ser alterada no primeiro acesso. Para recuperação explícita somente do superadministrador:
 

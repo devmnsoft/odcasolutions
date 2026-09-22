@@ -75,12 +75,14 @@ public sealed class RuntimeQueryRegressionTests
         var source = ReadSource("Odca.Infrastructure", "Consumption", "NpgsqlConsumptionRepository.cs");
 
         Assert.Contains("QueryAsync<PlatformCustomerRow>", source, StringComparison.Ordinal);
-        Assert.Contains("public DateTime LastActivity { get; set; }", source, StringComparison.Ordinal);
+        Assert.Contains("public DateTime? LastActivity { get; set; }", source, StringComparison.Ordinal);
         Assert.Contains("COALESCE(\"PlanName\", 'Sem plano') AS \"PlanName\"", source, StringComparison.Ordinal);
         Assert.Contains("COALESCE(\"SubscriptionStatus\", 'sem_assinatura') AS \"SubscriptionStatus\"", source, StringComparison.Ordinal);
         Assert.Contains("COALESCE(\"ActiveUsers\", 0)::int AS \"ActiveUsers\"", source, StringComparison.Ordinal);
         Assert.Contains("COALESCE(\"UsedBytes\", 0)::bigint AS \"UsedBytes\"", source, StringComparison.Ordinal);
-        Assert.Contains("COALESCE(\"LastActivity\", NOW()) AS \"LastActivity\"", source, StringComparison.Ordinal);
+        Assert.Contains("\"LastActivity\" AS \"LastActivity\"", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("COALESCE(\"LastActivity\", NOW())", source, StringComparison.Ordinal);
+        Assert.Contains("row.PendingRequests, ToOffset(row.LastActivity)", source, StringComparison.Ordinal);
         Assert.Contains("@search::text", source, StringComparison.Ordinal);
     }
 
