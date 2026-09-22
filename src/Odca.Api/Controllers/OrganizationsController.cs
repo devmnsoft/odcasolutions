@@ -58,6 +58,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
             row.ValidInvitations,
             row.SeatLimit,
             row.AvailableSeats,
+            row.HasContracts,
             row.Pendencies.Select(x => new OrganizationPendency(x.Message, x.Tab, x.StatusFilter)).ToList()));
     }
 

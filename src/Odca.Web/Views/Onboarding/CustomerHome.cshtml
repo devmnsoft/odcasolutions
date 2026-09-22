@@ -11,7 +11,10 @@
             <h1>@home.OrganizationName</h1>
             <p class="muted">Estado comercial: <strong>@home.CommercialState</strong>. O uso operacional permanece limitado até ativação comercial validada.</p>
         </div>
-        <a class="button" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@home.TenantId">Abrir equipe</a>
+        <div class="button-row">
+            <a class="button button-primary" asp-controller="Onboarding" asp-action="GettingStarted" asp-route-tenantId="@home.TenantId">Continuar configuração</a>
+            <a class="button" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@home.TenantId">Abrir equipe</a>
+        </div>
     </div>
 
     <div class="metrics">

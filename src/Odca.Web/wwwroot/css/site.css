@@ -352,3 +352,22 @@ body.sidebar-collapsed { --sidebar: 5rem; }
     width: 100%;
   }
 }
+
+/* Guided onboarding uses the same cards and navy palette as the authenticated shell. */
+.getting-started { max-width: 960px; margin: 0 auto; }
+.onboarding-progress { display: grid; gap: 1rem; margin-bottom: 1rem; }
+.progress-track { height: .75rem; overflow: hidden; border-radius: 999px; background: #dfe8f1; }
+.progress-track > span { display: block; height: 100%; border-radius: inherit; background: var(--accent, #1769aa); transition: width .2s ease; }
+.onboarding-steps { display: grid; gap: 1rem; padding: 0; list-style: none; }
+.onboarding-step { display: grid; grid-template-columns: 2.5rem 1fr; gap: 1rem; }
+.onboarding-step.completed { border-left: .25rem solid var(--success, #18794e); }
+.step-number { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 50%; background: #e8f0f8; color: #12395b; font-weight: 700; }
+.completed .step-number { background: #e8f7ef; color: var(--success, #18794e); }
+.step-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }
+.step-title-row h2 { margin: 0; flex: 1 1 16rem; }
+.step-state, .badge { border-radius: 999px; padding: .25rem .6rem; background: #eef3f7; font-size: .8125rem; font-weight: 700; }
+.permission-note { padding: .75rem; border-left: .2rem solid #6b7f91; background: #f4f7fa; }
+.how-to { margin-top: 1rem; }
+.how-to summary { cursor: pointer; font-weight: 700; }
+@media (max-width: 480px) { .onboarding-step { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .progress-track > span { transition: none; } }

@@ -1,0 +1,59 @@
+@model GettingStartedPageViewModel
+@{
+    ViewData["Title"] = "Primeiros passos";
+    var percent = Model.Steps.Count == 0 ? 0 : Model.CompletedSteps * 100 / Model.Steps.Count;
+}
+<section class="getting-started">
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Configuração inicial</p>
+            <h1>Primeiros passos</h1>
+            <p class="muted">Continue a configuração de <strong>@Model.Home.OrganizationName</strong>. O progresso abaixo vem dos dados atuais da organização.</p>
+        </div>
+        <a class="button button-quiet" asp-action="CustomerHome">Voltar à visão geral</a>
+    </header>
+
+    <section class="card onboarding-progress" aria-labelledby="progress-title">
+        <div>
+            <h2 id="progress-title">Progresso real</h2>
+            <p>@Model.CompletedSteps de @Model.Steps.Count etapas atendidas. Etapas sem permissão não impedem o uso do sistema.</p>
+        </div>
+        <div class="progress-track" role="progressbar" aria-label="Progresso da configuração" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@percent">
+            <span style="width:@percent%"></span>
+        </div>
+    </section>
+
+    <ol class="onboarding-steps">
+        @for (var index = 0; index < Model.Steps.Count; index++)
+        {
+            var step = Model.Steps[index];
+            <li class="card onboarding-step @(step.Completed ? "completed" : null)">
+                <span class="step-number" aria-hidden="true">@(step.Completed ? "✓" : (index + 1).ToString())</span>
+                <div class="step-content">
+                    <div class="step-title-row">
+                        <h2>@step.Title</h2>
+                        @if (step.Optional) { <span class="badge">Opcional</span> }
+                        <span class="step-state">@(step.Completed ? "Concluída" : step.Available ? "Pendente" : "Depende de permissão")</span>
+                    </div>
+                    <p>@step.Description</p>
+                    <p class="muted"><strong>Quem pode executar:</strong> @step.Responsible.</p>
+                    @if (step.Available)
+                    {
+                        <a class="button @(step.Completed ? "button-quiet" : "button-primary")"
+                           asp-controller="@step.Controller" asp-action="@step.Action" asp-route-tenantId="@Model.Home.TenantId">@step.ActionLabel</a>
+                    }
+                    else
+                    {
+                        <p class="permission-note" role="note">Peça a um administrador para concluir esta etapa. Você pode continuar nas áreas liberadas para o seu perfil.</p>
+                    }
+                </div>
+            </li>
+        }
+    </ol>
+
+    <details class="card how-to">
+        <summary>Como usar</summary>
+        <p>Comece pela primeira etapa pendente que seu perfil permita executar. “Perfil” é o conjunto de permissões do membro; “convite” reserva acesso para um e-mail até ser aceito, revogado ou expirar. O limite de usuários vem do plano contratado.</p>
+        <p>Abrir uma tela não conclui uma etapa. Os indicadores mudam somente quando os dados correspondentes são gravados.</p>
+    </details>
+</section>

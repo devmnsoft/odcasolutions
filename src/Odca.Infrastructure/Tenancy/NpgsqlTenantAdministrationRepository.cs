@@ -139,7 +139,8 @@ public sealed class NpgsqlTenantAdministrationRepository(
                    AND e.enabled
                  LIMIT 1), 0) AS "SeatLimit",
               (SELECT count(*)::int FROM odca.tenant_invitations WHERE tenant_id = @tenantId AND status = 'failed') AS "FailedInvitations",
-              (SELECT count(*)::int FROM odca.memberships WHERE tenant_id = @tenantId AND status = 'blocked') AS "BlockedMembers";
+              (SELECT count(*)::int FROM odca.memberships WHERE tenant_id = @tenantId AND status = 'blocked') AS "BlockedMembers",
+              EXISTS(SELECT 1 FROM odca.contracts WHERE tenant_id = @tenantId) AS "HasContracts";
             """,
             new { tenantId },
             transaction,
@@ -167,6 +168,7 @@ public sealed class NpgsqlTenantAdministrationRepository(
             metrics.ValidInvitations,
             metrics.SeatLimit,
             Math.Max(0, metrics.SeatLimit - metrics.ActiveMembers - metrics.ValidInvitations),
+            metrics.HasContracts,
             pendencies);
 
         await transaction.CommitAsync(cancellationToken);
@@ -1154,5 +1156,6 @@ public sealed class NpgsqlTenantAdministrationRepository(
         int ValidInvitations,
         long SeatLimit,
         int FailedInvitations,
-        int BlockedMembers);
+        int BlockedMembers,
+        bool HasContracts);
 }

@@ -11,6 +11,7 @@ public sealed record OrganizationOverviewResponse(
     int ValidInvitations,
     long SeatLimit,
     long AvailableSeats,
+    bool HasContracts,
     IReadOnlyList<OrganizationPendency> Pendencies);
 
 public sealed record UpdateOrganizationRequest(string Name, string Timezone, long Version);
