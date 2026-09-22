@@ -32,6 +32,24 @@ Os estados continuam sendo os estados canônicos da revisão sequencial:
 `superseded`. Este ciclo não criou estados concorrentes nem fez a conclusão do
 atendimento aprovar um contrato automaticamente.
 
+## Matriz de transições e concorrência
+
+| Origem | Ação | Destino | Permissão | Validações e efeitos |
+|---|---|---|---|---|
+| versão gerada | enviar para revisão | `in_review` | `tenant.reviews.request` | versão imutável, revisor elegível e chave idempotente; cria solicitação, passo atual, evento e notificação pelo fluxo do Studio |
+| `in_review` | mensagem pública ou nota interna | sem alteração | `tenant.reviews.read`; nota exige `tenant.reviews.decide` | mensagem não altera estado; UUID impede duplicação; conteúdo interno é filtrado no servidor |
+| `in_review` | solicitar ajustes | `changes_requested` | `tenant.reviews.decide`, pelo revisor atual | justificativa, versão esperada e bloqueio da solicitação; passo, solicitação e evento são gravados na mesma transação |
+| `in_review` | aprovar versão | `internally_approved` | `tenant.reviews.decide`, pelo revisor atual | justificativa e versão esperada; a versão aprovada é a indicada no detalhe e aprovação não equivale a assinatura |
+| `changes_requested` | responder/reenviar | nova revisão `in_review` | fluxo contratual do solicitante | uma nova versão não herda aprovação; eventos e decisões anteriores permanecem no histórico |
+| aberto | cancelar | `cancelled` | `tenant.reviews.cancel` | somente pelo endpoint canônico que revalida escopo e estado; não há exclusão física |
+
+O endpoint de decisão bloqueia a linha da solicitação antes de conferir repetição.
+A chave idempotente fica vinculada à ação e à versão esperada: repetir o mesmo
+conteúdo devolve o recibo persistido, enquanto reutilizá-la com outro conteúdo
+gera conflito. Atualizações condicionais conferem a versão e só inserem o evento
+quando passo e solicitação foram alterados; o commit ocorre antes da resposta de
+sucesso.
+
 ## Aplicação e validação
 
 Execute `dotnet run --project src/Odca.Bootstrap -- migrate`; a migration 022 é
