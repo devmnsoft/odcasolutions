@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using Dapper;
+using Npgsql;
 using Odca.Bootstrap;
 using Odca.Contracts.Identity;
 using Odca.Infrastructure.Identity;
@@ -102,6 +104,49 @@ public sealed class DevelopmentAccessProvisioningTests(DatabaseFixture database)
         using var wrong = await http.PostAsJsonAsync("/api/v1/auth/login",
             new LoginRequest(TestAccessProvisioner.ClientEmail, "Wrong!Password2026"));
         Assert.Equal(HttpStatusCode.Unauthorized, wrong.StatusCode);
+    }
+
+    [Fact]
+    public async Task ClientCannotAuthenticateOrKeepSessionWhenDemoTenantIsBlocked()
+    {
+        var seed = FindRepositoryFile("database", "development", "seed-test-access.sql");
+        var provisioner = new TestAccessProvisioner(new AspNetPasswordService(), seed);
+        var provisioned = await provisioner.ProvisionAsync(
+            database.AdminConnectionString,
+            TestAccessProvisioner.AdministratorInitialPassword,
+            TestAccessProvisioner.ClientInitialPassword,
+            false,
+            false,
+            () => throw new InvalidOperationException("Credenciais reservadas devem ser reutilizadas."),
+            requestedAdministratorPassword: TestAccessProvisioner.AdministratorInitialPassword,
+            requestedClientPassword: TestAccessProvisioner.ClientInitialPassword,
+            operatorPassword: null,
+            rotateOperator: false);
+
+        await using var factory = database.CreateApi();
+        using var http = factory.CreateClient();
+        var client = await LoginAsync(http, TestAccessProvisioner.ClientEmail, provisioned.ClientPassword!);
+
+        await using var connection = new NpgsqlConnection(database.AdminConnectionString);
+        await connection.ExecuteAsync(
+            "UPDATE odca.tenants SET status = 'suspended' WHERE business_code = 'ODCA-DEMO-LOCAL';");
+        try
+        {
+            using var rejectedLogin = await http.PostAsJsonAsync(
+                "/api/v1/auth/login",
+                new LoginRequest(TestAccessProvisioner.ClientEmail, provisioned.ClientPassword!));
+            Assert.Equal(HttpStatusCode.Unauthorized, rejectedLogin.StatusCode);
+
+            using var authenticatedRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v1/organizations");
+            authenticatedRequest.Headers.Authorization = new("Bearer", client.AccessToken);
+            using var rejectedSession = await http.SendAsync(authenticatedRequest);
+            Assert.Equal(HttpStatusCode.Unauthorized, rejectedSession.StatusCode);
+        }
+        finally
+        {
+            await connection.ExecuteAsync(
+                "UPDATE odca.tenants SET status = 'active' WHERE business_code = 'ODCA-DEMO-LOCAL';");
+        }
     }
 
     private static async Task<LoginResponse> LoginAsync(HttpClient client, string email, string password)
