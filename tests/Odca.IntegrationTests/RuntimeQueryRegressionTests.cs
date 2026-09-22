@@ -55,6 +55,35 @@ public sealed class RuntimeQueryRegressionTests
         Assert.Contains("new DateTimeOffset(row.OccurredAt)", source, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void PlatformDashboardMapsProviderTimestampAndNullSafeAliasedAuditFields()
+    {
+        var source = ReadSource("Odca.Infrastructure", "Dashboard", "NpgsqlPlatformDashboardRepository.cs");
+
+        Assert.Contains("ReadAsync<PlatformAuditEventRow>", source, StringComparison.Ordinal);
+        Assert.Contains("public DateTime OccurredAt { get; set; }", source, StringComparison.Ordinal);
+        Assert.Contains("occurred_at AS \"OccurredAt\"", source, StringComparison.Ordinal);
+        Assert.Contains("COALESCE(result, 'unknown') AS \"Result\"", source, StringComparison.Ordinal);
+        Assert.Contains("COALESCE(actor_name, 'Sistema') AS \"ActorName\"", source, StringComparison.Ordinal);
+        Assert.Contains("COALESCE(tenant_name, 'Plataforma') AS \"TenantName\"", source, StringComparison.Ordinal);
+        Assert.Contains("new DateTimeOffset(row.OccurredAt)", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PlatformCustomersUseExactAliasesCastsDefaultsAndProviderTimestampRow()
+    {
+        var source = ReadSource("Odca.Infrastructure", "Consumption", "NpgsqlConsumptionRepository.cs");
+
+        Assert.Contains("QueryAsync<PlatformCustomerRow>", source, StringComparison.Ordinal);
+        Assert.Contains("public DateTime LastActivity { get; set; }", source, StringComparison.Ordinal);
+        Assert.Contains("COALESCE(\"PlanName\", 'Sem plano') AS \"PlanName\"", source, StringComparison.Ordinal);
+        Assert.Contains("COALESCE(\"SubscriptionStatus\", 'sem_assinatura') AS \"SubscriptionStatus\"", source, StringComparison.Ordinal);
+        Assert.Contains("COALESCE(\"ActiveUsers\", 0)::int AS \"ActiveUsers\"", source, StringComparison.Ordinal);
+        Assert.Contains("COALESCE(\"UsedBytes\", 0)::bigint AS \"UsedBytes\"", source, StringComparison.Ordinal);
+        Assert.Contains("COALESCE(\"LastActivity\", NOW()) AS \"LastActivity\"", source, StringComparison.Ordinal);
+        Assert.Contains("@search::text", source, StringComparison.Ordinal);
+    }
+
     private static string ReadSource(params string[] path)
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);
