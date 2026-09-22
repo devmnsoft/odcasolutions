@@ -30,6 +30,7 @@ public sealed record OrganizationOverview(
     int ValidInvitations,
     long SeatLimit,
     long AvailableSeats,
+    bool HasContracts,
     IReadOnlyList<OrganizationPendencyItem> Pendencies);
 public sealed record TeamMember(Guid UserId, string Name, string Email, string Status, string[] Roles);
 public sealed record TeamMemberDetail(Guid UserId, string Name, string Email, string Status, Guid[] RoleIds, string[] Roles, int SecurityVersion);

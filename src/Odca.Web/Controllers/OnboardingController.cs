@@ -8,7 +8,7 @@ using Odca.Web.Services;
 
 namespace Odca.Web.Controllers;
 
-public sealed class OnboardingController(OdcaApiClient apiClient) : Controller
+public sealed class OnboardingController(OdcaApiClient apiClient, IUserTenantContext tenantContext) : Controller
 {
     [AllowAnonymous]
     [HttpGet("contratar/{planCode?}")]
@@ -113,4 +113,64 @@ public sealed class OnboardingController(OdcaApiClient apiClient) : Controller
             Overview = overview
         });
     }
+    [Authorize]
+    [HttpGet("organizacoes/{tenantId:guid}/primeiros-passos")]
+    public async Task<IActionResult> GettingStarted(Guid tenantId, CancellationToken cancellationToken)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null)
+        {
+            return RedirectToAction("Login", "Account");
+        }
+
+        var homeResult = await apiClient.GetCustomerHomeAsync(token, tenantId, cancellationToken);
+        if (!homeResult.Succeeded || homeResult.Value!.TenantId != tenantId)
+        {
+            return homeResult.Status == ApiCallStatus.Unauthorized
+                ? RedirectToAction("Login", "Account")
+                : Forbid();
+        }
+
+        OrganizationOverviewResponse? overview = null;
+        var overviewResult = await apiClient.GetOrganizationOverviewAsync(token, tenantId, cancellationToken);
+        if (overviewResult.Succeeded)
+        {
+            overview = overviewResult.Value;
+        }
+
+        var home = homeResult.Value;
+        var access = await tenantContext.GetAccessAsync(tenantId, cancellationToken);
+        if (access is null)
+        {
+            return Forbid();
+        }
+
+        var canManageTeam = access.HasPermission("tenant.team.manage");
+        var canManageOrganization = access.HasPermission("tenant.organization.manage");
+        var canCreateContract = access.HasPermission("tenant.contract_drafts.manage");
+        var canReadPendencies = access.HasAnyPermission("tenant.obligations.read", "tenant.obligations.read_all");
+        var teamStarted = overview is not null && (overview.ActiveMembers > 1 || overview.ValidInvitations > 0);
+        var steps = new List<GettingStartedStepViewModel>
+        {
+            new("Confira os dados da organização", "Revise nome, fuso horário e situação antes de iniciar a operação.",
+                "Administrador da organização", "Conferir cadastro", "Organizations", "Edit",
+                home.TenantStatus == "active", canManageOrganization),
+            new("Confira o plano e os recursos", "Veja a versão contratada, limites e o estado comercial definido pelo servidor.",
+                "Administrador da organização", "Ver plano e consumo", "Consumption", "Index",
+                home.CommercialState == "active", access.HasPermission("tenant.organization.read") || canManageOrganization),
+            new("Convide sua equipe", "Convites reservam assentos até expirar. Escolha somente perfis dentro da sua autoridade.",
+                "Quem administra a equipe", "Abrir convites", "Organizations", "Team",
+                teamStarted, canManageTeam, Optional: true),
+            new("Crie o primeiro contrato", "Use um modelo publicado para criar uma minuta persistida e gerar a primeira versão.",
+                "Quem pode editar minutas", "Abrir modelos", "Studio", "Index",
+                overview?.HasContracts == true, canCreateContract),
+            new("Consulte as próximas ações", "Abra a central para acompanhar obrigações, prazos e itens que exigem atenção.",
+                "Quem consulta obrigações", "Abrir pendências", "Inbox", "Index",
+                overview is not null && overview.Pendencies.Count == 0, canReadPendencies)
+        };
+
+        ViewData["OrganizationName"] = home.OrganizationName;
+        return View(new GettingStartedPageViewModel { Home = home, Overview = overview, Steps = steps });
+    }
+
 }

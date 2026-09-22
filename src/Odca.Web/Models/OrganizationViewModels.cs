@@ -110,3 +110,22 @@ public sealed class CustomerHomePageViewModel
     public required CustomerHomeResponse Home { get; init; }
     public OrganizationOverviewResponse? Overview { get; init; }
 }
+
+public sealed class GettingStartedPageViewModel
+{
+    public required CustomerHomeResponse Home { get; init; }
+    public OrganizationOverviewResponse? Overview { get; init; }
+    public required IReadOnlyList<GettingStartedStepViewModel> Steps { get; init; }
+    public int CompletedSteps => Steps.Count(step => step.Completed);
+}
+
+public sealed record GettingStartedStepViewModel(
+    string Title,
+    string Description,
+    string Responsible,
+    string ActionLabel,
+    string Controller,
+    string Action,
+    bool Completed,
+    bool Available,
+    bool Optional = false);

@@ -263,11 +263,20 @@ public sealed partial class OdcaApiClient(HttpClient client)
         return await SendAsync<ConfirmCustomerRegistrationResponse>(message, invalidCredentialsOnUnauthorized: false, cancellationToken);
     }
 
-    public async Task<ApiCallResult<CustomerHomeResponse>> GetCustomerHomeAsync(
+    public Task<ApiCallResult<CustomerHomeResponse>> GetCustomerHomeAsync(
         string accessToken,
         CancellationToken cancellationToken)
+        => GetCustomerHomeAsync(accessToken, null, cancellationToken);
+
+    public async Task<ApiCallResult<CustomerHomeResponse>> GetCustomerHomeAsync(
+        string accessToken,
+        Guid? tenantId,
+        CancellationToken cancellationToken)
     {
-        using var message = CreateAuthorized(HttpMethod.Get, "api/v1/onboarding/customer-home", accessToken);
+        var path = tenantId is null
+            ? "api/v1/onboarding/customer-home"
+            : $"api/v1/onboarding/customer-home?tenantId={tenantId.Value:D}";
+        using var message = CreateAuthorized(HttpMethod.Get, path, accessToken);
         return await SendAsync<CustomerHomeResponse>(message, invalidCredentialsOnUnauthorized: false, cancellationToken);
     }
 

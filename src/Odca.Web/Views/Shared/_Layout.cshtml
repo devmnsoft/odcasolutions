@@ -101,6 +101,10 @@
                     else
                     {
                         <a class="nav-item @(controller == "Onboarding" ? "active" : null)" aria-label="Visão geral" aria-current="@(controller == "Onboarding" ? "page" : null)" asp-controller="Onboarding" asp-action="CustomerHome"><span aria-hidden="true">⌂</span><span>Visão geral</span></a>
+                        @if (!string.IsNullOrWhiteSpace(tenantIdForLinks) && hasActiveMembership)
+                        {
+                            <a class="nav-item @(controller == "Onboarding" && ViewContext.RouteData.Values["action"]?.ToString() == "GettingStarted" ? "active" : null)" asp-controller="Onboarding" asp-action="GettingStarted" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">→</span><span>Primeiros passos</span></a>
+                        }
                         @if (canReadOrganization)
                         {
                             <a class="nav-item @(controller == "Organizations" ? "active" : null)" aria-label="Equipe e perfis" aria-current="@(controller == "Organizations" ? "page" : null)" asp-controller="Organizations" asp-action="Index"><span aria-hidden="true">◎</span><span>Equipe e perfis</span></a>
