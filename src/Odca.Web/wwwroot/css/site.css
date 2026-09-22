@@ -52,6 +52,8 @@ button, input, select, textarea { font: inherit; }
 .card, .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }.card { padding: clamp(1.25rem, 3vw, 2rem); }.card h1, .card h2 { color: var(--navy-900); margin-top: 0; }
 .card-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
 .metrics { display: grid; gap: 1rem; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 1.5rem; }
+.button-row { display: flex; flex-wrap: wrap; gap: .75rem; }
+.card + .card { margin-top: 1.5rem; }
 .metric { padding: 1.25rem; text-decoration: none; color: inherit; display: block; }
 .metric span { color: var(--text-muted); display: block; font-size: .875rem; }
 .metric strong { color: var(--navy-900); display: block; font-size: clamp(1.5rem, 3vw, 2rem); margin-top: .25rem; }
@@ -349,4 +351,3 @@ body.sidebar-collapsed { --sidebar: 5rem; }
     width: 100%;
   }
 }
-
