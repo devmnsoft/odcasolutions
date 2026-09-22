@@ -1,10 +1,10 @@
-﻿-- ODCA-MIGRATION 020 CHECKSUM cca28b4b4bcf65f1dfc94e8831b7cc717ab4398494e387f589112b5d2c7e01bc
+﻿-- ODCA-MIGRATION 020 CHECKSUM f98faef3dc88e163bf04e7afb3a5d64c9f3566a4294d6b7145e8c5d037f5feb8
 BEGIN;
 SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
 
 DO $odca$
 DECLARE
-    expected_checksum constant char(64) := 'cca28b4b4bcf65f1dfc94e8831b7cc717ab4398494e387f589112b5d2c7e01bc';
+    expected_checksum constant char(64) := 'f98faef3dc88e163bf04e7afb3a5d64c9f3566a4294d6b7145e8c5d037f5feb8';
     recorded_checksum char(64);
 BEGIN
     SELECT checksum INTO recorded_checksum FROM odca.schema_migrations WHERE version = 20;
@@ -303,6 +303,6 @@ WHERE r.scope_type='tenant' AND r.code='tenant-administrator'
 ON CONFLICT DO NOTHING;
 
 INSERT INTO odca.schema_migrations(version,name,checksum)
-VALUES(20,'Support sessions, billing invoices, and operational LGPD','cca28b4b4bcf65f1dfc94e8831b7cc717ab4398494e387f589112b5d2c7e01bc') ON CONFLICT(version) DO NOTHING;
+VALUES(20,'Support sessions, billing invoices, and operational LGPD','f98faef3dc88e163bf04e7afb3a5d64c9f3566a4294d6b7145e8c5d037f5feb8') ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 020
