@@ -84,6 +84,30 @@ public sealed class RuntimeQueryRegressionTests
         Assert.Contains("@search::text", source, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ConsumptionSummaryAndStorageRequestsUseProviderRowsAndExactAliases()
+    {
+        var source = ReadSource("Odca.Infrastructure", "Consumption", "NpgsqlConsumptionRepository.cs");
+
+        Assert.Contains("QuerySingleOrDefaultAsync<SummaryRow>", source, StringComparison.Ordinal);
+        Assert.Contains("public DateTime? PeriodStart{get;set;}", source, StringComparison.Ordinal);
+        Assert.Contains("s.created_at AS \"PeriodStart\"", source, StringComparison.Ordinal);
+        Assert.Contains("AS \"ActiveUsers\"", source, StringComparison.Ordinal);
+        Assert.Contains("QueryAsync<AdditionalStorageRequestRow>", source, StringComparison.Ordinal);
+        Assert.Contains("QuerySingleOrDefaultAsync<AdditionalStorageRequestRow>", source, StringComparison.Ordinal);
+        Assert.Contains("public DateTime RequestedAt{get;set;}", source, StringComparison.Ordinal);
+        Assert.Contains("r.requested_at AS \"RequestedAt\"", source, StringComparison.Ordinal);
+        Assert.Contains("ToOffset(row.DecidedAt)", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DashboardActiveUsersHasExplicitIntegerCastAndAlias()
+    {
+        var source = ReadSource("Odca.Infrastructure", "Dashboard", "NpgsqlPlatformDashboardRepository.cs");
+
+        Assert.Contains("active_users::int AS \"ActiveUsers\"", source, StringComparison.Ordinal);
+    }
+
     private static string ReadSource(params string[] path)
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

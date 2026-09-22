@@ -14,7 +14,7 @@ public sealed class NpgsqlPlatformDashboardRepository(NpgsqlDataSource dataSourc
                    active_tenants AS "ActiveTenants",
                    blocked_tenants AS "BlockedTenants",
                    inactive_tenants AS "InactiveTenants",
-                   active_users AS "ActiveUsers",
+                   active_users::int AS "ActiveUsers",
                    contracts AS "Contracts",
                    contracts_expiring AS "ContractsExpiring",
                    open_obligations AS "OpenObligations",
