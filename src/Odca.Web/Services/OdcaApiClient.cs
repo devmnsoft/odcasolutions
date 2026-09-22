@@ -30,6 +30,13 @@ public sealed partial class OdcaApiClient(HttpClient client)
         request.Content = JsonContent.Create(body);
         return await SendAsync<JsonElement>(request, false, ct);
     }
+
+    public async Task<ApiCallResult<JsonElement>> DecideReviewAsync(string token, Guid tenantId, Guid reviewId, DecideReviewRequest body, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/reviews/{reviewId}/decision", token);
+        message.Content = JsonContent.Create(body);
+        return await SendAsync<JsonElement>(message, false, ct);
+    }
     public async Task<(HttpStatusCode Status, byte[]? Content, string? ContentType)> GetDocumentPreviewAsync(string token, Guid tenantId, Guid contractId, Guid documentId, Guid versionId, CancellationToken ct)
     {
         using var request = CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contracts/{contractId}/documents/{documentId}/versions/{versionId}/content", token);

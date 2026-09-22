@@ -54,19 +54,31 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
         var actor = Actor(); if (actor is null) return Unauthorized();
         if (request.Kind is not ("renewal" or "amendment") || string.IsNullOrWhiteSpace(request.Reason)) return ValidationProblem();
         if (request.ProposedEndDate < request.ProposedStartDate || request.ProposedValue < 0 || (request.ProposedValue.HasValue && string.IsNullOrWhiteSpace(request.Currency))) return ValidationProblem();
+        if (request.ValueChangeMode is not (null or "total" or "increase" or "decrease"))
+            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]> {{ "valueChangeMode", ["Use total, increase ou decrease."] }}));
         await using var c = await dataSource.OpenConnectionAsync(ct); if (!await Allowed(c, actor.Value, tenantId, "tenant.renewals.prepare", ct)) return Forbid();
         await using var tx = await c.BeginTransactionAsync(ct); await SetTenant(c, tenantId, actor.Value, tx, ct);
         var organizationToday=await OrganizationToday(c,tenantId,tx,ct);if(request.EffectiveOn<organizationToday)return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"effectiveOn",["Datas retroativas não são aceitas."]}}));
         var contract = await c.QuerySingleOrDefaultAsync<ContractBase>(new CommandDefinition("SELECT start_date AS StartDate,end_date AS EndDate,value AS Value,currency AS Currency,owner_id AS OwnerId,version AS Version FROM odca.contracts WHERE tenant_id=@tenantId AND id=@contractId FOR UPDATE", new { tenantId, contractId }, tx, cancellationToken: ct));
         if (contract is null) return NotFound(); if (contract.Version != request.ContractVersion) return Conflict(new { title = "O contrato mudou. Faça uma nova análise.", currentVersion = contract.Version });
+        if (request.DraftId.HasValue && !await c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.contract_drafts WHERE tenant_id=@tenantId AND contract_id=@contractId AND id=@draftId)", new { tenantId, contractId, request.DraftId }, tx, cancellationToken:ct)))
+            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]> {{ "draftId", ["A minuta deve pertencer ao contrato e à organização."] }}));
+        var proposedValue = request.ValueChangeMode switch
+        {
+            "increase" when contract.Value.HasValue && request.ProposedValue.HasValue => contract.Value + request.ProposedValue,
+            "decrease" when contract.Value.HasValue && request.ProposedValue.HasValue => contract.Value - request.ProposedValue,
+            _ => request.ProposedValue
+        };
+        if (proposedValue < 0 || request.ValueChangeMode is "increase" or "decrease" && !contract.Value.HasValue)
+            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]> {{ "proposedValue", ["Acréscimo ou redução exige valor atual e não pode resultar em valor negativo."] }}));
         var id = Guid.NewGuid();
         var inserted = await c.ExecuteScalarAsync<Guid?>(new CommandDefinition("""
-                WITH created AS (INSERT INTO odca.contract_change_requests(id,tenant_id,contract_id,kind,author_id,responsible_id,reason,current_start_date,current_end_date,proposed_start_date,proposed_end_date,current_value,proposed_value,currency,current_operational_owner_id,effective_on,source_document_version_id,base_contract_version,idempotency_key)
-                VALUES(@id,@tenantId,@contractId,@kind,@actor,@responsibleId,@reason,@currentStart,@currentEnd,@proposedStart,@proposedEnd,@currentValue,@proposedValue,@currency,@currentOwner,@effectiveOn,@sourceDocument,@baseVersion,@idempotencyKey)
+                WITH created AS (INSERT INTO odca.contract_change_requests(id,tenant_id,contract_id,kind,author_id,responsible_id,reason,current_start_date,current_end_date,proposed_start_date,proposed_end_date,current_value,proposed_value,currency,current_operational_owner_id,effective_on,source_document_version_id,draft_id,base_contract_version,idempotency_key,other_changes)
+                VALUES(@id,@tenantId,@contractId,@kind,@actor,@responsibleId,@reason,@currentStart,@currentEnd,@proposedStart,@proposedEnd,@currentValue,@proposedValue,@currency,@currentOwner,@effectiveOn,@sourceDocument,@draftId,@baseVersion,@idempotencyKey,jsonb_build_array(jsonb_build_object('field','value','mode',COALESCE(@valueChangeMode,'total'))))
                 ON CONFLICT DO NOTHING RETURNING id)
                 INSERT INTO odca.contract_change_events(tenant_id,request_id,actor_id,event_type,details)
                 SELECT @tenantId,id,@actor,'created',jsonb_build_object('baseContractVersion',@baseVersion) FROM created RETURNING request_id;
-                """, new { id, tenantId, contractId, kind=request.Kind, actor, request.ResponsibleId, reason=request.Reason.Trim(), currentStart=contract.StartDate, currentEnd=contract.EndDate, proposedStart=request.ProposedStartDate, proposedEnd=request.ProposedEndDate, currentValue=contract.Value, proposedValue=request.ProposedValue, currency=request.Currency?.Trim().ToUpperInvariant() ?? contract.Currency, currentOwner=contract.OwnerId, effectiveOn=request.EffectiveOn, sourceDocument=request.SourceDocumentVersionId, baseVersion=contract.Version, request.IdempotencyKey }, tx, cancellationToken: ct));
+                """, new { id, tenantId, contractId, kind=request.Kind, actor, request.ResponsibleId, reason=request.Reason.Trim(), currentStart=contract.StartDate, currentEnd=contract.EndDate, proposedStart=request.ProposedStartDate, proposedEnd=request.ProposedEndDate, currentValue=contract.Value, proposedValue, currency=request.Currency?.Trim().ToUpperInvariant() ?? contract.Currency, currentOwner=contract.OwnerId, effectiveOn=request.EffectiveOn, sourceDocument=request.SourceDocumentVersionId, request.DraftId, baseVersion=contract.Version, request.IdempotencyKey, request.ValueChangeMode }, tx, cancellationToken: ct));
         if (!inserted.HasValue)
         {
             var existing=await c.ExecuteScalarAsync<Guid?>(new CommandDefinition("SELECT id FROM odca.contract_change_requests WHERE tenant_id=@tenantId AND idempotency_key=@key",new{tenantId,key=request.IdempotencyKey},tx,cancellationToken:ct));
