@@ -18,6 +18,7 @@ public sealed class AgendaController(OdcaApiClient api) : Controller
         int? day = null,
         string scope = "mine",
         Guid? ownerId = null,
+        string? kind = null,
         CancellationToken ct = default)
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
@@ -28,11 +29,12 @@ public sealed class AgendaController(OdcaApiClient api) : Controller
         var token = await HttpContext.GetTokenAsync("access_token");
         if (token is null) return Challenge();
 
-        var result = await api.GetAgendaAsync(token, tenantId, year.Value, month.Value, scope, ownerId, ct);
+        var result = await api.GetAgendaAsync(token, tenantId, year.Value, month.Value, scope, ownerId, kind, ct);
         if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
 
-        var page = result.Value ?? new(year.Value, month.Value, new DateOnly(year.Value, month.Value, 1), new DateOnly(year.Value, month.Value, 1), [], 0);
+        var fallbackDay = new DateOnly(year.Value, month.Value, 1);
+        var page = result.Value ?? new(year.Value, month.Value, fallbackDay, fallbackDay, fallbackDay, [], 0);
 
         // Filter days by ?day= if provided
         if (day.HasValue && page.Days.Count > 0)
@@ -51,6 +53,7 @@ public sealed class AgendaController(OdcaApiClient api) : Controller
         {
             Page = page,
             Scope = scope,
+            Kind = kind,
             Day = day,
             Error = result.Succeeded ? null : result.UserMessage("Não foi possível abrir a agenda do mês.")
         });

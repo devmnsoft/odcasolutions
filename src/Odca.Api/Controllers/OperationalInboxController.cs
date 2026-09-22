@@ -33,24 +33,25 @@ public sealed class OperationalInboxController(
         if (actor is null) return Unauthorized();
 
         await using var connection = await dataSource.OpenConnectionAsync(ct);
-        if (!await Allowed(connection, actor.Value, tenantId, "tenant.obligations.read", ct))
+        var canReadObligations = await Allowed(connection, actor.Value, tenantId, "tenant.obligations.read", ct);
+        var canReadReviews = await Allowed(connection, actor.Value, tenantId, "tenant.reviews.read", ct);
+        var canReadRenewals = await Allowed(connection, actor.Value, tenantId, "tenant.renewals.read", ct);
+        if (!canReadObligations && !canReadReviews && !canReadRenewals)
             return Forbid();
 
         var readAllObligations = await Allowed(connection, actor.Value, tenantId, "tenant.obligations.read_all", ct);
-        var readAllReviews = await Allowed(connection, actor.Value, tenantId, "tenant.reviews.read", ct)
-            || await Allowed(connection, actor.Value, tenantId, "tenant.reviews.read_all", ct);
-        var readAllRenewals = await Allowed(connection, actor.Value, tenantId, "tenant.renewals.read", ct);
 
         var organization = scope.Equals("organization", StringComparison.OrdinalIgnoreCase);
-        if (organization && !readAllObligations)
-            return Forbid();
 
         var pageDto = await inbox.QueryAsync(
             tenantId,
             actor.Value,
+            canReadObligations,
             organization && readAllObligations,
-            organization && readAllReviews,
-            organization && readAllRenewals,
+            canReadReviews,
+            organization && canReadReviews,
+            canReadRenewals,
+            organization && canReadRenewals,
             new OperationalInboxQuery(scope, kind, urgency, contractId, ownerId, page, pageSize),
             ct);
         return Ok(pageDto);
@@ -63,31 +64,35 @@ public sealed class OperationalInboxController(
         [FromQuery] int month,
         [FromQuery] string scope = "mine",
         [FromQuery] Guid? ownerId = null,
+        [FromQuery] string? kind = null,
         CancellationToken ct = default)
     {
         var actor = Actor();
         if (actor is null) return Unauthorized();
 
         await using var connection = await dataSource.OpenConnectionAsync(ct);
-        if (!await Allowed(connection, actor.Value, tenantId, "tenant.obligations.read", ct))
+        var canReadObligations = await Allowed(connection, actor.Value, tenantId, "tenant.obligations.read", ct);
+        var canReadReviews = await Allowed(connection, actor.Value, tenantId, "tenant.reviews.read", ct);
+        var canReadRenewals = await Allowed(connection, actor.Value, tenantId, "tenant.renewals.read", ct);
+        if (!canReadObligations && !canReadReviews && !canReadRenewals)
             return Forbid();
 
         var organization = scope.Equals("organization", StringComparison.OrdinalIgnoreCase);
-        var canReadTenant = false;
-        if (organization)
-        {
-            canReadTenant = await Allowed(connection, actor.Value, tenantId, "tenant.obligations.read_all", ct);
-            if (!canReadTenant)
-                return Forbid();
-        }
+        var canReadAllObligations = canReadObligations
+            && await Allowed(connection, actor.Value, tenantId, "tenant.obligations.read_all", ct);
 
         try
         {
             var page = await agenda.QueryAsync(
                 tenantId,
                 actor.Value,
-                canReadTenant,
-                new MonthlyAgendaQuery(year, month, scope, ownerId),
+                canReadObligations,
+                organization && canReadAllObligations,
+                canReadReviews,
+                organization && canReadReviews,
+                canReadRenewals,
+                organization && canReadRenewals,
+                new MonthlyAgendaQuery(year, month, scope, ownerId, kind),
                 ct);
             return Ok(page);
         }

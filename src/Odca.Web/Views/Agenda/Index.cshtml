@@ -12,10 +12,29 @@
         <p class="muted">Somente a janela @Model.Page.From.ToString("dd/MM") – @Model.Page.To.ToString("dd/MM"). O navegador não recebe o catálogo inteiro.</p>
     </div>
     <nav>
-        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@previous.Year" asp-route-month="@previous.Month" asp-route-scope="@Model.Scope">Mês anterior</a>
-        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@next.Year" asp-route-month="@next.Month" asp-route-scope="@Model.Scope">Próximo mês</a>
+        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@previous.Year" asp-route-month="@previous.Month" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind">Mês anterior</a>
+        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@Model.Page.Today.Year" asp-route-month="@Model.Page.Today.Month" asp-route-day="@Model.Page.Today.Day" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind">Hoje</a>
+        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@next.Year" asp-route-month="@next.Month" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind">Próximo mês</a>
     </nav>
 </header>
+<form method="get" class="filter-bar" aria-label="Filtros da agenda">
+    <input type="hidden" name="year" value="@Model.Page.Year" />
+    <input type="hidden" name="month" value="@Model.Page.Month" />
+    <label for="agenda-kind">Tipo</label>
+    <select id="agenda-kind" name="kind">
+        <option value="">Todos os tipos autorizados</option>
+        <option value="Obligation" selected="@(Model.Kind == "Obligation")">Obrigações</option>
+        <option value="Review" selected="@(Model.Kind == "Review")">Revisões</option>
+        <option value="Renewal" selected="@(Model.Kind == "Renewal")">Renovações</option>
+    </select>
+    <label for="agenda-scope">Escopo</label>
+    <select id="agenda-scope" name="scope">
+        <option value="mine" selected="@(Model.Scope == "mine")">Minhas pendências</option>
+        <option value="organization" selected="@(Model.Scope == "organization")">Organização</option>
+    </select>
+    <button class="button button-primary" type="submit">Aplicar filtros</button>
+    <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@Model.Page.Year" asp-route-month="@Model.Page.Month">Limpar filtros</a>
+</form>
 @if (!string.IsNullOrWhiteSpace(emptyNotice))
 {
     <div class="banner-notice-warning" role="status">@emptyNotice
@@ -30,7 +49,7 @@
 {
     <div class="active-filters" aria-label="Filtro de dia ativo">
         <span>Filtrando: <strong>dia @Model.Day.Value</strong></span>
-        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@Model.Page.Year" asp-route-month="@Model.Page.Month" asp-route-scope="@Model.Scope">Remover filtro</a>
+        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@Model.Page.Year" asp-route-month="@Model.Page.Month" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind">Remover filtro</a>
     </div>
 }
 <p>@Model.Page.Total ocorrência(s) no mês.</p>

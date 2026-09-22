@@ -36,7 +36,8 @@ public sealed record MonthlyAgendaQuery(
     int Year,
     int Month,
     string Scope = "mine",
-    Guid? OwnerId = null);
+    Guid? OwnerId = null,
+    string? Kind = null);
 
 public sealed record MonthlyAgendaDayDto(
     DateOnly Day,
@@ -47,6 +48,7 @@ public sealed record MonthlyAgendaPageDto(
     int Month,
     DateOnly From,
     DateOnly To,
+    DateOnly Today,
     IReadOnlyList<MonthlyAgendaDayDto> Days,
     int Total);
 
