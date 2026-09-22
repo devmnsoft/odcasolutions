@@ -52,7 +52,7 @@ public sealed class NpgsqlConsumptionRepository(NpgsqlDataSource dataSource) : I
                    COALESCE("UsedBytes", 0)::bigint AS "UsedBytes",
                    COALESCE("LimitBytes", 0)::bigint AS "LimitBytes",
                    COALESCE("PendingRequests", 0)::int AS "PendingRequests",
-                   COALESCE("LastActivity", NOW()) AS "LastActivity"
+                   "LastActivity" AS "LastActivity"
               FROM odca.platform_consumption_customers(@actor, @search::text);
             """;
 
@@ -71,7 +71,7 @@ public sealed class NpgsqlConsumptionRepository(NpgsqlDataSource dataSource) : I
         return rows.Select(row => new PlatformCustomer(
             row.TenantId, row.Name, row.MaskedDocument, row.PlanName, row.TenantStatus,
             row.SubscriptionStatus, row.ActiveUsers, row.UsedBytes, row.LimitBytes,
-            row.PendingRequests, new DateTimeOffset(row.LastActivity))).ToArray();
+            row.PendingRequests, ToOffset(row.LastActivity))).ToArray();
     }
 
     private async Task<bool> MutatePlatform(Guid actorId,Guid tenantId,Func<NpgsqlConnection,NpgsqlTransaction,CancellationToken,Task<bool>> action,CancellationToken cancellationToken){await using var c=await dataSource.OpenConnectionAsync(cancellationToken);await using var tx=await c.BeginTransactionAsync(cancellationToken);await Context(c,tx,actorId,tenantId,cancellationToken);var ok=await action(c,tx,cancellationToken);if(ok)await tx.CommitAsync(cancellationToken);else await tx.RollbackAsync(cancellationToken);return ok;}
@@ -95,7 +95,7 @@ public sealed class NpgsqlConsumptionRepository(NpgsqlDataSource dataSource) : I
         public long UsedBytes { get; set; }
         public long LimitBytes { get; set; }
         public int PendingRequests { get; set; }
-        public DateTime LastActivity { get; set; }
+        public DateTime? LastActivity { get; set; }
     }
     private sealed class AdditionalStorageRequestRow { public Guid Id{get;set;} public string PackageName{get;set;}="";public int PackageVersion{get;set;}public int Quantity{get;set;}public long TotalBytes{get;set;}public decimal? TotalPrice{get;set;}public string? Currency{get;set;}public string Terms{get;set;}="";public string Status{get;set;}="";public string RequestedBy{get;set;}="";public DateTime RequestedAt{get;set;}public string? DecidedBy{get;set;}public DateTime? DecidedAt{get;set;}public string? DecisionReason{get;set;} }
     private static AdditionalStorageRequest ToContract(AdditionalStorageRequestRow row)=>new(row.Id,row.PackageName,row.PackageVersion,row.Quantity,row.TotalBytes,row.TotalPrice,row.Currency,row.Terms,row.Status,row.RequestedBy,new DateTimeOffset(row.RequestedAt),row.DecidedBy,ToOffset(row.DecidedAt),row.DecisionReason);

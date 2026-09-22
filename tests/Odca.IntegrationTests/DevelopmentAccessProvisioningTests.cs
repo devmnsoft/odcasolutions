@@ -30,6 +30,10 @@ public sealed class DevelopmentAccessProvisioningTests(DatabaseFixture database)
         Assert.DoesNotContain("@TenantId", sql, StringComparison.Ordinal);
         Assert.DoesNotContain(TestAccessProvisioner.AdministratorInitialPassword, sql, StringComparison.Ordinal);
         Assert.DoesNotContain(TestAccessProvisioner.ClientInitialPassword, sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("SET password_hash", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("UPDATE odca.sessions", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("failed_login_count=0", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Reexecution deliberately preserves password hashes", sql, StringComparison.Ordinal);
         Assert.Contains(TestAccessProvisioner.DemoTenantName, sql, StringComparison.Ordinal);
         Assert.Contains(TestAccessProvisioner.DemoTenantCode, sql, StringComparison.Ordinal);
     }

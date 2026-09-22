@@ -53,21 +53,8 @@ BEGIN
         RAISE EXCEPTION 'A reserved local identity already exists with an incompatible id or privilege.';
     END IF;
 
-    -- Direct psql execution restores the two documented credentials. The Bootstrap sets
-    -- this transaction-local marker because it supplies freshly generated Identity hashes itself.
-    IF current_setting('odca.bootstrap_seed', true) IS DISTINCT FROM 'on' THEN
-        UPDATE odca.users
-           SET password_hash = CASE id WHEN v_administrator_id THEN v_administrator_hash ELSE v_client_hash END,
-               must_change_password=true, security_version=security_version+1,
-               failed_login_count=0, locked_until=NULL, password_changed_at=NULL,
-               email_verified_at=COALESCE(email_verified_at,now()), updated_at=now()
-         WHERE id IN (v_administrator_id,v_client_id)
-           AND password_hash IS DISTINCT FROM CASE id WHEN v_administrator_id THEN v_administrator_hash ELSE v_client_hash END;
-        UPDATE odca.sessions SET revoked_at=COALESCE(revoked_at,now())
-         WHERE user_id IN (v_administrator_id,v_client_id) AND revoked_at IS NULL;
-    END IF;
-    UPDATE odca.users SET failed_login_count=0, locked_until=NULL, email_verified_at=COALESCE(email_verified_at,now()), updated_at=now()
-     WHERE id IN (v_administrator_id,v_operator_id,v_client_id);
+    -- Reexecution deliberately preserves password hashes, MFA enrollment and sessions.
+    -- Credential rotation is an explicit Bootstrap operation, never a side effect of this seed.
     INSERT INTO odca.tenants (id,business_code,display_name,status) VALUES (v_tenant_id,'12345678000195','Cliente Teste ODCA','active')
     ON CONFLICT (business_code) DO UPDATE
        SET display_name=EXCLUDED.display_name,status='active',is_deleted=false,deleted_at=NULL,deleted_by=NULL,deletion_reason=NULL,updated_at=now();
