@@ -40,4 +40,17 @@ public sealed class ReviewsController(OdcaApiClient api) : Controller
         TempData[result.Succeeded?"ReviewNotice":"ReviewError"]=result.Succeeded?"Mensagem registrada no histórico.":result.UserMessage("Não foi possível registrar a mensagem.");
         return RedirectToAction(nameof(Detail),new{tenantId,reviewId});
     }
+
+    [HttpPost("{reviewId:guid}/decisao")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Decide(Guid tenantId,Guid reviewId,string action,string justification,long expectedVersion,CancellationToken ct=default)
+    {
+        var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
+        var result=await api.DecideReviewAsync(token,tenantId,reviewId,new DecideReviewRequest(action,justification,expectedVersion,Guid.NewGuid()),ct);
+        if(result.Status==ApiCallStatus.Forbidden)return Forbid();
+        TempData[result.Succeeded?"ReviewNotice":"ReviewError"]=result.Succeeded
+            ? action=="approve"?"Versão aprovada internamente. A formalização ainda deve ser registrada.":"Ajustes solicitados; uma nova versão deverá ser enviada."
+            : result.UserMessage("Não foi possível registrar a decisão. Atualize a página e tente novamente.");
+        return RedirectToAction(nameof(Detail),new{tenantId,reviewId});
+    }
 }

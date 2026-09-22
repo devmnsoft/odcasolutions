@@ -100,6 +100,38 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
         await tx.CommitAsync(ct); return Ok(new { id });
     }
 
+    [HttpPost("{reviewId:guid}/decision")]
+    public async Task<IActionResult> Decide(Guid tenantId, Guid reviewId, DecideReviewRequest request, CancellationToken ct)
+    {
+        var actor = Actor(); if (actor is null) return Unauthorized();
+        if (request.Action is not ("approve" or "request_changes") || string.IsNullOrWhiteSpace(request.Justification))
+            return ValidationProblem("Informe uma decisão e uma justificativa.");
+        await using var connection = await dataSource.OpenConnectionAsync(ct);
+        if (!await Allowed(connection, actor.Value, tenantId, "tenant.reviews.decide", ct)) return Forbid();
+        await using var tx = await connection.BeginTransactionAsync(ct); await SetTenant(connection, tenantId, actor.Value, tx, ct);
+        var prior = await connection.QuerySingleOrDefaultAsync<DecisionReceipt>(new CommandDefinition(
+            "SELECT event_type AS EventType,details->>'status' AS Status FROM odca.contract_review_events WHERE tenant_id=@tenantId AND review_id=@reviewId AND details->>'idempotencyKey'=@key LIMIT 1",
+            new { tenantId, reviewId, key=request.IdempotencyKey.ToString() }, tx, cancellationToken:ct));
+        if (prior is not null) { await tx.CommitAsync(ct); return Ok(new { status=prior.Status, replayed=true }); }
+        var review = await connection.QuerySingleOrDefaultAsync<DecisionRow>(new CommandDefinition("""
+            SELECT r.row_version AS Version,r.generated_version_id AS GeneratedVersionId,s.id AS StepId,s.reviewer_id AS ReviewerId
+            FROM odca.contract_review_requests r JOIN odca.contract_review_steps s ON s.tenant_id=r.tenant_id AND s.review_id=r.id AND s.status='current'
+            WHERE r.tenant_id=@tenantId AND r.id=@reviewId AND r.status='in_review' FOR UPDATE OF r,s
+            """, new { tenantId, reviewId }, tx, cancellationToken:ct));
+        if (review is null || review.ReviewerId != actor.Value) return Conflict(new { title="A revisão não está disponível para decisão deste responsável." });
+        if (review.Version != request.ExpectedVersion) return Conflict(new { title="A revisão foi alterada em outra sessão.", currentVersion=review.Version });
+        var status=request.Action=="approve"?"internally_approved":"changes_requested";
+        var stepStatus=request.Action=="approve"?"approved":"changes_requested";
+        await connection.ExecuteAsync(new CommandDefinition("""
+            UPDATE odca.contract_review_steps SET status=@stepStatus,decided_by=@actor,decided_at=now(),justification=@reason WHERE tenant_id=@tenantId AND id=@stepId AND status='current';
+            UPDATE odca.contract_review_requests SET status=@status,completed_at=CASE WHEN @status='internally_approved' THEN now() ELSE NULL END,row_version=row_version+1,updated_at=now() WHERE tenant_id=@tenantId AND id=@reviewId AND row_version=@expected;
+            UPDATE odca.generated_contract_versions SET review_status=CASE WHEN @status='internally_approved' THEN 'internally_approved' ELSE review_status END WHERE tenant_id=@tenantId AND id=@generatedVersionId;
+            UPDATE odca.contract_change_requests SET status=CASE WHEN @status='internally_approved' THEN 'awaiting_formalization' ELSE 'draft' END,row_version=row_version+1,updated_at=now() WHERE tenant_id=@tenantId AND review_id=@reviewId AND generated_version_id=@generatedVersionId AND status='in_review';
+            INSERT INTO odca.contract_review_events(tenant_id,review_id,actor_id,event_type,details) VALUES(@tenantId,@reviewId,@actor,@event,jsonb_build_object('status',@status,'justification',@reason,'idempotencyKey',@key));
+            """, new { tenantId, reviewId, actor, review.StepId, stepStatus, status, reason=request.Justification.Trim(), expected=request.ExpectedVersion, review.GeneratedVersionId, event=$"review.{request.Action}", key=request.IdempotencyKey.ToString() }, tx, cancellationToken:ct));
+        await tx.CommitAsync(ct); return Ok(new { status, version=request.ExpectedVersion+1, replayed=false });
+    }
+
     private Guid? Actor()=>Guid.TryParse(User.FindFirstValue("sub"),out var id)?id:null;
     private static async Task<bool> Allowed(NpgsqlConnection c,Guid actor,Guid tenant,string permission,CancellationToken ct)=>await c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT odca.has_tenant_permission(@actor,@tenant,@permission)",new{actor,tenant,permission},cancellationToken:ct));
     private static Task SetTenant(NpgsqlConnection c,Guid tenant,Guid actor,CancellationToken ct)=>c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenant::text,false),set_config('odca.user_id',@actor::text,false)",new{tenant,actor},cancellationToken:ct));
@@ -107,4 +139,6 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
     private static ReviewQueueItem Map(QueueRow r)=>new(r.Id,r.ContractId,r.Contract,r.Status,r.Requester,r.Assignee,r.OpenedAt,r.UpdatedAt,r.DueAt,r.Version,r.PublicMessages,r.PendingComments);
     private sealed record QueueRow(Guid Id,Guid ContractId,string Contract,string Status,string Requester,string? Assignee,DateTimeOffset OpenedAt,DateTimeOffset UpdatedAt,DateTimeOffset? DueAt,long Version,int PublicMessages,int PendingComments);
     private sealed record DetailRow(Guid Id,Guid ContractId,Guid RequestedBy,string Contract,string Status,string Requester,string? Assignee,string? Instructions,DateTimeOffset OpenedAt,DateTimeOffset UpdatedAt,DateTimeOffset? DueAt,long Version);
+    private sealed record DecisionRow(long Version,Guid? GeneratedVersionId,Guid StepId,Guid ReviewerId);
+    private sealed record DecisionReceipt(string EventType,string Status);
 }

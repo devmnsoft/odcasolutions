@@ -8,7 +8,8 @@ public sealed record RenewalFilterOptions(IReadOnlyList<RenewalOption> Owners, I
 public sealed record RenewalOption(string Value, string Label);
 public sealed record CreateRenewalRequest(Guid IdempotencyKey, Guid ResponsibleId, string Kind, string Reason,
     DateOnly EffectiveOn, DateOnly? ProposedStartDate, DateOnly? ProposedEndDate, decimal? ProposedValue,
-    string? Currency, string? ProposedScope, Guid? SourceDocumentVersionId, long ContractVersion);
+    string? Currency, string? ProposedScope, Guid? SourceDocumentVersionId, long ContractVersion,
+    Guid? DraftId = null, string? ValueChangeMode = null);
 public sealed record RenewalRequestDetails(Guid Id, Guid ContractId, string ContractName, string Kind, string Status,
     string ApplicationStatus, string Reason, DateOnly? CurrentStartDate, DateOnly? CurrentEndDate,
     DateOnly? ProposedStartDate, DateOnly? ProposedEndDate, decimal? CurrentValue, decimal? ProposedValue,
@@ -17,4 +18,3 @@ public sealed record RenewalRequestDetails(Guid Id, Guid ContractId, string Cont
 public sealed record FormalizeRenewalRequest(Guid EvidenceVersionId, DateOnly FormalizedOn, string Justification, long RowVersion);
 public sealed record ApplyRenewalRequest(long RowVersion);
 public sealed record ApplyRenewalResponse(bool Applied, long ContractVersion, bool ObligationsPreserved, DateOnly? EndsOn);
-
