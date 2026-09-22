@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using Odca.Web.Controllers;
 using Odca.Web.Middleware;
 using Odca.Web.Services;
 
@@ -8,6 +10,34 @@ namespace Odca.Domain.Tests;
 
 public sealed class BffAccessAndIndisponibilidadeTests
 {
+    [Theory]
+    [InlineData("usuarios")]
+    [InlineData("cobrancas")]
+    [InlineData("auditoria")]
+    public void TenantUserCannotOpenPlatformPlaceholderModules(string module)
+    {
+        var controller = ModuleController(platformAdministrator: false);
+
+        Assert.IsType<NotFoundResult>(controller.Index(module));
+    }
+
+    [Fact]
+    public void PlatformAdministratorCannotOpenTenantOnlyHelpModule()
+    {
+        var controller = ModuleController(platformAdministrator: true);
+
+        Assert.IsType<NotFoundResult>(controller.Index("ajuda"));
+    }
+
+    [Fact]
+    public void KnownModuleReturnsControlledViewForItsAudience()
+    {
+        var controller = ModuleController(platformAdministrator: false);
+
+        var result = Assert.IsType<ViewResult>(controller.Index("documentos"));
+        Assert.NotNull(result.Model);
+    }
+
     [Fact]
     public void OperatorPermissionsGrantOperationalAccess()
     {
@@ -98,5 +128,25 @@ public sealed class BffAccessAndIndisponibilidadeTests
         context.User = new ClaimsPrincipal(identity);
 
         Assert.Equal(sub, BffErrorHandlingMiddleware.ExtractSub(context));
+    }
+
+    private static ModulesController ModuleController(bool platformAdministrator)
+    {
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()) };
+        if (platformAdministrator)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, "SuperAdministrator"));
+        }
+
+        return new ModulesController
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"))
+                }
+            }
+        };
     }
 }

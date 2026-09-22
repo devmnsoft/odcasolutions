@@ -10,6 +10,13 @@
   --shadow: 0 1px 3px rgba(16, 42, 67, .08);
   --sidebar: 17rem;
 }
+
+.controlled-state {
+  border-left: 4px solid #1e68a5;
+  background: linear-gradient(135deg, #fff 0%, #f4f8fc 100%);
+}
+.controlled-state h2 { margin: .9rem 0 .45rem; }
+.controlled-state p { max-width: 70ch; }
 * { box-sizing: border-box; }
 html { font-size: 16px; }
 body { margin: 0; background: var(--background); color: var(--text); font: 400 1rem/1.5 Inter, "Segoe UI", sans-serif; }
@@ -342,5 +349,4 @@ body.sidebar-collapsed { --sidebar: 5rem; }
     width: 100%;
   }
 }
-
 
