@@ -231,6 +231,16 @@ public sealed class MigrationChecksumTests
         Assert.Equal(20, DatabaseSchema.CurrentVersion);
     }
 
+    [Fact]
+    public void ReleaseV021MatchesCanonicalSqlAndRuntimeVersion()
+    {
+        var canonical = FindSql();
+        var snapshot = Path.Combine(Path.GetDirectoryName(canonical)!, "releases", "odca-v021.sql");
+        DatabaseMigrator.ValidateChecksums(File.ReadAllText(snapshot));
+        Assert.Equal(File.ReadAllText(canonical), File.ReadAllText(snapshot));
+        Assert.Equal(21, DatabaseSchema.CurrentVersion);
+    }
+
     private static string FindSql()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

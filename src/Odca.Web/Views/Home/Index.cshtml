@@ -6,7 +6,7 @@
     <div>
         <p class="eyebrow">Visão global</p>
         <h1>Olá, @Model.DisplayName</h1>
-        <p class="muted">Indicadores operacionais mínimos, sem abrir conteúdo de clientes.</p>
+        <p class="muted">Acompanhe a operação da plataforma, vencimentos e pendências sem perder o isolamento entre clientes.</p>
     </div>
 </section>
 @if (TempData["Success"] is string success)
@@ -18,9 +18,47 @@
     <div class="error" role="alert">@error</div>
 }
 <section class="metrics" aria-label="Indicadores da plataforma">
+    <article class="metric"><span>Total de clientes</span><strong>@Model.TotalTenants</strong></article>
     <article class="metric"><span>Clientes ativos</span><strong>@Model.ActiveTenants</strong></article>
-    <article class="metric"><span>Usuários ativos</span><strong>@Model.ActiveUsers</strong></article>
+    <article class="metric"><span>Clientes bloqueados</span><strong>@Model.BlockedTenants</strong></article>
+    <article class="metric"><span>Clientes inativos</span><strong>@Model.InactiveTenants</strong></article>
+    <article class="metric"><span>Usuários</span><strong>@Model.ActiveUsers</strong></article>
+    <article class="metric"><span>Contratos</span><strong>@Model.Contracts</strong></article>
+    <article class="metric"><span>Contratos vencendo (30 dias)</span><strong>@Model.ContractsExpiring</strong></article>
+    <article class="metric"><span>Obrigações abertas</span><strong>@Model.OpenObligations</strong></article>
+    <article class="metric"><span>Obrigações atrasadas</span><strong>@Model.OverdueObligations</strong></article>
+    <article class="metric"><span>Renovações próximas</span><strong>@Model.UpcomingRenewals</strong></article>
+    <article class="metric"><span>Cobranças pendentes</span><strong>@Model.PendingInvoices</strong></article>
+    <article class="metric"><span>Cobranças vencidas</span><strong>@Model.OverdueInvoices</strong></article>
+    <article class="metric"><span>Armazenamento utilizado</span><strong>@((Model.StorageBytes / 1_048_576d).ToString("N1")) MB</strong></article>
     <article class="metric"><span>Pendências de privacidade</span><strong>@Model.PendingPrivacyItems</strong></article>
+</section>
+<section class="card">
+    <div class="section-heading"><div><p class="eyebrow">Atalhos</p><h2>Ações rápidas</h2></div></div>
+    <div class="button-row">
+        <a class="button button-primary" asp-controller="Onboarding" asp-action="Register">Cadastrar cliente</a>
+        <a class="button button-link" asp-controller="Organizations" asp-action="Index">Cadastrar usuário</a>
+        <a class="button button-link" asp-controller="Plans" asp-action="Index">Ver planos</a>
+        <a class="button button-link" asp-controller="Modules" asp-action="Index" asp-route-module="contratos">Ver contratos</a>
+        <a class="button button-link" asp-controller="Modules" asp-action="Index" asp-route-module="cobrancas">Ver cobranças</a>
+        <a class="button button-link" asp-controller="Modules" asp-action="Index" asp-route-module="auditoria">Ver auditoria</a>
+    </div>
+</section>
+<section class="card">
+    <div class="section-heading"><div><p class="eyebrow">Rastreabilidade</p><h2>Últimos eventos de auditoria</h2></div></div>
+    @if (Model.RecentAuditEvents.Length == 0)
+    {
+        <div class="empty-state"><h3>Nenhum evento registrado</h3><p>Os eventos relevantes aparecerão aqui assim que forem processados.</p></div>
+    }
+    else
+    {
+        <div class="table-wrap"><table><thead><tr><th>Data</th><th>Usuário</th><th>Cliente</th><th>Ação</th><th>Entidade</th><th>Resultado</th></tr></thead><tbody>
+        @foreach (var item in Model.RecentAuditEvents)
+        {
+            <tr><td>@item.OccurredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td><td>@(item.ActorName ?? "Sistema")</td><td>@(item.TenantName ?? "Plataforma")</td><td>@item.Action</td><td>@item.EntityType</td><td><span class="badge">@item.Result</span></td></tr>
+        }
+        </tbody></table></div>
+    }
 </section>
 <section class="card empty-state">
     <h2>Como usar</h2>

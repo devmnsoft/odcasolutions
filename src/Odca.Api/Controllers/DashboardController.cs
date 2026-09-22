@@ -22,8 +22,21 @@ public sealed class DashboardController(IPlatformDashboardRepository repository)
         var snapshot = await repository.GetAsync(userId, cancellationToken);
         return Ok(new DashboardResponse(
             User.FindFirstValue(ClaimTypes.Name) ?? "Administrador",
+            snapshot.TotalTenants,
             snapshot.ActiveTenants,
+            snapshot.BlockedTenants,
+            snapshot.InactiveTenants,
             snapshot.ActiveUsers,
-            snapshot.PendingPrivacyItems));
+            snapshot.Contracts,
+            snapshot.ContractsExpiring,
+            snapshot.OpenObligations,
+            snapshot.OverdueObligations,
+            snapshot.UpcomingRenewals,
+            snapshot.PendingInvoices,
+            snapshot.OverdueInvoices,
+            snapshot.StorageBytes,
+            snapshot.PendingPrivacyItems,
+            snapshot.RecentAuditEvents.Select(item => new DashboardAuditEventResponse(
+                item.OccurredAt, item.Action, item.EntityType, item.Result, item.ActorName, item.TenantName)).ToArray()));
     }
 }

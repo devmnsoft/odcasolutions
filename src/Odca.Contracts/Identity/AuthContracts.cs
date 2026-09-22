@@ -40,6 +40,26 @@ public sealed record MfaVerificationResponse(
 
 public sealed record DashboardResponse(
     string DisplayName,
+    int TotalTenants,
     int ActiveTenants,
+    int BlockedTenants,
+    int InactiveTenants,
     int ActiveUsers,
-    int PendingPrivacyItems);
+    int Contracts,
+    int ContractsExpiring,
+    int OpenObligations,
+    int OverdueObligations,
+    int UpcomingRenewals,
+    int PendingInvoices,
+    int OverdueInvoices,
+    long StorageBytes,
+    int PendingPrivacyItems,
+    DashboardAuditEventResponse[] RecentAuditEvents);
+
+public sealed record DashboardAuditEventResponse(
+    DateTimeOffset OccurredAt,
+    string Action,
+    string EntityType,
+    string Result,
+    string? ActorName,
+    string? TenantName);
