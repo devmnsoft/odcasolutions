@@ -476,7 +476,7 @@
                               asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
                               asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId">
                             @Html.AntiForgeryToken()
-                            <input type="hidden" name="version" value="1" />
+                            <input type="hidden" name="version" value="@item.Version" />
                             <button class="button button-quiet" type="button"
                                     data-confirm-open data-confirm-form="start-form-@item.SourceId"
                                     data-confirm-title="Confirmar início da obrigação"
@@ -494,7 +494,7 @@
                                   asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
                                   class="form-stack">
                                 @Html.AntiForgeryToken()
-                                <input type="hidden" name="version" value="1" />
+                                <input type="hidden" name="version" value="@item.Version" />
                                 <label>Data de efetivação (vazio = fuso da organização)
                                     <input type="date" name="effectiveAt" value="@todayStr" />
                                 </label>
@@ -527,7 +527,7 @@
                                   asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
                                   class="form-stack">
                                 @Html.AntiForgeryToken()
-                                <input type="hidden" name="version" value="1" />
+                                <input type="hidden" name="version" value="@item.Version" />
                                 <label>Novo prazo
                                     <input type="date" name="dueDate" required />
                                 </label>
@@ -552,7 +552,7 @@
                                   asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
                                   class="form-stack">
                                 @Html.AntiForgeryToken()
-                                <input type="hidden" name="version" value="1" />
+                                <input type="hidden" name="version" value="@item.Version" />
                                 <label>Novo responsável
                                     <select name="ownerId" required>
                                         <option value="">Selecione</option>
@@ -583,7 +583,7 @@
                                   asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
                                   class="form-stack">
                                 @Html.AntiForgeryToken()
-                                <input type="hidden" name="version" value="1" />
+                                <input type="hidden" name="version" value="@item.Version" />
                                 <label>Motivo do cancelamento
                                     <input type="text" name="reason" required placeholder="Justificativa" />
                                 </label>

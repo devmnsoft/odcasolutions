@@ -10,7 +10,8 @@ public sealed record OperationalInboxRow(
     Guid? OwnerId,
     string? OwnerName,
     DateOnly? DueOn,
-    string Status);
+    string Status,
+    long? Version);
 
 public sealed record TenantCalendarContext(string TimeZoneId, DateOnly Today);
 

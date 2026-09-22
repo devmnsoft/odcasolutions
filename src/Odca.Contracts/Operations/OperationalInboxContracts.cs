@@ -20,7 +20,8 @@ public sealed record OperationalInboxItemDto(
     DateOnly? DueOn,
     string Urgency,
     string Status,
-    string OpenUrl);
+    string OpenUrl,
+    long? Version);
 
 public sealed record OperationalInboxPageDto(
     IReadOnlyList<OperationalInboxItemDto> Items,
