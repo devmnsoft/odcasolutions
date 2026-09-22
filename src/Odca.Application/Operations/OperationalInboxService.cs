@@ -86,7 +86,8 @@ public sealed class OperationalInboxService(IOperationalInboxRepository reposito
             row.DueOn,
             urgency.ToString(),
             row.Status,
-            path);
+            path,
+            row.Version);
     }
 
     private static OperationalWorkKind? ParseKind(string? value) =>

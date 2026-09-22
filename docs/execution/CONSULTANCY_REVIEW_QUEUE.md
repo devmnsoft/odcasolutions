@@ -9,7 +9,7 @@
 | Comentários de revisão | A tabela aceitava somente versão de documento importado | `contract_review_comments.document_version_id NOT NULL` | Comentários passam a referenciar exatamente a versão importada **ou** gerada |
 | Visibilidade | Comentários não distinguiam mensagem e nota interna | schema anterior à migration 022 | `visibility` explícita; API omite notas internas sem `tenant.reviews.decide` |
 | Planos e consumo | Assinatura, recursos, armazenamento e reservas já estavam implementados | migrations 018/019 e `ConsumptionController` | Sem regra comercial nova ou preço inventado |
-| Obrigações e renovações | Centrais, filtros e navegação já estavam implementados | controllers e migrations 013/017 | Mantidas; a nova central foi incluída no menu autorizado |
+| Obrigações e renovações | Centrais, filtros, comandos auditados e navegação já estavam implementados | controllers e migrations 013/017 | Aprovação agora oferece a conferência contextual; a ficha envia a versão real da obrigação em vez de assumir a versão inicial |
 | Regressões Dapper/seed | Correções e testes PostgreSQL já existiam | `RuntimeQueryRegressionTests` e `DevelopmentAccessProvisioningTests` | Reconfirmadas por inspeção; execução PostgreSQL depende do ambiente descrito no README |
 
 ## Rotas e autorização
@@ -56,6 +56,13 @@ sobrescreve silenciosamente o responsável: a segunda operação recebe conflito
 fila oferece responsáveis elegíveis por nome e perfil, pesquisa pelo título do
 contrato e paginação que conserva os filtros de situação, escopo, responsável,
 período e pesquisa.
+
+Depois de `internally_approved`, o detalhe oferece dois próximos passos explícitos:
+conferir/cadastrar obrigações na ficha do mesmo contrato e acompanhar as pendências
+filtradas na central. Nenhuma obrigação é criada pela aprovação. Na ficha, cada
+comando envia o `row_version` materializado da fonte canônica; assim uma ação depois
+de iniciar, reagendar ou reatribuir não reutiliza a versão `1`, e uma aba desatualizada
+continua recebendo o conflito já tratado pelo endpoint.
 
 ## Aplicação e validação
 
