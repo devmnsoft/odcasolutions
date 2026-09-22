@@ -24,8 +24,8 @@ public sealed class SavedViewsController(NpgsqlDataSource dataSource) : Controll
         await using var transaction = await connection.BeginTransactionAsync(ct);
         await SetContext(connection, tenantId, actor.Value, transaction, ct);
         var rows = await connection.QueryAsync<Row>(new CommandDefinition("""
-            SELECT id AS Id,name AS Name,listing_type AS ListingType,filters::text AS Filters,sort AS Sort,
-                   is_default AS IsDefault,row_version AS Version,created_at AS CreatedAt,updated_at AS UpdatedAt
+            SELECT id AS "Id",name AS "Name",listing_type AS "ListingType",filters::text AS "Filters",sort AS "Sort",
+                   is_default AS "IsDefault",row_version AS "Version",created_at AS "CreatedAt",updated_at AS "UpdatedAt"
               FROM odca.saved_work_views
              WHERE tenant_id=@tenantId AND owner_id=@actor AND listing_type=@listingType AND inactive_at IS NULL
              ORDER BY is_default DESC,name,id
@@ -44,8 +44,8 @@ public sealed class SavedViewsController(NpgsqlDataSource dataSource) : Controll
         await using var transaction = await connection.BeginTransactionAsync(ct);
         await SetContext(connection, tenantId, actor.Value, transaction, ct);
         var row = await connection.QuerySingleOrDefaultAsync<Row>(new CommandDefinition("""
-            SELECT id AS Id,name AS Name,listing_type AS ListingType,filters::text AS Filters,sort AS Sort,
-                   is_default AS IsDefault,row_version AS Version,created_at AS CreatedAt,updated_at AS UpdatedAt
+            SELECT id AS "Id",name AS "Name",listing_type AS "ListingType",filters::text AS "Filters",sort AS "Sort",
+                   is_default AS "IsDefault",row_version AS "Version",created_at AS "CreatedAt",updated_at AS "UpdatedAt"
               FROM odca.saved_work_views
              WHERE tenant_id=@tenantId AND owner_id=@actor AND id=@id AND inactive_at IS NULL
             """, new { tenantId, actor, id }, transaction, cancellationToken: ct));
@@ -73,8 +73,8 @@ public sealed class SavedViewsController(NpgsqlDataSource dataSource) : Controll
         var row = await connection.QuerySingleAsync<Row>(new CommandDefinition("""
             INSERT INTO odca.saved_work_views(tenant_id,owner_id,name,listing_type,filters,sort)
             VALUES(@tenantId,@actor,@name,@listingType,CAST(@filters AS jsonb),@sort)
-            RETURNING id AS Id,name AS Name,listing_type AS ListingType,filters::text AS Filters,sort AS Sort,
-                      is_default AS IsDefault,row_version AS Version,created_at AS CreatedAt,updated_at AS UpdatedAt
+            RETURNING id AS "Id",name AS "Name",listing_type AS "ListingType",filters::text AS "Filters",sort AS "Sort",
+                      is_default AS "IsDefault",row_version AS "Version",created_at AS "CreatedAt",updated_at AS "UpdatedAt"
             """, new { tenantId, actor, name = request.Name.Trim(), request.ListingType, filters = JsonSerializer.Serialize(normalizedFilters), sort = normalizedSort }, transaction, cancellationToken: ct));
         await transaction.CommitAsync(ct);
         return CreatedAtAction(nameof(Get), new { tenantId, id = row.Id }, ToItem(row));
@@ -150,6 +150,20 @@ public sealed class SavedViewsController(NpgsqlDataSource dataSource) : Controll
     private Guid? Actor() => Guid.TryParse(User.FindFirstValue("sub"), out var id) ? id : null;
     private static Task<bool> Allowed(NpgsqlConnection c, Guid actor, Guid tenant, CancellationToken ct) => c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT odca.tenant_actor_has_permission(@actor,@tenant,'tenant.saved_views.manage')", new { actor, tenant }, cancellationToken: ct));
     private static Task<int> SetContext(NpgsqlConnection c, Guid tenant, Guid actor, NpgsqlTransaction tx, CancellationToken ct) => c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenantValue,true),set_config('odca.actor_id',@actorValue,true)", new { tenantValue = tenant.ToString(), actorValue = actor.ToString() }, tx, cancellationToken: ct));
-    private static SavedViewItem ToItem(Row row) => new(row.Id, row.Name, row.ListingType, ParseAndValidate(row.ListingType, row.Filters, row.Sort), row.Sort, row.IsDefault, row.Version, row.CreatedAt, row.UpdatedAt);
-    private sealed record Row(Guid Id, string Name, string ListingType, string Filters, string Sort, bool IsDefault, long Version, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
+    private static SavedViewItem ToItem(Row row) => new(row.Id, row.Name, row.ListingType, ParseAndValidate(row.ListingType, row.Filters, row.Sort), row.Sort, row.IsDefault, row.Version, new DateTimeOffset(row.CreatedAt), new DateTimeOffset(row.UpdatedAt));
+
+    // Npgsql exposes PostgreSQL timestamp columns as DateTime. A mutable row avoids
+    // Dapper requiring an exact positional constructor (including that provider type).
+    private sealed class Row
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = "";
+        public string ListingType { get; set; } = "";
+        public string Filters { get; set; } = "{}";
+        public string Sort { get; set; } = "";
+        public bool IsDefault { get; set; }
+        public long Version { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+    }
 }

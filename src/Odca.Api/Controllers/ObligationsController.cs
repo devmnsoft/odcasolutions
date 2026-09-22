@@ -55,11 +55,11 @@ public sealed class ObligationsController(NpgsqlDataSource dataSource) : Control
         var all=scope.Equals("organization",StringComparison.OrdinalIgnoreCase) && await Allowed(c,actor.Value,tenantId,"tenant.obligations.read_all",ct);
         var args=new {tenantId,actor,all,contractId,ownerId,category,status,from,to,search=string.IsNullOrWhiteSpace(search)?null:$"%{search.Trim()}%",offset=(page-1)*pageSize,pageSize};
         const string where="""
-          o.tenant_id=@tenantId AND o.deleted_at IS NULL AND (@all OR o.owner_id=@actor)
-          AND (@contractId IS NULL OR o.contract_id=@contractId) AND (@ownerId IS NULL OR o.owner_id=@ownerId)
-          AND (@category IS NULL OR o.category=@category) AND (@status IS NULL OR o.status=@status)
-          AND (@from IS NULL OR o.due_date>=@from) AND (@to IS NULL OR o.due_date<=@to)
-          AND (@search IS NULL OR o.title ILIKE @search OR c.title ILIKE @search)
+          o.tenant_id=@tenantId AND o.deleted_at IS NULL AND (@all::boolean OR o.owner_id=@actor)
+          AND (@contractId::uuid IS NULL OR o.contract_id=@contractId::uuid) AND (@ownerId::uuid IS NULL OR o.owner_id=@ownerId::uuid)
+          AND (@category::text IS NULL OR o.category=@category::text) AND (@status::text IS NULL OR o.status=@status::text)
+          AND (@from::date IS NULL OR o.due_date>=@from::date) AND (@to::date IS NULL OR o.due_date<=@to::date)
+          AND (@search::text IS NULL OR o.title ILIKE @search::text OR c.title ILIKE @search::text)
         """;
         var total=await c.ExecuteScalarAsync<int>(new CommandDefinition($"SELECT count(*)::int FROM odca.contract_obligations o JOIN odca.contracts c ON c.id=o.contract_id AND c.tenant_id=o.tenant_id WHERE {where}",args,tx,cancellationToken:ct));
         var rows=await c.QueryAsync<ObligationRow>(new CommandDefinition($"""

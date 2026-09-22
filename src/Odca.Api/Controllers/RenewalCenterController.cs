@@ -36,10 +36,10 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
             FROM odca.contracts c LEFT JOIN latest r ON r.contract_id=c.id LEFT JOIN odca.users u ON u.id=c.owner_id WHERE c.tenant_id=@tenantId)
             """;
         const string filter = """
-            WHERE (@from IS NULL OR EndDate>=@from) AND (@to IS NULL OR EndDate<=@to) AND (@ownerId IS NULL OR OwnerId=@ownerId)
-              AND (@contractType IS NULL OR ContractType=@contractType) AND (@counterparty IS NULL OR Counterparty=@counterparty)
-              AND (@status IS NULL OR Status=@status) AND (NOT @mine OR OwnerId=@actor) AND (NOT @withoutOwner OR OwnerId IS NULL)
-              AND (@status IS NOT NULL OR Status<>'outside_window')
+            WHERE (@from::date IS NULL OR EndDate>=@from::date) AND (@to::date IS NULL OR EndDate<=@to::date) AND (@ownerId::uuid IS NULL OR OwnerId=@ownerId::uuid)
+              AND (@contractType::text IS NULL OR ContractType=@contractType::text) AND (@counterparty::text IS NULL OR Counterparty=@counterparty::text)
+              AND (@status::text IS NULL OR Status=@status::text) AND (NOT @mine::boolean OR OwnerId=@actor) AND (NOT @withoutOwner::boolean OR OwnerId IS NULL)
+              AND (@status::text IS NOT NULL OR Status<>'outside_window')
             """;
         var total = await c.ExecuteScalarAsync<int>(new CommandDefinition(projection + "SELECT count(*)::int FROM projected " + filter, args, tx, cancellationToken: ct));
         var items = await c.QueryAsync<RenewalListItem>(new CommandDefinition(projection + "SELECT ContractId,RequestId,Name,Counterparty,OwnerName,EndDate,DecisionDueOn,Status,NextAction,DaysRemaining,ContractVersion FROM projected " + filter + " ORDER BY COALESCE(DecisionDueOn,EndDate),Name LIMIT @pageSize OFFSET @offset", args, tx, cancellationToken: ct));
