@@ -68,6 +68,7 @@ public sealed class OperationalInboxService(IOperationalInboxRepository reposito
 
     public static OperationalInboxItemDto Map(OperationalInboxRow row, DateOnly today, Guid tenantId)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(row.Version);
         var urgency = OperationalInbox.Classify(row.DueOn, today);
         var path = row.Kind switch
         {

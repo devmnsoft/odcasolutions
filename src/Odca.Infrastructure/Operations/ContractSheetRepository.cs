@@ -108,7 +108,8 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             """
             SELECT 'Obligation'::text AS Kind, o.id AS SourceId, o.tenant_id AS TenantId,
                    o.contract_id AS ContractId, c.title AS ContractTitle, o.title AS Title,
-                   o.owner_id AS OwnerId, u.display_name AS OwnerName, o.due_date AS DueOn, o.status AS Status
+                   o.owner_id AS OwnerId, u.display_name AS OwnerName, o.due_date AS DueOn, o.status AS Status,
+                   o.row_version::bigint AS Version
               FROM odca.contract_obligations o
               JOIN odca.contracts c ON c.id = o.contract_id AND c.tenant_id = o.tenant_id
               JOIN odca.users u ON u.id = o.owner_id

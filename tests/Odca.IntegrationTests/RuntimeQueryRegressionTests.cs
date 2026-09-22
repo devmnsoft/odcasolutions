@@ -2,6 +2,16 @@ namespace Odca.IntegrationTests;
 
 public sealed class RuntimeQueryRegressionTests
 {
+    [Theory]
+    [InlineData("OperationalInboxRepository.cs")]
+    [InlineData("ContractSheetRepository.cs")]
+    public void OperationalProjectionsReadTheCanonicalBigintConcurrencyVersion(string file)
+    {
+        var source = ReadSource("Odca.Infrastructure", "Operations", file);
+
+        Assert.Contains("row_version::bigint AS Version", source, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public void SavedViewsUseProviderCompatibleMutableRowAndQuotedAliases()
     {
