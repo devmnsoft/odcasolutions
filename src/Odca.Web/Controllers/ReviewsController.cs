@@ -11,13 +11,15 @@ namespace Odca.Web.Controllers;
 public sealed class ReviewsController(OdcaApiClient api) : Controller
 {
     [HttpGet]
-    public async Task<IActionResult> Index(Guid tenantId, string? status, bool mine = true, int page = 1, CancellationToken ct = default)
+    public async Task<IActionResult> Index(Guid tenantId, string? status, string scope = "requested", Guid? assigneeId = null,
+        Guid? contractId = null, DateOnly? from = null, DateOnly? to = null, int page = 1, CancellationToken ct = default)
     {
         ViewData["Title"]="Solicitações de revisão"; ViewData["TenantId"]=tenantId;
         var token=await HttpContext.GetTokenAsync("access_token"); if(token is null)return Challenge();
-        var result=await api.GetReviewsAsync(token,tenantId,status,mine,page,ct);
+        var result=await api.GetReviewsAsync(token,tenantId,status,scope,assigneeId,contractId,from,to,page,ct);
         if(result.Status==ApiCallStatus.Forbidden)return Forbid();
-        ViewData["Status"]=status;ViewData["Mine"]=mine;ViewData["LoadError"]=result.Succeeded?null:result.UserMessage("Não foi possível carregar as solicitações.");
+        ViewData["Status"]=status; ViewData["Scope"]=scope; ViewData["AssigneeId"]=assigneeId; ViewData["ContractId"]=contractId;
+        ViewData["From"]=from; ViewData["To"]=to; ViewData["LoadError"]=result.Succeeded?null:result.UserMessage("Não foi possível carregar as solicitações.");
         return View(result.Value??new ReviewQueuePage([],page,20,0));
     }
 
@@ -37,6 +39,7 @@ public sealed class ReviewsController(OdcaApiClient api) : Controller
     {
         var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
         var result=await api.AddReviewMessageAsync(token,tenantId,reviewId,new AddReviewMessageRequest(body,visibility,null,Guid.NewGuid()),ct);
+        if (!result.Succeeded) { TempData["ReviewBody"]=body; TempData["ReviewVisibility"]=visibility; }
         TempData[result.Succeeded?"ReviewNotice":"ReviewError"]=result.Succeeded?"Mensagem registrada no histórico.":result.UserMessage("Não foi possível registrar a mensagem.");
         return RedirectToAction(nameof(Detail),new{tenantId,reviewId});
     }
@@ -48,6 +51,7 @@ public sealed class ReviewsController(OdcaApiClient api) : Controller
         var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
         var result=await api.DecideReviewAsync(token,tenantId,reviewId,new DecideReviewRequest(action,justification,expectedVersion,Guid.NewGuid()),ct);
         if(result.Status==ApiCallStatus.Forbidden)return Forbid();
+        if (!result.Succeeded) { TempData["ReviewJustification"]=justification; TempData["ReviewConflict"]=result.Status==ApiCallStatus.Conflict; }
         TempData[result.Succeeded?"ReviewNotice":"ReviewError"]=result.Succeeded
             ? action=="approve"?"Versão aprovada internamente. A formalização ainda deve ser registrada.":"Ajustes solicitados; uma nova versão deverá ser enviada."
             : result.UserMessage("Não foi possível registrar a decisão. Atualize a página e tente novamente.");
