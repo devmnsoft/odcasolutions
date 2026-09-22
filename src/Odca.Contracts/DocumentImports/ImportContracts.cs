@@ -5,6 +5,14 @@ public sealed record ContractImportListItem(Guid Id, string DocumentName, string
 public sealed record ContractImportPage(IReadOnlyList<ContractImportListItem> Items, int Total);
 public sealed record CreateContractImport(Guid DocumentVersionId, Guid? ExtractionJobId);
 public sealed record ConfirmContractImport(long ReviewVersion, Guid IdempotencyKey);
+public sealed record SaveManualContractImport(
+    long ReviewVersion,
+    string Title,
+    string? Reference,
+    DateOnly? StartDate,
+    DateOnly? EndDate,
+    decimal? Value,
+    string? Currency);
 public sealed record ContractImportResult(Guid ImportId, Guid ContractId, string Status, bool Repeated);
 public sealed record ImportReviewDecision(Guid SuggestionId, string Status, string? Value);
 public sealed record SaveImportReview(Guid IdempotencyKey, long ContractVersion, IReadOnlyList<ImportReviewDecision> Decisions);

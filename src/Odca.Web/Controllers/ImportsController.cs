@@ -59,4 +59,33 @@ public sealed class ImportsController(OdcaApiClient api) : Controller
         var result = await api.SaveImportReviewAsync(token, tenantId, contractId, extractionId, request, ct);
         return result.Succeeded ? Json(result.Value) : StatusCode(result.Status == ApiCallStatus.Conflict ? 409 : 422, new { title = result.ErrorTitle, detail = result.ErrorDetail });
     }
+
+    [HttpPost("{importId:guid}/dados-manuais")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveManualData(Guid tenantId, Guid importId, SaveManualContractImport request, CancellationToken ct)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
+        var result = await api.SaveManualImportDataAsync(token, tenantId, importId, request, ct);
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        TempData[result.Succeeded ? "ImportNotice" : "ImportError"] = result.Succeeded
+            ? "Dados conferidos e salvos. Revise o resumo antes de confirmar."
+            : result.UserMessage("Não foi possível salvar os dados; suas informações foram preservadas.");
+        return RedirectToAction(nameof(Review), new { tenantId, importId });
+    }
+
+    [HttpPost("{importId:guid}/confirmar")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Confirm(Guid tenantId, Guid importId, long reviewVersion, CancellationToken ct)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
+        var result = await api.ConfirmContractImportAsync(token, tenantId, importId, new ConfirmContractImport(reviewVersion, Guid.NewGuid()), ct);
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (result.Succeeded && result.Value is not null)
+        {
+            TempData["ContractSheetNotice"] = result.Value.Repeated ? "Esta importação já estava confirmada." : "Contrato importado com rastreabilidade.";
+            return RedirectToAction("Sheet", "Contracts", new { tenantId, contractId = result.Value.ContractId, from = "imports" });
+        }
+        TempData["ImportError"] = result.UserMessage("Não foi possível confirmar. Confira os dados e tente novamente.");
+        return RedirectToAction(nameof(Review), new { tenantId, importId });
+    }
 }

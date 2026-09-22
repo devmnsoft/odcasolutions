@@ -11,6 +11,8 @@
     var contractVersion = root.GetProperty("contract_version").GetInt64();
 }
 <header class="page-heading"><div><span class="eyebrow">IMPORTAÇÃO ASSISTIDA</span><h1>@root.GetProperty("display_name").GetString()</h1><p>Revise cada origem. Valores extraídos nunca são confirmados sem sua decisão.</p></div><details class="help-panel"><summary>Como usar</summary><p>Compare a sugestão com a página indicada, aceite, edite ou rejeite. Salve a revisão antes da confirmação.</p></details></header>
+@if(TempData["ImportNotice"] is string notice){<div class="success" role="status">@notice</div>}
+@if(TempData["ImportError"] is string error){<div class="error" role="alert">@error</div>}
 <ol class="import-progress" aria-label="Progresso"><li class="done">Documento</li><li class="current">Dados contratuais</li><li>Partes</li><li>Obrigações</li><li>Confirmação</li></ol>
 <div class="review-mobile-tabs" role="group" aria-label="Alternar painel"><button type="button" class="button button-quiet" data-review-tab="document">Documento</button><button type="button" class="button button-quiet" data-review-tab="data">Dados</button></div>
 <div class="review-summary" role="status"><strong>@Model.GetProperty("suggestions").EnumerateArray().Count()</strong> campos encontrados. Estados possíveis: não revisado, aceito, corrigido ou rejeitado.</div>
@@ -19,7 +21,17 @@
         <iframe title="Pré-visualização autorizada do documento" src="@Url.Action("Preview",new{tenantId,contractId,documentId,versionId})"></iframe>
         <p class="muted">Use os controles do visualizador para navegar e ampliar. O servidor revalida tenant e permissão.</p>
     </section>
-    <section class="suggestion-pane" data-review-panel="data" data-import-review data-save-url="@(extractionId.HasValue ? Url.Action("SaveReview",new{tenantId,importId,contractId,extractionId}) : null)" data-contract-version="@contractVersion"><h2>Sugestões</h2>
+    <section class="suggestion-pane" data-review-panel="data" data-import-review data-save-url="@(extractionId.HasValue ? Url.Action("SaveReview",new{tenantId,importId,contractId,extractionId}) : null)" data-contract-version="@contractVersion"><h2>Conferência dos dados</h2>
+        <form asp-action="SaveManualData" asp-route-tenantId="@tenantId" asp-route-importId="@importId" method="post" class="import-manual-form" data-prevent-double-submit>
+            <input type="hidden" name="ReviewVersion" value="@root.GetProperty("review_version").GetInt64()" />
+            <label>Título do contrato<input name="Title" value="@root.GetProperty("title").GetString()" maxlength="160" required /></label>
+            <label>Identificação contratual<input name="Reference" value="@(root.GetProperty("reference").ValueKind == System.Text.Json.JsonValueKind.Null ? null : root.GetProperty("reference").GetString())" maxlength="160" /></label>
+            <div class="form-grid"><label>Início<input type="date" name="StartDate" value="@(root.GetProperty("start_date").ValueKind == System.Text.Json.JsonValueKind.Null ? null : root.GetProperty("start_date").GetString())" /></label><label>Término<input type="date" name="EndDate" value="@(root.GetProperty("end_date").ValueKind == System.Text.Json.JsonValueKind.Null ? null : root.GetProperty("end_date").GetString())" /></label></div>
+            <div class="form-grid"><label>Valor<input type="number" name="Value" step="0.01" min="0" value="@(root.GetProperty("value").ValueKind == System.Text.Json.JsonValueKind.Null ? null : root.GetProperty("value").GetDecimal())" /></label><label>Moeda (ISO)<input name="Currency" maxlength="3" pattern="[A-Za-z]{3}" value="@(root.GetProperty("currency").ValueKind == System.Text.Json.JsonValueKind.Null ? null : root.GetProperty("currency").GetString())" /></label></div>
+            <p class="muted">Preencha manualmente quando não houver extração. Nenhum dado ausente será deduzido.</p>
+            <button class="button button-primary" type="submit">Salvar conferência</button>
+        </form>
+        <h2>Sugestões da extração</h2>
     @Html.AntiForgeryToken()
     @if(!Model.GetProperty("suggestions").EnumerateArray().Any()){<p>Nenhuma sugestão automática. A revisão manual continua disponível.</p>}
     @foreach(var suggestion in Model.GetProperty("suggestions").EnumerateArray()){
@@ -29,7 +41,11 @@
             <blockquote><strong>Trecho de origem:</strong> @suggestion.GetProperty("evidence").GetString()</blockquote><p>Página @(suggestion.TryGetProperty("page_number",out var page)&&page.ValueKind!=System.Text.Json.JsonValueKind.Null?page.GetInt32().ToString():"não identificada")</p>
             <fieldset><legend>Decisão</legend><label><input type="radio" value="accepted" name="decision-@suggestion.GetProperty("id").GetGuid()" /> Aceitar</label><label><input type="radio" value="edited" name="decision-@suggestion.GetProperty("id").GetGuid()" /> Editar</label><label><input type="radio" value="rejected" name="decision-@suggestion.GetProperty("id").GetGuid()" /> Rejeitar</label></fieldset>
         </article>}
-        <p data-review-message role="status"></p>@if(extractionId.HasValue){<button class="button button-primary" type="button" data-save-review>Salvar revisão</button>}else{<p>Solicite a extração segura antes de revisar sugestões.</p>}
+        <p data-review-message role="status"></p>@if(extractionId.HasValue){<button class="button button-primary" type="button" data-save-review>Salvar decisões das sugestões</button>}else{<p>A extração automática não foi solicitada. Confira e salve os dados manualmente acima.</p>}
+        <form asp-action="Confirm" asp-route-tenantId="@tenantId" asp-route-importId="@importId" method="post" data-prevent-double-submit onsubmit="return confirm('Confirmar a importação com os dados conferidos?');">
+            <input type="hidden" name="reviewVersion" value="@root.GetProperty("review_version").GetInt64()" />
+            <button class="button button-primary" type="submit">Confirmar importação</button>
+        </form>
     </section>
 </div>
 @section Scripts { <script type="module" src="~/js/imports.js" asp-append-version="true"></script> }
