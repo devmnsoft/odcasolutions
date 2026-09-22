@@ -12,8 +12,10 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
     public const string OperatorEmail = "operador@odca.local";
     public const string ClientEmail = "cliente.teste@odca.local";
     public const string ClientInitialPassword = "K8@wR3!nF6#zP2$m";
-    public const string DemoTenantName = "ODCA Cliente de Demonstração";
-    public const string DemoTenantCode = "ODCA-DEMO-LOCAL";
+    public const string DemoTenantName = "Cliente Teste ODCA";
+    public const string DemoTenantCode = "12345678000195";
+    private const string LegacyDemoTenantName = "ODCA Cliente de Demonstração";
+    private const string LegacyDemoTenantCode = "ODCA-DEMO-LOCAL";
     private static readonly Guid AdministratorId = Guid.Parse("10000000-0000-4000-8000-000000000001");
     private static readonly Guid OperatorId = Guid.Parse("10000000-0000-4000-8000-000000000002");
     private static readonly Guid ClientId = Guid.Parse("10000000-0000-4000-8000-000000000003");
@@ -173,7 +175,10 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
             throw new InvalidOperationException($"A identidade {OperatorEmail} existe com estado ou privilégio incompatível; nenhuma alteração foi feita.");
         if (client is not null && (client.IsPlatformAdministrator || client.IsDeleted || client.LockedUntil is not null))
             throw new InvalidOperationException($"A identidade {ClientEmail} existe com estado ou privilégio incompatível; nenhuma alteração foi feita.");
-        if (tenant is not null && (tenant.DisplayName != DemoTenantName || tenant.IsDeleted || tenant.Status != "active"))
+        if (tenant is not null &&
+            (((tenant.BusinessCode != DemoTenantCode || tenant.DisplayName != DemoTenantName) &&
+              (tenant.BusinessCode != LegacyDemoTenantCode || tenant.DisplayName != LegacyDemoTenantName)) ||
+             tenant.IsDeleted || tenant.Status != "active"))
             throw new InvalidOperationException("O código reservado pertence a uma organização incompatível, excluída ou suspensa.");
         if (tenant is not null)
         {
@@ -187,7 +192,9 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
         var memberships = (await connection.QueryAsync<ExistingMembership>(new CommandDefinition(
             "SELECT m.tenant_id AS TenantId, t.business_code AS BusinessCode, m.status AS Status FROM odca.memberships m JOIN odca.tenants t ON t.id=m.tenant_id WHERE m.user_id=@id FOR UPDATE OF m;",
             new { client.Id }, transaction))).ToArray();
-        if (memberships.Length != 1 || memberships[0].BusinessCode != DemoTenantCode || memberships[0].Status != "active")
+        if (memberships.Length != 1 ||
+            (memberships[0].BusinessCode != DemoTenantCode && memberships[0].BusinessCode != LegacyDemoTenantCode) ||
+            memberships[0].Status != "active")
             throw new InvalidOperationException($"A identidade {ClientEmail} não possui exatamente um vínculo ativo com a organização de demonstração; conta preservada.");
         if (tenant is null || memberships[0].TenantId != tenant.Id)
             throw new InvalidOperationException("O vínculo existente do cliente não corresponde à organização reservada.");
@@ -208,8 +215,8 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
 
     private static Task<ProvisionedTenant?> FindTenantAsync(NpgsqlConnection connection, NpgsqlTransaction transaction) =>
         connection.QuerySingleOrDefaultAsync<ProvisionedTenant>(new CommandDefinition(
-            "SELECT id AS Id,display_name AS DisplayName,status AS Status,is_deleted AS IsDeleted FROM odca.tenants WHERE business_code=@code FOR UPDATE;",
-            new { code = DemoTenantCode }, transaction));
+            "SELECT id AS Id,business_code AS BusinessCode,display_name AS DisplayName,status AS Status,is_deleted AS IsDeleted FROM odca.tenants WHERE business_code IN (@code,@legacyCode) FOR UPDATE;",
+            new { code = DemoTenantCode, legacyCode = LegacyDemoTenantCode }, transaction));
 
     private static Task<TestAccessVerification> VerifyAsync(NpgsqlConnection connection, NpgsqlTransaction transaction,
         Guid administratorId, Guid operatorId, Guid clientId, Guid tenantId) => connection.QuerySingleAsync<TestAccessVerification>(new CommandDefinition(
@@ -217,12 +224,18 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
             SELECT EXISTS(SELECT 1 FROM odca.users WHERE id=@administratorId AND is_platform_administrator AND NOT is_deleted) AS AdministratorPersisted,
                    EXISTS(SELECT 1 FROM odca.users WHERE id=@clientId AND NOT is_platform_administrator AND NOT is_deleted AND locked_until IS NULL) AS ClientPersisted,
                    EXISTS(SELECT 1 FROM odca.users WHERE id=@operatorId AND NOT is_platform_administrator AND NOT is_deleted AND locked_until IS NULL) AS OperatorPersisted,
-                   ((SELECT count(*)>=1 FROM odca.memberships WHERE user_id=@clientId) AND EXISTS(SELECT 1 FROM odca.memberships WHERE user_id=@clientId AND tenant_id=@tenantId AND status='active')) AS MembershipActive,
-                   EXISTS(SELECT 1 FROM odca.member_roles mr JOIN odca.roles r ON r.id=mr.role_id AND r.tenant_id=mr.tenant_id WHERE mr.tenant_id=@tenantId AND (mr.user_id=@administratorId OR mr.user_id=@clientId) AND r.code='tenant-administrator') AS TenantAdministrator,
+                   ((SELECT count(*)>=1 FROM odca.memberships WHERE user_id=@clientId) AND EXISTS(
+                       SELECT 1 FROM odca.memberships m JOIN odca.tenants t ON t.id=m.tenant_id
+                       WHERE m.user_id=@clientId AND m.tenant_id=@tenantId AND m.status='active'
+                         AND t.business_code=@demoTenantCode AND t.display_name=@demoTenantName
+                         AND t.status='active' AND NOT t.is_deleted)
+                     AND EXISTS(SELECT 1 FROM odca.member_roles mr JOIN odca.roles r ON r.id=mr.role_id AND r.tenant_id=mr.tenant_id
+                         WHERE mr.tenant_id=@tenantId AND mr.user_id=@clientId AND r.code='tenant-client')) AS MembershipActive,
+                   EXISTS(SELECT 1 FROM odca.member_roles mr JOIN odca.roles r ON r.id=mr.role_id AND r.tenant_id=mr.tenant_id WHERE mr.tenant_id=@tenantId AND mr.user_id=@administratorId AND r.code='tenant-administrator') AS TenantAdministrator,
                    EXISTS(SELECT 1 FROM odca.member_roles mr JOIN odca.roles r ON r.id=mr.role_id AND r.tenant_id=mr.tenant_id WHERE mr.tenant_id=@tenantId AND mr.user_id=@operatorId AND r.code='tenant-operator') AS TenantOperator,
                    EXISTS(SELECT 1 FROM odca.subscriptions s JOIN odca.plan_versions p ON p.id=s.plan_version_id WHERE s.tenant_id=@tenantId AND s.status='active' AND s.commercial_state='active' AND s.manual_grant_reason=@reason AND p.code='basic') AS BasicPlanActive;
             """,
-            new { administratorId, operatorId, clientId, tenantId, reason = DemoGrantReason }, transaction));
+            new { administratorId, operatorId, clientId, tenantId, reason = DemoGrantReason, demoTenantCode = DemoTenantCode, demoTenantName = DemoTenantName }, transaction));
 
     private static bool AllVerified(TestAccessVerification value) =>
         value.AdministratorPersisted && value.ClientPersisted && value.OperatorPersisted && value.MembershipActive && value.TenantAdministrator && value.TenantOperator && value.BasicPlanActive;
@@ -230,7 +243,7 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
     private static string Normalize(string email) => email.Trim().ToUpperInvariant();
 
     private sealed record ProvisionedUser(Guid Id, string Email, string DisplayName, string PasswordHash, int SecurityVersion, bool IsPlatformAdministrator, bool MustChangePassword, DateTime? LockedUntil, bool IsDeleted, DateTime? MfaConfirmedAt);
-    private sealed record ProvisionedTenant(Guid Id, string DisplayName, string Status, bool IsDeleted);
+    private sealed record ProvisionedTenant(Guid Id, string BusinessCode, string DisplayName, string Status, bool IsDeleted);
     private sealed record ExistingMembership(Guid TenantId, string BusinessCode, string Status);
     private sealed record ExistingSubscription(string PlanCode, string Status, string CommercialState, string? ManualGrantReason);
     private sealed record ExistingRole(string DisplayName, bool IsSystem);

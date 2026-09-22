@@ -30,6 +30,8 @@ public sealed class DevelopmentAccessProvisioningTests(DatabaseFixture database)
         Assert.DoesNotContain("@TenantId", sql, StringComparison.Ordinal);
         Assert.DoesNotContain(TestAccessProvisioner.AdministratorInitialPassword, sql, StringComparison.Ordinal);
         Assert.DoesNotContain(TestAccessProvisioner.ClientInitialPassword, sql, StringComparison.Ordinal);
+        Assert.Contains(TestAccessProvisioner.DemoTenantName, sql, StringComparison.Ordinal);
+        Assert.Contains(TestAccessProvisioner.DemoTenantCode, sql, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -58,6 +60,15 @@ public sealed class DevelopmentAccessProvisioningTests(DatabaseFixture database)
         Assert.True(first.Verification.TenantAdministrator);
         Assert.True(first.Verification.TenantOperator);
         Assert.True(first.Verification.BasicPlanActive);
+
+        await using (var verificationConnection = new NpgsqlConnection(database.AdminConnectionString))
+        {
+            var demoTenant = await verificationConnection.QuerySingleAsync<(string BusinessCode, string DisplayName)>(
+                "SELECT business_code AS BusinessCode, display_name AS DisplayName FROM odca.tenants WHERE business_code=@code;",
+                new { code = TestAccessProvisioner.DemoTenantCode });
+            Assert.Equal(TestAccessProvisioner.DemoTenantCode, demoTenant.BusinessCode);
+            Assert.Equal(TestAccessProvisioner.DemoTenantName, demoTenant.DisplayName);
+        }
 
         var repeated = await provisioner.ProvisionAsync(database.AdminConnectionString,
             first.AdministratorPassword, first.ClientPassword, false, false,
@@ -129,7 +140,8 @@ public sealed class DevelopmentAccessProvisioningTests(DatabaseFixture database)
 
         await using var connection = new NpgsqlConnection(database.AdminConnectionString);
         await connection.ExecuteAsync(
-            "UPDATE odca.tenants SET status = 'suspended' WHERE business_code = 'ODCA-DEMO-LOCAL';");
+            "UPDATE odca.tenants SET status = 'suspended' WHERE business_code = @code;",
+            new { code = TestAccessProvisioner.DemoTenantCode });
         try
         {
             using var rejectedLogin = await http.PostAsJsonAsync(
@@ -145,7 +157,8 @@ public sealed class DevelopmentAccessProvisioningTests(DatabaseFixture database)
         finally
         {
             await connection.ExecuteAsync(
-                "UPDATE odca.tenants SET status = 'active' WHERE business_code = 'ODCA-DEMO-LOCAL';");
+                "UPDATE odca.tenants SET status = 'active' WHERE business_code = @code;",
+                new { code = TestAccessProvisioner.DemoTenantCode });
         }
     }
 
