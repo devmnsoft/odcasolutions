@@ -38,6 +38,7 @@ atendimento aprovar um contrato automaticamente.
 |---|---|---|---|---|
 | versão gerada | enviar para revisão | `in_review` | `tenant.reviews.request` | versão imutável, revisor elegível e chave idempotente; cria solicitação, passo atual, evento e notificação pelo fluxo do Studio |
 | `in_review` | mensagem pública ou nota interna | sem alteração | `tenant.reviews.read`; nota exige `tenant.reviews.decide` | mensagem não altera estado; UUID impede duplicação; conteúdo interno é filtrado no servidor |
+| `in_review` | reatribuir responsável | `in_review` | `tenant.reviews.decide` | exige responsável ativo com permissão de decisão, justificativa e versão esperada; encerra o passo anterior, cria outro e audita na mesma transação |
 | `in_review` | solicitar ajustes | `changes_requested` | `tenant.reviews.decide`, pelo revisor atual | justificativa, versão esperada e bloqueio da solicitação; passo, solicitação e evento são gravados na mesma transação |
 | `in_review` | aprovar versão | `internally_approved` | `tenant.reviews.decide`, pelo revisor atual | justificativa e versão esperada; a versão aprovada é a indicada no detalhe e aprovação não equivale a assinatura |
 | `changes_requested` | responder/reenviar | nova revisão `in_review` | fluxo contratual do solicitante | uma nova versão não herda aprovação; eventos e decisões anteriores permanecem no histórico |
@@ -49,6 +50,12 @@ conteúdo devolve o recibo persistido, enquanto reutilizá-la com outro conteúd
 gera conflito. Atualizações condicionais conferem a versão e só inserem o evento
 quando passo e solicitação foram alterados; o commit ocorre antes da resposta de
 sucesso.
+
+A reatribuição também usa versão esperada e chave de idempotência. Uma disputa não
+sobrescreve silenciosamente o responsável: a segunda operação recebe conflito. A
+fila oferece responsáveis elegíveis por nome e perfil, pesquisa pelo título do
+contrato e paginação que conserva os filtros de situação, escopo, responsável,
+período e pesquisa.
 
 ## Aplicação e validação
 

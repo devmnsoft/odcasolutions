@@ -2,6 +2,7 @@
 @{
     var tenantId=(Guid)ViewData["TenantId"]!; var status=ViewData["Status"] as string;
     var scope=ViewData["Scope"] as string ?? "requested"; var from=ViewData["From"] as DateOnly?; var to=ViewData["To"] as DateOnly?;
+    var search=ViewData["Search"] as string; var assignees=ViewData["Assignees"] as Odca.Contracts.Reviews.ReviewAssignee[] ?? [];
     string StatusLabel(string value) => value switch { "in_review"=>"Em revisão", "changes_requested"=>"Ajustes solicitados", "internally_approved"=>"Aprovada internamente", "cancelled"=>"Cancelada", "superseded"=>"Substituída", _=>value };
     string NextAction(string value) => value switch { "in_review"=>"Analisar a versão", "changes_requested"=>"Responder e reenviar", "internally_approved"=>"Prosseguir com a formalização", _=>"Consultar histórico" };
 }
@@ -11,8 +12,8 @@
 <form method="get" class="review-filters" aria-label="Filtros da fila">
  <label>Situação<select name="status"><option value="">Todas</option>@foreach(var option in new[]{("in_review","Em revisão"),("changes_requested","Ajustes solicitados"),("internally_approved","Aprovada internamente"),("cancelled","Cancelada")}){<option value="@option.Item1" selected="@(status==option.Item1)">@option.Item2</option>}</select></label>
  <label>Escopo<select name="scope"><option value="requested" selected="@(scope=="requested")">Minhas solicitações</option><option value="assigned" selected="@(scope=="assigned")">Minhas revisões</option><option value="all" selected="@(scope=="all")">Fila da organização</option></select></label>
- <label>Responsável (ID)<input name="assigneeId" type="text" inputmode="text" value="@ViewData["AssigneeId"]" placeholder="UUID opcional" /></label>
- <label>Contrato (ID)<input name="contractId" type="text" inputmode="text" value="@ViewData["ContractId"]" placeholder="UUID opcional" /></label>
+ <label>Responsável<select name="assigneeId"><option value="">Todos</option>@foreach(var person in assignees){<option value="@person.Id" selected="@(ViewData["AssigneeId"] as Guid? == person.Id)">@person.Name — @person.Profile</option>}</select></label>
+ <label>Pesquisar contrato<input name="search" type="search" value="@search" maxlength="200" placeholder="Título do contrato" /></label>
  <label>Abertas desde<input name="from" type="date" value="@from?.ToString("yyyy-MM-dd")" /></label>
  <label>Abertas até<input name="to" type="date" value="@to?.ToString("yyyy-MM-dd")" /></label>
  <button class="button button-primary" type="submit">Aplicar filtros</button>
@@ -25,5 +26,5 @@ else
  <div class="table-scroll"><table><thead><tr><th>Contrato e solicitante</th><th>Situação</th><th>Responsável</th><th>Abertura e prazo</th><th>Última atualização</th><th>Próxima ação</th></tr></thead><tbody>
  @foreach(var item in Model.Items){<tr><td data-label="Contrato"><strong>@item.Contract</strong><small>@item.Requester</small></td><td data-label="Situação"><span class="status-badge status-@item.Status">@StatusLabel(item.Status)</span></td><td data-label="Responsável">@(item.Assignee??"Não atribuído")</td><td data-label="Abertura e prazo">@item.OpenedAt.ToString("dd/MM/yyyy")<small>@(item.DueAt is null?"Sem prazo definido":$"Prazo: {item.DueAt:dd/MM/yyyy}")</small></td><td data-label="Atualização">@item.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</td><td data-label="Próxima ação"><span>@NextAction(item.Status)</span><a class="button button-quiet" asp-action="Detail" asp-route-tenantId="@tenantId" asp-route-reviewId="@item.Id">Abrir revisão</a></td></tr>}
  </tbody></table></div>
- @if(Model.Page>1 || Model.Page*Model.PageSize<Model.Total){<nav class="pagination" aria-label="Paginação">@if(Model.Page>1){<a class="button button-quiet" asp-route-tenantId="@tenantId" asp-route-status="@status" asp-route-scope="@scope" asp-route-page="@(Model.Page-1)">Anterior</a>}<span>Página @Model.Page</span>@if(Model.Page*Model.PageSize<Model.Total){<a class="button button-quiet" asp-route-tenantId="@tenantId" asp-route-status="@status" asp-route-scope="@scope" asp-route-page="@(Model.Page+1)">Próxima</a>}</nav>}
+ @if(Model.Page>1 || Model.Page*Model.PageSize<Model.Total){<nav class="pagination" aria-label="Paginação">@if(Model.Page>1){<a class="button button-quiet" asp-route-tenantId="@tenantId" asp-route-status="@status" asp-route-scope="@scope" asp-route-assigneeId="@ViewData["AssigneeId"]" asp-route-from="@from" asp-route-to="@to" asp-route-search="@search" asp-route-page="@(Model.Page-1)">Anterior</a>}<span>Página @Model.Page</span>@if(Model.Page*Model.PageSize<Model.Total){<a class="button button-quiet" asp-route-tenantId="@tenantId" asp-route-status="@status" asp-route-scope="@scope" asp-route-assigneeId="@ViewData["AssigneeId"]" asp-route-from="@from" asp-route-to="@to" asp-route-search="@search" asp-route-page="@(Model.Page+1)">Próxima</a>}</nav>}
 }

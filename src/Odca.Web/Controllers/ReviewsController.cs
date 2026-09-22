@@ -12,14 +12,17 @@ public sealed class ReviewsController(OdcaApiClient api) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(Guid tenantId, string? status, string scope = "requested", Guid? assigneeId = null,
-        Guid? contractId = null, DateOnly? from = null, DateOnly? to = null, int page = 1, CancellationToken ct = default)
+        Guid? contractId = null, DateOnly? from = null, DateOnly? to = null, string? search = null, int page = 1, CancellationToken ct = default)
     {
         ViewData["Title"]="Solicitações de revisão"; ViewData["TenantId"]=tenantId;
         var token=await HttpContext.GetTokenAsync("access_token"); if(token is null)return Challenge();
-        var result=await api.GetReviewsAsync(token,tenantId,status,scope,assigneeId,contractId,from,to,page,ct);
+        var result=await api.GetReviewsAsync(token,tenantId,status,scope,assigneeId,contractId,from,to,search,page,ct);
         if(result.Status==ApiCallStatus.Forbidden)return Forbid();
         ViewData["Status"]=status; ViewData["Scope"]=scope; ViewData["AssigneeId"]=assigneeId; ViewData["ContractId"]=contractId;
-        ViewData["From"]=from; ViewData["To"]=to; ViewData["LoadError"]=result.Succeeded?null:result.UserMessage("Não foi possível carregar as solicitações.");
+        ViewData["From"]=from; ViewData["To"]=to; ViewData["Search"]=search;
+        var assignees=await api.GetReviewAssigneesAsync(token,tenantId,ct);
+        ViewData["Assignees"]=assignees.Succeeded && assignees.Value is not null ? assignees.Value : Array.Empty<ReviewAssignee>();
+        ViewData["LoadError"]=result.Succeeded?null:result.UserMessage("Não foi possível carregar as solicitações.");
         return View(result.Value??new ReviewQueuePage([],page,20,0));
     }
 
@@ -30,6 +33,8 @@ public sealed class ReviewsController(OdcaApiClient api) : Controller
         var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
         var result=await api.GetReviewAsync(token,tenantId,reviewId,ct);
         if(result.Status==ApiCallStatus.Forbidden)return Forbid();if(result.Status==ApiCallStatus.NotFound)return NotFound();
+        var assignees=await api.GetReviewAssigneesAsync(token,tenantId,ct);
+        ViewData["Assignees"]=assignees.Succeeded && assignees.Value is not null ? assignees.Value : Array.Empty<ReviewAssignee>();
         return result.Succeeded?View(result.Value):RedirectToAction(nameof(Index),new{tenantId});
     }
 
@@ -55,6 +60,18 @@ public sealed class ReviewsController(OdcaApiClient api) : Controller
         TempData[result.Succeeded?"ReviewNotice":"ReviewError"]=result.Succeeded
             ? action=="approve"?"Versão aprovada internamente. A formalização ainda deve ser registrada.":"Ajustes solicitados; uma nova versão deverá ser enviada."
             : result.UserMessage("Não foi possível registrar a decisão. Atualize a página e tente novamente.");
+        return RedirectToAction(nameof(Detail),new{tenantId,reviewId});
+    }
+
+    [HttpPost("{reviewId:guid}/atribuicao")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Reassign(Guid tenantId,Guid reviewId,Guid assigneeId,string reason,long expectedVersion,CancellationToken ct=default)
+    {
+        var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
+        var result=await api.ReassignReviewAsync(token,tenantId,reviewId,new ReassignReviewRequest(assigneeId,reason,expectedVersion,Guid.NewGuid()),ct);
+        if(result.Status==ApiCallStatus.Forbidden)return Forbid();
+        if(!result.Succeeded){TempData["ReviewAssignmentReason"]=reason;TempData["ReviewAssignmentConflict"]=result.Status==ApiCallStatus.Conflict;}
+        TempData[result.Succeeded?"ReviewNotice":"ReviewError"]=result.Succeeded?"Responsável atualizado e histórico preservado.":result.UserMessage("Não foi possível alterar o responsável.");
         return RedirectToAction(nameof(Detail),new{tenantId,reviewId});
     }
 }

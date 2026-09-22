@@ -21,13 +21,14 @@ namespace Odca.Web.Services;
 public sealed partial class OdcaApiClient(HttpClient client)
 {
     public Task<ApiCallResult<ReviewQueuePage>> GetReviewsAsync(string token, Guid tenantId, string? status,
-        string scope, Guid? assigneeId, Guid? contractId, DateOnly? from, DateOnly? to, int page, CancellationToken ct)
+        string scope, Guid? assigneeId, Guid? contractId, DateOnly? from, DateOnly? to, string? search, int page, CancellationToken ct)
     {
         var query = new Dictionary<string, string?>
         {
             ["status"] = status, ["scope"] = scope, ["assigneeId"] = assigneeId?.ToString(),
             ["contractId"] = contractId?.ToString(), ["from"] = from?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-            ["to"] = to?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), ["page"] = page.ToString(CultureInfo.InvariantCulture)
+            ["to"] = to?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), ["search"] = search,
+            ["page"] = page.ToString(CultureInfo.InvariantCulture)
         };
         var encoded = string.Join('&', query.Where(item => !string.IsNullOrWhiteSpace(item.Value))
             .Select(item => $"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(item.Value!)}"));
@@ -35,6 +36,8 @@ public sealed partial class OdcaApiClient(HttpClient client)
     }
     public Task<ApiCallResult<ReviewDetail>> GetReviewAsync(string token, Guid tenantId, Guid reviewId, CancellationToken ct) =>
         SendAsync<ReviewDetail>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/reviews/{reviewId}", token), false, ct);
+    public Task<ApiCallResult<ReviewAssignee[]>> GetReviewAssigneesAsync(string token, Guid tenantId, CancellationToken ct) =>
+        SendAsync<ReviewAssignee[]>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/reviews/assignees", token), false, ct);
     public async Task<ApiCallResult<JsonElement>> AddReviewMessageAsync(string token, Guid tenantId, Guid reviewId, AddReviewMessageRequest body, CancellationToken ct)
     {
         using var request = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/reviews/{reviewId}/messages", token);
@@ -45,6 +48,12 @@ public sealed partial class OdcaApiClient(HttpClient client)
     public async Task<ApiCallResult<JsonElement>> DecideReviewAsync(string token, Guid tenantId, Guid reviewId, DecideReviewRequest body, CancellationToken ct)
     {
         using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/reviews/{reviewId}/decision", token);
+        message.Content = JsonContent.Create(body);
+        return await SendAsync<JsonElement>(message, false, ct);
+    }
+    public async Task<ApiCallResult<JsonElement>> ReassignReviewAsync(string token, Guid tenantId, Guid reviewId, ReassignReviewRequest body, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/reviews/{reviewId}/assignment", token);
         message.Content = JsonContent.Create(body);
         return await SendAsync<JsonElement>(message, false, ct);
     }

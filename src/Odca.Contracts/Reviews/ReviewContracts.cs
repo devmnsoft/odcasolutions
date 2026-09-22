@@ -13,3 +13,5 @@ public sealed record ReviewMessage(Guid Id, string Body, string? Reference, stri
 public sealed record ReviewHistoryItem(long Id, string Type, string Actor, DateTimeOffset OccurredAt);
 public sealed record AddReviewMessageRequest(string Body, string Visibility, string? Reference, Guid IdempotencyKey);
 public sealed record DecideReviewRequest(string Action, string Justification, long ExpectedVersion, Guid IdempotencyKey);
+public sealed record ReassignReviewRequest(Guid AssigneeId, string Reason, long ExpectedVersion, Guid IdempotencyKey);
+public sealed record ReviewAssignee(Guid Id, string Name, string Profile);
