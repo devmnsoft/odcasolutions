@@ -14,11 +14,22 @@ using Odca.Contracts.Studio;
 using Odca.Contracts.Renewals;
 using Odca.Contracts.Consumption;
 using Odca.Contracts.DocumentImports;
+using Odca.Contracts.Reviews;
 
 namespace Odca.Web.Services;
 
 public sealed partial class OdcaApiClient(HttpClient client)
 {
+    public Task<ApiCallResult<ReviewQueuePage>> GetReviewsAsync(string token, Guid tenantId, string? status, bool mine, int page, CancellationToken ct) =>
+        SendAsync<ReviewQueuePage>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/reviews?status={Uri.EscapeDataString(status ?? string.Empty)}&mine={mine.ToString().ToLowerInvariant()}&page={page}", token), false, ct);
+    public Task<ApiCallResult<ReviewDetail>> GetReviewAsync(string token, Guid tenantId, Guid reviewId, CancellationToken ct) =>
+        SendAsync<ReviewDetail>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/reviews/{reviewId}", token), false, ct);
+    public async Task<ApiCallResult<JsonElement>> AddReviewMessageAsync(string token, Guid tenantId, Guid reviewId, AddReviewMessageRequest body, CancellationToken ct)
+    {
+        using var request = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/reviews/{reviewId}/messages", token);
+        request.Content = JsonContent.Create(body);
+        return await SendAsync<JsonElement>(request, false, ct);
+    }
     public async Task<(HttpStatusCode Status, byte[]? Content, string? ContentType)> GetDocumentPreviewAsync(string token, Guid tenantId, Guid contractId, Guid documentId, Guid versionId, CancellationToken ct)
     {
         using var request = CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contracts/{contractId}/documents/{documentId}/versions/{versionId}/content", token);

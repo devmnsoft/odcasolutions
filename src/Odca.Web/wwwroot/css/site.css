@@ -225,6 +225,7 @@ body.sidebar-collapsed { --sidebar: 5rem; }
 .clear-button-link{border:none;background:none;cursor:pointer;color:#b91c1c;padding:0 .25rem;font-size:.875rem}
 .details-subpanel{margin-top:.75rem;border-top:1px solid #e0e0e0;padding-top:.5rem}
 .comment-card{border:1px solid var(--border-color,#e2e8f0);border-radius:6px;padding:.75rem;background:var(--card-bg,#fff)}
+.internal-note{border-left:5px solid #9a6700;background:#fff8df}.comment-card header{display:flex;justify-content:space-between;gap:1rem}.comment-card header span{font-size:.8rem;color:#52667a}.summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;margin-bottom:1rem}.summary-grid article{display:grid;gap:.3rem;padding:1rem;background:#fff;border:1px solid #dbe3ee;border-radius:10px}.summary-grid span{color:#52667a;font-size:.8rem}.workspace-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(16rem,1fr);gap:1.25rem}.workspace-grid textarea{width:100%;min-height:8rem}.table-scroll{overflow-x:auto}.table-scroll table{width:100%;border-collapse:collapse}.table-scroll th,.table-scroll td{text-align:left;padding:.8rem;border-bottom:1px solid #dbe3ee}.table-scroll small{display:block;color:#52667a}@media(max-width:768px){.summary-grid,.workspace-grid{grid-template-columns:1fr}.comment-card header{display:grid}}
 :focus-visible{outline:3px solid #78a9ff;outline-offset:2px}
 
 /* Unavailable error dialog (role="alertdialog") */
