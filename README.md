@@ -201,6 +201,14 @@ API e Worker devem compartilhar o mesmo `DataProtection:KeysPath` persistente e 
 
 Com uma organização selecionada, abra `/organizacoes/{tenantId}/estudio`. O catálogo mostra somente modelos publicados autorizados. Ao usar um modelo, informe o título, confirme os campos no painel direito e edite os blocos do documento; o autosave usa debounce e versão otimista. O botão **Gerar versão** somente aceita campos obrigatórios confirmados e cria um snapshot imutável ligado à versão original do modelo. O estado detalhado, recursos suportados e dependências de PDF estão em `docs/execution/CONTRACT_STUDIO.md`.
 
+### Solicitações de revisão
+
+A fila autenticada fica em `/organizacoes/{tenantId}/solicitacoes` e reutiliza a
+revisão sequencial dos contratos, sem fonte paralela de atendimento. Mensagens ao
+cliente e notas internas têm visibilidade aplicada no servidor. Consulte
+`docs/execution/CONSULTANCY_REVIEW_QUEUE.md` para permissões, migration e roteiro
+de validação por perfil.
+
 ### Importação assistida
 
 A central autenticada fica em `/organizacoes/{tenantId}/importacoes`; as rotas HTTP
