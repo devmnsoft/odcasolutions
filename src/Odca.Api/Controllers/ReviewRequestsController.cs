@@ -15,7 +15,7 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
     [HttpGet]
     public async Task<IActionResult> List(Guid tenantId, [FromQuery] string? status, [FromQuery] string? scope = null,
         [FromQuery] Guid? assigneeId = null, [FromQuery] Guid? contractId = null, [FromQuery] DateOnly? from = null,
-        [FromQuery] DateOnly? to = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20,
+        [FromQuery] DateOnly? to = null, [FromQuery] string? search = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
@@ -34,10 +34,11 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
             AND (CAST(@assigneeId AS uuid) IS NULL OR EXISTS(SELECT 1 FROM odca.contract_review_steps af WHERE af.tenant_id=r.tenant_id AND af.review_id=r.id AND af.reviewer_id=CAST(@assigneeId AS uuid) AND af.status='current'))
             AND (CAST(@from AS date) IS NULL OR r.opened_at >= CAST(@from AS date))
             AND (CAST(@to AS date) IS NULL OR r.opened_at < CAST(@to AS date) + INTERVAL '1 day')
+            AND (CAST(@search AS text) IS NULL OR c.title ILIKE '%' || CAST(@search AS text) || '%')
             AND (@scope='all' OR (@scope='requested' AND r.requested_by=@actor) OR (@scope='assigned' AND EXISTS(SELECT 1 FROM odca.contract_review_steps ms WHERE ms.tenant_id=r.tenant_id AND ms.review_id=r.id AND ms.reviewer_id=@actor AND ms.status='current')))
             """;
         var args = new { tenantId, actor = actor.Value, status = string.IsNullOrWhiteSpace(status) ? null : status,
-            scope, assigneeId, contractId, from, to, offset = (page - 1) * pageSize, pageSize };
+            scope, assigneeId, contractId, from, to, search = string.IsNullOrWhiteSpace(search) ? null : search.Trim(), offset = (page - 1) * pageSize, pageSize };
         var total = await connection.ExecuteScalarAsync<int>(new CommandDefinition($"SELECT count(*)::integer FROM odca.contract_review_requests r WHERE {where}", args, cancellationToken: ct));
         var rows = await connection.QueryAsync<QueueRow>(new CommandDefinition($"""
             SELECT r.id AS Id,r.contract_id AS ContractId,r.requested_by AS RequestedBy,c.title AS Contract,r.status AS Status,requester.display_name AS Requester,
@@ -51,8 +52,80 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
             LEFT JOIN odca.contract_review_comments cm ON cm.tenant_id=r.tenant_id AND cm.review_id=r.id
             WHERE {where} GROUP BY r.id,c.title,requester.display_name,assignee.display_name
             ORDER BY r.updated_at DESC,r.id LIMIT @pageSize OFFSET @offset
-            """, new { args.tenantId,args.actor,args.status,args.scope,args.assigneeId,args.contractId,args.from,args.to,args.offset,args.pageSize,canManage }, cancellationToken: ct));
+            """, new { args.tenantId,args.actor,args.status,args.scope,args.assigneeId,args.contractId,args.from,args.to,args.search,args.offset,args.pageSize,canManage }, cancellationToken: ct));
         return Ok(new ReviewQueuePage(rows.Select(Map).ToArray(), page, pageSize, total));
+    }
+
+    [HttpGet("assignees")]
+    public async Task<IActionResult> Assignees(Guid tenantId, CancellationToken ct)
+    {
+        var actor = Actor(); if (actor is null) return Unauthorized();
+        await using var connection = await dataSource.OpenConnectionAsync(ct);
+        if (!await Allowed(connection, actor.Value, tenantId, "tenant.reviews.decide", ct)) return Forbid();
+        await using var tx = await connection.BeginTransactionAsync(ct); await SetTenant(connection, tenantId, actor.Value, tx, ct);
+        var assignees = await connection.QueryAsync<ReviewAssignee>(new CommandDefinition("""
+            SELECT u.id AS Id,u.display_name AS Name,coalesce(string_agg(DISTINCT r.display_name, ', ' ORDER BY r.display_name),'Revisor') AS Profile
+            FROM odca.memberships m JOIN odca.users u ON u.id=m.user_id
+            LEFT JOIN odca.member_roles mr ON mr.tenant_id=m.tenant_id AND mr.user_id=m.user_id
+            LEFT JOIN odca.roles r ON r.tenant_id=mr.tenant_id AND r.id=mr.role_id
+            WHERE m.tenant_id=@tenantId AND m.status='active'
+              AND odca.tenant_actor_has_permission(m.user_id,@tenantId,'tenant.reviews.decide')
+            GROUP BY u.id,u.display_name ORDER BY u.display_name,u.id
+            """, new { tenantId }, tx, cancellationToken: ct));
+        await tx.CommitAsync(ct); return Ok(assignees.AsList());
+    }
+
+    [HttpPost("{reviewId:guid}/assignment")]
+    public async Task<IActionResult> Reassign(Guid tenantId, Guid reviewId, ReassignReviewRequest request, CancellationToken ct)
+    {
+        var actor = Actor(); if (actor is null) return Unauthorized();
+        if (request.AssigneeId == Guid.Empty || string.IsNullOrWhiteSpace(request.Reason))
+            return ValidationProblem("Selecione um responsável e informe a justificativa.");
+        await using var connection = await dataSource.OpenConnectionAsync(ct);
+        if (!await Allowed(connection, actor.Value, tenantId, "tenant.reviews.decide", ct)) return Forbid();
+        await using var tx = await connection.BeginTransactionAsync(ct); await SetTenant(connection, tenantId, actor.Value, tx, ct);
+        var prior = await connection.QuerySingleOrDefaultAsync<AssignmentReceipt>(new CommandDefinition("""
+            SELECT (details->>'assigneeId')::uuid AS AssigneeId,(details->>'expectedVersion')::bigint AS ExpectedVersion
+            FROM odca.contract_review_events WHERE tenant_id=@tenantId AND review_id=@reviewId
+              AND event_type='review.step.reassigned' AND details->>'idempotencyKey'=@key LIMIT 1
+            """, new { tenantId, reviewId, key=request.IdempotencyKey.ToString() }, tx, cancellationToken: ct));
+        if (prior is not null)
+        {
+            if (prior.AssigneeId != request.AssigneeId || prior.ExpectedVersion != request.ExpectedVersion)
+                return Conflict(new { title="A chave de repetição já foi usada para outra atribuição." });
+            await tx.CommitAsync(ct); return Ok(new { version=request.ExpectedVersion+1, replayed=true });
+        }
+        var eligible = await connection.ExecuteScalarAsync<bool>(new CommandDefinition("""
+            SELECT EXISTS(SELECT 1 FROM odca.memberships m WHERE m.tenant_id=@tenantId AND m.user_id=@assigneeId
+              AND m.status='active' AND odca.tenant_actor_has_permission(m.user_id,@tenantId,'tenant.reviews.decide'))
+            """, new { tenantId, request.AssigneeId }, tx, cancellationToken: ct));
+        if (!eligible) return ValidationProblem("O responsável selecionado não está ativo ou autorizado para revisões.");
+        var changed = await connection.ExecuteScalarAsync<int?>(new CommandDefinition("""
+            WITH current_step AS (
+              UPDATE odca.contract_review_steps SET status='reassigned',decided_by=@actor,decided_at=now(),justification=@reason
+              WHERE tenant_id=@tenantId AND review_id=@reviewId AND status='current'
+                AND reviewer_id<>@assigneeId AND EXISTS(SELECT 1 FROM odca.contract_review_requests
+                  WHERE tenant_id=@tenantId AND id=@reviewId AND status='in_review' AND row_version=@expected)
+              RETURNING sequence
+            ), new_step AS (
+              INSERT INTO odca.contract_review_steps(tenant_id,review_id,sequence,reviewer_id,status)
+              SELECT @tenantId,@reviewId,sequence+1,@assigneeId,'current' FROM current_step RETURNING 1
+            ), updated_review AS (
+              UPDATE odca.contract_review_requests SET row_version=row_version+1,updated_at=now()
+              WHERE tenant_id=@tenantId AND id=@reviewId AND row_version=@expected AND EXISTS(SELECT 1 FROM new_step) RETURNING 1
+            ), audit AS (
+              INSERT INTO odca.contract_review_events(tenant_id,review_id,actor_id,event_type,details)
+              SELECT @tenantId,@reviewId,@actor,'review.step.reassigned',jsonb_build_object('assigneeId',@assigneeId,'expectedVersion',@expected,'reason',@reason,'idempotencyKey',@key)
+              WHERE EXISTS(SELECT 1 FROM updated_review)
+            ), notification AS (
+              INSERT INTO odca.contract_review_notifications(tenant_id,review_id,recipient_id,kind,deduplication_key)
+              SELECT @tenantId,@reviewId,@assigneeId,'review.assigned','review-assigned/' || @reviewId::text || '/' || @key
+              WHERE EXISTS(SELECT 1 FROM updated_review) ON CONFLICT(tenant_id,deduplication_key) DO NOTHING
+            ) SELECT count(*)::integer FROM updated_review
+            """, new { tenantId, reviewId, actor, request.AssigneeId, expected=request.ExpectedVersion,
+                reason=request.Reason.Trim(), key=request.IdempotencyKey.ToString() }, tx, cancellationToken: ct));
+        if (changed != 1) return Conflict(new { title="A atribuição foi alterada em outra sessão ou o responsável já é o selecionado." });
+        await tx.CommitAsync(ct); return Ok(new { version=request.ExpectedVersion+1, replayed=false });
     }
 
     [HttpGet("{reviewId:guid}")]
@@ -172,6 +245,14 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
             INSERT INTO odca.contract_review_events(tenant_id,review_id,actor_id,event_type,details)
             SELECT @tenantId,@reviewId,@actor,@event,jsonb_build_object('status',@status,'action',@action,'expectedVersion',@expected,'justification',@reason,'idempotencyKey',@key)
             WHERE EXISTS(SELECT 1 FROM decided_review) RETURNING 1
+            ), inserted_notification AS (
+              INSERT INTO odca.contract_review_notifications(tenant_id,review_id,recipient_id,kind,deduplication_key)
+              SELECT @tenantId,@reviewId,r.requested_by,
+                CASE WHEN @status='internally_approved' THEN 'review.decided' ELSE 'review.changes_requested' END,
+                'review-decision/' || @reviewId::text || '/' || @key
+              FROM odca.contract_review_requests r WHERE r.tenant_id=@tenantId AND r.id=@reviewId
+                AND EXISTS(SELECT 1 FROM inserted_event)
+              ON CONFLICT(tenant_id,deduplication_key) DO NOTHING
             ) SELECT count(*)::integer FROM decided_review;
             """, new { tenantId, reviewId, actor, review.StepId, stepStatus, status, action=request.Action,
                 reason=request.Justification.Trim(), expected=request.ExpectedVersion, review.GeneratedVersionId,
@@ -182,11 +263,12 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
 
     private Guid? Actor()=>Guid.TryParse(User.FindFirstValue("sub"),out var id)?id:null;
     private static async Task<bool> Allowed(NpgsqlConnection c,Guid actor,Guid tenant,string permission,CancellationToken ct)=>await c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT odca.has_tenant_permission(@actor,@tenant,@permission)",new{actor,tenant,permission},cancellationToken:ct));
-    private static Task SetTenant(NpgsqlConnection c,Guid tenant,Guid actor,CancellationToken ct)=>c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenant::text,false),set_config('odca.user_id',@actor::text,false)",new{tenant,actor},cancellationToken:ct));
-    private static Task SetTenant(NpgsqlConnection c,Guid tenant,Guid actor,NpgsqlTransaction tx,CancellationToken ct)=>c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenant::text,true),set_config('odca.user_id',@actor::text,true)",new{tenant,actor},tx,cancellationToken:ct));
+    private static Task<int> SetTenant(NpgsqlConnection c,Guid tenant,Guid actor,CancellationToken ct)=>c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenant::text,false),set_config('odca.user_id',@actor::text,false)",new{tenant,actor},cancellationToken:ct));
+    private static Task<int> SetTenant(NpgsqlConnection c,Guid tenant,Guid actor,NpgsqlTransaction tx,CancellationToken ct)=>c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenant::text,true),set_config('odca.user_id',@actor::text,true)",new{tenant,actor},tx,cancellationToken:ct));
     private static ReviewQueueItem Map(QueueRow r)=>new(r.Id,r.ContractId,r.Contract,r.Status,r.Requester,r.Assignee,r.OpenedAt,r.UpdatedAt,r.DueAt,r.Version,r.PublicMessages,r.PendingComments);
     private sealed record QueueRow(Guid Id,Guid ContractId,string Contract,string Status,string Requester,string? Assignee,DateTimeOffset OpenedAt,DateTimeOffset UpdatedAt,DateTimeOffset? DueAt,long Version,int PublicMessages,int PendingComments);
     private sealed record DetailRow(Guid Id,Guid ContractId,Guid RequestedBy,string Contract,string Status,string Requester,string? Assignee,string? Instructions,DateTimeOffset OpenedAt,DateTimeOffset UpdatedAt,DateTimeOffset? DueAt,long Version,Guid? DocumentVersionId,Guid? GeneratedVersionId);
     private sealed record DecisionRow(long Version,string Status,Guid? GeneratedVersionId,Guid? StepId,Guid? ReviewerId);
     private sealed record DecisionReceipt(string EventType,string Status,string Action,long ExpectedVersion);
+    private sealed record AssignmentReceipt(Guid AssigneeId,long ExpectedVersion);
 }

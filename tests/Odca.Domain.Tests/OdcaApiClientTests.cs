@@ -107,6 +107,24 @@ public sealed class OdcaApiClientTests
         Assert.Equal("/api/v1/organizations/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/obligations/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb/history", handler.RequestUri!.AbsolutePath);
     }
 
+    [Fact]
+    public async Task ReviewFiltersAreEncodedAndUseInvariantDates()
+    {
+        var handler = new CapturingHandler();
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
+        var client = new OdcaApiClient(http);
+
+        await client.GetReviewsAsync("token", Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            "in_review", "assigned", null, null, new DateOnly(2026, 9, 3), new DateOnly(2026, 10, 4),
+            "ação & revisão", 2, CancellationToken.None);
+
+        Assert.Contains("from=2026-09-03", handler.RequestUri!.Query, StringComparison.Ordinal);
+        Assert.Contains("to=2026-10-04", handler.RequestUri.Query, StringComparison.Ordinal);
+        Assert.Contains($"search={Uri.EscapeDataString("ação & revisão")}", handler.RequestUri.Query, StringComparison.Ordinal);
+        Assert.Contains("scope=assigned", handler.RequestUri.Query, StringComparison.Ordinal);
+        Assert.Contains("page=2", handler.RequestUri.Query, StringComparison.Ordinal);
+    }
+
     private sealed class CapturingHandler : HttpMessageHandler
     {
         private readonly string response;
