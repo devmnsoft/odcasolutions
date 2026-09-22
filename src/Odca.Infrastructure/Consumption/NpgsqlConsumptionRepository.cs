@@ -40,7 +40,39 @@ public sealed class NpgsqlConsumptionRepository(NpgsqlDataSource dataSource) : I
     { if(request.QuantityBytes<=0||string.IsNullOrWhiteSpace(request.Reason))return false;await c.ExecuteAsync(new CommandDefinition("SELECT odca.grant_storage_capacity(@tenantId,@actor,@bytes,@reason,@key,@validUntil)",new{tenantId,actor=actorId,bytes=request.QuantityBytes,reason=request.Reason.Trim(),key=request.IdempotencyKey,validUntil=request.ValidUntil},tx,cancellationToken:ct));return true; },cancellationToken);
 
     public async Task<IReadOnlyList<PlatformCustomer>> ListCustomersAsync(Guid actorId,string? search,CancellationToken cancellationToken)
-    { await using var c=await dataSource.OpenConnectionAsync(cancellationToken);await c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.user_id',@actor,false)",new{actor=actorId.ToString()},cancellationToken:cancellationToken));return (await c.QueryAsync<PlatformCustomer>(new CommandDefinition("SELECT * FROM odca.platform_consumption_customers(@actor,@search)",new{actor=actorId,search=string.IsNullOrWhiteSpace(search)?null:search.Trim()},cancellationToken:cancellationToken))).AsList(); }
+    {
+        const string sql = """
+            SELECT "TenantId" AS "TenantId",
+                   COALESCE("Name", '') AS "Name",
+                   COALESCE("MaskedDocument", '****') AS "MaskedDocument",
+                   COALESCE("PlanName", 'Sem plano') AS "PlanName",
+                   COALESCE("TenantStatus", 'inactive') AS "TenantStatus",
+                   COALESCE("SubscriptionStatus", 'sem_assinatura') AS "SubscriptionStatus",
+                   COALESCE("ActiveUsers", 0)::int AS "ActiveUsers",
+                   COALESCE("UsedBytes", 0)::bigint AS "UsedBytes",
+                   COALESCE("LimitBytes", 0)::bigint AS "LimitBytes",
+                   COALESCE("PendingRequests", 0)::int AS "PendingRequests",
+                   COALESCE("LastActivity", NOW()) AS "LastActivity"
+              FROM odca.platform_consumption_customers(@actor, @search::text);
+            """;
+
+        await using var c = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var tx = await c.BeginTransactionAsync(cancellationToken);
+        await c.ExecuteAsync(new CommandDefinition(
+            "SELECT set_config('odca.user_id', @actor, true)",
+            new { actor = actorId.ToString() }, tx, cancellationToken: cancellationToken));
+        var rows = (await c.QueryAsync<PlatformCustomerRow>(new CommandDefinition(
+            sql,
+            new { actor = actorId, search = string.IsNullOrWhiteSpace(search) ? null : search.Trim() },
+            tx,
+            cancellationToken: cancellationToken))).AsList();
+        await tx.CommitAsync(cancellationToken);
+
+        return rows.Select(row => new PlatformCustomer(
+            row.TenantId, row.Name, row.MaskedDocument, row.PlanName, row.TenantStatus,
+            row.SubscriptionStatus, row.ActiveUsers, row.UsedBytes, row.LimitBytes,
+            row.PendingRequests, new DateTimeOffset(row.LastActivity))).ToArray();
+    }
 
     private async Task<bool> MutatePlatform(Guid actorId,Guid tenantId,Func<NpgsqlConnection,NpgsqlTransaction,CancellationToken,Task<bool>> action,CancellationToken cancellationToken){await using var c=await dataSource.OpenConnectionAsync(cancellationToken);await using var tx=await c.BeginTransactionAsync(cancellationToken);await Context(c,tx,actorId,tenantId,cancellationToken);var ok=await action(c,tx,cancellationToken);if(ok)await tx.CommitAsync(cancellationToken);else await tx.RollbackAsync(cancellationToken);return ok;}
     private static Task<int> Context(NpgsqlConnection c,NpgsqlTransaction tx,Guid actor,Guid tenant,CancellationToken ct)=>c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.user_id',@actor,true),set_config('odca.tenant_id',@tenant,true)",new{actor=actor.ToString(),tenant=tenant.ToString()},tx,cancellationToken:ct));
@@ -51,4 +83,18 @@ public sealed class NpgsqlConsumptionRepository(NpgsqlDataSource dataSource) : I
     private const string RequestSql="""SELECT r.id AS Id,r.package_name AS PackageName,r.package_version AS PackageVersion,r.quantity AS Quantity,(r.bytes_per_unit*r.quantity)::bigint AS TotalBytes,(r.unit_price*r.quantity) AS TotalPrice,r.currency AS Currency,r.terms_snapshot AS Terms,r.status AS Status,requester.display_name AS RequestedBy,r.requested_at AS RequestedAt,decider.display_name AS DecidedBy,r.decided_at AS DecidedAt,r.decision_reason AS DecisionReason FROM odca.additional_storage_requests r JOIN odca.users requester ON requester.id=r.requested_by LEFT JOIN odca.users decider ON decider.id=r.decided_by""";
     private sealed class SummaryRow { public Guid TenantId{get;init;} public string OrganizationName{get;init;}="";public string TenantStatus{get;init;}="";public string SubscriptionStatus{get;init;}="";public string PlanCode{get;init;}="";public string PlanName{get;init;}="";public int PlanVersion{get;init;}public DateTimeOffset? PeriodStart{get;init;}public DateTimeOffset? PeriodEnd{get;init;}public int ContractedSeats{get;init;}public int ActiveUsers{get;init;}public int ReservedInvitations{get;init;}public long ContractedStorageBytes{get;init;}public long AdditionalStorageBytes{get;init;}public long UsedStorageBytes{get;init;}public long ReservedStorageBytes{get;init;}public long MaximumFileBytes{get;init;} }
     private sealed class ConsumptionEventRow { public long Id{get;init;} public string Type{get;init;}=""; public string Resource{get;init;}=""; public long Quantity{get;init;} public string Unit{get;init;}=""; public string? Reason{get;init;} public string ActorName{get;init;}=""; public DateTime OccurredAt{get;init;} }
+    private sealed class PlatformCustomerRow
+    {
+        public Guid TenantId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string MaskedDocument { get; set; } = string.Empty;
+        public string PlanName { get; set; } = string.Empty;
+        public string TenantStatus { get; set; } = string.Empty;
+        public string SubscriptionStatus { get; set; } = string.Empty;
+        public int ActiveUsers { get; set; }
+        public long UsedBytes { get; set; }
+        public long LimitBytes { get; set; }
+        public int PendingRequests { get; set; }
+        public DateTime LastActivity { get; set; }
+    }
 }

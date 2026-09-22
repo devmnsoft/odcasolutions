@@ -25,8 +25,12 @@ public sealed class NpgsqlPlatformDashboardRepository(NpgsqlDataSource dataSourc
                    storage_bytes AS "StorageBytes",
                    pending_privacy_items AS "PendingPrivacyItems"
               FROM odca.platform_dashboard_snapshot(@requestingUserId);
-            SELECT occurred_at AS "OccurredAt", action AS "Action", entity_type AS "EntityType",
-                   result AS "Result", actor_name AS "ActorName", tenant_name AS "TenantName"
+            SELECT occurred_at AS "OccurredAt",
+                   COALESCE(action, '') AS "Action",
+                   COALESCE(entity_type, '') AS "EntityType",
+                   COALESCE(result, 'unknown') AS "Result",
+                   COALESCE(actor_name, 'Sistema') AS "ActorName",
+                   COALESCE(tenant_name, 'Plataforma') AS "TenantName"
               FROM odca.platform_dashboard_recent_audit(@requestingUserId, 8);
             """;
 
@@ -40,7 +44,10 @@ public sealed class NpgsqlPlatformDashboardRepository(NpgsqlDataSource dataSourc
         using var results = await connection.QueryMultipleAsync(
             new CommandDefinition(sql, new { requestingUserId }, transaction, cancellationToken: cancellationToken));
         var counters = await results.ReadSingleAsync<DashboardCounters>();
-        var events = (await results.ReadAsync<PlatformAuditEvent>()).AsList();
+        var eventRows = (await results.ReadAsync<PlatformAuditEventRow>()).AsList();
+        var events = eventRows.Select(row => new PlatformAuditEvent(
+            new DateTimeOffset(row.OccurredAt), row.Action, row.EntityType, row.Result,
+            row.ActorName, row.TenantName)).ToArray();
         await transaction.CommitAsync(cancellationToken);
         return new PlatformDashboardSnapshot(
             counters.TotalTenants, counters.ActiveTenants, counters.BlockedTenants, counters.InactiveTenants,
@@ -54,4 +61,16 @@ public sealed class NpgsqlPlatformDashboardRepository(NpgsqlDataSource dataSourc
         int Contracts, int ContractsExpiring, int OpenObligations, int OverdueObligations,
         int UpcomingRenewals, int PendingInvoices, int OverdueInvoices, long StorageBytes,
         int PendingPrivacyItems);
+
+    // Npgsql exposes PostgreSQL timestamptz as DateTime. Keeping the provider row
+    // separate avoids asking Dapper to bind DateTime to the public DateTimeOffset record constructor.
+    private sealed class PlatformAuditEventRow
+    {
+        public DateTime OccurredAt { get; set; }
+        public string Action { get; set; } = string.Empty;
+        public string EntityType { get; set; } = string.Empty;
+        public string Result { get; set; } = string.Empty;
+        public string ActorName { get; set; } = string.Empty;
+        public string TenantName { get; set; } = string.Empty;
+    }
 }
