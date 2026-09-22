@@ -20,7 +20,10 @@ BEGIN
     v_operator_id := COALESCE(v_operator_id, '10000000-0000-4000-8000-000000000002'::uuid);
     SELECT id INTO v_client_id FROM odca.users WHERE email_normalized='CLIENTE.TESTE@ODCA.LOCAL';
     v_client_id := COALESCE(v_client_id, '10000000-0000-4000-8000-000000000003'::uuid);
-    SELECT id INTO v_tenant_id FROM odca.tenants WHERE business_code='ODCA-DEMO-LOCAL';
+    IF (SELECT count(*) FROM odca.tenants WHERE business_code IN ('12345678000195','ODCA-DEMO-LOCAL')) > 1 THEN
+        RAISE EXCEPTION 'Both the current and legacy demo tenants exist; refusing to merge tenant data automatically.';
+    END IF;
+    SELECT id INTO v_tenant_id FROM odca.tenants WHERE business_code IN ('12345678000195','ODCA-DEMO-LOCAL');
     v_tenant_id := COALESCE(v_tenant_id, '20000000-0000-4000-8000-000000000001'::uuid);
 
     IF inet_server_addr() IS NOT NULL AND NOT (inet_server_addr() << inet '127.0.0.0/8' OR inet_server_addr() = inet '::1') THEN
@@ -65,9 +68,14 @@ BEGIN
     END IF;
     UPDATE odca.users SET failed_login_count=0, locked_until=NULL, email_verified_at=COALESCE(email_verified_at,now()), updated_at=now()
      WHERE id IN (v_administrator_id,v_operator_id,v_client_id);
-    INSERT INTO odca.tenants (id,business_code,display_name,status) VALUES (v_tenant_id,'ODCA-DEMO-LOCAL','ODCA Cliente de Demonstração','active')
-    ON CONFLICT (business_code) DO NOTHING;
-    IF NOT EXISTS (SELECT 1 FROM odca.tenants WHERE business_code='ODCA-DEMO-LOCAL' AND status='active' AND NOT is_deleted) THEN
+    INSERT INTO odca.tenants (id,business_code,display_name,status) VALUES (v_tenant_id,'12345678000195','Cliente Teste ODCA','active')
+    ON CONFLICT (business_code) DO UPDATE
+       SET display_name=EXCLUDED.display_name,status='active',is_deleted=false,deleted_at=NULL,deleted_by=NULL,deletion_reason=NULL,updated_at=now();
+    UPDATE odca.tenants
+       SET business_code='12345678000195',display_name='Cliente Teste ODCA',status='active',
+           is_deleted=false,deleted_at=NULL,deleted_by=NULL,deletion_reason=NULL,updated_at=now()
+     WHERE id=v_tenant_id AND business_code='ODCA-DEMO-LOCAL';
+    IF NOT EXISTS (SELECT 1 FROM odca.tenants WHERE business_code='12345678000195' AND display_name='Cliente Teste ODCA' AND status='active' AND NOT is_deleted) THEN
         RAISE EXCEPTION 'The reserved demo tenant exists with incompatible state or id.';
     END IF;
 
