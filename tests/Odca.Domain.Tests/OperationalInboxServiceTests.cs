@@ -19,7 +19,7 @@ public sealed class OperationalInboxServiceTests
             Row(OperationalWorkKind.Obligation, Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"), Other, Today)
         ]));
 
-        var page = await service.QueryAsync(Tenant, Viewer, false, false, false, new OperationalInboxQuery(), default);
+        var page = await service.QueryAsync(Tenant, Viewer, true, false, true, false, true, false, new OperationalInboxQuery(), default);
 
         Assert.Empty(page.Items);
         Assert.Equal(0, page.Total);
@@ -35,10 +35,51 @@ public sealed class OperationalInboxServiceTests
             Row(OperationalWorkKind.Renewal, Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3"), Other, Today.AddDays(20))
         ]));
 
-        var page = await service.QueryAsync(Tenant, Viewer, true, true, true, new OperationalInboxQuery(), default);
+        var page = await service.QueryAsync(Tenant, Viewer, true, true, true, true, true, true, new OperationalInboxQuery(), default);
 
         Assert.Equal(3, page.Total);
         Assert.Equal(2, page.DueToday);
+    }
+
+    [Fact]
+    public async Task MissingSourcePermissionHidesEvenAnOwnedItem()
+    {
+        var service = new OperationalInboxService(new FakeInboxRepository(
+        [
+            Row(OperationalWorkKind.Obligation, Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"), Viewer, Today),
+            Row(OperationalWorkKind.Review, Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2"), Viewer, Today)
+        ]));
+
+        var page = await service.QueryAsync(
+            Tenant, Viewer,
+            canReadObligations: true, canReadTenantObligations: false,
+            canReadReviews: false, canReadTenantReviews: false,
+            canReadRenewals: false, canReadTenantRenewals: false,
+            query: new OperationalInboxQuery(), cancellationToken: default);
+
+        var item = Assert.Single(page.Items);
+        Assert.Equal("Obligation", item.Kind);
+    }
+
+    [Fact]
+    public async Task AgendaUsesTenantTodayAndFiltersByKind()
+    {
+        var repository = new FakeInboxRepository(
+        [
+            Row(OperationalWorkKind.Obligation, Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"), Viewer, Today),
+            Row(OperationalWorkKind.Review, Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2"), Viewer, Today)
+        ]);
+        var service = new MonthlyAgendaService(repository, repository);
+
+        var page = await service.QueryAsync(
+            Tenant, Viewer,
+            canReadObligations: true, canReadTenantObligations: false,
+            canReadReviews: true, canReadTenantReviews: false,
+            canReadRenewals: false, canReadTenantRenewals: false,
+            query: new MonthlyAgendaQuery(Today.Year, Today.Month, Kind: "Review"), cancellationToken: default);
+
+        Assert.Equal(Today, page.Today);
+        Assert.Equal("Review", Assert.Single(Assert.Single(page.Days).Items).Kind);
     }
 
     [Fact]
@@ -50,7 +91,7 @@ public sealed class OperationalInboxServiceTests
             Row(OperationalWorkKind.Review, Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2"), Viewer, Today)
         ]));
 
-        var page = await service.QueryAsync(Tenant, Viewer, true, true, true, new OperationalInboxQuery(Kind: "Review"), default);
+        var page = await service.QueryAsync(Tenant, Viewer, true, true, true, true, true, true, new OperationalInboxQuery(Kind: "Review"), default);
 
         Assert.Single(page.Items);
         Assert.Equal("Review", page.Items[0].Kind);
@@ -65,7 +106,7 @@ public sealed class OperationalInboxServiceTests
             Row(OperationalWorkKind.Review, Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2"), Viewer, Today, sourceVersion)
         ]));
 
-        var page = await service.QueryAsync(Tenant, Viewer, true, true, true, new OperationalInboxQuery(), default);
+        var page = await service.QueryAsync(Tenant, Viewer, true, true, true, true, true, true, new OperationalInboxQuery(), default);
 
         Assert.Equal(sourceVersion, Assert.Single(page.Items).Version);
     }
@@ -108,14 +149,22 @@ public sealed class OperationalInboxServiceTests
             Status: "open",
             Version: sourceVersion);
 
-    private sealed class FakeInboxRepository(IReadOnlyList<OperationalInboxRow> rows) : IOperationalInboxRepository
+    private sealed class FakeInboxRepository(IReadOnlyList<OperationalInboxRow> rows)
+        : IOperationalInboxRepository, IMonthlyAgendaRepository
     {
         public Task<TenantCalendarContext> ReadCalendarAsync(Guid tenantId, CancellationToken cancellationToken) =>
             Task.FromResult(new TenantCalendarContext("America/Sao_Paulo", Today));
 
         public Task<IReadOnlyList<OperationalInboxRow>> ListCandidatesAsync(
-            Guid tenantId, Guid viewerId, bool canReadTenantObligations, bool canReadTenantReviews,
-            bool canReadTenantRenewals, Guid? contractId, Guid? ownerId, DateOnly today, DateOnly renewalWindowEnd,
+            Guid tenantId, Guid viewerId, bool canReadObligations, bool canReadTenantObligations,
+            bool canReadReviews, bool canReadTenantReviews, bool canReadRenewals, bool canReadTenantRenewals,
+            Guid? contractId, Guid? ownerId, DateOnly today, DateOnly renewalWindowEnd,
             CancellationToken cancellationToken) => Task.FromResult(rows);
+
+        public Task<IReadOnlyList<OperationalInboxRow>> ListWindowAsync(
+            Guid tenantId, Guid viewerId, bool canReadObligations, bool canReadTenantObligations,
+            bool canReadReviews, bool canReadTenantReviews, bool canReadRenewals, bool canReadTenantRenewals,
+            Guid? ownerId, DateOnly windowStart, DateOnly windowEnd, CancellationToken cancellationToken) =>
+            Task.FromResult(rows);
     }
 }

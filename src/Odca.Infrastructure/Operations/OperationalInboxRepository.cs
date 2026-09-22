@@ -24,8 +24,11 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
     public Task<IReadOnlyList<OperationalInboxRow>> ListCandidatesAsync(
         Guid tenantId,
         Guid viewerId,
+        bool canReadObligations,
         bool canReadTenantObligations,
+        bool canReadReviews,
         bool canReadTenantReviews,
+        bool canReadRenewals,
         bool canReadTenantRenewals,
         Guid? contractId,
         Guid? ownerId,
@@ -35,8 +38,11 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
         QueryAsync(
             tenantId,
             viewerId,
+            canReadObligations,
             canReadTenantObligations,
+            canReadReviews,
             canReadTenantReviews,
+            canReadRenewals,
             canReadTenantRenewals,
             contractId,
             ownerId,
@@ -49,7 +55,12 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
     public Task<IReadOnlyList<OperationalInboxRow>> ListWindowAsync(
         Guid tenantId,
         Guid viewerId,
-        bool canReadTenant,
+        bool canReadObligations,
+        bool canReadTenantObligations,
+        bool canReadReviews,
+        bool canReadTenantReviews,
+        bool canReadRenewals,
+        bool canReadTenantRenewals,
         Guid? ownerId,
         DateOnly windowStart,
         DateOnly windowEnd,
@@ -57,9 +68,12 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
         QueryAsync(
             tenantId,
             viewerId,
-            canReadTenant,
-            canReadTenant,
-            canReadTenant,
+            canReadObligations,
+            canReadTenantObligations,
+            canReadReviews,
+            canReadTenantReviews,
+            canReadRenewals,
+            canReadTenantRenewals,
             contractId: null,
             ownerId,
             today: windowStart,
@@ -72,8 +86,11 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
         Guid tenantId,
         Guid viewerId,
         bool canReadObligations,
+        bool canReadTenantObligations,
         bool canReadReviews,
+        bool canReadTenantReviews,
         bool canReadRenewals,
+        bool canReadTenantRenewals,
         Guid? contractId,
         Guid? ownerId,
         DateOnly today,
@@ -107,11 +124,12 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
                  WHERE o.tenant_id = @tenantId
                    AND o.deleted_at IS NULL
                    AND o.status IN ('open','in_progress')
-                   AND (@canReadObligations OR o.owner_id = @viewerId)
-                   AND (@contractId IS NULL OR o.contract_id = @contractId)
-                   AND (@ownerId IS NULL OR o.owner_id = @ownerId)
-                   AND (@windowFrom IS NULL OR o.due_date >= @windowFrom)
-                   AND (@windowTo IS NULL OR o.due_date <= @windowTo)
+                   AND @canReadObligations
+                   AND (@canReadTenantObligations OR o.owner_id = @viewerId)
+                   AND (CAST(@contractId AS uuid) IS NULL OR o.contract_id = @contractId)
+                   AND (CAST(@ownerId AS uuid) IS NULL OR o.owner_id = @ownerId)
+                   AND (CAST(@windowFrom AS date) IS NULL OR o.due_date >= CAST(@windowFrom AS date))
+                   AND (CAST(@windowTo AS date) IS NULL OR o.due_date <= CAST(@windowTo AS date))
                 UNION ALL
                 SELECT 'Review', r.id, r.tenant_id, r.contract_id, c.title,
                        COALESCE(NULLIF(btrim(r.instructions), ''), c.title),
@@ -125,11 +143,12 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
                   JOIN odca.users ru ON ru.id = s.reviewer_id
                  WHERE r.tenant_id = @tenantId
                    AND r.status IN ('in_review','changes_requested')
-                   AND (@canReadReviews OR s.reviewer_id = @viewerId OR r.requested_by = @viewerId)
-                   AND (@contractId IS NULL OR r.contract_id = @contractId)
-                   AND (@ownerId IS NULL OR s.reviewer_id = @ownerId)
-                   AND (@windowFrom IS NULL OR (r.due_at AT TIME ZONE t.timezone)::date >= @windowFrom)
-                   AND (@windowTo IS NULL OR (r.due_at AT TIME ZONE t.timezone)::date <= @windowTo)
+                   AND @canReadReviews
+                   AND (@canReadTenantReviews OR s.reviewer_id = @viewerId OR r.requested_by = @viewerId)
+                   AND (CAST(@contractId AS uuid) IS NULL OR r.contract_id = @contractId)
+                   AND (CAST(@ownerId AS uuid) IS NULL OR s.reviewer_id = @ownerId)
+                   AND (CAST(@windowFrom AS date) IS NULL OR (r.due_at AT TIME ZONE t.timezone)::date >= CAST(@windowFrom AS date))
+                   AND (CAST(@windowTo AS date) IS NULL OR (r.due_at AT TIME ZONE t.timezone)::date <= CAST(@windowTo AS date))
                 UNION ALL
                 SELECT 'Renewal', c.id, c.tenant_id, c.id, c.title, c.title, c.owner_id, ou.display_name,
                        CASE
@@ -144,18 +163,19 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
                  WHERE c.tenant_id = @tenantId
                    AND c.end_date IS NOT NULL
                    AND c.end_date <= @renewalWindowEnd
-                   AND (@canReadRenewals OR c.owner_id = @viewerId)
-                   AND (@contractId IS NULL OR c.id = @contractId)
-                   AND (@ownerId IS NULL OR c.owner_id = @ownerId)
+                   AND @canReadRenewals
+                   AND (@canReadTenantRenewals OR c.owner_id = @viewerId)
+                   AND (CAST(@contractId AS uuid) IS NULL OR c.id = @contractId)
+                   AND (CAST(@ownerId AS uuid) IS NULL OR c.owner_id = @ownerId)
                    AND (
-                        @windowFrom IS NULL
+                        CAST(@windowFrom AS date) IS NULL
                         OR COALESCE(
                              CASE
                                WHEN c.renewal_notice_amount IS NULL OR c.end_date IS NULL THEN c.end_date
                                WHEN c.renewal_notice_unit = 'calendar_months'
                                  THEN (c.end_date - (c.renewal_notice_amount || ' months')::interval)::date
                                ELSE (c.end_date - c.renewal_notice_amount)::date
-                             END, c.end_date) BETWEEN @windowFrom AND @windowTo
+                             END, c.end_date) BETWEEN CAST(@windowFrom AS date) AND CAST(@windowTo AS date)
                        )
               ) inbox
             """;
@@ -173,8 +193,11 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
                 windowFrom,
                 windowTo,
                 canReadObligations,
+                canReadTenantObligations,
                 canReadReviews,
-                canReadRenewals
+                canReadTenantReviews,
+                canReadRenewals,
+                canReadTenantRenewals
             },
             transaction,
             cancellationToken: cancellationToken));

@@ -30,9 +30,10 @@ public sealed partial class OdcaApiClient
         int month,
         string scope,
         Guid? ownerId,
+        string? kind,
         CancellationToken ct) =>
         SendAsync<MonthlyAgendaPageDto>(
-            CreateAuthorized(HttpMethod.Get, AgendaPath(tenantId, year, month, scope, ownerId), token),
+            CreateAuthorized(HttpMethod.Get, AgendaPath(tenantId, year, month, scope, ownerId, kind), token),
             false,
             ct);
 
@@ -112,14 +113,15 @@ public sealed partial class OdcaApiClient
         return $"api/v1/organizations/{tenantId}/inbox?{JoinQuery(query)}";
     }
 
-    private static string AgendaPath(Guid tenantId, int year, int month, string scope, Guid? ownerId)
+    private static string AgendaPath(Guid tenantId, int year, int month, string scope, Guid? ownerId, string? kind)
     {
         var query = new Dictionary<string, string?>
         {
             ["year"] = year.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["month"] = month.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["scope"] = scope,
-            ["ownerId"] = ownerId?.ToString()
+            ["ownerId"] = ownerId?.ToString(),
+            ["kind"] = kind
         };
         return $"api/v1/organizations/{tenantId}/agenda?{JoinQuery(query)}";
     }

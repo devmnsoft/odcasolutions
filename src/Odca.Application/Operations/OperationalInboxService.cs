@@ -9,8 +9,11 @@ public sealed class OperationalInboxService(IOperationalInboxRepository reposito
     public async Task<OperationalInboxPageDto> QueryAsync(
         Guid tenantId,
         Guid viewerId,
+        bool canReadObligations,
         bool canReadTenantObligations,
+        bool canReadReviews,
         bool canReadTenantReviews,
+        bool canReadRenewals,
         bool canReadTenantRenewals,
         OperationalInboxQuery query,
         CancellationToken cancellationToken)
@@ -25,8 +28,11 @@ public sealed class OperationalInboxService(IOperationalInboxRepository reposito
         var rows = await repository.ListCandidatesAsync(
             tenantId,
             viewerId,
+            canReadObligations,
             canReadTenantObligations,
+            canReadReviews,
             canReadTenantReviews,
+            canReadRenewals,
             canReadTenantRenewals,
             query.ContractId,
             query.OwnerId,
@@ -34,15 +40,17 @@ public sealed class OperationalInboxService(IOperationalInboxRepository reposito
             windowEnd,
             cancellationToken);
 
-        var canReadTenant = canReadTenantObligations || canReadTenantReviews || canReadTenantRenewals;
         var kind = ParseKind(query.Kind);
         var urgencyFilter = ParseUrgency(query.Urgency);
 
         var ranked = OperationalInbox.Rank(
-            rows.Select(row => new OperationalWorkItem(row.Kind, row.TenantId, row.SourceId, row.OwnerId, row.DueOn)),
+            rows.Where(row => CanRead(row.Kind, canReadObligations, canReadReviews, canReadRenewals))
+                .Where(row => CanReadTenant(row.Kind, canReadTenantObligations, canReadTenantReviews, canReadTenantRenewals)
+                    || row.OwnerId == viewerId)
+                .Select(row => new OperationalWorkItem(row.Kind, row.TenantId, row.SourceId, row.OwnerId, row.DueOn)),
             calendar.Today,
             viewerId,
-            canReadTenant);
+            canReadTenant: true);
 
         var allowed = ranked.Select(item => item.SourceId).ToHashSet();
         var mapped = rows
@@ -96,4 +104,28 @@ public sealed class OperationalInboxService(IOperationalInboxRepository reposito
 
     private static OperationalUrgency? ParseUrgency(string? value) =>
         Enum.TryParse<OperationalUrgency>(value, ignoreCase: true, out var urgency) ? urgency : null;
+
+    internal static bool CanRead(
+        OperationalWorkKind kind,
+        bool canReadObligations,
+        bool canReadReviews,
+        bool canReadRenewals) => kind switch
+        {
+            OperationalWorkKind.Obligation => canReadObligations,
+            OperationalWorkKind.Review => canReadReviews,
+            OperationalWorkKind.Renewal => canReadRenewals,
+            _ => false
+        };
+
+    internal static bool CanReadTenant(
+        OperationalWorkKind kind,
+        bool canReadTenantObligations,
+        bool canReadTenantReviews,
+        bool canReadTenantRenewals) => kind switch
+        {
+            OperationalWorkKind.Obligation => canReadTenantObligations,
+            OperationalWorkKind.Review => canReadTenantReviews,
+            OperationalWorkKind.Renewal => canReadTenantRenewals,
+            _ => false
+        };
 }
