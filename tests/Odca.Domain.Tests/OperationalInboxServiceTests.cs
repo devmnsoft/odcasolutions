@@ -57,6 +57,27 @@ public sealed class OperationalInboxServiceTests
     }
 
     [Fact]
+    public async Task SourceConcurrencyVersionIsPreservedInTheResponse()
+    {
+        const long sourceVersion = 7;
+        var service = new OperationalInboxService(new FakeInboxRepository(
+        [
+            Row(OperationalWorkKind.Review, Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2"), Viewer, Today, sourceVersion)
+        ]));
+
+        var page = await service.QueryAsync(Tenant, Viewer, true, true, true, new OperationalInboxQuery(), default);
+
+        Assert.Equal(sourceVersion, Assert.Single(page.Items).Version);
+    }
+
+    [Fact]
+    public void InvalidSourceConcurrencyVersionIsRejected() =>
+        Assert.Throws<ArgumentOutOfRangeException>(() => OperationalInboxService.Map(
+            Row(OperationalWorkKind.Obligation, Guid.NewGuid(), Viewer, Today, sourceVersion: 0),
+            Today,
+            Tenant));
+
+    [Fact]
     public void FebruaryLeapYearWindowEndsOn29()
     {
         var (from, to) = MonthlyAgendaWindow.ForMonth(2024, 2);
@@ -68,8 +89,24 @@ public sealed class OperationalInboxServiceTests
     public void InvalidMonthIsRejected() =>
         Assert.Throws<ArgumentOutOfRangeException>(() => MonthlyAgendaWindow.ForMonth(2026, 13));
 
-    private static OperationalInboxRow Row(OperationalWorkKind kind, Guid source, Guid owner, DateOnly due) =>
-        new(kind, source, Tenant, Contract, "Contrato", kind.ToString(), owner, "Nome", due, "open");
+    private static OperationalInboxRow Row(
+        OperationalWorkKind kind,
+        Guid source,
+        Guid owner,
+        DateOnly due,
+        long sourceVersion = 1) =>
+        new(
+            Kind: kind,
+            SourceId: source,
+            TenantId: Tenant,
+            ContractId: Contract,
+            ContractTitle: "Contrato",
+            Title: kind.ToString(),
+            OwnerId: owner,
+            OwnerName: "Nome",
+            DueOn: due,
+            Status: "open",
+            Version: sourceVersion);
 
     private sealed class FakeInboxRepository(IReadOnlyList<OperationalInboxRow> rows) : IOperationalInboxRepository
     {

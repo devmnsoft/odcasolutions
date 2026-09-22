@@ -100,7 +100,7 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
               FROM (
                 SELECT 'Obligation'::text AS kind, o.id AS source_id, o.tenant_id, o.contract_id,
                        c.title AS contract_title, o.title, o.owner_id, u.display_name AS owner_name,
-                       o.due_date AS due_on, o.status, o.row_version AS version
+                       o.due_date AS due_on, o.status, o.row_version::bigint AS version
                   FROM odca.contract_obligations o
                   JOIN odca.contracts c ON c.id = o.contract_id AND c.tenant_id = o.tenant_id
                   JOIN odca.users u ON u.id = o.owner_id
@@ -116,7 +116,7 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
                 SELECT 'Review', r.id, r.tenant_id, r.contract_id, c.title,
                        COALESCE(NULLIF(btrim(r.instructions), ''), c.title),
                        s.reviewer_id, ru.display_name,
-                       (r.due_at AT TIME ZONE t.timezone)::date, r.status, r.row_version
+                       (r.due_at AT TIME ZONE t.timezone)::date, r.status, r.row_version::bigint
                   FROM odca.contract_reviews r
                   JOIN odca.contracts c ON c.id = r.contract_id AND c.tenant_id = r.tenant_id
                   JOIN odca.tenants t ON t.id = r.tenant_id
@@ -138,7 +138,7 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
                            THEN (c.end_date - (c.renewal_notice_amount || ' months')::interval)::date
                          ELSE (c.end_date - c.renewal_notice_amount)::date
                        END,
-                       CASE WHEN c.end_date < @today THEN 'expired' ELSE 'expiring' END, c.row_version
+                       CASE WHEN c.end_date < @today THEN 'expired' ELSE 'expiring' END, c.row_version::bigint
                   FROM odca.contracts c
                   LEFT JOIN odca.users ou ON ou.id = c.owner_id
                  WHERE c.tenant_id = @tenantId

@@ -11,7 +11,7 @@ public sealed record OperationalInboxRow(
     string? OwnerName,
     DateOnly? DueOn,
     string Status,
-    long? Version);
+    long Version);
 
 public sealed record TenantCalendarContext(string TimeZoneId, DateOnly Today);
 

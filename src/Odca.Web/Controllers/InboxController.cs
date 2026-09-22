@@ -24,7 +24,7 @@ public sealed class InboxController(OdcaApiClient api) : Controller
         int page = 1,
         CancellationToken ct = default)
     {
-        ViewData["Title"] = "Caixa operacional";
+        ViewData["Title"] = "Central de pendências";
         ViewData["TenantId"] = tenantId;
         var token = await HttpContext.GetTokenAsync("access_token");
         if (token is null) return Challenge();

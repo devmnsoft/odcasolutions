@@ -8,8 +8,8 @@
 <header class="renewal-heading">
     <div>
         <p class="eyebrow">Central operacional</p>
-        <h1>Caixa unificada</h1>
-        <p class="muted">Revisões, obrigações e avisos de renovação no mesmo ranking. Não é uma lista paralela de tarefas.</p>
+        <h1>Central de pendências</h1>
+        <p class="muted">Encontre a próxima atividade e abra o contexto na fonte oficial para tratá-la com segurança.</p>
     </div>
     <div class="form-actions-row">
         <a class="button button-quiet" asp-controller="Agenda" asp-action="Index" asp-route-tenantId="@tenantId">Abrir agenda</a>
@@ -146,9 +146,31 @@
     {
         foreach (var item in Model.Page.Items)
         {
+            var kindLabel = item.Kind switch
+            {
+                "Obligation" => "Obrigação",
+                "Review" => "Revisão",
+                "Renewal" => "Renovação",
+                _ => item.Kind
+            };
+            var urgencyLabel = item.Urgency switch
+            {
+                "Overdue" => "Atrasada",
+                "DueToday" => "Prazo hoje",
+                "DueThisWeek" => "Prazo nesta semana",
+                "Upcoming" => "Próxima",
+                _ => "Sem prazo"
+            };
+            var actionLabel = item.Kind switch
+            {
+                "Obligation" => "Abrir obrigação",
+                "Review" => "Abrir revisão",
+                "Renewal" => "Abrir decisão de renovação",
+                _ => "Abrir origem"
+            };
             <article class="renewal-row">
                 <div>
-                    <span class="status-label">@item.Kind · @item.Urgency</span>
+                    <span class="status-label">@kindLabel · @urgencyLabel</span>
                     <h3>@item.Title</h3>
                     <p>@item.ContractTitle · @(item.OwnerName ?? "Sem responsável")</p>
                 </div>
@@ -156,7 +178,7 @@
                     <div><dt>Prazo</dt><dd>@(item.DueOn?.ToString("dd/MM/yyyy") ?? "Sem data")</dd></div>
                     <div><dt>Situação</dt><dd>@item.Status</dd></div>
                 </dl>
-                <div class="next-action"><a class="button button-quiet" href="@item.OpenUrl">Abrir na ficha</a></div>
+                <div class="next-action"><a class="button button-quiet" href="@item.OpenUrl">@actionLabel</a></div>
             </article>
         }
     }
@@ -173,3 +195,11 @@
         <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-page="@(Model.Page.Page+1)" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@currentViewId">Próxima</a>
     }
 </nav>
+
+<details class="filter-panel">
+    <summary>Como usar</summary>
+    <div class="details-content">
+        <p>A central reúne pendências das fontes oficiais. Use os filtros para priorizar seu trabalho e abra o item para consultar todo o contexto antes de agir.</p>
+        <p>Uma ação confirmada no módulo de origem atualiza a pendência. Se outra pessoa alterar o registro enquanto ele estiver aberto, atualize a página e confira o novo estado antes de confirmar novamente.</p>
+    </div>
+</details>
