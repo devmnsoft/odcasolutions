@@ -13,6 +13,7 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
         Guid tenantId,
         Guid contractId,
         Guid viewerId,
+        bool purposeAuthorized,
         bool canReadTenant,
         DateOnly today,
         CancellationToken cancellationToken)
@@ -49,23 +50,10 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             return null;
         }
 
-        if (!canReadTenant && header.OwnerId != viewerId)
+        if (!purposeAuthorized)
         {
-            var sharesObligation = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
-                """
-                SELECT EXISTS(
-                    SELECT 1 FROM odca.contract_obligations
-                     WHERE tenant_id = @tenantId AND contract_id = @contractId
-                       AND owner_id = @viewerId AND deleted_at IS NULL)
-                """,
-                new { tenantId, contractId, viewerId },
-                transaction,
-                cancellationToken: cancellationToken));
-            if (!sharesObligation)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return null;
-            }
+            await transaction.RollbackAsync(cancellationToken);
+            return null;
         }
 
         var documents = (await connection.QueryAsync<ContractSheetDocumentDto>(new CommandDefinition(

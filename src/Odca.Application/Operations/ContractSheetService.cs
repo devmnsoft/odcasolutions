@@ -10,6 +10,7 @@ public sealed class ContractSheetService(
         Guid tenantId,
         Guid contractId,
         Guid viewerId,
+        bool purposeAuthorized,
         bool canReadTenant,
         CancellationToken cancellationToken)
     {
@@ -18,6 +19,7 @@ public sealed class ContractSheetService(
         ArgumentOutOfRangeException.ThrowIfEqual(viewerId, Guid.Empty);
 
         var today = (await calendar.ReadCalendarAsync(tenantId, cancellationToken)).Today;
-        return await repository.GetAsync(tenantId, contractId, viewerId, canReadTenant, today, cancellationToken);
+        return await repository.GetAsync(
+            tenantId, contractId, viewerId, purposeAuthorized, canReadTenant, today, cancellationToken);
     }
 }

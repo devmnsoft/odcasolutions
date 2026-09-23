@@ -21,7 +21,24 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
                          JOIN odca.tenants t ON t.id = m.tenant_id
                         WHERE m.user_id = odca.users.id
                           AND m.status = 'active'
-                          AND t.status = 'active'
+                          AND (
+                              t.status = 'active'
+                              OR (
+                                  t.status = 'pending'
+                                  AND EXISTS (
+                                      SELECT 1
+                                        FROM odca.subscriptions s
+                                       WHERE s.tenant_id = t.id
+                                         AND s.commercial_state = 'commercial_pending')
+                                  AND EXISTS (
+                                      SELECT 1
+                                        FROM odca.member_roles mr
+                                        JOIN odca.roles r ON r.id = mr.role_id
+                                       WHERE mr.tenant_id = m.tenant_id
+                                         AND mr.user_id = m.user_id
+                                         AND r.tenant_id = m.tenant_id
+                                         AND r.code = 'tenant-administrator')
+                              ))
                           AND NOT t.is_deleted
                    )) AS "HasActiveAccess"
             FROM odca.users
@@ -50,7 +67,22 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
                          JOIN odca.tenants t ON t.id = m.tenant_id
                         WHERE m.user_id = odca.users.id
                           AND m.status = 'active'
-                          AND t.status = 'active'
+                          AND (
+                              t.status = 'active'
+                              OR (
+                                  t.status = 'pending'
+                                  AND EXISTS (
+                                      SELECT 1 FROM odca.subscriptions s
+                                       WHERE s.tenant_id = t.id
+                                         AND s.commercial_state = 'commercial_pending')
+                                  AND EXISTS (
+                                      SELECT 1 FROM odca.member_roles mr
+                                      JOIN odca.roles r ON r.id = mr.role_id
+                                       WHERE mr.tenant_id = m.tenant_id
+                                         AND mr.user_id = m.user_id
+                                         AND r.tenant_id = m.tenant_id
+                                         AND r.code = 'tenant-administrator')
+                              ))
                           AND NOT t.is_deleted
                    )) AS "HasActiveAccess"
             FROM odca.users WHERE id = @userId;
@@ -149,7 +181,22 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
                          JOIN odca.tenants t ON t.id = m.tenant_id
                         WHERE m.user_id = u.id
                           AND m.status = 'active'
-                          AND t.status = 'active'
+                          AND (
+                              t.status = 'active'
+                              OR (
+                                  t.status = 'pending'
+                                  AND EXISTS (
+                                      SELECT 1 FROM odca.subscriptions s
+                                       WHERE s.tenant_id = t.id
+                                         AND s.commercial_state = 'commercial_pending')
+                                  AND EXISTS (
+                                      SELECT 1 FROM odca.member_roles mr
+                                      JOIN odca.roles r ON r.id = mr.role_id
+                                       WHERE mr.tenant_id = m.tenant_id
+                                         AND mr.user_id = m.user_id
+                                         AND r.tenant_id = m.tenant_id
+                                         AND r.code = 'tenant-administrator')
+                              ))
                           AND NOT t.is_deleted
                    ))
             );

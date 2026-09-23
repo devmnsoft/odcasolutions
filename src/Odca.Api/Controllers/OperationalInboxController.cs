@@ -113,11 +113,57 @@ public sealed class OperationalInboxController(
         if (actor is null) return Unauthorized();
 
         await using var connection = await dataSource.OpenConnectionAsync(ct);
-        if (!await Allowed(connection, actor.Value, tenantId, "tenant.obligations.read", ct))
+        var canReadObligations = await Allowed(connection, actor.Value, tenantId, "tenant.obligations.read", ct);
+        var canReadReviews = await Allowed(connection, actor.Value, tenantId, "tenant.reviews.read", ct);
+        var canReadRenewals = await Allowed(connection, actor.Value, tenantId, "tenant.renewals.read", ct);
+        var canReadDocuments = await Allowed(connection, actor.Value, tenantId, "tenant.contract_drafts.read", ct)
+            || await Allowed(connection, actor.Value, tenantId, "tenant.documents.download", ct);
+        if (!canReadObligations && !canReadReviews && !canReadRenewals && !canReadDocuments)
             return Forbid();
 
-        var canReadTenant = await Allowed(connection, actor.Value, tenantId, "tenant.obligations.read_all", ct);
-        var dto = await sheet.GetAsync(tenantId, contractId, actor.Value, canReadTenant, ct);
+        var canReadTenant = canReadObligations
+            && await Allowed(connection, actor.Value, tenantId, "tenant.obligations.read_all", ct);
+        await using var transaction = await connection.BeginTransactionAsync(ct);
+        await connection.ExecuteAsync(new CommandDefinition(
+            """
+            SELECT set_config('odca.tenant_id', @tenant, true),
+                   set_config('odca.actor_id', @actor, true);
+            """,
+            new { tenant = tenantId.ToString(), actor = actor.Value.ToString() },
+            transaction,
+            cancellationToken: ct));
+        var assignment = await connection.QuerySingleAsync<SheetAssignment>(new CommandDefinition(
+            """
+            SELECT
+                EXISTS(SELECT 1 FROM odca.contracts c
+                        WHERE c.tenant_id=@tenant AND c.id=@contract AND c.owner_id=@actor) AS OwnsContract,
+                EXISTS(SELECT 1 FROM odca.contract_obligations o
+                        WHERE o.tenant_id=@tenant AND o.contract_id=@contract
+                          AND o.owner_id=@actor AND o.deleted_at IS NULL) AS OwnsObligation,
+                EXISTS(SELECT 1 FROM odca.contract_reviews r
+                        JOIN odca.contract_review_steps s ON s.tenant_id=r.tenant_id AND s.review_id=r.id
+                        WHERE r.tenant_id=@tenant AND r.contract_id=@contract
+                          AND s.reviewer_id=@actor AND s.status='current') AS IsAssignedReviewer,
+                EXISTS(SELECT 1 FROM odca.contract_change_requests r
+                        WHERE r.tenant_id=@tenant AND r.contract_id=@contract
+                          AND r.responsible_id=@actor AND r.status <> 'cancelled') AS OwnsRenewal
+            """,
+            new { tenant = tenantId, contract = contractId, actor = actor.Value },
+            transaction,
+            cancellationToken: ct));
+        await transaction.CommitAsync(ct);
+
+        var purposeAllowed = ContractSheetAccessPolicy.CanOpen(
+            assignment.OwnsContract,
+            canReadTenant,
+            canReadObligations && assignment.OwnsObligation,
+            canReadReviews && assignment.IsAssignedReviewer,
+            canReadRenewals && assignment.OwnsRenewal,
+            canReadDocuments && assignment.OwnsContract);
+        if (!purposeAllowed) return Forbid();
+
+        var dto = await sheet.GetAsync(
+            tenantId, contractId, actor.Value, purposeAllowed, canReadTenant, ct);
         return dto is null ? NotFound() : Ok(dto);
     }
 
@@ -134,4 +180,10 @@ public sealed class OperationalInboxController(
             "SELECT odca.tenant_actor_has_permission(@actor,@tenant,@permission)",
             new { actor, tenant, permission },
             cancellationToken: cancellationToken));
+
+    private sealed record SheetAssignment(
+        bool OwnsContract,
+        bool OwnsObligation,
+        bool IsAssignedReviewer,
+        bool OwnsRenewal);
 }
