@@ -16,6 +16,44 @@ O nome comercial é **ODCA Solutions**. Proposta: uma plataforma corporativa par
 
 O escopo é o ciclo de vida completo do contrato, não apenas armazenamento de PDFs. O diferencial proposto combina edição orientada por dados, OCR com origem verificável, obrigações acompanhadas e cópias rastreáveis. É uma direção de produto; não uma alegação de ineditismo comprovado no mercado.
 
+## 1.1 Complemento de contexto — ODCA Legal Med (23/09/2026)
+
+**Definição acrescentada pelo responsável pelo projeto:** sistema de gestão documental em Legal Design desenvolvido pela **ODCA Legal Med**, com login individual, cadastro rápido do paciente, geração automática de contratos e termos de consentimento e, ao final, envio para assinatura eletrônica.
+
+Este complemento integra o escopo do ODCA Solutions como jornada de documentação para a área da saúde. Preserva o núcleo multiempresa e os módulos existentes. O nome do repositório e o nome ODCA Solutions permanecem; ODCA Legal Med identifica a autoria e o contexto desta jornada. Esta inclusão é uma definição de produto, não uma declaração de que as funcionalidades já estão implementadas ou homologadas. As descrições históricas deste documento não substituem a auditoria do código atual.
+
+### Jornada principal a implementar
+
+1. **Login individual:** cada profissional ou colaborador acessa com sua própria identidade e com as permissões da organização selecionada, mantendo autoria e auditoria.
+2. **Cadastro rápido do paciente:** localizar um paciente existente ou cadastrar os dados necessários aos documentos, com validação e prevenção de duplicidade no mesmo tenant. O paciente não recebe automaticamente uma conta de operador.
+3. **Seleção dos documentos:** escolher modelos publicados de contrato e de termo de consentimento adequados ao serviço ou procedimento. Os textos e campos específicos devem ser definidos e aprovados pelos responsáveis da ODCA Legal Med.
+4. **Geração automática:** preencher os modelos com os dados confirmados do paciente, da organização e do profissional, solicitando os campos ainda pendentes. Reutilizar o estúdio, os modelos e o versionamento existentes, sem criar um motor documental paralelo.
+5. **Conferência em Legal Design:** apresentar documentos com linguagem clara, hierarquia visual, seções curtas, destaques e leitura acessível em celular e desktop. Preservar o conteúdo aprovado, a legibilidade do documento exportado e a revisão antes do envio.
+6. **Envio para assinatura eletrônica:** confirmar documentos, destinatários e papéis dos signatários; congelar a versão enviada e encaminhá-la pelo provedor integrado. Acompanhar pendências, conclusão, recusa, expiração e falhas.
+7. **Arquivo e acompanhamento:** vincular documentos e evidências ao paciente e à organização, com consulta autorizada, histórico e preservação do original assinado.
+
+### Regras funcionais deste contexto
+
+- Separar paciente, usuário operador, responsável/representante e signatário. Quando houver representante, registrar sua relação com o paciente e aplicar a regra definida para o documento; não presumir representação a partir do contato.
+- Coletar somente dados necessários à finalidade documental. O cadastro rápido não implica criação de prontuário clínico completo.
+- Contrato e termo de consentimento são documentos distintos, ainda que componham o mesmo conjunto de atendimento. Não confundir consentimento para procedimento com aceite do SaaS, aviso de privacidade ou autorização de marketing.
+- A geração automática preenche modelos aprovados; não inventa informações clínicas, riscos, procedimentos ou declarações de consentimento. Campos obrigatórios pendentes impedem o envio.
+- Manter snapshot dos dados e da versão do modelo utilizada. Alterações cadastrais posteriores não reescrevem documentos já emitidos ou assinados.
+- O envio exige confirmação do operador autorizado. Documento gerado ou enviado não deve aparecer como assinado antes da confirmação verificável do provedor.
+- Repetições e timeouts devem seguir a idempotência e reconciliação previstas na seção 5.4, sem duplicar envelopes ou consumo.
+- Preservar isolamento entre organizações, acesso por função, auditoria e inativação lógica. O vínculo com paciente não autoriza exposição dos documentos a todos os usuários da organização.
+- Identidade visual deve manter o padrão ODCA e aplicar Legal Design também aos documentos gerados, não apenas às telas.
+
+### Impacto no planejamento e aceite
+
+Acrescentar ao backlog, em ordem de dependência: acesso individual estabilizado → cadastro e consulta de pacientes → catálogo de modelos de saúde → geração e conferência de contratos/termos → integração de assinatura → acervo documental do paciente e homologação ponta a ponta.
+
+Para esta jornada ser considerada completa, a integração real de assinatura eletrônica é requisito de aceite. Não relegá-la a um diferencial opcional nem marcar o fluxo como concluído com um botão sem integração. Um piloto intermediário deve declarar expressamente que entrega apenas cadastro, geração e conferência.
+
+Aceite mínimo: operador autorizado entra, cadastra ou seleciona paciente sem duplicação indevida, gera contrato e termo a partir de modelos publicados, confere os dados, envia uma única vez para assinatura e consulta o documento final com suas evidências. Testar campos incompletos, paciente de outro tenant, destinatário incorreto, recusa, expiração, falha e repetição de envio.
+
+Decisões ainda pendentes: especialidades e procedimentos iniciais, campos mínimos de paciente por documento, modelos e textos aprovados, regras de representação, provedor e modalidade de assinatura, papéis dos signatários e identificação comercial nas telas/documentos. Não inventar essas definições durante a implementação.
+
 ## 2. Conceitos que não podem se confundir
 
 | Conceito | Significado |
