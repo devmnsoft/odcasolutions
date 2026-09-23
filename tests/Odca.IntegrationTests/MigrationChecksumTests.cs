@@ -218,27 +218,36 @@ public sealed class MigrationChecksumTests
     }
 
     [Fact]
-    public void ReleaseV020MatchesCanonicalSqlAndRuntimeVersion()
+    public void ReleaseV020IsAnImmutablePrefixOfCanonicalSql()
     {
         var canonical = FindSql();
         var snapshot = Path.Combine(Path.GetDirectoryName(canonical)!, "releases", "odca-v020.sql");
 
         DatabaseMigrator.ValidateChecksums(File.ReadAllText(snapshot));
-        Assert.Contains(
+        Assert.StartsWith(
             File.ReadAllText(snapshot).TrimStart('\uFEFF').TrimEnd(),
             File.ReadAllText(canonical),
             StringComparison.Ordinal);
-        Assert.Equal(20, DatabaseSchema.CurrentVersion);
     }
 
     [Fact]
-    public void ReleaseV021MatchesCanonicalSqlAndRuntimeVersion()
+    public void ReleaseV021IsAnImmutablePrefixOfCanonicalSql()
     {
         var canonical = FindSql();
         var snapshot = Path.Combine(Path.GetDirectoryName(canonical)!, "releases", "odca-v021.sql");
         DatabaseMigrator.ValidateChecksums(File.ReadAllText(snapshot));
+        Assert.StartsWith(File.ReadAllText(snapshot).TrimEnd(), File.ReadAllText(canonical), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CurrentReleaseMatchesCanonicalSqlAndRuntimeVersion()
+    {
+        var canonical = FindSql();
+        var snapshot = Path.Combine(Path.GetDirectoryName(canonical)!, "releases", $"odca-v{DatabaseSchema.CurrentVersion:000}.sql");
+
+        Assert.True(File.Exists(snapshot));
+        DatabaseMigrator.ValidateChecksums(File.ReadAllText(snapshot));
         Assert.Equal(File.ReadAllText(canonical), File.ReadAllText(snapshot));
-        Assert.Equal(21, DatabaseSchema.CurrentVersion);
     }
 
     private static string FindSql()

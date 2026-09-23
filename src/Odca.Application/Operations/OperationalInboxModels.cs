@@ -58,6 +58,7 @@ public interface IContractSheetRepository
         Guid tenantId,
         Guid contractId,
         Guid viewerId,
+        bool purposeAuthorized,
         bool canReadTenant,
         DateOnly today,
         CancellationToken cancellationToken);

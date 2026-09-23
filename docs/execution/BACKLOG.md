@@ -158,3 +158,23 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [ ] Persistir modos de data relativa e resolvê-los com relógio injetável e fuso cadastrado da organização em lista, agenda e contagens.
 - [ ] Adicionar chave idempotente à criação e provar timeout/repetição e disputa de padrão em PostgreSQL descartável.
 - [ ] Conectar formulários completos de tratamento e validar retorno ao contexto; executar HTTP/RLS, navegador, zoom e capturas nas quatro larguras.
+# Próximo incremento — jornada ODCA Legal Med (23/09/2026)
+
+> Não duplicar catálogo, estúdio, versão gerada, documento, revisão, storage ou auditoria.
+> O diagnóstico e as correções de fundação estão em
+> `docs/audits/LEGAL_MED_FOUNDATION_2026-09-23.md`.
+
+1. **Gate A:** executar build/testes e PostgreSQL 18 descartável com role restrita;
+   comprovar login pending restrito, suspensão, revogação e ficha por finalidade em dois
+   tenants.
+2. **Paciente:** após o gate, migration 023 com pessoa/paciente tenant-scoped,
+   identificadores tipados normalizados, representante explícito, concorrência otimista,
+   inativação e auditoria atômica; API e central Razor paginada.
+3. **Jornada documental:** estender o catálogo existente com tipo/finalidade aprovados e
+   ligar paciente/conjunto aos `contract_drafts` e `generated_contract_versions`, mantendo
+   documentos separados e confirmação idempotente.
+4. **Assinatura:** implementar contrato de provedor, envelopes, signatários, eventos
+   deduplicados, reconciliação e original/evidências. Escolha de provedor, modalidade,
+   credenciais e conteúdo aprovado continuam decisões externas; não simular conclusão.
+5. **Acervo:** projetar referências existentes por paciente, com paginação, filtros,
+   autorização e download revalidado, sem copiar bytes.
