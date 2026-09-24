@@ -10,6 +10,14 @@ public sealed record DraftResponse(Guid Id, Guid ContractId, string Title, Guid 
 public sealed record SaveDraftRequest(JsonElement Content, JsonElement Fields, JsonElement Values, long ExpectedVersion, Guid ClientRevision);
 public sealed record SaveDraftResponse(long Version, Guid ClientRevision, DateTimeOffset SavedAt);
 public sealed record GenerateVersionRequest(Guid IdempotencyKey, long ExpectedVersion = 0);
+public sealed record ConfirmPatientVersionRequest(long ExpectedDraftVersion, long ExpectedPatientVersion);
+public sealed record PatientDataChange(string Field, string? Before, string? After);
+public sealed record DocumentPendingItem(string Code, string Message, string Reason, string CorrectionTarget, bool CanCorrect);
+public sealed record DocumentConferenceResponse(Guid DraftId, long DraftVersion, string Organization, string Template,
+    int TemplateVersion, string DocumentType, string TemplateStatus, Guid? PatientId, string? PatientName,
+    string? RepresentativeName, long? SelectedPatientVersion, long? CurrentPatientVersion, bool PatientActive,
+    bool CanEdit, bool CanGenerate, string ReviewStatus, string NextAction,
+    IReadOnlyList<PatientDataChange> PatientChanges, IReadOnlyList<DocumentPendingItem> PendingItems);
 public sealed record GeneratedVersionResponse(Guid Id, int Number, string Sha256, long ByteSize, DateTimeOffset CreatedAt, string Status);
 public sealed record SubmitReviewRequest(Guid GeneratedVersionId, Guid ReviewerId, DateTimeOffset? DueAt, string? Instructions, Guid IdempotencyKey);
 public sealed record ReviewSubmittedResponse(Guid ReviewId, Guid GeneratedVersionId, string Status);

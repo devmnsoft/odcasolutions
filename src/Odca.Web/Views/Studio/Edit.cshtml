@@ -2,6 +2,7 @@
 @using System.Text.Json
 @{
     var tenantId = (Guid)ViewData["TenantId"]!;
+    var conference = ViewData["Conference"] as Odca.Contracts.Studio.DocumentConferenceResponse;
     ViewData["OrganizationName"] = "Organização selecionada";
 }
 <div class="studio" data-studio data-save-url="@Url.Action("Save",new{tenantId,draftId=Model.Id})"
@@ -23,6 +24,31 @@
     </header>
     @if (TempData["StudioSuccess"] is string ok) { <div class="success">@ok</div> }
     @if (TempData["StudioError"] is string err) { <div class="error">@err</div> }
+    @if (ViewData["ConferenceError"] is string conferenceError) { <div class="error" role="alert">@conferenceError</div> }
+    @if (conference is not null)
+    {
+        <section class="card" aria-labelledby="conference-title">
+            <div class="section-heading"><div><p class="eyebrow">Conferência antes da geração</p><h2 id="conference-title">Dados utilizados no documento</h2></div><span class="status-chip">@(conference.CanGenerate?"Pronto para gerar":"Conferência pendente")</span></div>
+            <div class="summary-grid">
+                <article><span>Paciente</span><strong>@(conference.PatientName??"Não vinculado")</strong></article>
+                <article><span>Representante</span><strong>@(conference.RepresentativeName??"Não aplicável")</strong></article>
+                <article><span>Organização</span><strong>@conference.Organization</strong></article>
+                <article><span>Modelo / versão</span><strong>@conference.Template · v@conference.TemplateVersion</strong></article>
+                <article><span>Tipo documental</span><strong>@conference.DocumentType</strong></article>
+                <article><span>Revisão</span><strong>@conference.ReviewStatus</strong></article>
+            </div>
+            <h3>Pendências</h3>
+            @if (conference.PendingItems.Count == 0) { <p class="success" role="status">Nenhuma pendência impeditiva. Próxima ação: gerar a versão.</p> }
+            else { <ul class="check-list">@foreach(var item in conference.PendingItems){<li><strong>@item.Message</strong><br/><span>@item.Reason</span><br/><small>Corrigir em: @item.CorrectionTarget · @(item.CanCorrect?"Você possui permissão para corrigir.":"Solicite a uma pessoa autorizada.")</small></li>}</ul> }
+            @if (conference.PatientChanges.Count > 0)
+            {
+                <h3>Comparação cadastral</h3><p>O conteúdo manual da minuta não será sobrescrito. Confirme explicitamente apenas depois de conferir as diferenças.</p>
+                <div class="responsive-table"><table><thead><tr><th>Campo</th><th>Na seleção</th><th>Cadastro atual</th></tr></thead><tbody>@foreach(var change in conference.PatientChanges){<tr><td>@change.Field</td><td>@(change.Before??"Não informado")</td><td>@(change.After??"Não informado")</td></tr>}</tbody></table></div>
+                @if(conference.CanEdit && conference.CurrentPatientVersion is long currentVersion){<form method="post" asp-action="ConfirmPatient" asp-route-tenantId="@tenantId" asp-route-draftId="@Model.Id" onsubmit="return confirm('Confirmar o uso da versão cadastral atual sem substituir os valores manuais da minuta?')"><input type="hidden" name="expectedDraftVersion" value="@conference.DraftVersion"/><input type="hidden" name="expectedPatientVersion" value="@currentVersion"/><button class="button button-primary" type="submit">Confirmar dados atualizados</button></form>}
+            }
+            <details class="help"><summary>Como usar</summary><p>Resolva as pendências nos locais indicados. Se o paciente mudou, compare os dados e confirme a versão atual. Uma nova alteração antes da geração será recusada pelo servidor.</p></details>
+        </section>
+    }
     <div class="conflict-banner" data-conflict hidden role="alert"><strong>Existe uma revisão mais recente no servidor.</strong> Seu conteúdo local foi preservado. <a href="@Url.Action("Edit",new{tenantId,draftId=Model.Id})" target="_blank" rel="noopener">Consultar versão do servidor</a> <button type="button" class="button button-link" data-retry>Repetir após recuperar</button></div>
     <div class="studio-grid">
         <aside class="studio-side"><h2>Seções</h2><nav data-sections aria-label="Seções do documento"></nav><button class="side-link" type="button" data-tab="history">Histórico de versões</button><details class="help"><summary>Como usar</summary><p>Edite o texto, confirme campos e acompanhe o salvamento. Compare retratos imutáveis antes de encaminhar.</p></details></aside>

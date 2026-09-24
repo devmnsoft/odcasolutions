@@ -552,6 +552,16 @@ public sealed partial class OdcaApiClient(HttpClient client)
     public Task<ApiCallResult<DraftResponse>> GetStudioDraftAsync(string token, Guid tenantId, Guid draftId, CancellationToken ct) =>
         SendAsync<DraftResponse>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}", token), false, ct);
 
+    public Task<ApiCallResult<DocumentConferenceResponse>> GetDocumentConferenceAsync(string token, Guid tenantId, Guid draftId, CancellationToken ct) =>
+        SendAsync<DocumentConferenceResponse>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/conference", token), false, ct);
+
+    public async Task<ApiCallResult<bool>> ConfirmDraftPatientAsync(string token, Guid tenantId, Guid draftId, ConfirmPatientVersionRequest request, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/patient-confirmation", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<bool>(message, false, ct, emptyBodyIsSuccess: true);
+    }
+
     public async Task<ApiCallResult<SaveDraftResponse>> SaveStudioDraftAsync(string token, Guid tenantId, Guid draftId, SaveDraftRequest request, CancellationToken ct)
     {
         using var message = CreateAuthorized(HttpMethod.Put, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}", token);
@@ -633,8 +643,9 @@ public sealed partial class OdcaApiClient(HttpClient client)
                 return new(ApiCallStatus.Success, value);
             }
 
-            var (title, detail) = await ReadProblemAsync(response, cancellationToken);
-            return new(MapStatus(response.StatusCode, invalidCredentialsOnUnauthorized), default, title, detail);
+            var problem = await ReadProblemAsync(response, cancellationToken);
+            return new(MapStatus(response.StatusCode, invalidCredentialsOnUnauthorized), default,
+                problem.Title, problem.Detail, problem.Errors, problem.Code);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -670,7 +681,7 @@ public sealed partial class OdcaApiClient(HttpClient client)
             _ => ApiCallStatus.InvalidRequest
         };
 
-    private static async Task<(string? Title, string? Detail)> ReadProblemAsync(
+    private static async Task<ApiProblem> ReadProblemAsync(
         HttpResponseMessage response,
         CancellationToken cancellationToken)
     {
@@ -679,12 +690,14 @@ public sealed partial class OdcaApiClient(HttpClient client)
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             if (stream.CanSeek && stream.Length == 0)
             {
-                return (null, null);
+                return new(null, null, null, null);
             }
 
             using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
             string? title = null;
             string? detail = null;
+            string? code = null;
+            Dictionary<string, string[]>? errors = null;
             if (document.RootElement.TryGetProperty("title", out var titleNode) && titleNode.ValueKind == JsonValueKind.String)
             {
                 title = titleNode.GetString();
@@ -695,11 +708,29 @@ public sealed partial class OdcaApiClient(HttpClient client)
                 detail = detailNode.GetString();
             }
 
-            return (title, detail);
+            if (document.RootElement.TryGetProperty("code", out var codeNode) && codeNode.ValueKind == JsonValueKind.String)
+            {
+                code = codeNode.GetString();
+            }
+
+            if (document.RootElement.TryGetProperty("errors", out var errorsNode) && errorsNode.ValueKind == JsonValueKind.Object)
+            {
+                errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+                foreach (var property in errorsNode.EnumerateObject())
+                {
+                    if (property.Value.ValueKind != JsonValueKind.Array) continue;
+                    errors[property.Name] = property.Value.EnumerateArray()
+                        .Where(item => item.ValueKind == JsonValueKind.String)
+                        .Select(item => item.GetString()!)
+                        .ToArray();
+                }
+            }
+
+            return new(title, detail, errors, code);
         }
         catch (JsonException)
         {
-            return (null, null);
+            return new(null, null, null, null);
         }
         catch (OperationCanceledException)
         {
@@ -707,9 +738,12 @@ public sealed partial class OdcaApiClient(HttpClient client)
         }
         catch (IOException)
         {
-            return (null, null);
+            return new(null, null, null, null);
         }
     }
+
+    private sealed record ApiProblem(string? Title, string? Detail,
+        IReadOnlyDictionary<string, string[]>? Errors, string? Code);
 
     private static HttpRequestMessage CreateAuthorized(HttpMethod method, string path, string token)
     {

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 using Odca.Api.Controllers;
 using Odca.Application.Common;
 using Odca.Application.Patients;
@@ -29,6 +30,33 @@ public sealed class PatientsControllerTests
         var invalid = Assert.IsAssignableFrom<ObjectResult>(result);
         var problem = Assert.IsType<ValidationProblemDetails>(invalid.Value);
         Assert.Contains("birthDate", problem.Errors);
+    }
+
+    [Fact]
+    public async Task ValidationProblemSerializesAllFieldErrorsAsHttpContract()
+    {
+        var controller = Controller(new StubRepository(new(PatientMutationStatus.Success)));
+        var request = ValidRequest() with
+        {
+            FullName = " ",
+            BirthDate = new DateOnly(2026, 9, 25),
+            Identifier = new("cpf", "123"),
+            Representative = new(" ", null, null, " ")
+        };
+
+        var result = await controller.Create(Guid.NewGuid(), request, default);
+        var invalid = Assert.IsAssignableFrom<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status400BadRequest, invalid.StatusCode);
+
+        var json = JsonSerializer.Serialize(invalid.Value, invalid.Value!.GetType(),
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        using var body = JsonDocument.Parse(json);
+        var errors = body.RootElement.GetProperty("errors");
+        Assert.Equal("Informe o nome completo (2 a 160 caracteres).", errors.GetProperty("fullName")[0].GetString());
+        Assert.True(errors.TryGetProperty("birthDate", out _));
+        Assert.True(errors.TryGetProperty("identifier", out _));
+        Assert.True(errors.TryGetProperty("representative.fullName", out _));
+        Assert.True(errors.TryGetProperty("representative.relationship", out _));
     }
 
     private static PatientsController Controller(IPatientRepository repository)
