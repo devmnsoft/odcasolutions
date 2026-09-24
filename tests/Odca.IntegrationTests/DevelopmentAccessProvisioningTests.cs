@@ -50,7 +50,7 @@ public sealed class DevelopmentAccessProvisioningTests(DatabaseFixture database)
         ]);
         var first = await provisioner.ProvisionAsync(database.AdminConnectionString,
             "unused-admin", null, true, true, generated.Dequeue,
-            operatorPassword: null, rotateOperator: true);
+            operatorPassword: null, rotateOperator: true, integrationTestFixture: true);
 
         Assert.True(first.AdministratorPasswordMatches);
         Assert.True(first.OperatorPasswordMatches);
@@ -77,7 +77,7 @@ public sealed class DevelopmentAccessProvisioningTests(DatabaseFixture database)
         var repeated = await provisioner.ProvisionAsync(database.AdminConnectionString,
             first.AdministratorPassword, first.ClientPassword, false, false,
             () => throw new InvalidOperationException("A reexecução não deve gerar senha."),
-            operatorPassword: first.OperatorPassword, rotateOperator: false);
+            operatorPassword: first.OperatorPassword, rotateOperator: false, integrationTestFixture: true);
         Assert.False(repeated.AdministratorCreated);
         Assert.False(repeated.OperatorCreated);
         Assert.False(repeated.ClientCreated);
@@ -89,7 +89,7 @@ public sealed class DevelopmentAccessProvisioningTests(DatabaseFixture database)
             provisioner.ProvisionAsync(database.AdminConnectionString,
                 first.AdministratorPassword, first.ClientPassword, false, false,
                 () => throw new InvalidOperationException("A reexecução concorrente não deve gerar senha."),
-                operatorPassword: first.OperatorPassword, rotateOperator: false)));
+                operatorPassword: first.OperatorPassword, rotateOperator: false, integrationTestFixture: true)));
         Assert.All(concurrent, item =>
         {
             Assert.False(item.AdministratorCreated);
@@ -130,13 +130,15 @@ public sealed class DevelopmentAccessProvisioningTests(DatabaseFixture database)
             database.AdminConnectionString,
             TestAccessProvisioner.AdministratorInitialPassword,
             TestAccessProvisioner.ClientInitialPassword,
-            false,
-            false,
+            true,
+            true,
             () => throw new InvalidOperationException("Credenciais reservadas devem ser reutilizadas."),
             requestedAdministratorPassword: TestAccessProvisioner.AdministratorInitialPassword,
             requestedClientPassword: TestAccessProvisioner.ClientInitialPassword,
-            operatorPassword: null,
-            rotateOperator: false);
+            operatorPassword: TestAccessProvisioner.OperatorInitialPassword,
+            rotateOperator: true,
+            requestedOperatorPassword: TestAccessProvisioner.OperatorInitialPassword,
+            integrationTestFixture: true);
 
         await using var factory = database.CreateApi();
         using var http = factory.CreateClient();

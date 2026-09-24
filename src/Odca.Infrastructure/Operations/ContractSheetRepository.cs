@@ -56,6 +56,12 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             return null;
         }
 
+        // Opening the workspace for an assigned obligation/review is not a grant
+        // to every section. Each projection is independently capability-gated.
+        var canReadDocuments = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
+            "SELECT odca.tenant_actor_has_permission(@viewerId,@tenantId,'tenant.documents.download') OR odca.tenant_actor_has_permission(@viewerId,@tenantId,'tenant.documents.manage') OR odca.tenant_actor_has_permission(@viewerId,@tenantId,'tenant.contract_drafts.read')",
+            new { viewerId, tenantId }, transaction, cancellationToken: cancellationToken));
+
         var documents = (await connection.QueryAsync<ContractSheetDocumentDto>(new CommandDefinition(
             """
             SELECT d.id AS DocumentId, v.id AS VersionId, d.title AS Name,
@@ -67,11 +73,11 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
                     SELECT max(x.version_number)
                       FROM odca.document_versions x
                      WHERE x.document_id = d.id AND x.tenant_id = d.tenant_id)
-             WHERE d.tenant_id = @tenantId AND d.contract_id = @contractId AND d.deleted_at IS NULL
+             WHERE @canReadDocuments AND d.tenant_id = @tenantId AND d.contract_id = @contractId AND d.deleted_at IS NULL
              ORDER BY v.created_at DESC
              LIMIT 8
             """,
-            new { tenantId, contractId },
+            new { tenantId, contractId, canReadDocuments },
             transaction,
             cancellationToken: cancellationToken))).AsList();
 
@@ -115,12 +121,12 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             SELECT i.id
               FROM odca.contract_imports i
               JOIN odca.document_versions v ON v.id = i.document_version_id AND v.tenant_id = i.tenant_id
-             WHERE i.tenant_id = @tenantId AND i.status = 'awaiting_review'
+             WHERE @canReadDocuments AND i.tenant_id = @tenantId AND i.status = 'awaiting_review'
                AND (v.contract_id = @contractId OR i.result_contract_id = @contractId)
              ORDER BY i.created_at DESC
              LIMIT 1
             """,
-            new { tenantId, contractId },
+            new { tenantId, contractId, canReadDocuments },
             transaction,
             cancellationToken: cancellationToken));
         var hasImportAwaitingReview = importId.HasValue;
@@ -156,11 +162,11 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             """
             SELECT d.id
               FROM odca.contract_drafts d
-             WHERE d.tenant_id = @tenantId AND d.contract_id = @contractId
+             WHERE @canReadDocuments AND d.tenant_id = @tenantId AND d.contract_id = @contractId
              ORDER BY d.updated_at DESC
              LIMIT 1
             """,
-            new { tenantId, contractId },
+            new { tenantId, contractId, canReadDocuments },
             transaction,
             cancellationToken: cancellationToken));
 

@@ -178,3 +178,19 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
    credenciais e conteúdo aprovado continuam decisões externas; não simular conclusão.
 5. **Acervo:** projetar referências existentes por paciente, com paginação, filtros,
    autorização e download revalidado, sem copiar bytes.
+
+## Incremento 23 — pacientes e acervo vinculado
+
+- [x] Cadastro tenant-scoped com identificador normalizado, representante explícito,
+  concorrência otimista, inativação/restauração, RLS e auditoria.
+- [x] Vincular a minuta ao paciente e preservar snapshot do paciente/representante na
+  versão gerada; o acervo pagina referências existentes e separa revisão de assinatura.
+- [x] Restringir a projeção de documentos da ficha por capacidade própria, mesmo quando
+  uma atribuição de obrigação ou revisão permite abrir a ficha.
+- [ ] Concluir as telas Razor da central/assistente e o QA visual em 360/768/1440 e zoom
+  200%; os endpoints deste incremento não constituem sozinhos a jornada visual concluída.
+- [ ] Selecionar e integrar provedor real de assinatura (envio idempotente, signatários,
+  eventos autenticados, reconciliação e evidências). Até lá o acervo informa
+  `signatureStatus=not_available`, nunca “assinado”.
+- [ ] Carregar conteúdo clínico/jurídico aprovado. Testes devem continuar usando modelos
+  sintéticos; nenhum texto demonstrativo deve ser publicado como conteúdo real.
