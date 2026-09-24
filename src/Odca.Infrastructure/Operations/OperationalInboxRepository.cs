@@ -135,7 +135,7 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
                        COALESCE(NULLIF(btrim(r.instructions), ''), c.title),
                        s.reviewer_id, ru.display_name,
                        (r.due_at AT TIME ZONE t.timezone)::date, r.status, r.row_version::bigint
-                  FROM odca.contract_reviews r
+                  FROM odca.contract_review_requests r
                   JOIN odca.contracts c ON c.id = r.contract_id AND c.tenant_id = r.tenant_id
                   JOIN odca.tenants t ON t.id = r.tenant_id
                   JOIN odca.contract_review_steps s

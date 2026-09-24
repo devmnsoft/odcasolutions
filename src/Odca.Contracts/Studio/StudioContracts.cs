@@ -22,7 +22,12 @@ public sealed record GeneratedVersionResponse(Guid Id, int Number, string Sha256
 public sealed record GeneratedVersionDetail(Guid Id, Guid ContractId, Guid DraftId, int Number, string Title,
     string DocumentType, string Organization, string Template, int TemplateVersion, string Author,
     DateTimeOffset CreatedAt, string Sha256, string ReviewStatus, string SignatureStatus, Guid? ReviewId,
-    JsonElement? PatientSnapshot, JsonElement Content, JsonElement Fields, JsonElement Values);
+    JsonElement? PatientSnapshot, JsonElement Content, JsonElement Fields, JsonElement Values,
+    string RenderedHtml, string PdfStatus, long? PdfByteSize, DateTimeOffset? PdfCompletedAt,
+    SignaturePreparationResponse? SignaturePreparation);
+public sealed record SignatureParticipantInput(Guid Id, string ParticipantType, Guid? SourceId, string Role, string Name, string? Email, string? Phone, int Position);
+public sealed record SaveSignaturePreparationRequest(long ExpectedVersion, bool Confirm, IReadOnlyList<SignatureParticipantInput> Participants);
+public sealed record SignaturePreparationResponse(Guid Id, string Status, long Version, IReadOnlyList<SignatureParticipantInput> Participants);
 public sealed record SubmitReviewRequest(Guid GeneratedVersionId, Guid ReviewerId, DateTimeOffset? DueAt, string? Instructions, Guid IdempotencyKey);
 public sealed record ReviewSubmittedResponse(Guid ReviewId, Guid GeneratedVersionId, string Status);
 public sealed record StudioVersionItem(Guid Id, int Number, string Author, DateTimeOffset CreatedAt, string Status);

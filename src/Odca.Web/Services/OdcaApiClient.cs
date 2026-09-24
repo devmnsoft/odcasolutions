@@ -558,6 +558,15 @@ public sealed partial class OdcaApiClient(HttpClient client)
     public Task<ApiCallResult<GeneratedVersionDetail>> GetStudioVersionAsync(string token, Guid tenantId, Guid versionId, CancellationToken ct) =>
         SendAsync<GeneratedVersionDetail>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/studio/versions/{versionId}", token), false, ct);
 
+    public async Task<ApiCallResult<JsonElement>> GenerateStudioPdfAsync(string token,Guid tenantId,Guid versionId,CancellationToken ct)
+    { using var message=CreateAuthorized(HttpMethod.Post,$"api/v1/organizations/{tenantId}/studio/versions/{versionId}/pdf",token);return await SendAsync<JsonElement>(message,false,ct); }
+
+    public async Task<HttpResponseMessage> DownloadStudioPdfAsync(string token,Guid tenantId,Guid versionId,CancellationToken ct)
+    { var message=CreateAuthorized(HttpMethod.Get,$"api/v1/organizations/{tenantId}/studio/versions/{versionId}/pdf",token);return await client.SendAsync(message,HttpCompletionOption.ResponseHeadersRead,ct); }
+
+    public async Task<ApiCallResult<JsonElement>> SaveSignaturePreparationAsync(string token,Guid tenantId,Guid versionId,SaveSignaturePreparationRequest request,CancellationToken ct)
+    { using var message=CreateAuthorized(HttpMethod.Put,$"api/v1/organizations/{tenantId}/studio/versions/{versionId}/signature-preparation",token);message.Content=JsonContent.Create(request);return await SendAsync<JsonElement>(message,false,ct); }
+
     public async Task<ApiCallResult<bool>> ConfirmDraftPatientAsync(string token, Guid tenantId, Guid draftId, ConfirmPatientVersionRequest request, CancellationToken ct)
     {
         using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/patient-confirmation", token);

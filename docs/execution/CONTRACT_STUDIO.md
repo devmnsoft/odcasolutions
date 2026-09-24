@@ -26,3 +26,7 @@ O bearer permanece somente no BFF e requisições mutáveis da interface mantêm
 ## Limitações objetivas
 
 A versão privada persistida nesta etapa é o snapshot canônico JSON com SHA-256. Conversão PDF paginada e processamento assíncrono para comparações acima do limite ainda dependem do worker/conversor homologado. A interface não implementa menções ou notificações externas. Referências removidas são preservadas pelo modelo de dados; a atualização automática de `reference_located` deverá ser feita pelo processamento de estrutura quando ele for conectado.
+
+## Documento final (migration 026)
+
+O estado atual da leitura, PDF, revisão e preparação de participantes está documentado em [FINAL_DOCUMENT_JOURNEY.md](FINAL_DOCUMENT_JOURNEY.md). O PDF e o HTML são derivados do JSON canônico; integração de assinatura continua fora do produto.
