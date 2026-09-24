@@ -7,7 +7,8 @@ const requiredAssets = [
   "src/Odca.Web/wwwroot/js/forms.js",
   "src/Odca.Web/wwwroot/js/dialogs.js",
   "src/Odca.Web/wwwroot/js/team.js",
-  "src/Odca.Web/wwwroot/js/studio.js"
+  "src/Odca.Web/wwwroot/js/studio.js",
+  "src/Odca.Web/wwwroot/js/patients.js"
 ];
 
 await Promise.all(requiredAssets.map((path) => access(path)));

@@ -30,6 +30,7 @@
     var canReadObligations = activeAccess?.HasAnyPermission("tenant.obligations.read", "tenant.obligations.read_all") == true;
     var canReadRenewals = activeAccess?.HasPermission("tenant.renewals.read") == true;
     var canReadStudio = activeAccess?.HasAnyPermission("tenant.templates.read", "tenant.contract_drafts.read") == true;
+    var canReadPatients = activeAccess?.HasPermission("tenant.patients.read") == true;
     var canReadImports = activeAccess?.HasPermission("tenant.imports.read") == true;
     var canReadReviews = activeAccess?.HasPermission("tenant.reviews.read") == true;
     var canReadOrganization = activeAccess?.HasAnyPermission("tenant.organization.read", "tenant.organization.manage") == true;
@@ -80,6 +81,10 @@
                             {
                                 <a class="nav-item @(controller == "Studio" ? "active" : null)" aria-label="Modelos e estúdio" aria-current="@(controller == "Studio" ? "page" : null)" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">▤</span><span>Modelos e minutas</span></a>
                             }
+                            @if (canReadPatients)
+                            {
+                                <a class="nav-item @(controller == "Patients" ? "active" : null)" asp-controller="Patients" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">♙</span><span>Pacientes</span></a>
+                            }
                             @if (canReadReviews)
                             {
                                 <a class="nav-item @(controller == "Reviews" ? "active" : null)" asp-controller="Reviews" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">☵</span><span>Solicitações</span></a>
@@ -125,6 +130,10 @@
                             @if (canReadStudio)
                             {
                                 <a class="nav-item @(controller == "Studio" ? "active" : null)" aria-label="Modelos e estúdio" aria-current="@(controller == "Studio" ? "page" : null)" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">▤</span><span>Modelos e minutas</span></a>
+                            }
+                            @if (canReadPatients)
+                            {
+                                <a class="nav-item @(controller == "Patients" ? "active" : null)" asp-controller="Patients" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">♙</span><span>Pacientes</span></a>
                             }
                             @if (canReadReviews)
                             {

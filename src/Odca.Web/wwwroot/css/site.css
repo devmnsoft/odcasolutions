@@ -372,3 +372,7 @@ body.sidebar-collapsed { --sidebar: 5rem; }
 .how-to summary { cursor: pointer; font-weight: 700; }
 @media (max-width: 480px) { .onboarding-step { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .progress-track > span { transition: none; } }
+
+/* Patient registry and document journey */
+.patient-filters{display:grid;grid-template-columns:minmax(16rem,1fr) auto auto;gap:1rem;align-items:end;margin:1rem 0 1.5rem}.patient-filters label{margin:0}.patient-table strong,.patient-table small{display:block}.patient-form{display:grid;gap:1rem}.patient-form .card+.card{margin-top:0}.patient-details dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}.patient-details dl div{border-bottom:1px solid var(--border);padding:.5rem}.patient-details dt{color:var(--text-muted);font-size:.8rem}.patient-details dd{margin:.2rem 0;overflow-wrap:anywhere}.button-link{background:var(--action-100);color:var(--action-700)}
+@media(max-width:768px){.patient-filters{grid-template-columns:1fr}.patient-details dl{grid-template-columns:1fr}.patient-form .form-actions-row{position:sticky;bottom:0;background:var(--background);padding:.75rem 0;z-index:5}}

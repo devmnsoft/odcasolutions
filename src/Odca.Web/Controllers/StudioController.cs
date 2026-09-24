@@ -13,10 +13,10 @@ namespace Odca.Web.Controllers;
 public sealed class StudioController(OdcaApiClient api, IConfiguration configuration) : Controller
 {
     [HttpGet("")]
-    public async Task<IActionResult> Index(Guid tenantId,string? search,string? type,string? scope,int page=1,CancellationToken ct=default)
+    public async Task<IActionResult> Index(Guid tenantId,string? search,string? type,string? scope,Guid? patientId,int page=1,CancellationToken ct=default)
     {
         var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
-        ViewData["Title"]="Modelos de contrato";ViewData["TenantId"]=tenantId;ViewData["Search"]=search;ViewData["Type"]=type;ViewData["Scope"]=scope;
+        ViewData["Title"]="Modelos de contrato";ViewData["TenantId"]=tenantId;ViewData["Search"]=search;ViewData["Type"]=type;ViewData["Scope"]=scope;ViewData["PatientId"]=patientId;
         var result=await GetCatalogAsync(token,tenantId,search,type,scope,page,ct);
         if(!result.Succeeded){if(result.Status==ApiCallStatus.Forbidden)return Forbid();ViewData["LoadError"]=result.UserMessage("Não foi possível carregar o catálogo.");return View(new TemplateCatalogPage([],Math.Max(1,page),12,0));}
         return View(result.Value!);
@@ -42,10 +42,10 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         return RedirectToAction(nameof(Index),new{tenantId,search,type,scope});
     }
     [HttpPost("minutas")]
-    public async Task<IActionResult> Create(Guid tenantId,Guid templateId,string title,string? reference,CancellationToken ct)
+    public async Task<IActionResult> Create(Guid tenantId,Guid templateId,string title,string? reference,Guid? patientId,CancellationToken ct)
     {
-        var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var result=await api.CreateStudioDraftAsync(token,tenantId,new(templateId,title,reference),ct);
-        if(!result.Succeeded){TempData["StudioError"]=result.ErrorDetail??result.ErrorTitle??"Não foi possível criar a minuta.";return RedirectToAction(nameof(Index),new{tenantId});}
+        var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var result=await api.CreateStudioDraftAsync(token,tenantId,new(templateId,title,reference,patientId),ct);
+        if(!result.Succeeded){TempData["StudioError"]=result.ErrorDetail??result.ErrorTitle??"Não foi possível criar a minuta.";return RedirectToAction(nameof(Index),new{tenantId,patientId});}
         var id=result.Value.GetProperty("id").GetGuid();return RedirectToAction(nameof(Edit),new{tenantId,draftId=id});
     }
     [HttpGet("minutas/{draftId:guid}")]
