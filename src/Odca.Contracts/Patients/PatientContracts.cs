@@ -9,5 +9,5 @@ public sealed record PatientPage(IReadOnlyList<PatientSummary> Items, int Page, 
 public sealed record PatientDetails(Guid Id, string FullName, string? PreferredName, DateOnly? BirthDate, string? Email, string? Phone,
     string? Address, string? IdentifierType, string? IdentifierValue, PatientRepresentativeInput? Representative, bool Active, long Version, DateTimeOffset UpdatedAt);
 public sealed record PatientDocument(Guid Id, Guid ContractId, string Title, string Type, int Version, string Author, DateTimeOffset CreatedAt,
-    string DocumentStatus, string ReviewStatus, string SignatureStatus, string NextAction);
+    string DocumentStatus, string ReviewStatus, string SignatureStatus, string NextAction, Guid DraftId, Guid? ReviewId);
 public sealed record PatientArchivePage(IReadOnlyList<PatientDocument> Items, int Page, int PageSize, int Total);

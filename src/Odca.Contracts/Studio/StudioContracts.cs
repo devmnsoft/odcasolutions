@@ -16,9 +16,13 @@ public sealed record DocumentPendingItem(string Code, string Message, string Rea
 public sealed record DocumentConferenceResponse(Guid DraftId, long DraftVersion, string Organization, string Template,
     int TemplateVersion, string DocumentType, string TemplateStatus, Guid? PatientId, string? PatientName,
     string? RepresentativeName, long? SelectedPatientVersion, long? CurrentPatientVersion, bool PatientActive,
-    bool CanEdit, bool CanGenerate, string ReviewStatus, string NextAction,
+    bool CanEdit, bool CanGenerate, bool PatientReconfirmationRequired, string ReviewStatus, string NextAction,
     IReadOnlyList<PatientDataChange> PatientChanges, IReadOnlyList<DocumentPendingItem> PendingItems);
 public sealed record GeneratedVersionResponse(Guid Id, int Number, string Sha256, long ByteSize, DateTimeOffset CreatedAt, string Status);
+public sealed record GeneratedVersionDetail(Guid Id, Guid ContractId, Guid DraftId, int Number, string Title,
+    string DocumentType, string Organization, string Template, int TemplateVersion, string Author,
+    DateTimeOffset CreatedAt, string Sha256, string ReviewStatus, string SignatureStatus, Guid? ReviewId,
+    JsonElement? PatientSnapshot, JsonElement Content, JsonElement Fields, JsonElement Values);
 public sealed record SubmitReviewRequest(Guid GeneratedVersionId, Guid ReviewerId, DateTimeOffset? DueAt, string? Instructions, Guid IdempotencyKey);
 public sealed record ReviewSubmittedResponse(Guid ReviewId, Guid GeneratedVersionId, string Status);
 public sealed record StudioVersionItem(Guid Id, int Number, string Author, DateTimeOffset CreatedAt, string Status);

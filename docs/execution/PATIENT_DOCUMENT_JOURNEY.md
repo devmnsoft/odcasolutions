@@ -86,3 +86,24 @@ canônica, sujeita a RLS, para montá-lo.
 O acervo informa a próxima ação sem apresentar abertura de revisão a quem não possui
 `tenant.reviews.request`. A assinatura permanece `not_available`: nenhuma entrega ou
 assinatura é simulada.
+# Estado operacional entregue em 24/09/2026
+
+O acervo da ficha do paciente agora abre diretamente cada versão imutável, sem
+digitação de UUID. A tela usa o snapshot persistido na geração, identifica
+paciente, representante, organização, modelo, autor e hash, e separa os estados
+de geração, revisão interna e assinatura eletrônica. A assinatura continua **não
+integrada**; aprovação interna não altera esse estado.
+
+A versão permite solicitar revisão escolhendo somente responsáveis elegíveis da
+organização e acompanhar a solicitação existente. Ajustes preservam a versão
+anterior e oferecem retorno ao Studio para produzir uma nova versão. Chaves de
+idempotência repetidas são aceitas apenas para o mesmo payload; reutilização com
+outro responsável, versão, prazo ou instruções gera conflito.
+
+A conferência distingue mudança de versão cadastral de mudança nos campos
+comparáveis. Mesmo sem diferença visível, o backend exige e a interface oferece
+reconfirmação explícita, sem substituir valores documentais editados à mão.
+
+Próxima etapa: integrar um provedor real de assinatura eletrônica, definir os
+signatários, fazer envio idempotente, autenticar eventos recebidos e preservar
+as evidências de assinatura.

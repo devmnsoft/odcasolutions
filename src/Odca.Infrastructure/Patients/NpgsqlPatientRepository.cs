@@ -66,7 +66,25 @@ public sealed class NpgsqlPatientRepository(NpgsqlDataSource dataSource) : IPati
         await using var connection = await dataSource.OpenConnectionAsync(ct); await using var tx = await AuthorizedAsync(connection, actorId, tenantId, "tenant.patients.documents.read", ct); if (tx is null) return null;
         var args = new { actorId, tenantId, patientId, limit = pageSize, offset = (page - 1) * pageSize };
         var total = await connection.ExecuteScalarAsync<int>(new CommandDefinition("SELECT count(*)::int FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND patient_id=@patientId", args, tx, cancellationToken: ct));
-        var rows = await connection.QueryAsync<PatientDocument>(new CommandDefinition("SELECT v.id AS Id,v.contract_id AS ContractId,c.title AS Title,t.contract_type AS Type,v.version_number AS Version,u.display_name AS Author,v.created_at AS CreatedAt,'generated' AS DocumentStatus,v.review_status AS ReviewStatus,'not_available' AS SignatureStatus,CASE WHEN v.review_status='generated' AND odca.tenant_actor_has_permission(@actorId,@tenantId,'tenant.reviews.request') THEN 'open_review' ELSE 'view_version' END AS NextAction FROM odca.generated_contract_versions v JOIN odca.contracts c ON (c.tenant_id,c.id)=(v.tenant_id,v.contract_id) JOIN odca.contract_templates t ON t.id=v.source_template_id JOIN odca.users u ON u.id=v.created_by WHERE v.tenant_id=@tenantId AND v.patient_id=@patientId ORDER BY v.created_at DESC,v.id LIMIT @limit OFFSET @offset", args, tx, cancellationToken: ct));
+        var rows = await connection.QueryAsync<PatientDocument>(new CommandDefinition("""
+            SELECT v.id AS Id,v.contract_id AS ContractId,c.title AS Title,t.contract_type AS Type,
+              v.version_number AS Version,u.display_name AS Author,v.created_at AS CreatedAt,
+              'generated' AS DocumentStatus,v.review_status AS ReviewStatus,'not_available' AS SignatureStatus,
+              CASE WHEN review.id IS NOT NULL THEN 'open_review'
+                   WHEN v.review_status='generated' AND odca.tenant_actor_has_permission(@actorId,@tenantId,'tenant.reviews.request') THEN 'request_review'
+                   ELSE 'view_version' END AS NextAction,v.draft_id AS DraftId,review.id AS ReviewId
+            FROM odca.generated_contract_versions v
+            JOIN odca.contracts c ON (c.tenant_id,c.id)=(v.tenant_id,v.contract_id)
+            JOIN odca.contract_templates t ON t.id=v.source_template_id
+            JOIN odca.users u ON u.id=v.created_by
+            LEFT JOIN LATERAL (
+              SELECT r.id FROM odca.contract_review_requests r
+              WHERE r.tenant_id=v.tenant_id AND r.generated_version_id=v.id
+              ORDER BY r.opened_at DESC,r.id LIMIT 1
+            ) review ON true
+            WHERE v.tenant_id=@tenantId AND v.patient_id=@patientId
+            ORDER BY v.created_at DESC,v.id LIMIT @limit OFFSET @offset
+            """, args, tx, cancellationToken: ct));
         await tx.CommitAsync(ct); return new PatientArchivePage(rows.AsList(), page, pageSize, total);
     }
 

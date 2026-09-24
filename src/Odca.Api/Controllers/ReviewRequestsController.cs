@@ -39,7 +39,15 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
             """;
         var args = new { tenantId, actor = actor.Value, status = string.IsNullOrWhiteSpace(status) ? null : status,
             scope, assigneeId, contractId, from, to, search = string.IsNullOrWhiteSpace(search) ? null : search.Trim(), offset = (page - 1) * pageSize, pageSize };
-        var total = await connection.ExecuteScalarAsync<int>(new CommandDefinition($"SELECT count(*)::integer FROM odca.contract_review_requests r WHERE {where}", args, cancellationToken: ct));
+        // Keep the count query on exactly the same one-to-one relationship used by the
+        // page query.  The shared search predicate references c.title; joining comments
+        // or steps here would inflate the total.
+        var total = await connection.ExecuteScalarAsync<int>(new CommandDefinition($"""
+            SELECT count(*)::integer
+            FROM odca.contract_review_requests r
+            JOIN odca.contracts c ON c.tenant_id=r.tenant_id AND c.id=r.contract_id
+            WHERE {where}
+            """, args, cancellationToken: ct));
         var rows = await connection.QueryAsync<QueueRow>(new CommandDefinition($"""
             SELECT r.id AS Id,r.contract_id AS ContractId,r.requested_by AS RequestedBy,c.title AS Contract,r.status AS Status,requester.display_name AS Requester,
               assignee.display_name AS Assignee,r.opened_at AS OpenedAt,r.updated_at AS UpdatedAt,r.due_at AS DueAt,r.row_version AS Version,
