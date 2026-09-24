@@ -26,8 +26,15 @@ public sealed record GeneratedVersionDetail(Guid Id, Guid ContractId, Guid Draft
     string RenderedHtml, string PdfStatus, long? PdfByteSize, DateTimeOffset? PdfCompletedAt,
     SignaturePreparationResponse? SignaturePreparation);
 public sealed record SignatureParticipantInput(Guid Id, string ParticipantType, Guid? SourceId, string Role, string Name, string? Email, string? Phone, int Position);
-public sealed record SaveSignaturePreparationRequest(long ExpectedVersion, bool Confirm, IReadOnlyList<SignatureParticipantInput> Participants);
-public sealed record SignaturePreparationResponse(Guid Id, string Status, long Version, IReadOnlyList<SignatureParticipantInput> Participants);
+public sealed record SaveSignaturePreparationRequest(long ExpectedVersion, bool Confirm, IReadOnlyList<SignatureParticipantInput>? Participants, Guid? OperationId = null);
+public sealed record ReopenSignaturePreparationRequest(long ExpectedVersion, string Justification, Guid OperationId);
+public sealed record SignatureReadinessItem(string Code, string Message, string Reason, string CorrectionAction, string? RequiredPermission);
+public sealed record SignatureReadinessResponse(bool PreparationComplete, bool InternallyApproved, bool IntegrationAvailable,
+    bool CanConfirm, IReadOnlyList<SignatureReadinessItem> Satisfied, IReadOnlyList<SignatureReadinessItem> Blockers,
+    IReadOnlyList<SignatureReadinessItem> Warnings);
+public sealed record SignaturePreparationResponse(Guid Id, string Status, long Version, IReadOnlyList<SignatureParticipantInput> Participants,
+    int CompositionRevision = 1, int? ConfirmedRevision = null, string? ConfirmedPdfSha256 = null, DateTimeOffset? ConfirmedAt = null,
+    SignatureReadinessResponse? Readiness = null);
 public sealed record SubmitReviewRequest(Guid GeneratedVersionId, Guid ReviewerId, DateTimeOffset? DueAt, string? Instructions, Guid IdempotencyKey);
 public sealed record ReviewSubmittedResponse(Guid ReviewId, Guid GeneratedVersionId, string Status);
 public sealed record StudioVersionItem(Guid Id, int Number, string Author, DateTimeOffset CreatedAt, string Status);
