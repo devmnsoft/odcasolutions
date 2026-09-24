@@ -1,0 +1,30 @@
+@model Odca.Contracts.Studio.GeneratedVersionDetail
+@using System.Text.Json
+@{
+    var tenantId=(Guid)ViewData["TenantId"]!;
+    var reviewers=ViewData["Reviewers"] as Odca.Contracts.Studio.StudioReviewerItem[] ?? [];
+    var patient=Model.PatientSnapshot;
+    string? PatientValue(string name) => patient is JsonElement value && value.TryGetProperty(name,out var property) && property.ValueKind!=JsonValueKind.Null ? property.ToString() : null;
+    string? representativeName = patient is JsonElement snapshot && snapshot.TryGetProperty("representative",out var representative) && representative.ValueKind==JsonValueKind.Object && representative.TryGetProperty("fullName",out var name) ? name.GetString() : null;
+}
+<nav class="breadcrumb"><a asp-controller="Patients" asp-action="Index" asp-route-tenantId="@tenantId">Pacientes</a><span>/</span><span>Versão @Model.Number</span></nav>
+<header class="page-heading"><div><p class="eyebrow">Versão documental imutável</p><h1>@Model.Title</h1><p>@Model.DocumentType · versão @Model.Number</p></div><span class="status-badge">Gerada</span></header>
+@if(TempData["StudioError"] is string error){<div class="alert alert-error" role="alert">@error</div>}
+<section class="summary-grid" aria-label="Dados da versão">
+ <article><span>Organização</span><strong>@Model.Organization</strong></article>
+ <article><span>Paciente</span><strong>@(PatientValue("fullName")??"Não vinculado")</strong><small>Representante: @(representativeName??"Não registrado")</small></article>
+ <article><span>Modelo</span><strong>@Model.Template · v@Model.TemplateVersion</strong></article>
+ <article><span>Geração</span><strong>@Model.Author</strong><small>@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</small></article>
+ <article><span>Revisão interna</span><strong>@Model.ReviewStatus</strong></article>
+ <article><span>Assinatura eletrônica</span><strong>Não integrada</strong><small>A aprovação interna não equivale a assinatura.</small></article>
+</section>
+<section class="card"><h2>Conteúdo efetivamente gerado</h2><p>Este conteúdo vem do snapshot da versão e não acompanha alterações posteriores do cadastro ou do modelo.</p><pre class="document-snapshot">@JsonSerializer.Serialize(Model.Content,new JsonSerializerOptions{WriteIndented=true})</pre><details><summary>Campos e valores preservados</summary><pre>@JsonSerializer.Serialize(Model.Values,new JsonSerializerOptions{WriteIndented=true})</pre></details><small>Integridade SHA-256: @Model.Sha256</small></section>
+<section class="help-card" id="solicitar-revisao">
+ <h2>Revisão</h2>
+ @if(Model.ReviewId is Guid reviewId){<p>Esta versão já possui uma revisão. Repetir a solicitação não cria outra revisão.</p><a class="button button-primary" asp-controller="Reviews" asp-action="Detail" asp-route-tenantId="@tenantId" asp-route-reviewId="@reviewId">Acompanhar revisão</a>}
+ else if(Model.ReviewStatus!="generated"){<p>Esta versão não está disponível para uma nova solicitação de revisão.</p>}
+ else if(reviewers.Length==0){<p>Nenhum responsável elegível está disponível ou seu perfil não pode solicitar revisão.</p>}
+ else {<form method="post" asp-action="RequestReview" asp-route-tenantId="@tenantId" asp-route-versionId="@Model.Id" data-prevent-double-submit>@Html.AntiForgeryToken()<input type="hidden" name="idempotencyKey" value="@Guid.NewGuid()"/><label for="reviewerId">Responsável</label><select id="reviewerId" name="reviewerId" required><option value="">Selecione</option>@foreach(var reviewer in reviewers){<option value="@reviewer.Id">@reviewer.Name</option>}</select><label for="instructions">Instruções</label><textarea id="instructions" name="instructions" maxlength="4000"></textarea><label for="dueAt">Prazo opcional</label><input id="dueAt" name="dueAt" type="datetime-local"/><button class="button button-primary" type="submit">Solicitar revisão desta versão</button></form>}
+ <details class="help"><summary>Como usar</summary><p>Escolha um responsável da organização e descreva o que deve ser conferido. A solicitação ficará vinculada somente a esta versão.</p></details>
+</section>
+<div class="form-actions-row"><a class="button button-quiet" asp-action="Edit" asp-route-tenantId="@tenantId" asp-route-draftId="@Model.DraftId">Continuar no Studio</a></div>

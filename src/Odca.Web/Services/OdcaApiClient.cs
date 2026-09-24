@@ -555,6 +555,9 @@ public sealed partial class OdcaApiClient(HttpClient client)
     public Task<ApiCallResult<DocumentConferenceResponse>> GetDocumentConferenceAsync(string token, Guid tenantId, Guid draftId, CancellationToken ct) =>
         SendAsync<DocumentConferenceResponse>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/conference", token), false, ct);
 
+    public Task<ApiCallResult<GeneratedVersionDetail>> GetStudioVersionAsync(string token, Guid tenantId, Guid versionId, CancellationToken ct) =>
+        SendAsync<GeneratedVersionDetail>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/studio/versions/{versionId}", token), false, ct);
+
     public async Task<ApiCallResult<bool>> ConfirmDraftPatientAsync(string token, Guid tenantId, Guid draftId, ConfirmPatientVersionRequest request, CancellationToken ct)
     {
         using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/patient-confirmation", token);

@@ -130,7 +130,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         return Ok(new DocumentConferenceResponse(row.DraftId, row.DraftVersion, row.Organization, row.Template,
             row.TemplateVersion, row.DocumentType, row.TemplateStatus, row.PatientId, row.PatientName,
             row.RepresentativeName, row.SelectedPatientVersion, row.CurrentPatientVersion, row.PatientActive,
-            canEdit, canGenerate, row.ReviewStatus, canGenerate ? "generate" : row.SelectedPatientVersion != row.CurrentPatientVersion ? "confirm_patient" : "complete_fields",
+            canEdit, canGenerate, row.SelectedPatientVersion != row.CurrentPatientVersion, row.ReviewStatus, canGenerate ? "generate" : row.SelectedPatientVersion != row.CurrentPatientVersion ? "confirm_patient" : "complete_fields",
             changes, pending));
     }
 
@@ -191,16 +191,52 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     [HttpPost("drafts/{draftId:guid}/versions")]
     public async Task<IActionResult> Generate(Guid tenantId,Guid draftId,[FromBody] GenerateVersionRequest request,CancellationToken ct)
     {
-        var actor=Actor();if(actor is null)return Unauthorized();await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.contract_drafts.manage",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
-        var existing=await c.QuerySingleOrDefaultAsync<GeneratedExistingRow>(new CommandDefinition("SELECT id AS Id,version_number AS Number,canonical_sha256 AS Sha256,byte_size AS ByteSize,created_at AS CreatedAt,review_status AS Status,draft_row_version AS DraftVersion FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND draft_id=@draftId AND idempotency_key=@idempotencyKey",new{tenantId,draftId,request.IdempotencyKey},tx,cancellationToken:ct));if(existing is not null){if(request.ExpectedVersion>0&&request.ExpectedVersion!=existing.DraftVersion)return Conflict(new{title="A chave de idempotência já foi usada com outra versão da minuta.",code="idempotency.payload.conflict"});await tx.CommitAsync(ct);return Ok(new GeneratedVersionResponse(existing.Id,existing.Number,existing.Sha256,existing.ByteSize,existing.CreatedAt,existing.Status));}
+        var actor=Actor();if(actor is null)return Unauthorized();
+        if(request.IdempotencyKey==Guid.Empty || request.ExpectedVersion<=0)return ValidationProblem("Informe a versão esperada da minuta e uma chave de repetição válida.");
+        await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.contract_drafts.manage",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
+        var existing=await c.QuerySingleOrDefaultAsync<GeneratedExistingRow>(new CommandDefinition("SELECT id AS Id,draft_id AS DraftId,version_number AS Number,canonical_sha256 AS Sha256,byte_size AS ByteSize,created_at AS CreatedAt,review_status AS Status,draft_row_version AS DraftVersion FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND idempotency_key=@idempotencyKey",new{tenantId,request.IdempotencyKey},tx,cancellationToken:ct));if(existing is not null){if(existing.DraftId!=draftId||request.ExpectedVersion!=existing.DraftVersion)return Conflict(new{title="A chave de idempotência já foi usada com outra minuta ou versão.",code="idempotency.payload.conflict"});await tx.CommitAsync(ct);return Ok(new GeneratedVersionResponse(existing.Id,existing.Number,existing.Sha256,existing.ByteSize,existing.CreatedAt,existing.Status));}
         var d=await c.QuerySingleOrDefaultAsync<DraftRow>(new CommandDefinition("SELECT d.id AS Id,d.contract_id AS ContractId,c.title AS Title,d.source_template_id AS SourceTemplateId,d.source_template_version_id AS SourceTemplateVersionId,d.content::text AS Content,d.fields::text AS Fields,d.values::text AS Values,d.row_version AS Version,d.last_client_revision AS LastClientRevision,d.updated_at AS UpdatedAt,d.patient_id AS PatientId,d.patient_row_version AS PatientVersion,t.status AS TemplateStatus,p.row_version AS CurrentPatientVersion,p.inactive_at AS PatientInactiveAt,odca.patient_document_snapshot(@tenantId,d.patient_id)::text AS PatientSnapshot FROM odca.contract_drafts d JOIN odca.contracts c ON c.id=d.contract_id AND c.tenant_id=d.tenant_id JOIN odca.contract_templates t ON t.id=d.source_template_id LEFT JOIN LATERAL (SELECT patient.row_version,patient.inactive_at FROM odca.patients patient WHERE (patient.tenant_id,patient.id)=(d.tenant_id,d.patient_id) FOR UPDATE) p ON true WHERE d.tenant_id=@tenantId AND d.id=@draftId FOR UPDATE OF d",new{tenantId,draftId},tx,cancellationToken:ct));if(d is null)return NotFound();
         if(d.TemplateStatus!="published")return Conflict(new{title="O modelo não está disponível para nova geração.",code="template.unavailable"});
         if(d.PatientId is not null && d.PatientInactiveAt is not null)return Conflict(new{title="O paciente está inativo.",detail="Restaure o cadastro antes de gerar um novo documento.",code="patient.inactive"});
         if(d.PatientId is not null && d.PatientVersion!=d.CurrentPatientVersion)return Conflict(new{title="Os dados do paciente mudaram durante a conferência.",detail="Crie uma nova minuta ou reconfirme os dados atualizados antes da emissão.",code="patient.version.conflict",currentPatientVersion=d.CurrentPatientVersion});
-        if(request.ExpectedVersion>0 && d.Version!=request.ExpectedVersion)return Conflict(new{title="Salve e resolva o conflito antes de gerar a versão.",currentVersion=d.Version});try{Validate(d.Content,d.Fields,d.Values,true);}catch(InvalidDataException e){return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"pendingFields",[e.Message]}}));}
+        if(d.Version!=request.ExpectedVersion)return Conflict(new{title="Salve e resolva o conflito antes de gerar a versão.",currentVersion=d.Version});try{Validate(d.Content,d.Fields,d.Values,true);}catch(InvalidDataException e){return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"pendingFields",[e.Message]}}));}
         var number=await c.ExecuteScalarAsync<int>(new CommandDefinition("SELECT coalesce(max(version_number),0)+1 FROM odca.generated_contract_versions WHERE draft_id=@draftId",new{draftId},tx,cancellationToken:ct));
         var snapshot=Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new{schemaVersion=2,patient=d.PatientSnapshot is null?(JsonElement?)null:JsonSerializer.Deserialize<JsonElement>(d.PatientSnapshot),content=JsonSerializer.Deserialize<JsonElement>(d.Content),fields=JsonSerializer.Deserialize<JsonElement>(d.Fields),values=JsonSerializer.Deserialize<JsonElement>(d.Values)}));var hash=Convert.ToHexString(SHA256.HashData(snapshot)).ToLowerInvariant();var id=Guid.NewGuid();var key=$"generated/{tenantId:N}/{d.ContractId:N}/{id:N}.json";var root=configuration["Documents:StoragePath"]??Path.Combine(AppContext.BaseDirectory,"App_Data","documents");var path=Path.Combine(root,key.Replace('/',Path.DirectorySeparatorChar));Directory.CreateDirectory(Path.GetDirectoryName(path)!);await System.IO.File.WriteAllBytesAsync(path,snapshot,ct);
         await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.generated_contract_versions(id,tenant_id,contract_id,draft_id,version_number,content_schema_version,content,fields,values,source_template_id,source_template_version_id,canonical_sha256,storage_key,byte_size,created_by,idempotency_key,draft_row_version,patient_id,patient_snapshot) VALUES(@id,@tenantId,@contractId,@draftId,@number,1,@content::jsonb,@fields::jsonb,@values::jsonb,@sourceTemplateId,@sourceTemplateVersionId,@hash,@key,@size,@actor,@idempotencyKey,@draftVersion,@PatientId,@PatientSnapshot::jsonb); INSERT INTO odca.contract_events(tenant_id,contract_id,actor_id,event_type,details) VALUES(@tenantId,@contractId,@actor,'version.generated',jsonb_build_object('versionId',@id,'number',@number,'sha256',@hash))",new{id,tenantId,contractId=d.ContractId,draftId,number,content=d.Content,fields=d.Fields,values=d.Values,d.SourceTemplateId,d.SourceTemplateVersionId,hash,key,size=snapshot.LongLength,actor,idempotencyKey=request.IdempotencyKey,draftVersion=d.Version,d.PatientId,d.PatientSnapshot},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Created($"/api/v1/organizations/{tenantId}/studio/versions/{id}",new GeneratedVersionResponse(id,number,hash,snapshot.LongLength,DateTimeOffset.UtcNow,"generated"));
+    }
+
+    [HttpGet("versions/{versionId:guid}")]
+    public async Task<IActionResult> Version(Guid tenantId, Guid versionId, CancellationToken ct)
+    {
+        var actor=Actor(); if(actor is null)return Unauthorized();
+        await using var c=await dataSource.OpenConnectionAsync(ct);
+        if(!await Allowed(c,actor.Value,tenantId,"tenant.patients.documents.read",ct) &&
+           !await Allowed(c,actor.Value,tenantId,"tenant.contract_drafts.read",ct))return Forbid();
+        await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
+        var row=await c.QuerySingleOrDefaultAsync<GeneratedDetailRow>(new CommandDefinition("""
+            SELECT v.id AS Id,v.contract_id AS ContractId,v.draft_id AS DraftId,v.version_number AS Number,
+              c.title AS Title,t.contract_type AS DocumentType,tenant.display_name AS Organization,
+              t.name AS Template,tv.version_number AS TemplateVersion,u.display_name AS Author,
+              v.created_at AS CreatedAt,v.canonical_sha256 AS Sha256,v.review_status AS ReviewStatus,
+              'not_available' AS SignatureStatus,review.id AS ReviewId,v.patient_snapshot::text AS PatientSnapshot,
+              v.content::text AS Content,v.fields::text AS Fields,v.values::text AS Values
+            FROM odca.generated_contract_versions v
+            JOIN odca.contracts c ON (c.tenant_id,c.id)=(v.tenant_id,v.contract_id)
+            JOIN odca.tenants tenant ON tenant.id=v.tenant_id
+            JOIN odca.contract_templates t ON t.id=v.source_template_id
+            JOIN odca.contract_template_versions tv ON tv.id=v.source_template_version_id AND tv.template_id=t.id
+            JOIN odca.users u ON u.id=v.created_by
+            LEFT JOIN LATERAL (SELECT r.id FROM odca.contract_review_requests r
+              WHERE r.tenant_id=v.tenant_id AND r.generated_version_id=v.id
+              ORDER BY r.opened_at DESC,r.id LIMIT 1) review ON true
+            WHERE v.tenant_id=@tenantId AND v.id=@versionId
+            """,new{tenantId,versionId},tx,cancellationToken:ct));
+        if(row is null)return NotFound();
+        await tx.CommitAsync(ct);
+        return Ok(new GeneratedVersionDetail(row.Id,row.ContractId,row.DraftId,row.Number,row.Title,row.DocumentType,
+            row.Organization,row.Template,row.TemplateVersion,row.Author,row.CreatedAt,row.Sha256,row.ReviewStatus,
+            row.SignatureStatus,row.ReviewId,ParseOptional(row.PatientSnapshot),JsonSerializer.Deserialize<JsonElement>(row.Content),
+            JsonSerializer.Deserialize<JsonElement>(row.Fields),JsonSerializer.Deserialize<JsonElement>(row.Values)));
     }
 
     [HttpGet("reviewers")]
@@ -213,8 +249,21 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     [HttpPost("reviews")]
     public async Task<IActionResult> Submit(Guid tenantId,[FromBody] SubmitReviewRequest request,CancellationToken ct)
     {
-        var actor=Actor();if(actor is null)return Unauthorized();await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.reviews.request",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
-        var prior=await c.QuerySingleOrDefaultAsync<ReviewSubmittedResponse>(new CommandDefinition("SELECT id AS ReviewId,generated_version_id AS GeneratedVersionId,status AS Status FROM odca.contract_review_requests WHERE tenant_id=@tenantId AND idempotency_key=@idempotencyKey",new{tenantId,request.IdempotencyKey},tx,cancellationToken:ct));if(prior is not null){await tx.CommitAsync(ct);return Ok(prior);}
+        var actor=Actor();if(actor is null)return Unauthorized();
+        if(request.GeneratedVersionId==Guid.Empty||request.ReviewerId==Guid.Empty||request.IdempotencyKey==Guid.Empty)return ValidationProblem("Informe a versão, o responsável e uma chave de repetição válidos.");
+        await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.reviews.request",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
+        var prior=await c.QuerySingleOrDefaultAsync<SubmittedReviewRow>(new CommandDefinition("""
+            SELECT r.id AS ReviewId,r.generated_version_id AS GeneratedVersionId,r.status AS Status,
+              r.instructions AS Instructions,r.due_at AS DueAt,s.reviewer_id AS ReviewerId
+            FROM odca.contract_review_requests r
+            JOIN odca.contract_review_steps s ON s.tenant_id=r.tenant_id AND s.review_id=r.id AND s.sequence=1
+            WHERE r.tenant_id=@tenantId AND r.idempotency_key=@idempotencyKey
+            """,new{tenantId,request.IdempotencyKey},tx,cancellationToken:ct));
+        if(prior is not null){
+            if(prior.GeneratedVersionId!=request.GeneratedVersionId||prior.ReviewerId!=request.ReviewerId||
+               prior.DueAt!=request.DueAt||!string.Equals(prior.Instructions,request.Instructions?.Trim(),StringComparison.Ordinal))
+                return Conflict(new{title="A chave de repetição já foi usada para outra solicitação.",code="review.idempotency.conflict"});
+            await tx.CommitAsync(ct);return Ok(new ReviewSubmittedResponse(prior.ReviewId,prior.GeneratedVersionId,prior.Status));}
         var v=await c.QuerySingleOrDefaultAsync<VersionRow>(new CommandDefinition("SELECT id AS Id,contract_id AS ContractId,content::text AS Content,canonical_sha256 AS Sha256,review_status AS Status FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND id=@id FOR UPDATE",new{tenantId,id=request.GeneratedVersionId},tx,cancellationToken:ct));if(v is null)return NotFound();if(v.Status!="generated")return Conflict(new{title="A versão já foi encaminhada."});
         var reviewer=await c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.memberships WHERE tenant_id=@tenantId AND user_id=@reviewer AND status='active' AND odca.tenant_actor_has_permission(user_id,@tenantId,'tenant.reviews.decide'))",new{tenantId,reviewer=request.ReviewerId},tx,cancellationToken:ct));if(!reviewer)return ValidationProblem("O revisor selecionado não está ativo ou autorizado para revisões.");var reviewId=Guid.NewGuid();
         await c.ExecuteAsync(new CommandDefinition("""
@@ -229,7 +278,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
           UPDATE odca.contract_change_requests SET generated_version_id=@versionId,review_id=@reviewId,status='in_review',row_version=row_version+1,updated_at=now()
            WHERE tenant_id=@tenantId AND contract_id=@contractId AND draft_id=(SELECT draft_id FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND id=@versionId)
              AND status='draft';
-          """,new{reviewId,tenantId,contractId=v.ContractId,versionId=v.Id,actor,request.DueAt,request.Instructions,content=v.Content,sha256=v.Sha256,request.IdempotencyKey,request.ReviewerId},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Ok(new ReviewSubmittedResponse(reviewId,v.Id,"in_review"));
+          """,new{reviewId,tenantId,contractId=v.ContractId,versionId=v.Id,actor,request.DueAt,Instructions=request.Instructions?.Trim(),content=v.Content,sha256=v.Sha256,request.IdempotencyKey,request.ReviewerId},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Ok(new ReviewSubmittedResponse(reviewId,v.Id,"in_review"));
     }
 
     [HttpGet("drafts/{draftId:guid}/versions")]
@@ -361,7 +410,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     private sealed record DraftRow(Guid Id,Guid ContractId,string Title,Guid SourceTemplateId,Guid SourceTemplateVersionId,string Content,string Fields,string Values,long Version,Guid? LastClientRevision,DateTimeOffset UpdatedAt,Guid? PatientId=null,string? PatientSnapshot=null,long? PatientVersion=null,long? CurrentPatientVersion=null,DateTimeOffset? PatientInactiveAt=null,string? TemplateStatus=null);
     private sealed record SaveRow(long Version,Guid ClientRevision,DateTimeOffset SavedAt);
     private sealed record VersionRow(Guid Id,Guid ContractId,string Content,string Sha256,string Status);
-    private sealed record GeneratedExistingRow(Guid Id,int Number,string Sha256,long ByteSize,DateTimeOffset CreatedAt,string Status,long DraftVersion);
+    private sealed record GeneratedExistingRow(Guid Id,Guid DraftId,int Number,string Sha256,long ByteSize,DateTimeOffset CreatedAt,string Status,long DraftVersion);
     private sealed record ComparisonRow(Guid Id,Guid ContractId,int Number,string Author,DateTimeOffset CreatedAt,string Status,string Content,string Fields,string Values);
     private sealed record CommentStateRow(bool Resolved,string Reference,long DraftRevision,Guid ContractId);
     private static StudioVersionItem ToItem(ComparisonRow row)=>new(row.Id,row.Number,row.Author,row.CreatedAt,row.Status);
@@ -374,6 +423,11 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             .Where(change => !string.Equals(change.Before, change.After, StringComparison.Ordinal)).ToArray();
     }
     private static string? JsonValue(JsonElement element, string name) => element.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null ? value.ToString() : null;
+    private static JsonElement? ParseOptional(string? json)=>json is null?null:JsonSerializer.Deserialize<JsonElement>(json);
     private sealed record ConferenceRow(Guid DraftId,long DraftVersion,string Organization,string Template,int TemplateVersion,string DocumentType,string TemplateStatus,Guid? PatientId,string? PatientName,string? RepresentativeName,long? SelectedPatientVersion,long? CurrentPatientVersion,bool PatientActive,string? SelectedPatientSnapshot,string? CurrentPatientSnapshot,string Content,string Fields,string Values,string ReviewStatus);
     private sealed record PatientConfirmationRow(Guid ContractId,long DraftVersion,long SelectedPatientVersion,long CurrentPatientVersion,DateTimeOffset? PatientInactiveAt);
+    private sealed record GeneratedDetailRow(Guid Id,Guid ContractId,Guid DraftId,int Number,string Title,string DocumentType,
+        string Organization,string Template,int TemplateVersion,string Author,DateTimeOffset CreatedAt,string Sha256,
+        string ReviewStatus,string SignatureStatus,Guid? ReviewId,string? PatientSnapshot,string Content,string Fields,string Values);
+    private sealed record SubmittedReviewRow(Guid ReviewId,Guid GeneratedVersionId,string Status,string? Instructions,DateTimeOffset? DueAt,Guid ReviewerId);
 }
