@@ -18,7 +18,9 @@ public sealed record ApiCallResult<T>(
     ApiCallStatus Status,
     T? Value = default,
     string? ErrorTitle = null,
-    string? ErrorDetail = null)
+    string? ErrorDetail = null,
+    IReadOnlyDictionary<string, string[]>? ValidationErrors = null,
+    string? ErrorCode = null)
 {
     public bool Succeeded => Status == ApiCallStatus.Success && Value is not null;
 

@@ -31,7 +31,7 @@ public sealed class PatientsController(OdcaApiClient api) : Controller
         if (!ModelState.IsValid) return View("Form", model);
         var token = await Token(); if (token is null) return Challenge();
         var result = await api.CreatePatientAsync(token, tenantId, model.ToRequest(), ct);
-        if (!result.Succeeded) { ModelState.AddModelError(string.Empty, result.UserMessage("Revise os dados e tente novamente.")); return View("Form", model); }
+        if (!result.Succeeded) { AddPatientErrors(result, "Revise os dados e tente novamente."); return View("Form", model); }
         TempData["PatientSuccess"] = "Paciente cadastrado."; return RedirectToAction(nameof(Details), new { tenantId, patientId = result.Value!.Id });
     }
 
@@ -62,7 +62,7 @@ public sealed class PatientsController(OdcaApiClient api) : Controller
         ViewData["Title"] = "Editar paciente"; ViewData["TenantId"] = tenantId; model.Id = patientId;
         if (!ModelState.IsValid) return View("Form", model);
         var token = await Token(); if (token is null) return Challenge(); var result = await api.UpdatePatientAsync(token, tenantId, patientId, model.ToRequest(), ct);
-        if (!result.Succeeded) { ModelState.AddModelError(string.Empty, result.Status == ApiCallStatus.Conflict ? "O cadastro mudou em outra sessão. Reabra a ficha para conferir antes de salvar." : result.UserMessage("Revise os dados e tente novamente.")); return View("Form", model); }
+        if (!result.Succeeded) { AddPatientErrors(result, result.ErrorCode == "patient.version.conflict" ? "O cadastro mudou em outra sessão. Reabra a ficha para conferir antes de salvar." : "Revise os dados e tente novamente."); return View("Form", model); }
         TempData["PatientSuccess"] = "Cadastro atualizado."; return RedirectToAction(nameof(Details), new { tenantId, patientId });
     }
 
@@ -75,4 +75,35 @@ public sealed class PatientsController(OdcaApiClient api) : Controller
     }
 
     private Task<string?> Token() => HttpContext.GetTokenAsync("access_token");
+
+    private void AddPatientErrors(ApiCallResult<PatientDetails> result, string fallback)
+    {
+        if (result.ValidationErrors is null || result.ValidationErrors.Count == 0)
+        {
+            ModelState.AddModelError(string.Empty, result.UserMessage(fallback));
+            return;
+        }
+
+        foreach (var (key, messages) in result.ValidationErrors)
+        {
+            var modelKey = PatientModelKey(key);
+            foreach (var message in messages)
+                ModelState.AddModelError(modelKey, message);
+        }
+    }
+
+    private static string PatientModelKey(string apiKey) => apiKey switch
+    {
+        "fullName" => nameof(PatientFormViewModel.FullName),
+        "preferredName" => nameof(PatientFormViewModel.PreferredName),
+        "birthDate" => nameof(PatientFormViewModel.BirthDate),
+        "email" => nameof(PatientFormViewModel.Email),
+        "phone" => nameof(PatientFormViewModel.Phone),
+        "address" => nameof(PatientFormViewModel.Address),
+        "identifier" => nameof(PatientFormViewModel.IdentifierValue),
+        "representative.fullName" => nameof(PatientFormViewModel.RepresentativeFullName),
+        "representative.relationship" => nameof(PatientFormViewModel.RepresentativeRelationship),
+        "representative.identifier" => nameof(PatientFormViewModel.RepresentativeIdentifierValue),
+        _ => string.Empty
+    };
 }

@@ -60,3 +60,29 @@ provedor operacional, assinatura retorna `not_available`.
 
 A assinatura eletrônica permanece explicitamente indisponível enquanto não houver provedor
 operacional. Este incremento não representa homologação dessa integração.
+
+## Incremento 25 — conferência recuperável
+
+A conferência reutiliza a minuta do estúdio e expõe, no backend, organização, paciente e
+representante, modelo e versão, tipo documental, pendências explicáveis, permissão de
+correção e próxima ação. O cadastro selecionado passa a ter um retrato próprio na minuta;
+ele serve somente para comparação e não substitui valores manuais do documento.
+
+Quando a versão do paciente muda, a geração continua bloqueada com
+`patient.version.conflict`. Uma pessoa com `tenant.contract_drafts.manage` pode comparar
+os campos relevantes e confirmar explicitamente a nova versão. A confirmação usa as
+versões esperadas da minuta e do paciente, atualiza o retrato, incrementa a versão da
+minuta e registra `patient.reconfirmed` no histórico. Repetir uma confirmação já aceita é
+idempotente. Se paciente ou minuta mudarem durante a conferência, a API devolve conflito
+e exige nova leitura.
+
+A geração mantém a checagem dentro da transação e agora bloqueia também a linha do
+paciente até o commit. A mesma chave de geração continua retornando a emissão existente;
+se for reapresentada para outra versão da minuta, retorna
+`idempotency.payload.conflict`. Versões já emitidas e seus `patient_snapshot` permanecem
+imutáveis. A migration v025 adiciona apenas o retrato de seleção à minuta e uma função
+canônica, sujeita a RLS, para montá-lo.
+
+O acervo informa a próxima ação sem apresentar abertura de revisão a quem não possui
+`tenant.reviews.request`. A assinatura permanece `not_available`: nenhuma entrega ou
+assinatura é simulada.

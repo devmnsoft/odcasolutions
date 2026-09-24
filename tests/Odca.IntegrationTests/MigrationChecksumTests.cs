@@ -281,4 +281,13 @@ public sealed class MigrationChecksumTests
         Assert.True(end >= 0, $"Marcador {endMarker} ausente.");
         return sql[start..(end + endMarker.Length)];
     }
+    [Fact]
+    public void ReleaseV025MatchesCanonicalSql()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v025.sql")).Replace("\r\n", "\n");
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        Assert.Equal(canonical, snapshot);
+    }
+
 }

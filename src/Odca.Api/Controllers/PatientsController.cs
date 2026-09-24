@@ -84,7 +84,13 @@ public sealed class PatientsController(IPatientRepository repository, IClock clo
     private ActionResult? ValidateRequest(SavePatientRequest request)
     {
         var errors = PatientRules.Validate(request, DateOnly.FromDateTime(clock.UtcNow.UtcDateTime));
-        return errors.Count == 0 ? null : ValidationProblem(new ValidationProblemDetails(errors));
+        if (errors.Count == 0) return null;
+
+        var details = new ValidationProblemDetails(errors.ToDictionary(
+            entry => entry.Key,
+            entry => entry.Value,
+            StringComparer.Ordinal));
+        return ValidationProblem(details);
     }
 
     private bool Actor(out Guid actor) => Guid.TryParse(User.FindFirstValue("sub"), out actor);

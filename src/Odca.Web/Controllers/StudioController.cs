@@ -52,7 +52,21 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
     public async Task<IActionResult> Edit(Guid tenantId,Guid draftId,CancellationToken ct)
     {
         var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var result=await api.GetStudioDraftAsync(token,tenantId,draftId,ct);
-        if(!result.Succeeded)return result.Status==ApiCallStatus.NotFound?NotFound():View("~/Views/Shared/ServiceUnavailable.cshtml");ViewData["Title"]="Estúdio de contratos";ViewData["TenantId"]=tenantId;return View(result.Value);
+        if(!result.Succeeded)return result.Status==ApiCallStatus.NotFound?NotFound():View("~/Views/Shared/ServiceUnavailable.cshtml");
+        var conference=await api.GetDocumentConferenceAsync(token,tenantId,draftId,ct);
+        ViewData["Title"]="Estúdio de contratos";ViewData["TenantId"]=tenantId;
+        ViewData["Conference"]=conference.Value;ViewData["ConferenceError"]=conference.Succeeded?null:conference.UserMessage("Não foi possível carregar a conferência documental.");
+        return View(result.Value);
+    }
+    [HttpPost("minutas/{draftId:guid}/confirmar-paciente")]
+    public async Task<IActionResult> ConfirmPatient(Guid tenantId,Guid draftId,long expectedDraftVersion,long expectedPatientVersion,CancellationToken ct)
+    {
+        var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
+        var result=await api.ConfirmDraftPatientAsync(token,tenantId,draftId,new(expectedDraftVersion,expectedPatientVersion),ct);
+        TempData[result.Succeeded?"StudioSuccess":"StudioError"]=result.Succeeded
+            ?"Dados cadastrais reconferidos. A minuta foi preservada e as pendências foram recalculadas."
+            :result.UserMessage("O cadastro ou a minuta mudou novamente. Refaça a conferência.");
+        return RedirectToAction(nameof(Edit),new{tenantId,draftId});
     }
     [HttpPut("minutas/{draftId:guid}")]
     public async Task<IActionResult> Save(Guid tenantId,Guid draftId,[FromBody] SaveDraftRequest request,CancellationToken ct)

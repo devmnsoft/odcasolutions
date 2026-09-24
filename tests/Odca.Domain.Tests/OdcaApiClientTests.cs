@@ -1,11 +1,47 @@
 using System.Globalization;
 using System.Net;
+using Odca.Contracts.Patients;
 using Odca.Web.Services;
 
 namespace Odca.Domain.Tests;
 
 public sealed class OdcaApiClientTests
 {
+    [Fact]
+    public async Task ValidationProblemPreservesFieldErrorsAndStatus()
+    {
+        const string problem = """
+            {"type":"https://tools.ietf.org/html/rfc9110#section-15.5.1","title":"One or more validation errors occurred.","status":400,"errors":{"fullName":["Informe o nome completo."],"representative.relationship":["Informe a relação."],"unknown":["Revise este dado."]}}
+            """;
+        var handler = new CapturingHandler(problem, HttpStatusCode.BadRequest);
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
+        var client = new OdcaApiClient(http);
+
+        var result = await client.CreatePatientAsync("token", Guid.NewGuid(),
+            new SavePatientRequest("", null, null, null, null, null, null, null), CancellationToken.None);
+
+        Assert.Equal(ApiCallStatus.InvalidRequest, result.Status);
+        Assert.Equal("Informe o nome completo.", result.ValidationErrors!["fullName"].Single());
+        Assert.Equal("Informe a relação.", result.ValidationErrors["representative.relationship"].Single());
+        Assert.Equal("Revise este dado.", result.ValidationErrors["unknown"].Single());
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Forbidden, ApiCallStatus.Forbidden)]
+    [InlineData(HttpStatusCode.NotFound, ApiCallStatus.NotFound)]
+    [InlineData(HttpStatusCode.Conflict, ApiCallStatus.Conflict)]
+    public async Task PatientFailuresKeepDistinctHttpSemantics(HttpStatusCode status, ApiCallStatus expected)
+    {
+        var handler = new CapturingHandler("{\"title\":\"Falha controlada\",\"code\":\"patient.version.conflict\"}", status);
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
+        var client = new OdcaApiClient(http);
+
+        var result = await client.GetPatientAsync("token", Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
+
+        Assert.Equal(expected, result.Status);
+        Assert.Equal("patient.version.conflict", result.ErrorCode);
+    }
+
     [Theory]
     [InlineData("pt-BR")]
     [InlineData("ar-SA")]
@@ -128,15 +164,20 @@ public sealed class OdcaApiClientTests
     private sealed class CapturingHandler : HttpMessageHandler
     {
         private readonly string response;
+        private readonly HttpStatusCode status;
 
-        public CapturingHandler(string response = "{\"items\":[],\"page\":1,\"pageSize\":20,\"total\":0}") => this.response = response;
+        public CapturingHandler(string response = "{\"items\":[],\"page\":1,\"pageSize\":20,\"total\":0}", HttpStatusCode status = HttpStatusCode.OK)
+        {
+            this.response = response;
+            this.status = status;
+        }
 
         public Uri? RequestUri { get; private set; }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             RequestUri = request.RequestUri;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            return Task.FromResult(new HttpResponseMessage(status)
             {
                 Content = new StringContent(response)
             });
