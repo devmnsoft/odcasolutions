@@ -567,6 +567,9 @@ public sealed partial class OdcaApiClient(HttpClient client)
     public async Task<ApiCallResult<JsonElement>> SaveSignaturePreparationAsync(string token,Guid tenantId,Guid versionId,SaveSignaturePreparationRequest request,CancellationToken ct)
     { using var message=CreateAuthorized(HttpMethod.Put,$"api/v1/organizations/{tenantId}/studio/versions/{versionId}/signature-preparation",token);message.Content=JsonContent.Create(request);return await SendAsync<JsonElement>(message,false,ct); }
 
+    public async Task<ApiCallResult<JsonElement>> ReopenSignaturePreparationAsync(string token,Guid tenantId,Guid versionId,ReopenSignaturePreparationRequest request,CancellationToken ct)
+    { using var message=CreateAuthorized(HttpMethod.Post,$"api/v1/organizations/{tenantId}/studio/versions/{versionId}/signature-preparation/reopen",token);message.Content=JsonContent.Create(request);return await SendAsync<JsonElement>(message,false,ct); }
+
     public async Task<ApiCallResult<bool>> ConfirmDraftPatientAsync(string token, Guid tenantId, Guid draftId, ConfirmPatientVersionRequest request, CancellationToken ct)
     {
         using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/patient-confirmation", token);

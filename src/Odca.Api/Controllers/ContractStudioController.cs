@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Net.Mail;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -236,6 +237,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         if(row is null)return NotFound();
         if(!canReadDrafts&&row.PatientId is null)return Forbid();
         var preparation=await ReadPreparation(c,tenantId,versionId,tx,ct);
+        if(preparation is not null)preparation=preparation with{Readiness=await CalculateReadiness(c,tenantId,versionId,tx,ct)};
         string html;
         try { html=ContractDocumentRenderer.ToHtml(row.Content,row.Fields,row.Values); }
         catch(InvalidDataException exception) { return Problem(statusCode:422,title="A estrutura histórica não pode ser apresentada.",detail=exception.Message); }
@@ -254,23 +256,108 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         var row=await c.QuerySingleOrDefaultAsync<PdfRow>(new CommandDefinition("SELECT id AS Id,coalesce(emission_metadata->>'title','Documento') AS Title,version_number AS Number,content::text AS Content,fields::text AS Fields,values::text AS Values,pdf_status AS Status,pdf_storage_key AS StorageKey,pdf_byte_size AS ByteSize FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND id=@versionId FOR UPDATE",new{tenantId,versionId},tx,cancellationToken:ct));
         if(row is null)return NotFound();if(row.Status=="completed"){await tx.CommitAsync(ct);return Ok(new{status="completed",byteSize=row.ByteSize,replayed=true});}
         byte[] pdf;try{pdf=ContractDocumentRenderer.ToPdf(row.Content,row.Fields,row.Values,row.Title,row.Number);}catch(InvalidDataException e){await c.ExecuteAsync(new CommandDefinition("UPDATE odca.generated_contract_versions SET pdf_status='failed',pdf_failure_code='invalid_structure' WHERE tenant_id=@tenantId AND id=@versionId",new{tenantId,versionId},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Problem(statusCode:422,title="Não foi possível gerar o PDF.",detail=e.Message);}
-        var hash=Convert.ToHexString(SHA256.HashData(pdf)).ToLowerInvariant();var key=$"generated/{tenantId:N}/{versionId:N}/final-{ContractDocumentRenderer.PdfRendererVersion}.pdf";var root=configuration["Documents:StoragePath"]??Path.Combine(AppContext.BaseDirectory,"App_Data","documents");var path=Path.Combine(root,key.Replace('/',Path.DirectorySeparatorChar));var temporary=path+".tmp-"+Guid.NewGuid().ToString("N");Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        try{await System.IO.File.WriteAllBytesAsync(temporary,pdf,ct);System.IO.File.Move(temporary,path,false);var reserved=await c.ExecuteScalarAsync<bool>(new CommandDefinition("INSERT INTO odca.tenant_storage_usage(tenant_id) VALUES(@tenantId) ON CONFLICT DO NOTHING; UPDATE odca.tenant_storage_usage SET used_bytes=used_bytes+@size WHERE tenant_id=@tenantId AND used_bytes+reserved_bytes+@size<=quota_bytes RETURNING true",new{tenantId,size=pdf.LongLength},tx,cancellationToken:ct));if(!reserved){System.IO.File.Delete(path);return Problem(statusCode:413,title="A cota de armazenamento da organização foi atingida.");}await c.ExecuteAsync(new CommandDefinition("UPDATE odca.generated_contract_versions SET pdf_status='completed',pdf_storage_key=@key,pdf_sha256=@hash,pdf_byte_size=@size,pdf_renderer_version=@renderer,pdf_completed_at=now(),pdf_failure_code=NULL WHERE tenant_id=@tenantId AND id=@versionId; INSERT INTO odca.resource_movements(tenant_id,resource_type,movement_type,quantity,unit,source_type,source_id,idempotency_key,actor_user_id) VALUES(@tenantId,'storage_usage','consume',@size,'bytes','generated_contract_pdf',@versionId,'pdf:'||@versionId::text,@actor) ON CONFLICT(tenant_id,idempotency_key) DO NOTHING",new{tenantId,versionId,key,hash,size=pdf.LongLength,renderer=ContractDocumentRenderer.PdfRendererVersion,actor},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Ok(new{status="completed",byteSize=pdf.LongLength,replayed=false});}catch{if(System.IO.File.Exists(temporary))System.IO.File.Delete(temporary);if(System.IO.File.Exists(path))System.IO.File.Delete(path);throw;}
+        var hash=Convert.ToHexString(SHA256.HashData(pdf)).ToLowerInvariant();var key=$"generated/{tenantId:N}/{versionId:N}/final-{ContractDocumentRenderer.PdfRendererVersion}-{hash[..16]}.pdf";var root=configuration["Documents:StoragePath"]??Path.Combine(AppContext.BaseDirectory,"App_Data","documents");var path=Path.Combine(root,key.Replace('/',Path.DirectorySeparatorChar));var temporary=path+".attempt-"+Guid.NewGuid().ToString("N");Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        try
+        {
+            await System.IO.File.WriteAllBytesAsync(temporary,pdf,ct);
+            if(System.IO.File.Exists(path)){var existing=await System.IO.File.ReadAllBytesAsync(path,ct);if(!CryptographicOperations.FixedTimeEquals(SHA256.HashData(existing),SHA256.HashData(pdf)))return Problem(statusCode:409,title="Já existe um artefato divergente para esta tentativa.");System.IO.File.Delete(temporary);}else System.IO.File.Move(temporary,path,false);
+            var reserved=await c.ExecuteScalarAsync<bool>(new CommandDefinition("""
+                INSERT INTO odca.tenant_storage_usage(tenant_id) VALUES(@tenantId) ON CONFLICT DO NOTHING;
+                UPDATE odca.tenant_storage_usage u SET quota_bytes=q.effective_quota
+                  FROM (SELECT t.id,1073741824::bigint+COALESCE((SELECT sum(g.quantity_bytes) FROM odca.storage_capacity_grants g WHERE g.tenant_id=t.id AND g.revoked_at IS NULL AND(g.valid_until IS NULL OR g.valid_until>now())),0) AS effective_quota FROM odca.tenants t WHERE t.id=@tenantId) q WHERE u.tenant_id=q.id;
+                WITH movement AS (INSERT INTO odca.resource_movements(tenant_id,resource_type,movement_type,quantity,unit,source_type,source_id,idempotency_key,actor_user_id)
+                  SELECT @tenantId,'storage_usage','consume',@size,'bytes','generated_contract_pdf',@versionId,'pdf:'||@versionId::text,@actor
+                  WHERE EXISTS(SELECT 1 FROM odca.tenant_storage_usage WHERE tenant_id=@tenantId AND used_bytes+reserved_bytes+@size<=quota_bytes)
+                  ON CONFLICT(tenant_id,idempotency_key) DO NOTHING RETURNING 1)
+                UPDATE odca.tenant_storage_usage SET used_bytes=used_bytes+@size WHERE tenant_id=@tenantId AND EXISTS(SELECT 1 FROM movement) RETURNING true
+                """,new{tenantId,versionId,size=pdf.LongLength,actor},tx,cancellationToken:ct));
+            if(!reserved)return Problem(statusCode:413,title="A cota efetiva de armazenamento da organização foi atingida.");
+            await c.ExecuteAsync(new CommandDefinition("UPDATE odca.generated_contract_versions SET pdf_status='completed',pdf_storage_key=@key,pdf_sha256=@hash,pdf_byte_size=@size,pdf_renderer_version=@renderer,pdf_completed_at=now(),pdf_failure_code=NULL WHERE tenant_id=@tenantId AND id=@versionId",new{tenantId,versionId,key,hash,size=pdf.LongLength,renderer=ContractDocumentRenderer.PdfRendererVersion},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Ok(new{status="completed",byteSize=pdf.LongLength,replayed=false});
+        }
+        finally{if(System.IO.File.Exists(temporary))System.IO.File.Delete(temporary);}
     }
 
     [HttpGet("versions/{versionId:guid}/pdf")]
     public async Task<IActionResult> DownloadPdf(Guid tenantId,Guid versionId,CancellationToken ct)
     {
-        var actor=Actor();if(actor is null)return Unauthorized();await using var c=await dataSource.OpenConnectionAsync(ct);var canReadPatientDocuments=await Allowed(c,actor.Value,tenantId,"tenant.patients.documents.read",ct);var canReadDrafts=await Allowed(c,actor.Value,tenantId,"tenant.contract_drafts.read",ct);if(!canReadPatientDocuments&&!canReadDrafts)return Forbid();await SetTenant(c,tenantId,actor.Value,ct);
-        var row=await c.QuerySingleOrDefaultAsync<PdfDownloadRow>(new CommandDefinition("SELECT pdf_storage_key AS StorageKey,pdf_sha256 AS Sha256,coalesce(emission_metadata->>'title','documento') AS Title,patient_id AS PatientId FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND id=@versionId AND pdf_status='completed'",new{tenantId,versionId},cancellationToken:ct));if(row is null)return NotFound();if(!canReadDrafts&&row.PatientId is null)return Forbid();var root=configuration["Documents:StoragePath"]??Path.Combine(AppContext.BaseDirectory,"App_Data","documents");var path=Path.Combine(root,row.StorageKey.Replace('/',Path.DirectorySeparatorChar));if(!System.IO.File.Exists(path))return Problem(statusCode:410,title="O arquivo final não está disponível.");var bytes=await System.IO.File.ReadAllBytesAsync(path,ct);if(!CryptographicOperations.FixedTimeEquals(SHA256.HashData(bytes),Convert.FromHexString(row.Sha256)))return Problem(statusCode:409,title="A integridade do PDF não pôde ser confirmada.");return File(bytes,"application/pdf",$"{SafeFileName(row.Title)}.pdf",false);
+        var actor=Actor();if(actor is null)return Unauthorized();await using var c=await dataSource.OpenConnectionAsync(ct);var canReadPatientDocuments=await Allowed(c,actor.Value,tenantId,"tenant.patients.documents.read",ct);var canReadDrafts=await Allowed(c,actor.Value,tenantId,"tenant.contract_drafts.read",ct);if(!canReadPatientDocuments&&!canReadDrafts)return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
+        var row=await c.QuerySingleOrDefaultAsync<PdfDownloadRow>(new CommandDefinition("SELECT pdf_storage_key AS StorageKey,pdf_sha256 AS Sha256,coalesce(emission_metadata->>'title','documento') AS Title,patient_id AS PatientId FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND id=@versionId AND pdf_status='completed'",new{tenantId,versionId},tx,cancellationToken:ct));if(row is null)return NotFound();if(!canReadDrafts&&row.PatientId is null)return Forbid();var root=configuration["Documents:StoragePath"]??Path.Combine(AppContext.BaseDirectory,"App_Data","documents");var path=Path.Combine(root,row.StorageKey.Replace('/',Path.DirectorySeparatorChar));if(!System.IO.File.Exists(path))return Problem(statusCode:410,title="O arquivo final não está disponível.");var bytes=await System.IO.File.ReadAllBytesAsync(path,ct);if(!CryptographicOperations.FixedTimeEquals(SHA256.HashData(bytes),Convert.FromHexString(row.Sha256)))return Problem(statusCode:409,title="A integridade do PDF não pôde ser confirmada.");await tx.CommitAsync(ct);return File(bytes,"application/pdf",$"{SafeFileName(row.Title)}.pdf",false);
+    }
+
+    [HttpGet("versions/{versionId:guid}/signature-preparation/readiness")]
+    public async Task<IActionResult> SignatureReadiness(Guid tenantId,Guid versionId,CancellationToken ct)
+    {
+        var actor=Actor();if(actor is null)return Unauthorized();await using var c=await dataSource.OpenConnectionAsync(ct);
+        if(!await Allowed(c,actor.Value,tenantId,"tenant.contract_drafts.read",ct))return Forbid();
+        await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
+        var readiness=await CalculateReadiness(c,tenantId,versionId,tx,ct);if(readiness is null)return NotFound();await tx.CommitAsync(ct);return Ok(readiness);
     }
 
     [HttpPut("versions/{versionId:guid}/signature-preparation")]
     public async Task<IActionResult> SavePreparation(Guid tenantId,Guid versionId,SaveSignaturePreparationRequest request,CancellationToken ct)
     {
-        var actor=Actor();if(actor is null)return Unauthorized();var allowedTypes=new[]{"patient","representative","professional","organization_representative"};if(request.Participants.Count is <1 or >20||request.Participants.Select(x=>x.Id).Distinct().Count()!=request.Participants.Count||request.Participants.Select(x=>x.Position).Distinct().Count()!=request.Participants.Count||request.Participants.Any(x=>x.Id==Guid.Empty||x.Position<=0||!allowedTypes.Contains(x.ParticipantType,StringComparer.Ordinal)||string.IsNullOrWhiteSpace(x.Name)||string.IsNullOrWhiteSpace(x.Role)||(string.IsNullOrWhiteSpace(x.Email)&&string.IsNullOrWhiteSpace(x.Phone))))return ValidationProblem("Informe de 1 a 20 participantes distintos com tipo, papel, nome e contato.");
-        await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.contract_drafts.manage",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);var exists=await c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND id=@versionId)",new{tenantId,versionId},tx,cancellationToken:ct));if(!exists)return NotFound();
-        var id=await c.ExecuteScalarAsync<Guid?>(new CommandDefinition("INSERT INTO odca.signature_preparations(tenant_id,generated_version_id,status,created_by,updated_by) VALUES(@tenantId,@versionId,@status,@actor,@actor) ON CONFLICT(tenant_id,generated_version_id) DO UPDATE SET status=@status,updated_by=@actor,updated_at=now(),row_version=odca.signature_preparations.row_version+1 WHERE odca.signature_preparations.row_version=@expected RETURNING id",new{tenantId,versionId,status=request.Confirm?"confirmed":"draft",actor,expected=request.ExpectedVersion},tx,cancellationToken:ct));if(id is null)return Conflict(new{title="A preparação foi alterada em outra sessão."});await c.ExecuteAsync(new CommandDefinition("DELETE FROM odca.signature_participants WHERE tenant_id=@tenantId AND preparation_id=@id",new{tenantId,id},tx,cancellationToken:ct));foreach(var participant in request.Participants.OrderBy(x=>x.Position))await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.signature_participants(id,tenant_id,preparation_id,participant_type,source_id,role,name,email,phone,position) VALUES(@Id,@tenantId,@id,@ParticipantType,@SourceId,@Role,@Name,@Email,@Phone,@Position)",new{participant.Id,tenantId,id,participant.ParticipantType,participant.SourceId,Role=participant.Role.Trim(),Name=participant.Name.Trim(),Email=participant.Email?.Trim(),Phone=participant.Phone?.Trim(),participant.Position},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Ok(new{status=request.Confirm?"confirmed":"draft"});
+        var actor=Actor();if(actor is null)return Unauthorized();
+        var participants=request.Participants;
+        var errors=ValidateParticipants(participants);
+        if(request.Confirm&&(request.OperationId is null||request.OperationId==Guid.Empty))errors["operationId"]=["A chave da confirmação é obrigatória."];
+        if(errors.Count>0)return ValidationProblem(new ValidationProblemDetails(errors));
+        var normalized=participants!.Select(x=>x with{Role=x.Role.Trim(),Name=x.Name.Trim(),Email=NullIfBlank(x.Email),Phone=NullIfBlank(x.Phone)}).OrderBy(x=>x.Position).ToArray();
+        await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.contract_drafts.manage",ct))return Forbid();
+        await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
+        var version=await c.QuerySingleOrDefaultAsync<PreparationVersionRow>(new CommandDefinition("SELECT id AS Id,patient_id AS PatientId,patient_snapshot::text AS PatientSnapshot,pdf_status AS PdfStatus,pdf_storage_key AS PdfStorageKey,pdf_sha256 AS PdfSha256,review_status AS ReviewStatus FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND id=@versionId",new{tenantId,versionId},tx,cancellationToken:ct));
+        if(version is null)return NotFound();
+        var sourceErrors=await ValidateParticipantSources(c,tenantId,version,normalized,tx,ct);if(sourceErrors.Count>0)return ValidationProblem(new ValidationProblemDetails(sourceErrors));
+        var current=await c.QuerySingleOrDefaultAsync<PreparationStateRow>(new CommandDefinition("SELECT id AS Id,status AS Status,row_version AS Version,composition_revision AS CompositionRevision,confirmed_revision AS ConfirmedRevision,confirmed_pdf_sha256 AS ConfirmedPdfSha256,confirmed_at AS ConfirmedAt,confirmation_operation_id AS ConfirmationOperationId FROM odca.signature_preparations WHERE tenant_id=@tenantId AND generated_version_id=@versionId FOR UPDATE",new{tenantId,versionId},tx,cancellationToken:ct));
+        Guid preparationId;int revision;long nextVersion;
+        if(current is null)
+        {
+            if(request.ExpectedVersion!=0)return Conflict(new{title="A preparação ainda não existe nesta versão. Recarregue a página.",code="preparation.creation.conflict"});
+            preparationId=Guid.NewGuid();
+            var created=await c.ExecuteScalarAsync<bool>(new CommandDefinition("INSERT INTO odca.signature_preparations(id,tenant_id,generated_version_id,status,created_by,updated_by) VALUES(@preparationId,@tenantId,@versionId,'draft',@actor,@actor) ON CONFLICT(tenant_id,generated_version_id) DO NOTHING RETURNING true",new{preparationId,tenantId,versionId,actor},tx,cancellationToken:ct));
+            if(!created)return Conflict(new{title="Outra sessão iniciou esta preparação. Recarregue para preservar as duas composições.",code="preparation.creation.conflict"});
+            revision=1;nextVersion=1;
+            await AddPreparationEvent(c,tenantId,preparationId,revision,actor,"created",new{count=normalized.Length},tx,ct);
+        }
+        else
+        {
+            if(request.Confirm&&current.Status=="confirmed"&&current.ConfirmationOperationId==request.OperationId){await tx.CommitAsync(ct);return Ok(new{status="confirmed",version=current.Version,compositionRevision=current.CompositionRevision,replayed=true});}
+            if(current.Version!=request.ExpectedVersion)return Conflict(new{title="A composição foi alterada em outra sessão. Recarregue e reaplique suas mudanças.",code="preparation.version.conflict",currentVersion=current.Version});
+            if(current.Status=="confirmed")return Conflict(new{title="A composição confirmada está congelada. Reabra-a com justificativa antes de editar.",code="preparation.confirmed"});
+            preparationId=current.Id;revision=current.CompositionRevision+1;nextVersion=current.Version+1;
+            await c.ExecuteAsync(new CommandDefinition("UPDATE odca.signature_preparations SET composition_revision=@revision,row_version=row_version+1,updated_by=@actor,updated_at=now() WHERE tenant_id=@tenantId AND id=@preparationId",new{tenantId,preparationId,revision,actor},tx,cancellationToken:ct));
+            await AddPreparationEvent(c,tenantId,preparationId,revision,actor,"updated",new{count=normalized.Length},tx,ct);
+        }
+        foreach(var participant in normalized)
+            await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.signature_participants(id,client_id,tenant_id,preparation_id,composition_revision,participant_type,source_id,role,name,email,phone,position,recorded_by) VALUES(gen_random_uuid(),@Id,@tenantId,@preparationId,@revision,@ParticipantType,@SourceId,@Role,@Name,@Email,@Phone,@Position,@actor)",new{participant.Id,tenantId,preparationId,revision,participant.ParticipantType,participant.SourceId,participant.Role,participant.Name,participant.Email,participant.Phone,participant.Position,actor},tx,cancellationToken:ct));
+        if(revision==1)await AddPreparationEvent(c,tenantId,preparationId,revision,actor,"participant_added",new{participantIds=normalized.Select(x=>x.Id).ToArray()},tx,ct);
+        if(revision>1)await c.ExecuteAsync(new CommandDefinition("""
+            INSERT INTO odca.signature_preparation_events(tenant_id,preparation_id,composition_revision,actor_user_id,event_type,details)
+            SELECT @tenantId,@preparationId,@revision,@actor,k.event_type,jsonb_build_object('participantIds',k.ids)
+            FROM (SELECT 'participant_added' event_type,jsonb_agg(n.client_id) ids FROM odca.signature_participants n WHERE n.tenant_id=@tenantId AND n.preparation_id=@preparationId AND n.composition_revision=@revision AND NOT EXISTS(SELECT 1 FROM odca.signature_participants o WHERE o.tenant_id=n.tenant_id AND o.preparation_id=n.preparation_id AND o.composition_revision=@revision-1 AND o.client_id=n.client_id)
+              UNION ALL SELECT 'participant_removed',jsonb_agg(o.client_id) FROM odca.signature_participants o WHERE o.tenant_id=@tenantId AND o.preparation_id=@preparationId AND o.composition_revision=@revision-1 AND NOT EXISTS(SELECT 1 FROM odca.signature_participants n WHERE n.tenant_id=o.tenant_id AND n.preparation_id=o.preparation_id AND n.composition_revision=@revision AND n.client_id=o.client_id)
+              UNION ALL SELECT 'participant_changed',jsonb_agg(n.client_id) FROM odca.signature_participants n JOIN odca.signature_participants o ON (o.tenant_id,o.preparation_id,o.client_id)=(n.tenant_id,n.preparation_id,n.client_id) AND o.composition_revision=@revision-1 WHERE n.tenant_id=@tenantId AND n.preparation_id=@preparationId AND n.composition_revision=@revision AND (n.participant_type,n.source_id,n.role,n.name,n.email,n.phone) IS DISTINCT FROM (o.participant_type,o.source_id,o.role,o.name,o.email,o.phone)
+              UNION ALL SELECT 'participant_reordered',jsonb_agg(n.client_id) FROM odca.signature_participants n JOIN odca.signature_participants o ON (o.tenant_id,o.preparation_id,o.client_id)=(n.tenant_id,n.preparation_id,n.client_id) AND o.composition_revision=@revision-1 WHERE n.tenant_id=@tenantId AND n.preparation_id=@preparationId AND n.composition_revision=@revision AND n.position<>o.position) k WHERE k.ids IS NOT NULL
+            """,new{tenantId,preparationId,revision,actor},tx,cancellationToken:ct));
+        if(request.Confirm)
+        {
+            var readiness=await CalculateReadiness(c,tenantId,versionId,tx,ct);
+            if(readiness is null||!readiness.CanConfirm)return BadRequest(new ValidationProblemDetails(new Dictionary<string,string[]>{{"confirm",readiness?.Blockers.Select(x=>x.Message).ToArray()??["A conferência não pôde ser calculada."]}}));
+            await c.ExecuteAsync(new CommandDefinition("UPDATE odca.signature_preparations SET status='confirmed',confirmed_revision=composition_revision,confirmed_pdf_storage_key=@key,confirmed_pdf_sha256=@hash,confirmed_at=now(),confirmed_by=@actor,confirmation_operation_id=@operationId WHERE tenant_id=@tenantId AND id=@preparationId",new{tenantId,preparationId,key=version.PdfStorageKey,hash=version.PdfSha256,actor,operationId=request.OperationId},tx,cancellationToken:ct));
+            await AddPreparationEvent(c,tenantId,preparationId,revision,actor,"confirmed",new{pdfSha256=version.PdfSha256,pdfStorageKey=version.PdfStorageKey},tx,ct);
+        }
+        await tx.CommitAsync(ct);return Ok(new{status=request.Confirm?"confirmed":"draft",version=nextVersion,compositionRevision=revision});
+    }
+
+    [HttpPost("versions/{versionId:guid}/signature-preparation/reopen")]
+    public async Task<IActionResult> ReopenPreparation(Guid tenantId,Guid versionId,ReopenSignaturePreparationRequest request,CancellationToken ct)
+    {
+        var actor=Actor();if(actor is null)return Unauthorized();if(request.OperationId==Guid.Empty||string.IsNullOrWhiteSpace(request.Justification)||request.Justification.Trim().Length is < 5 or > 1000)return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"justification",["Informe uma justificativa de 5 a 1000 caracteres."]}}));
+        await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.contract_drafts.manage",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
+        var current=await c.QuerySingleOrDefaultAsync<PreparationStateRow>(new CommandDefinition("SELECT id AS Id,status AS Status,row_version AS Version,composition_revision AS CompositionRevision,confirmed_revision AS ConfirmedRevision,confirmed_pdf_sha256 AS ConfirmedPdfSha256,confirmed_at AS ConfirmedAt,confirmation_operation_id AS ConfirmationOperationId FROM odca.signature_preparations WHERE tenant_id=@tenantId AND generated_version_id=@versionId FOR UPDATE",new{tenantId,versionId},tx,cancellationToken:ct));
+        if(current is null)return NotFound();if(current.Status=="draft"){await tx.CommitAsync(ct);return Ok(new{status="draft",version=current.Version,replayed=true});}if(current.Version!=request.ExpectedVersion)return Conflict(new{title="A preparação foi alterada em outra sessão.",code="preparation.version.conflict",currentVersion=current.Version});
+        await c.ExecuteAsync(new CommandDefinition("UPDATE odca.signature_preparations SET status='draft',confirmed_revision=NULL,row_version=row_version+1,updated_by=@actor,updated_at=now() WHERE tenant_id=@tenantId AND id=@id",new{tenantId,id=current.Id,actor},tx,cancellationToken:ct));
+        await AddPreparationEvent(c,tenantId,current.Id,current.CompositionRevision,actor,"reopened",new{justification=request.Justification.Trim(),priorConfirmedRevision=current.ConfirmedRevision,priorPdfSha256=current.ConfirmedPdfSha256,priorConfirmedAt=current.ConfirmedAt,operationId=request.OperationId},tx,ct);
+        await tx.CommitAsync(ct);return Ok(new{status="draft",version=current.Version+1,replayed=false});
     }
 
     [HttpGet("reviewers")]
@@ -434,6 +521,69 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         await tx.CommitAsync(ct); return NoContent();
     }
 
+    private static Dictionary<string,string[]> ValidateParticipants(IReadOnlyList<SignatureParticipantInput>? participants)
+    {
+        var errors=new Dictionary<string,string[]>();
+        if(participants is null){errors["participants"]=["Informe a coleção de participantes."];return errors;}
+        if(participants.Count is <1 or >20)errors["participants"]=["Informe de 1 a 20 participantes."];
+        var allowed=new HashSet<string>(["patient","representative","professional","organization_representative"],StringComparer.Ordinal);
+        for(var i=0;i<participants.Count;i++)
+        {
+            var p=participants[i];var prefix=$"participants[{i}]";
+            if(p.Id==Guid.Empty)errors[$"{prefix}.id"]=["O identificador da linha é obrigatório."];
+            if(!allowed.Contains(p.ParticipantType))errors[$"{prefix}.participantType"]=["Selecione um tipo permitido."];
+            if(string.IsNullOrWhiteSpace(p.Name)||p.Name.Trim().Length is <2 or >160)errors[$"{prefix}.name"]=["Informe um nome de 2 a 160 caracteres."];
+            if(string.IsNullOrWhiteSpace(p.Role)||p.Role.Trim().Length>120)errors[$"{prefix}.role"]=["Informe um papel de até 120 caracteres."];
+            var email=NullIfBlank(p.Email);var phone=NullIfBlank(p.Phone);
+            if(email is not null&&(email.Length>254||!MailAddress.TryCreate(email,out var parsed)||!string.Equals(parsed.Address,email,StringComparison.OrdinalIgnoreCase)))errors[$"{prefix}.email"]=["Informe um e-mail válido de até 254 caracteres."];
+            if(phone is not null&&phone.Length>40)errors[$"{prefix}.phone"]=["O telefone deve ter até 40 caracteres."];
+            if(email is null&&phone is null)errors[$"{prefix}.contact"]=["Informe e-mail ou telefone."];
+            if(p.Position<1||p.Position>20)errors[$"{prefix}.position"]=["A posição deve estar entre 1 e 20."];
+            if((p.ParticipantType is "patient" or "representative")&&p.SourceId is null)errors[$"{prefix}.sourceId"]=["Selecione explicitamente a pessoa de origem."];
+            if((p.ParticipantType is "professional" or "organization_representative")&&p.SourceId is not null)errors[$"{prefix}.sourceId"]=["A identidade anterior não pode ser mantida ao trocar para um participante manual."];
+        }
+        if(participants.Select(x=>x.Id).Distinct().Count()!=participants.Count)errors["participants.id"]=["Há identificadores de linha duplicados."];
+        if(participants.Select(x=>x.Position).Distinct().Count()!=participants.Count)errors["participants.position"]=["Há posições duplicadas."];
+        return errors;
+    }
+    private static string? NullIfBlank(string? value)=>string.IsNullOrWhiteSpace(value)?null:value.Trim();
+    private static async Task<Dictionary<string,string[]>> ValidateParticipantSources(NpgsqlConnection c,Guid tenantId,PreparationVersionRow version,IReadOnlyList<SignatureParticipantInput> participants,NpgsqlTransaction tx,CancellationToken ct)
+    {
+        var errors=new Dictionary<string,string[]>();
+        for(var i=0;i<participants.Count;i++)
+        {
+            var p=participants[i];if(p.ParticipantType=="patient"&&p.SourceId!=version.PatientId)errors[$"participants[{i}].sourceId"]=["O paciente não pertence ao snapshot desta versão."];
+            if(p.ParticipantType=="representative")
+            {
+                if(version.PatientId is null){errors[$"participants[{i}].sourceId"]=["Este documento não possui paciente ou representante no snapshot."];continue;}
+                var valid=await c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.patients p JOIN odca.patient_representatives r ON (r.tenant_id,r.id)=(p.tenant_id,p.representative_id) WHERE p.tenant_id=@tenantId AND p.id=@patientId AND r.id=@sourceId AND @snapshot::jsonb->'representative'->>'fullName'=r.full_name)",new{tenantId,patientId=version.PatientId,sourceId=p.SourceId,snapshot=version.PatientSnapshot??"null"},tx,cancellationToken:ct));
+                if(!valid)errors[$"participants[{i}].sourceId"]=["O representante selecionado não pertence ao snapshot e à relação deste paciente."];
+            }
+        }
+        return errors;
+    }
+    private static async Task AddPreparationEvent(NpgsqlConnection c,Guid tenantId,Guid preparationId,int revision,Guid actor,string eventType,object details,NpgsqlTransaction tx,CancellationToken ct)
+        =>await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.signature_preparation_events(tenant_id,preparation_id,composition_revision,actor_user_id,event_type,details) VALUES(@tenantId,@preparationId,@revision,@actor,@eventType,@details::jsonb)",new{tenantId,preparationId,revision,actor,eventType,details=JsonSerializer.Serialize(details)},tx,cancellationToken:ct));
+    private async Task<SignatureReadinessResponse?> CalculateReadiness(NpgsqlConnection c,Guid tenantId,Guid versionId,NpgsqlTransaction tx,CancellationToken ct)
+    {
+        var row=await c.QuerySingleOrDefaultAsync<ReadinessRow>(new CommandDefinition("SELECT v.pdf_status AS PdfStatus,v.pdf_storage_key AS PdfStorageKey,v.pdf_sha256 AS PdfSha256,v.review_status AS ReviewStatus,p.id AS PreparationId,p.status AS PreparationStatus,p.composition_revision AS CompositionRevision,(SELECT count(*) FROM odca.signature_participants sp WHERE sp.tenant_id=p.tenant_id AND sp.preparation_id=p.id AND sp.composition_revision=p.composition_revision) AS ParticipantCount FROM odca.generated_contract_versions v LEFT JOIN odca.signature_preparations p ON (p.tenant_id,p.generated_version_id)=(v.tenant_id,v.id) WHERE v.tenant_id=@tenantId AND v.id=@versionId",new{tenantId,versionId},tx,cancellationToken:ct));
+        if(row is null)return null;var ok=new List<SignatureReadinessItem>();var blockers=new List<SignatureReadinessItem>();var warnings=new List<SignatureReadinessItem>();
+        ok.Add(new("document.exists","Versão documental localizada.","A preparação está vinculada a uma versão imutável.","Nenhuma ação.",null));
+        if(row.PdfStatus!="completed"||string.IsNullOrWhiteSpace(row.PdfStorageKey)||string.IsNullOrWhiteSpace(row.PdfSha256))blockers.Add(new("pdf.incomplete","Gere um PDF íntegro antes de confirmar.","A confirmação deve congelar o artefato exato.","Gerar PDF final.","tenant.contract_drafts.manage"));
+        else
+        {
+            var root=configuration["Documents:StoragePath"]??Path.Combine(AppContext.BaseDirectory,"App_Data","documents");var path=Path.Combine(root,row.PdfStorageKey.Replace('/',Path.DirectorySeparatorChar));
+            if(!System.IO.File.Exists(path))blockers.Add(new("pdf.missing","O arquivo PDF publicado não foi localizado.","Os metadados não bastam sem o arquivo.","Solicitar reconciliação do armazenamento.","tenant.contract_drafts.manage"));
+            else{var bytes=await System.IO.File.ReadAllBytesAsync(path,ct);if(!CryptographicOperations.FixedTimeEquals(SHA256.HashData(bytes),Convert.FromHexString(row.PdfSha256)))blockers.Add(new("pdf.integrity","O hash do PDF diverge do artefato publicado.","A integridade precisa ser comprovada.","Solicitar reconciliação do armazenamento.","tenant.contract_drafts.manage"));else ok.Add(new("pdf.integrity","PDF concluído e íntegro.","O arquivo corresponde ao hash persistido.","Nenhuma ação.",null));}
+        }
+        if(row.PreparationId is null||row.ParticipantCount<1)blockers.Add(new("participants.empty","Inclua ao menos um participante válido.","Uma composição vazia não pode ser confirmada.","Editar participantes.","tenant.contract_drafts.manage"));else ok.Add(new("participants.valid",$"Composição com {row.ParticipantCount} participante(s).","A composição atual foi validada no servidor.","Nenhuma ação.",null));
+        if(row.ReviewStatus=="changes_requested")blockers.Add(new("review.changes","A revisão interna solicitou ajustes.","A política existente impede usar esta versão sem corrigir os ajustes.","Criar e revisar uma nova versão.","tenant.contract_drafts.manage"));
+        else if(row.ReviewStatus=="internally_approved")ok.Add(new("review.approved","Documento aprovado internamente.","A revisão aplicável foi concluída.","Nenhuma ação.",null));
+        else warnings.Add(new("review.separate","A revisão interna não está aprovada.","Aprovação só é obrigatória quando a política da organização assim determinar.","Consultar a revisão aplicável.","tenant.reviews.read"));
+        warnings.Add(new("integration.unavailable","Envio para assinatura indisponível.","Nenhum provedor de assinatura está configurado.","Aguardar integração posterior.",null));
+        return new(blockers.Count==0,row.ReviewStatus=="internally_approved",false,blockers.Count==0,ok,blockers,warnings);
+    }
+
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive=true, Converters={new JsonStringEnumConverter()} };
     private static void Validate(string content,string fields,string values,bool confirmed){var definitions=JsonSerializer.Deserialize<ContractFieldDefinition[]>(fields,JsonOptions)??[];var parsed=StructuredContractDocument.Parse(content,definitions);var fieldValues=JsonSerializer.Deserialize<ContractFieldValue[]>(values,JsonOptions)??[];StructuredContractDocument.ValidateValues(definitions,fieldValues,confirmed);if(definitions.Any(x=>!parsed.FieldOccurrences.ContainsKey(x.Id)))throw new InvalidDataException("Todo campo definido precisa ter ao menos uma ocorrência no documento.");}
     private static DraftResponse ToResponse(DraftRow r)=>new(r.Id,r.ContractId,r.Title,r.SourceTemplateId,r.SourceTemplateVersionId,JsonSerializer.Deserialize<JsonElement>(r.Content),JsonSerializer.Deserialize<JsonElement>(r.Fields),JsonSerializer.Deserialize<JsonElement>(r.Values),r.Version,r.LastClientRevision,r.UpdatedAt);
@@ -443,8 +593,8 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     private static Task<int> SetTenant(NpgsqlConnection c,Guid tenant,Guid actor,CancellationToken ct)=>c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@value,false),set_config('odca.actor_id',@actor,false)",new{value=tenant.ToString(),actor=actor.ToString()},cancellationToken:ct));
     private static async Task<SignaturePreparationResponse?> ReadPreparation(NpgsqlConnection c,Guid tenantId,Guid versionId,NpgsqlTransaction tx,CancellationToken ct)
     {
-        var preparation=await c.QuerySingleOrDefaultAsync<PreparationRow>(new CommandDefinition("SELECT id AS Id,status AS Status,row_version AS Version FROM odca.signature_preparations WHERE tenant_id=@tenantId AND generated_version_id=@versionId",new{tenantId,versionId},tx,cancellationToken:ct));if(preparation is null)return null;
-        var participants=await c.QueryAsync<SignatureParticipantInput>(new CommandDefinition("SELECT id AS Id,participant_type AS ParticipantType,source_id AS SourceId,role AS Role,name AS Name,email AS Email,phone AS Phone,position AS Position FROM odca.signature_participants WHERE tenant_id=@tenantId AND preparation_id=@id ORDER BY position",new{tenantId,preparation.Id},tx,cancellationToken:ct));return new(preparation.Id,preparation.Status,preparation.Version,participants.AsList());
+        var preparation=await c.QuerySingleOrDefaultAsync<PreparationRow>(new CommandDefinition("SELECT id AS Id,status AS Status,row_version AS Version,composition_revision AS CompositionRevision,confirmed_revision AS ConfirmedRevision,confirmed_pdf_sha256 AS ConfirmedPdfSha256,confirmed_at AS ConfirmedAt,confirmation_operation_id AS ConfirmationOperationId FROM odca.signature_preparations WHERE tenant_id=@tenantId AND generated_version_id=@versionId",new{tenantId,versionId},tx,cancellationToken:ct));if(preparation is null)return null;
+        var participants=await c.QueryAsync<SignatureParticipantInput>(new CommandDefinition("SELECT client_id AS Id,participant_type AS ParticipantType,source_id AS SourceId,role AS Role,name AS Name,email AS Email,phone AS Phone,position AS Position FROM odca.signature_participants WHERE tenant_id=@tenantId AND preparation_id=@id AND composition_revision=@revision ORDER BY position",new{tenantId,preparation.Id,revision=preparation.CompositionRevision},tx,cancellationToken:ct));return new(preparation.Id,preparation.Status,preparation.Version,participants.AsList(),preparation.CompositionRevision,preparation.ConfirmedRevision,preparation.ConfirmedPdfSha256,preparation.ConfirmedAt);
     }
     private static string SafeFileName(string value)=>string.Concat(value.Normalize().Select(x=>char.IsLetterOrDigit(x)||x is '-' or '_'?x:'_')).Trim('_') is {Length:>0} safe?safe:"documento";
     private sealed record TemplateSource(Guid TemplateId,Guid VersionId,string Content,string Fields);
@@ -472,6 +622,9 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         string ReviewStatus,string SignatureStatus,Guid? ReviewId,string? PatientSnapshot,string Content,string Fields,string Values,string PdfStatus,long? PdfByteSize,DateTimeOffset? PdfCompletedAt);
     private sealed record PdfRow(Guid Id,string Title,int Number,string Content,string Fields,string Values,string Status,string? StorageKey,long? ByteSize);
     private sealed record PdfDownloadRow(string StorageKey,string Sha256,string Title,Guid? PatientId);
-    private sealed record PreparationRow(Guid Id,string Status,long Version);
+    private sealed record PreparationRow(Guid Id,string Status,long Version,int CompositionRevision,int? ConfirmedRevision,string? ConfirmedPdfSha256,DateTimeOffset? ConfirmedAt);
+    private sealed record PreparationStateRow(Guid Id,string Status,long Version,int CompositionRevision,int? ConfirmedRevision,string? ConfirmedPdfSha256,DateTimeOffset? ConfirmedAt,Guid? ConfirmationOperationId);
+    private sealed record PreparationVersionRow(Guid Id,Guid? PatientId,string? PatientSnapshot,string PdfStatus,string? PdfStorageKey,string? PdfSha256,string ReviewStatus);
+    private sealed record ReadinessRow(string PdfStatus,string? PdfStorageKey,string? PdfSha256,string ReviewStatus,Guid? PreparationId,string? PreparationStatus,int? CompositionRevision,int ParticipantCount);
     private sealed record SubmittedReviewRow(Guid ReviewId,Guid GeneratedVersionId,string Status,string? Instructions,DateTimeOffset? DueAt,Guid ReviewerId);
 }
