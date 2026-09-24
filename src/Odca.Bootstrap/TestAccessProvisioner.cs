@@ -10,6 +10,7 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
     public const string AdministratorEmail = "admin@odca.local";
     public const string AdministratorInitialPassword = "V7!qM2#rL9@xT4$p";
     public const string OperatorEmail = "operador@odca.local";
+    public const string OperatorInitialPassword = "N9!vQ4@kT7#bL2$x";
     public const string ClientEmail = "cliente.teste@odca.local";
     public const string ClientInitialPassword = "K8@wR3!nF6#zP2$m";
     public const string DemoTenantName = "Cliente Teste ODCA";
@@ -36,7 +37,8 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
         string? operatorPassword = null,
         bool rotateOperator = false,
         string? requestedOperatorPassword = null,
-        bool operatorMustChangePassword = true)
+        bool operatorMustChangePassword = true,
+        bool integrationTestFixture = false)
     {
         if (!File.Exists(seedSqlPath))
             throw new FileNotFoundException("O SQL de provisionamento de Development não foi encontrado.", seedSqlPath);
@@ -48,6 +50,9 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
         await using var transaction = await connection.BeginTransactionAsync();
         await connection.ExecuteAsync(new CommandDefinition(
             "SELECT pg_advisory_xact_lock(hashtext('odca.development.test-access'));", transaction: transaction));
+        if (integrationTestFixture)
+            await connection.ExecuteAsync(new CommandDefinition(
+                "SELECT set_config('odca.integration_test_seed','ODCA_INTEGRATION_TESTS',true);", transaction: transaction));
 
         await EnsureSchemaAsync(connection, transaction);
         var administrator = await FindUserAsync(connection, transaction, Normalize(AdministratorEmail));
@@ -63,6 +68,8 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
             !passwordService.Verify(ToCredential(administrator), administrator.PasswordHash, requestedAdministratorPassword);
         var clientPasswordDiffers = client is not null && requestedClientPassword is not null &&
             !passwordService.Verify(ToCredential(client), client.PasswordHash, requestedClientPassword);
+        if (administratorPasswordDiffers && !rotateAdministrator || clientPasswordDiffers && !rotateClient)
+            throw new InvalidOperationException("Uma credencial reservada existente só pode ser alterada com rotação explícita.");
         var updateAdministratorPassword = administratorCreated || rotateAdministrator || administratorPasswordDiffers;
         var updateClientPassword = clientCreated || rotateClient || clientPasswordDiffers;
         if (updateAdministratorPassword)

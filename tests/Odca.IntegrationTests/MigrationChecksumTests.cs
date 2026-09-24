@@ -223,11 +223,15 @@ public sealed class MigrationChecksumTests
         var canonical = FindSql();
         var snapshot = Path.Combine(Path.GetDirectoryName(canonical)!, "releases", "odca-v020.sql");
 
-        DatabaseMigrator.ValidateChecksums(File.ReadAllText(snapshot));
-        Assert.StartsWith(
-            File.ReadAllText(snapshot).TrimStart('\uFEFF').TrimEnd(),
-            File.ReadAllText(canonical),
-            StringComparison.Ordinal);
+        var packaged = File.ReadAllText(snapshot);
+        var canonicalSql = File.ReadAllText(canonical);
+        DatabaseMigrator.ValidateChecksums(packaged);
+        // v020 was deliberately packaged as a single migration (and with a UTF-8
+        // BOM), rather than as the historical prefix used by the other releases.
+        // Compare the exact bytes that the migrator hashes after ReadAllText: no
+        // newline or SQL normalization is allowed here.
+        Assert.Equal(MigrationBlock(canonicalSql, 20), MigrationBlock(packaged, 20));
+        Assert.DoesNotContain("ODCA-MIGRATION 019", packaged, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -265,5 +269,16 @@ public sealed class MigrationChecksumTests
         }
 
         throw new FileNotFoundException("database/odca.sql");
+    }
+
+    private static string MigrationBlock(string sql, int version)
+    {
+        var marker = $"-- ODCA-MIGRATION {version:000} ";
+        var endMarker = $"-- ODCA-END {version:000}";
+        var start = sql.IndexOf(marker, StringComparison.Ordinal);
+        Assert.True(start >= 0, $"Marcador {marker} ausente.");
+        var end = sql.IndexOf(endMarker, start, StringComparison.Ordinal);
+        Assert.True(end >= 0, $"Marcador {endMarker} ausente.");
+        return sql[start..(end + endMarker.Length)];
     }
 }

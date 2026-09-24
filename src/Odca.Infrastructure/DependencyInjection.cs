@@ -22,6 +22,8 @@ using Odca.Application.Consumption;
 using Odca.Infrastructure.Consumption;
 using Odca.Application.Contracts;
 using Odca.Infrastructure.Contracts;
+using Odca.Application.Patients;
+using Odca.Infrastructure.Patients;
 
 namespace Odca.Infrastructure;
 
@@ -71,6 +73,7 @@ public static class DependencyInjection
         services.AddScoped<TenantAdministrationService>();
         services.AddScoped<IConsumptionRepository, NpgsqlConsumptionRepository>();
         services.AddScoped<ITemplateCatalogRepository, NpgsqlTemplateCatalogRepository>();
+        services.AddScoped<IPatientRepository, NpgsqlPatientRepository>();
         services.AddScoped<AuthenticationService>();
         services.AddScoped<MfaService>();
         services.AddScoped<CustomerOnboardingService>();

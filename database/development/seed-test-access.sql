@@ -26,10 +26,12 @@ BEGIN
     SELECT id INTO v_tenant_id FROM odca.tenants WHERE business_code IN ('12345678000195','ODCA-DEMO-LOCAL');
     v_tenant_id := COALESCE(v_tenant_id, '20000000-0000-4000-8000-000000000001'::uuid);
 
-    IF inet_server_addr() IS NOT NULL AND NOT (inet_server_addr() << inet '127.0.0.0/8' OR inet_server_addr() = inet '::1') THEN
+    IF inet_server_addr() IS NOT NULL AND NOT (inet_server_addr() << inet '127.0.0.0/8' OR inet_server_addr() = inet '::1')
+       AND current_setting('odca.integration_test_seed',true) IS DISTINCT FROM 'ODCA_INTEGRATION_TESTS' THEN
         RAISE EXCEPTION 'Development seed refused: PostgreSQL server is not local (%).', inet_server_addr();
     END IF;
-    IF current_database() NOT IN ('postgres', 'odca') THEN
+    IF current_database() NOT IN ('postgres', 'odca')
+       AND NOT (current_database() LIKE 'odca_test%' AND current_setting('odca.integration_test_seed',true) = 'ODCA_INTEGRATION_TESTS') THEN
         RAISE EXCEPTION 'Development seed refused for database %.', current_database();
     END IF;
 
