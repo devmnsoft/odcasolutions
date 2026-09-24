@@ -43,3 +43,40 @@ A migration incremental 026 adiciona estado/arquivo/hash/tamanho/renderizador do
 * **Passou:** `npm run build` e verificação textual de consistência entre referências diretas e arquivos de lock.
 * **Bloqueado pelo ambiente:** SDK .NET 10.0.400, PostgreSQL/`psql`, Docker e navegador não estão instalados. O download do instalador do SDK respondeu HTTP 403. Portanto restore bloqueado, build .NET, testes unitários/HTTP/PostgreSQL e inspeção visual/PDF automatizada não foram executados localmente e não são declarados como homologados.
 * **Não executado:** screenshot da aplicação, pois o runtime e o banco necessários para iniciar a aplicação não estão disponíveis.
+
+## Incremento 027 — preparação rastreável e prontidão
+
+### Auditoria e causas confirmadas
+
+* O restore bloqueado da referência falha porque os locks dos projetos que referenciam `Odca.Infrastructure` ainda resolviam Dapper 2.1.86 e IdentityModel 8.22.0, enquanto a infraestrutura passou a exigir 2.1.89 e 8.23.0. Os grafos foram sincronizados com as entradas geradas pelo lock da própria infraestrutura, sem remover `--locked-mode`.
+* A role `odca_app` não possui `DELETE` em `signature_participants`, mas o endpoint apagava toda a composição. A migration 027 mantém cada composição como uma revisão somente-acréscimo e registra inclusão, alteração, retirada, reordenação, confirmação e reabertura.
+* A criação anterior usava `ON CONFLICT DO UPDATE`: duas primeiras gravações podiam se substituir. Criação (`ExpectedVersion=0`) e atualização agora são distintas, bloqueiam a preparação e retornam conflito recuperável.
+* O arquivo PDF tinha nome compartilhado entre tentativas e era apagado em qualquer exceção, inclusive depois de um commit possivelmente concluído. O nome agora inclui versão do renderizador e hash; somente o temporário identificado pela tentativa é removido. Um arquivo publicado preexistente é reutilizado apenas se seus bytes tiverem o mesmo hash.
+* O débito de PDF agora sincroniza a cota efetiva com concessões vigentes e somente incrementa `used_bytes` quando o movimento idempotente é criado. O download usa contexto RLS local a uma transação.
+
+### Avanços entregues
+
+A conferência de prontidão é calculada no backend e separa preparação completa, revisão interna, integração e envio. Ela verifica versão, arquivo publicado, hash físico, composição e ajustes de revisão; sem provedor, a composição pode ser confirmada, mas a integração continua explicitamente indisponível. Confirmar congela revisão da composição, chave e hash do PDF. Reabrir exige justificativa e preserva a evidência anterior no log.
+
+O editor permite adicionar participantes manuais, escolher as identidades disponíveis no snapshot pelo nome, editar, ordenar e retirar com confirmação. Trocar o tipo limpa a origem. Documentos B2B sem paciente começam sem participante fictício.
+
+### Migration e compatibilidade
+
+A migration 027 é incremental: adiciona revisão de composição e evidência de confirmação, transforma participantes em snapshots revisionados, cria eventos append-only com RLS e privilégios mínimos e passa a incluir o identificador do representante em novos snapshots. Registros 026 existentes permanecem legíveis; confirmações legadas sem hash precisam ser reabertas e confirmadas novamente para obter evidência completa.
+
+### Evidência e limitações deste ambiente
+
+* **Passou:** validação de checksums das 27 migrations, consistência JSON dos locks, build dos assets e verificação de whitespace do patch.
+* **Bloqueado:** SDK .NET 10.0.400, PostgreSQL, Docker e navegador continuam ausentes; a tentativa de baixar o instalador oficial recebeu HTTP 403. Restore bloqueado, compilação, testes .NET/PostgreSQL com `odca_app`, concorrência real, execução limpa/upgrade e captura visual não puderam ser executados localmente.
+* **Dependência posterior:** central operacional completa e evolução tipográfica avançada do PDF (fonte Unicode incorporada e layout de tabelas) não são declaradas homologadas neste incremento. Provedor, envio, eventos externos, cancelamento, documento assinado e certificados continuam fora do escopo e não são simulados.
+
+### Roteiro de homologação
+
+1. Execute restore bloqueado, build, assets e toda a suíte com o SDK fixado.
+2. Aplique `odca-v026.sql` em banco descartável, execute upgrade para 027 e repita em instalação limpa; valide checksums e RLS.
+3. Autentique a API com conexão `odca_app`; crie, edite, reordene e retire participantes, verificando as revisões e eventos sem `DELETE`.
+4. Abra duas sessões: faça duas criações e duas atualizações concorrentes; a segunda deve receber HTTP 409 sem sobrescrever a primeira.
+5. Corrompa/remova uma cópia descartável do PDF e confirme que prontidão, confirmação e download recusam o artefato; restaure-o e valide o hash.
+6. Interrompa geração antes/depois da publicação e antes/depois do commit; repita e confira um arquivo, um movimento e um débito.
+7. Confirme, reabra com justificativa e confirme novamente; confira as duas evidências, revisões e hashes.
+8. Repita como usuário de outra organização e confirme ausência de leitura e gravação cruzadas.
