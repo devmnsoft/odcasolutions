@@ -84,4 +84,42 @@ public sealed class StructuredContractDocumentTests
 
         Assert.Empty(document.FieldOccurrences);
     }
+
+    [Fact]
+    public void RendererEscapesTextAndResolvesEveryRepeatedFieldFromSnapshot()
+    {
+        var fields="""[{"id":"amount","label":"Valor","type":"Currency","required":true}]""";
+        var values="""[{"fieldId":"amount","value":"1000.00","confirmed":true}]""";
+
+        var html=ContractDocumentRenderer.ToHtml(Content.Replace("Contrato","<Contrato & seguro>"),fields,values);
+
+        Assert.Contains("&lt;Contrato &amp; seguro&gt;",html);
+        Assert.Equal(2,html.Split("1000.00",StringSplitOptions.None).Length-1);
+        Assert.DoesNotContain("<Contrato",html);
+    }
+
+    [Fact]
+    public void PdfIsSelectableTextWithAccentsTablesAndPageNumbers()
+    {
+        const string content="""{"type":"document","content":[{"type":"heading","level":1,"content":[{"type":"text","text":"Cláusula médica"}]},{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"text","text":"Descrição"}]},{"type":"tableCell","content":[{"type":"text","text":"Atenção"}]}]}]},{"type":"pageBreak"},{"type":"paragraph","content":[{"type":"text","text":"Fim"}]}]}""";
+
+        var pdf=ContractDocumentRenderer.ToPdf(content,"[]","[]","Documento clínico",3);
+        var latin=System.Text.Encoding.Latin1.GetString(pdf);
+
+        Assert.StartsWith("%PDF-1.4",latin);
+        Assert.Contains("Cláusula médica",latin);
+        Assert.Contains("Página 1 de 2",latin);
+        Assert.Contains("Página 2 de 2",latin);
+    }
+
+    [Fact]
+    public void RendererShowsOptionalEmptyFieldsWithoutInventingData()
+    {
+        const string content="""{"type":"document","content":[{"type":"paragraph","content":[{"type":"field","fieldId":"note"}]}]}""";
+        const string fields="""[{"id":"note","label":"Observação","type":"ShortText","required":false}]""";
+
+        var html=ContractDocumentRenderer.ToHtml(content,fields,"[]");
+
+        Assert.Contains("Não informado",html);
+    }
 }
