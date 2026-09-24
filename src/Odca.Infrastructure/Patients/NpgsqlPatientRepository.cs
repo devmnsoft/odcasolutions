@@ -34,7 +34,7 @@ public sealed class NpgsqlPatientRepository(NpgsqlDataSource dataSource) : IPati
             await WriteAsync(connection, tx, actorId, tenantId, id, request, false, ct);
             var row = await ReadAsync(connection, tx, tenantId, id, ct); await tx.CommitAsync(ct); return new(PatientMutationStatus.Success, row);
         }
-        catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.UniqueViolation) { await tx.RollbackAsync(ct); return new(PatientMutationStatus.Duplicate); }
+        catch (PostgresException e) when (IsPatientIdentifierConflict(e)) { await tx.RollbackAsync(ct); return new(PatientMutationStatus.Duplicate); }
     }
 
     public async Task<PatientMutation> UpdateAsync(Guid actorId, Guid tenantId, Guid patientId, SavePatientRequest request, CancellationToken ct)
@@ -46,7 +46,7 @@ public sealed class NpgsqlPatientRepository(NpgsqlDataSource dataSource) : IPati
             if (changed == 0) { var exists = await connection.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.patients WHERE tenant_id=@tenantId AND id=@patientId)", new { tenantId, patientId }, tx, cancellationToken: ct)); await tx.RollbackAsync(ct); return new(exists ? PatientMutationStatus.Conflict : PatientMutationStatus.NotFound); }
             var row = await ReadAsync(connection, tx, tenantId, patientId, ct); await tx.CommitAsync(ct); return new(PatientMutationStatus.Success, row);
         }
-        catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.UniqueViolation) { await tx.RollbackAsync(ct); return new(PatientMutationStatus.Duplicate); }
+        catch (PostgresException e) when (IsPatientIdentifierConflict(e)) { await tx.RollbackAsync(ct); return new(PatientMutationStatus.Duplicate); }
     }
 
     public async Task<PatientMutationStatus> SetActiveAsync(Guid actorId, Guid tenantId, Guid patientId, bool active, long expectedVersion, CancellationToken ct)
@@ -55,10 +55,10 @@ public sealed class NpgsqlPatientRepository(NpgsqlDataSource dataSource) : IPati
         try
         {
             var changed = await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.patients SET inactive_at=CASE WHEN @active THEN NULL ELSE now() END,inactivated_by=CASE WHEN @active THEN NULL ELSE @actorId END,row_version=row_version+1,updated_at=now() WHERE tenant_id=@tenantId AND id=@patientId AND row_version=@expectedVersion", new { actorId, tenantId, patientId, active, expectedVersion }, tx, cancellationToken: ct));
-            if (changed == 0) { await tx.RollbackAsync(ct); return PatientMutationStatus.Conflict; }
+            if (changed == 0) { var exists = await connection.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.patients WHERE tenant_id=@tenantId AND id=@patientId)", new { tenantId, patientId }, tx, cancellationToken: ct)); await tx.RollbackAsync(ct); return exists ? PatientMutationStatus.Conflict : PatientMutationStatus.NotFound; }
             await AuditAsync(connection, tx, actorId, tenantId, patientId, active ? "patient.restored" : "patient.inactivated", ct); await tx.CommitAsync(ct); return PatientMutationStatus.Success;
         }
-        catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.UniqueViolation) { await tx.RollbackAsync(ct); return PatientMutationStatus.Duplicate; }
+        catch (PostgresException e) when (IsPatientIdentifierConflict(e)) { await tx.RollbackAsync(ct); return PatientMutationStatus.Duplicate; }
     }
 
     public async Task<PatientArchivePage?> ArchiveAsync(Guid actorId, Guid tenantId, Guid patientId, int page, int pageSize, CancellationToken ct)
@@ -81,6 +81,8 @@ public sealed class NpgsqlPatientRepository(NpgsqlDataSource dataSource) : IPati
         if (changed == 1) await AuditAsync(c, tx, actor, tenant, id, update ? "patient.updated" : "patient.created", ct); return changed;
     }
     private static string? Null(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static bool IsPatientIdentifierConflict(PostgresException exception) =>
+        exception.SqlState == PostgresErrorCodes.UniqueViolation && exception.ConstraintName == "patients_live_identifier_uq";
     private static Task<int> AuditAsync(NpgsqlConnection c,NpgsqlTransaction tx,Guid actor,Guid tenant,Guid id,string action,CancellationToken ct)=>c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.audit_events(scope_type,tenant_id,actor_user_id,action,entity_type,entity_id,result) VALUES('tenant',@tenant,@actor,@action,'patient',@id,'success')",new{tenant,actor,action,id},tx,cancellationToken:ct));
     private static async Task<PatientDetails?> ReadAsync(NpgsqlConnection c,NpgsqlTransaction tx,Guid tenant,Guid id,CancellationToken ct)
     {

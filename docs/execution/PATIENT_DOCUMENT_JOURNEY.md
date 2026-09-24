@@ -42,3 +42,21 @@ provedor operacional, assinatura retorna `not_available`.
 - **NÃO EXECUTADO:** navegador responsivo e CI remoto do SHA final.
 - **FALHOU:** nenhum teste executado retornou falha funcional; itens bloqueados não são
   apresentados como aprovados.
+
+## Incremento 24 — validação e central de pacientes
+
+- O controller retorna `ProblemDetails` diretamente nos conflitos, com os códigos estáveis
+  `patient.identifier.duplicate` e `patient.version.conflict`; não há mais resultado HTTP
+  serializado dentro de outro resultado.
+- As regras da Application normalizam os textos e tipos, validam CPF (formato e dígitos),
+  pares de identificador, representante, data de nascimento via relógio injetado e limites
+  coerentes com o schema. O cadastro mínimo continua aceitando somente o nome.
+- A Web ganhou lista paginada, estados vazios/erro, cadastro, edição otimista, ficha em
+  seções, inativação/restauração, entrada no estúdio com paciente selecionado e acervo com
+  estados documental, de revisão e de assinatura separados.
+- A migração v024 congela a versão cadastral selecionada na minuta. A emissão é recusada
+  quando o paciente foi alterado ou inativado durante a conferência; uma versão gerada
+  continua com seu snapshot imutável e a idempotência existente.
+
+A assinatura eletrônica permanece explicitamente indisponível enquanto não houver provedor
+operacional. Este incremento não representa homologação dessa integração.

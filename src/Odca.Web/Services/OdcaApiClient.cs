@@ -15,11 +15,24 @@ using Odca.Contracts.Renewals;
 using Odca.Contracts.Consumption;
 using Odca.Contracts.DocumentImports;
 using Odca.Contracts.Reviews;
+using Odca.Contracts.Patients;
 
 namespace Odca.Web.Services;
 
 public sealed partial class OdcaApiClient(HttpClient client)
 {
+    public Task<ApiCallResult<PatientPage>> GetPatientsAsync(string token, Guid tenantId, string? search, bool includeInactive, int page, CancellationToken ct) =>
+        SendAsync<PatientPage>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/patients?search={Uri.EscapeDataString(search ?? string.Empty)}&includeInactive={includeInactive.ToString().ToLowerInvariant()}&page={page}", token), false, ct);
+    public Task<ApiCallResult<PatientDetails>> GetPatientAsync(string token, Guid tenantId, Guid patientId, CancellationToken ct) =>
+        SendAsync<PatientDetails>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/patients/{patientId}", token), false, ct);
+    public Task<ApiCallResult<PatientArchivePage>> GetPatientArchiveAsync(string token, Guid tenantId, Guid patientId, int page, CancellationToken ct) =>
+        SendAsync<PatientArchivePage>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/patients/{patientId}/documents?page={page}", token), false, ct);
+    public async Task<ApiCallResult<PatientDetails>> CreatePatientAsync(string token, Guid tenantId, SavePatientRequest body, CancellationToken ct)
+    { using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/patients", token); message.Content = JsonContent.Create(body); return await SendAsync<PatientDetails>(message, false, ct); }
+    public async Task<ApiCallResult<PatientDetails>> UpdatePatientAsync(string token, Guid tenantId, Guid patientId, SavePatientRequest body, CancellationToken ct)
+    { using var message = CreateAuthorized(HttpMethod.Put, $"api/v1/organizations/{tenantId}/patients/{patientId}", token); message.Content = JsonContent.Create(body); return await SendAsync<PatientDetails>(message, false, ct); }
+    public Task<ApiCallResult<bool>> SetPatientActiveAsync(string token, Guid tenantId, Guid patientId, bool active, long version, CancellationToken ct) =>
+        SendAsync<bool>(CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/patients/{patientId}/{(active ? "restore" : "inactivate")}?expectedVersion={version}", token), false, ct, true);
     public Task<ApiCallResult<ReviewQueuePage>> GetReviewsAsync(string token, Guid tenantId, string? status,
         string scope, Guid? assigneeId, Guid? contractId, DateOnly? from, DateOnly? to, string? search, int page, CancellationToken ct)
     {
