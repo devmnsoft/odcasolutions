@@ -31,5 +31,12 @@ public sealed class ConsumptionController(IConsumptionRepository repository) : C
     [Authorize(Policy="PlatformAdministrator")]
     [HttpPost("api/v1/platform/customers/{tenantId:guid}/storage-grants")]
     public async Task<IActionResult> Grant(Guid tenantId,[FromBody]ManualStorageGrant request,CancellationToken ct){var actor=Actor();if(actor is null)return Unauthorized();if(!await repository.GrantStorageAsync(actor.Value,tenantId,request,ct))return ValidationProblem();return NoContent();}
+    [Authorize(Policy="PlatformAdministrator")]
+    [HttpPost("api/v1/platform/customers/{tenantId:guid}/suspend")]
+    public Task<IActionResult> Suspend(Guid tenantId,[FromBody]ChangeOrganizationStatusRequest request,CancellationToken ct)=>ChangeOrganizationStatus(tenantId,false,request,ct);
+    [Authorize(Policy="PlatformAdministrator")]
+    [HttpPost("api/v1/platform/customers/{tenantId:guid}/restore")]
+    public Task<IActionResult> Restore(Guid tenantId,[FromBody]ChangeOrganizationStatusRequest request,CancellationToken ct)=>ChangeOrganizationStatus(tenantId,true,request,ct);
+    private async Task<IActionResult> ChangeOrganizationStatus(Guid tenantId,bool restore,ChangeOrganizationStatusRequest request,CancellationToken ct){var actor=Actor();if(actor is null)return Unauthorized();if(string.IsNullOrWhiteSpace(request.Reason)||request.Reason.Trim().Length<5)return ValidationProblem();return await repository.ChangeOrganizationStatusAsync(actor.Value,tenantId,restore,request.Reason.Trim(),ct)?NoContent():Conflict(new ProblemDetails{Title="A situação da organização não permite esta operação.",Status=409});}
     private Guid? Actor()=>Guid.TryParse(User.FindFirstValue("sub"),out var id)?id:null;
 }

@@ -33,6 +33,8 @@ public sealed partial class OdcaApiClient(HttpClient client)
     { using var message = CreateAuthorized(HttpMethod.Put, $"api/v1/organizations/{tenantId}/patients/{patientId}", token); message.Content = JsonContent.Create(body); return await SendAsync<PatientDetails>(message, false, ct); }
     public Task<ApiCallResult<bool>> SetPatientActiveAsync(string token, Guid tenantId, Guid patientId, bool active, long version, CancellationToken ct) =>
         SendAsync<bool>(CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/patients/{patientId}/{(active ? "restore" : "inactivate")}?expectedVersion={version}", token), false, ct, true);
+    public async Task<ApiCallResult<bool>> ChangeOrganizationStatusAsync(string token, Guid tenantId, bool restore, ChangeOrganizationStatusRequest body, CancellationToken ct)
+    { using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/platform/customers/{tenantId}/{(restore ? "restore" : "suspend")}", token); message.Content = JsonContent.Create(body); return await SendAsync<bool>(message, false, ct, true); }
     public Task<ApiCallResult<ReviewQueuePage>> GetReviewsAsync(string token, Guid tenantId, string? status,
         string scope, Guid? assigneeId, Guid? contractId, DateOnly? from, DateOnly? to, string? search, int page, CancellationToken ct)
     {
