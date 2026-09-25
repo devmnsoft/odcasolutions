@@ -120,6 +120,29 @@ public sealed class RuntimeQueryRegressionTests
         Assert.Contains("active_users::int AS \"ActiveUsers\"", source, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ContractImportListSeparatesSqlFragmentsTypesNullableRequesterAndUsesStableOrder()
+    {
+        var source = ReadSource("Odca.Api", "Controllers", "ContractImportsController.cs");
+
+        Assert.Contains("+ Environment.NewLine\n            + filter\n            + Environment.NewLine", source, StringComparison.Ordinal);
+        Assert.Contains("CAST(@requester AS uuid) IS NULL", source, StringComparison.Ordinal);
+        Assert.Contains("i.requested_by=CAST(@requester AS uuid)", source, StringComparison.Ordinal);
+        Assert.Contains("ORDER BY i.created_at DESC, i.id DESC", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReviewQueueUsesCanonicalAuthorizationFunctionWithActorTenantPermissionOrder()
+    {
+        var source = ReadSource("Odca.Api", "Controllers", "ReviewRequestsController.cs");
+
+        Assert.DoesNotContain("odca.has_tenant_permission", source, StringComparison.Ordinal);
+        Assert.Contains(
+            "odca.tenant_actor_has_permission(@actor,@tenant,@permission)",
+            source,
+            StringComparison.Ordinal);
+    }
+
     private static string ReadSource(params string[] path)
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

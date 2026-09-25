@@ -270,7 +270,7 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
     }
 
     private Guid? Actor()=>Guid.TryParse(User.FindFirstValue("sub"),out var id)?id:null;
-    private static async Task<bool> Allowed(NpgsqlConnection c,Guid actor,Guid tenant,string permission,CancellationToken ct)=>await c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT odca.has_tenant_permission(@actor,@tenant,@permission)",new{actor,tenant,permission},cancellationToken:ct));
+    private static Task<bool> Allowed(NpgsqlConnection c,Guid actor,Guid tenant,string permission,CancellationToken ct)=>c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT odca.tenant_actor_has_permission(@actor,@tenant,@permission)",new{actor,tenant,permission},cancellationToken:ct));
     private static Task<int> SetTenant(NpgsqlConnection c,Guid tenant,Guid actor,CancellationToken ct)=>c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenant::text,false),set_config('odca.user_id',@actor::text,false)",new{tenant,actor},cancellationToken:ct));
     private static Task<int> SetTenant(NpgsqlConnection c,Guid tenant,Guid actor,NpgsqlTransaction tx,CancellationToken ct)=>c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenant::text,true),set_config('odca.user_id',@actor::text,true)",new{tenant,actor},tx,cancellationToken:ct));
     private static ReviewQueueItem Map(QueueRow r)=>new(r.Id,r.ContractId,r.Contract,r.Status,r.Requester,r.Assignee,r.OpenedAt,r.UpdatedAt,r.DueAt,r.Version,r.PublicMessages,r.PendingComments);

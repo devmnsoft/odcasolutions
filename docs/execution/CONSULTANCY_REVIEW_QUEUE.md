@@ -16,7 +16,7 @@
 
 O BFF atende em `/organizacoes/{tenantId}/solicitacoes`. A API canônica atende em
 `/api/v1/organizations/{tenantId}/reviews`. O identificador da organização na URL
-não concede acesso: todas as operações chamam `odca.has_tenant_permission` e, antes
+não concede acesso: todas as operações chamam `odca.tenant_actor_has_permission` e, antes
 de acessar tabelas protegidas, configuram os contextos `odca.tenant_id` e
 `odca.user_id` usados por RLS.
 
