@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Net.Mail;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using Odca.Application.Contracts;
+using Odca.Application.Tenancy;
 using Odca.Contracts.Studio;
 
 namespace Odca.Api.Controllers;
@@ -390,14 +392,23 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         if(Actor() is not Guid actor)return Unauthorized();await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor,tenantId,"tenant.contract_drafts.read",ct))return Forbid();page=Math.Max(page,1);pageSize=Math.Clamp(pageSize,1,50);await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor,tx,ct);
         var preparationId=await c.ExecuteScalarAsync<Guid?>(new CommandDefinition("SELECT id FROM odca.signature_preparations WHERE tenant_id=@tenantId AND generated_version_id=@versionId",new{tenantId,versionId},tx,cancellationToken:ct));if(preparationId is null)return NotFound();
         var total=await c.ExecuteScalarAsync<int>(new CommandDefinition("SELECT count(*) FROM odca.signature_preparation_events WHERE tenant_id=@tenantId AND preparation_id=@preparationId",new{tenantId,preparationId},tx,cancellationToken:ct));
-        var timezone=await c.ExecuteScalarAsync<string>(new CommandDefinition("SELECT timezone FROM odca.tenants WHERE id=@tenantId",new{tenantId},tx,cancellationToken:ct));
+        var timeZoneId=await c.QuerySingleOrDefaultAsync<string?>(new CommandDefinition("SELECT timezone FROM odca.tenants WHERE id=@tenantId",new{tenantId},tx,cancellationToken:ct));
+        string timeZone;
+        try
+        {
+            timeZone=TimeZonePolicy.Resolve(timeZoneId,configuration["TimeZone:DefaultId"]).Id;
+        }
+        catch(TimeZoneConfigurationException)
+        {
+            return Problem(statusCode:StatusCodes.Status503ServiceUnavailable,title:"A configuração de data da organização está indisponível.",detail:"Contate o administrador para corrigir o fuso horário configurado.");
+        }
         var items=await c.QueryAsync<SignaturePreparationHistoryItem>(new CommandDefinition("""
-            SELECT e.id AS Id,(e.occurred_at AT TIME ZONE t.timezone) AS OccurredAt,e.actor_user_id AS ActorId,u.display_name AS Actor,
+            SELECT e.id AS Id,(e.occurred_at AT TIME ZONE @timeZone) AS OccurredAt,e.actor_user_id AS ActorId,u.display_name AS Actor,
               e.event_type AS Operation,e.composition_revision AS CompositionRevision,e.details->>'justification' AS Justification,
               e.event_type='confirmed' AS Confirmed,e.details->>'pdfSha256' AS PdfSha256
             FROM odca.signature_preparation_events e JOIN odca.users u ON u.id=e.actor_user_id JOIN odca.tenants t ON t.id=e.tenant_id
             WHERE e.tenant_id=@tenantId AND e.preparation_id=@preparationId ORDER BY e.occurred_at DESC,e.id DESC LIMIT @pageSize OFFSET @offset
-            """,new{tenantId,preparationId,pageSize,offset=(page-1)*pageSize},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Ok(new SignaturePreparationHistoryPage(items.AsList(),page,pageSize,total,timezone));
+            """,new{tenantId,preparationId,pageSize,offset=(page-1)*pageSize,timeZone},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Ok(new SignaturePreparationHistoryPage(items.AsList(),page,pageSize,total,timeZone));
     }
 
     [HttpGet("versions/{versionId:guid}/signature-preparation/compare")]
@@ -614,13 +625,13 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     private static async Task AddPreparationEvent(NpgsqlConnection c,Guid tenantId,Guid preparationId,int revision,Guid actor,string eventType,object details,NpgsqlTransaction tx,CancellationToken ct)
         =>await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.signature_preparation_events(tenant_id,preparation_id,composition_revision,actor_user_id,event_type,details) VALUES(@tenantId,@preparationId,@revision,@actor,@eventType,@details::jsonb)",new{tenantId,preparationId,revision,actor,eventType,details=JsonSerializer.Serialize(details)},tx,cancellationToken:ct));
     private static string CommandHash(object command)=>Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(command)))).ToLowerInvariant();
-    private static Task LockOperation(NpgsqlConnection c,Guid operationId,NpgsqlTransaction tx,CancellationToken ct)
+    private static Task<int> LockOperation(NpgsqlConnection c,Guid operationId,NpgsqlTransaction tx,CancellationToken ct)
         =>c.ExecuteAsync(new CommandDefinition("SELECT pg_advisory_xact_lock(hashtext(@operationId::text))",new{operationId},tx,cancellationToken:ct));
     private static Task<PreparationOperationRow?> ReadOperation(NpgsqlConnection c,Guid tenantId,Guid operationId,NpgsqlTransaction tx,CancellationToken ct)
         =>c.QuerySingleOrDefaultAsync<PreparationOperationRow>(new CommandDefinition("SELECT operation_type AS OperationType,command_sha256 AS CommandHash,response::text AS ResponseJson FROM odca.signature_preparation_operations WHERE tenant_id=@tenantId AND operation_id=@operationId",new{tenantId,operationId},tx,cancellationToken:ct));
-    private static Task AddOperation(NpgsqlConnection c,Guid tenantId,Guid preparationId,Guid operationId,string operationType,string commandHash,string response,Guid actor,NpgsqlTransaction tx,CancellationToken ct)
+    private static Task<int> AddOperation(NpgsqlConnection c,Guid tenantId,Guid preparationId,Guid operationId,string operationType,string commandHash,string response,Guid actor,NpgsqlTransaction tx,CancellationToken ct)
         =>c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.signature_preparation_operations(tenant_id,preparation_id,operation_id,operation_type,command_sha256,response,actor_user_id) VALUES(@tenantId,@preparationId,@operationId,@operationType,@commandHash,@response::jsonb,@actor)",new{tenantId,preparationId,operationId,operationType,commandHash,response,actor},tx,cancellationToken:ct));
-    private static IReadOnlyList<SignatureCompositionChange> CompareCompositions(IEnumerable<ComparisonParticipant> before,IEnumerable<ComparisonParticipant> after)
+    private static List<SignatureCompositionChange> CompareCompositions(IEnumerable<ComparisonParticipant> before,IEnumerable<ComparisonParticipant> after)
     {
         var left=before.ToDictionary(x=>x.Id);var right=after.ToDictionary(x=>x.Id);var changes=new List<SignatureCompositionChange>();
         foreach(var id in left.Keys.Union(right.Keys).OrderBy(x=>x))
@@ -630,7 +641,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             if(old.Role!=current.Role)changes.Add(new(id,current.Name,"role",old.Role,current.Role));
             var oldContact=$"{old.Email ?? "—"} · {old.Phone ?? "—"}";var newContact=$"{current.Email ?? "—"} · {current.Phone ?? "—"}";if(oldContact!=newContact)changes.Add(new(id,current.Name,"contact",oldContact,newContact));
             var oldOrigin=ParticipantOrigin(old.ParticipantType,old.SourceId);var newOrigin=ParticipantOrigin(current.ParticipantType,current.SourceId);if(oldOrigin!=newOrigin)changes.Add(new(id,current.Name,"origin",oldOrigin,newOrigin));
-            if(old.Position!=current.Position)changes.Add(new(id,current.Name,"order",old.Position.ToString(),current.Position.ToString()));
+            if(old.Position!=current.Position)changes.Add(new(id,current.Name,"order",old.Position.ToString(CultureInfo.InvariantCulture),current.Position.ToString(CultureInfo.InvariantCulture)));
         }
         return changes;
     }

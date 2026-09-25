@@ -56,7 +56,7 @@ public static class ContractDocumentRenderer
         var tag = type switch { "document" => "div", "heading" => $"h{node.GetProperty("level").GetInt32()}", "paragraph" => "p", "bulletList" => "ul", "orderedList" => "ol", "listItem" => "li", "table" => "table", "tableRow" => "tr", "tableCell" => "td", _ => "div" };
         output.Append('<').Append(tag);
         if (type == "paragraph" && node.TryGetProperty("alignment", out var alignment))
-            output.Append(" class=\"align-").Append(alignment.GetString()).Append("\"");
+            output.Append(" class=\"align-").Append(alignment.GetString()).Append('"');
         output.Append('>');
         if (TryGetChildren(node, out var children)) foreach (var child in children)
         {
