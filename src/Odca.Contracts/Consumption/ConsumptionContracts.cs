@@ -15,5 +15,6 @@ public sealed record AdditionalStorageRequest(Guid Id, string PackageName, int P
 public sealed record CreateStorageRequest(Guid PackageId, int Quantity, Guid IdempotencyKey);
 public sealed record DecideStorageRequest(string Decision, string? Reason);
 public sealed record ManualStorageGrant(long QuantityBytes, string Reason, Guid IdempotencyKey, DateTimeOffset? ValidUntil);
+public sealed record ChangeOrganizationStatusRequest(string Reason);
 public sealed record PlatformCustomer(Guid TenantId, string Name, string MaskedDocument, string PlanName, string TenantStatus, string SubscriptionStatus, int ActiveUsers, long UsedBytes, long LimitBytes, int PendingRequests, DateTimeOffset? LastActivity);
 public sealed record PlatformCustomerDetail(ConsumptionSummary Summary, IReadOnlyList<AdditionalStorageRequest> Requests);
