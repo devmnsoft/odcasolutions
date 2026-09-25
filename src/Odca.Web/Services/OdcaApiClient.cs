@@ -570,6 +570,12 @@ public sealed partial class OdcaApiClient(HttpClient client)
     public async Task<ApiCallResult<JsonElement>> ReopenSignaturePreparationAsync(string token,Guid tenantId,Guid versionId,ReopenSignaturePreparationRequest request,CancellationToken ct)
     { using var message=CreateAuthorized(HttpMethod.Post,$"api/v1/organizations/{tenantId}/studio/versions/{versionId}/signature-preparation/reopen",token);message.Content=JsonContent.Create(request);return await SendAsync<JsonElement>(message,false,ct); }
 
+    public Task<ApiCallResult<SignaturePreparationHistoryPage>> GetSignaturePreparationHistoryAsync(string token,Guid tenantId,Guid versionId,int page,CancellationToken ct) =>
+        SendAsync<SignaturePreparationHistoryPage>(CreateAuthorized(HttpMethod.Get,$"api/v1/organizations/{tenantId}/studio/versions/{versionId}/signature-preparation/history?page={page}&pageSize=20",token),false,ct);
+
+    public Task<ApiCallResult<SignatureCompositionComparison>> CompareSignaturePreparationsAsync(string token,Guid tenantId,Guid versionId,int beforeRevision,int afterRevision,CancellationToken ct) =>
+        SendAsync<SignatureCompositionComparison>(CreateAuthorized(HttpMethod.Get,$"api/v1/organizations/{tenantId}/studio/versions/{versionId}/signature-preparation/compare?beforeRevision={beforeRevision}&afterRevision={afterRevision}",token),false,ct);
+
     public async Task<ApiCallResult<bool>> ConfirmDraftPatientAsync(string token, Guid tenantId, Guid draftId, ConfirmPatientVersionRequest request, CancellationToken ct)
     {
         using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/patient-confirmation", token);
