@@ -240,7 +240,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         if(preparation is not null)preparation=preparation with{Readiness=await CalculateReadiness(c,tenantId,versionId,tx,ct)};
         string html;
         try { html=ContractDocumentRenderer.ToHtml(row.Content,row.Fields,row.Values); }
-        catch(InvalidDataException exception) { return Problem(statusCode:422,title="A estrutura histórica não pode ser apresentada.",detail=exception.Message); }
+        catch(InvalidDataException exception) { return Problem(statusCode:StatusCodes.Status422UnprocessableEntity,title:"A estrutura histórica não pode ser apresentada.",detail:exception.Message); }
         await tx.CommitAsync(ct); return Ok(new GeneratedVersionDetail(row.Id,row.ContractId,row.DraftId,row.Number,row.Title,row.DocumentType,
             row.Organization,row.Template,row.TemplateVersion,row.Author,row.CreatedAt,row.Sha256,row.ReviewStatus,
             row.SignatureStatus,row.ReviewId,ParseOptional(row.PatientSnapshot),JsonSerializer.Deserialize<JsonElement>(row.Content),
@@ -255,12 +255,12 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
         var row=await c.QuerySingleOrDefaultAsync<PdfRow>(new CommandDefinition("SELECT id AS Id,coalesce(emission_metadata->>'title','Documento') AS Title,version_number AS Number,content::text AS Content,fields::text AS Fields,values::text AS Values,pdf_status AS Status,pdf_storage_key AS StorageKey,pdf_byte_size AS ByteSize FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND id=@versionId FOR UPDATE",new{tenantId,versionId},tx,cancellationToken:ct));
         if(row is null)return NotFound();if(row.Status=="completed"){await tx.CommitAsync(ct);return Ok(new{status="completed",byteSize=row.ByteSize,replayed=true});}
-        byte[] pdf;try{pdf=ContractDocumentRenderer.ToPdf(row.Content,row.Fields,row.Values,row.Title,row.Number);}catch(InvalidDataException e){await c.ExecuteAsync(new CommandDefinition("UPDATE odca.generated_contract_versions SET pdf_status='failed',pdf_failure_code='invalid_structure' WHERE tenant_id=@tenantId AND id=@versionId",new{tenantId,versionId},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Problem(statusCode:422,title="Não foi possível gerar o PDF.",detail=e.Message);}
+        byte[] pdf;try{pdf=ContractDocumentRenderer.ToPdf(row.Content,row.Fields,row.Values,row.Title,row.Number);}catch(InvalidDataException e){await c.ExecuteAsync(new CommandDefinition("UPDATE odca.generated_contract_versions SET pdf_status='failed',pdf_failure_code='invalid_structure' WHERE tenant_id=@tenantId AND id=@versionId",new{tenantId,versionId},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Problem(statusCode:StatusCodes.Status422UnprocessableEntity,title:"Não foi possível gerar o PDF.",detail:e.Message);}
         var hash=Convert.ToHexString(SHA256.HashData(pdf)).ToLowerInvariant();var key=$"generated/{tenantId:N}/{versionId:N}/final-{ContractDocumentRenderer.PdfRendererVersion}-{hash[..16]}.pdf";var root=configuration["Documents:StoragePath"]??Path.Combine(AppContext.BaseDirectory,"App_Data","documents");var path=Path.Combine(root,key.Replace('/',Path.DirectorySeparatorChar));var temporary=path+".attempt-"+Guid.NewGuid().ToString("N");Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         try
         {
             await System.IO.File.WriteAllBytesAsync(temporary,pdf,ct);
-            if(System.IO.File.Exists(path)){var existing=await System.IO.File.ReadAllBytesAsync(path,ct);if(!CryptographicOperations.FixedTimeEquals(SHA256.HashData(existing),SHA256.HashData(pdf)))return Problem(statusCode:409,title="Já existe um artefato divergente para esta tentativa.");System.IO.File.Delete(temporary);}else System.IO.File.Move(temporary,path,false);
+            if(System.IO.File.Exists(path)){var existing=await System.IO.File.ReadAllBytesAsync(path,ct);if(!CryptographicOperations.FixedTimeEquals(SHA256.HashData(existing),SHA256.HashData(pdf)))return Problem(statusCode:StatusCodes.Status409Conflict,title:"Já existe um artefato divergente para esta tentativa.");System.IO.File.Delete(temporary);}else System.IO.File.Move(temporary,path,false);
             var reserved=await c.ExecuteScalarAsync<bool>(new CommandDefinition("""
                 INSERT INTO odca.tenant_storage_usage(tenant_id) VALUES(@tenantId) ON CONFLICT DO NOTHING;
                 UPDATE odca.tenant_storage_usage u SET quota_bytes=q.effective_quota
@@ -271,7 +271,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
                   ON CONFLICT(tenant_id,idempotency_key) DO NOTHING RETURNING 1)
                 UPDATE odca.tenant_storage_usage SET used_bytes=used_bytes+@size WHERE tenant_id=@tenantId AND EXISTS(SELECT 1 FROM movement) RETURNING true
                 """,new{tenantId,versionId,size=pdf.LongLength,actor},tx,cancellationToken:ct));
-            if(!reserved)return Problem(statusCode:413,title="A cota efetiva de armazenamento da organização foi atingida.");
+            if(!reserved)return Problem(statusCode:StatusCodes.Status413PayloadTooLarge,title:"A cota efetiva de armazenamento da organização foi atingida.");
             await c.ExecuteAsync(new CommandDefinition("UPDATE odca.generated_contract_versions SET pdf_status='completed',pdf_storage_key=@key,pdf_sha256=@hash,pdf_byte_size=@size,pdf_renderer_version=@renderer,pdf_completed_at=now(),pdf_failure_code=NULL WHERE tenant_id=@tenantId AND id=@versionId",new{tenantId,versionId,key,hash,size=pdf.LongLength,renderer=ContractDocumentRenderer.PdfRendererVersion},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Ok(new{status="completed",byteSize=pdf.LongLength,replayed=false});
         }
         finally{if(System.IO.File.Exists(temporary))System.IO.File.Delete(temporary);}
@@ -281,7 +281,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     public async Task<IActionResult> DownloadPdf(Guid tenantId,Guid versionId,CancellationToken ct)
     {
         var actor=Actor();if(actor is null)return Unauthorized();await using var c=await dataSource.OpenConnectionAsync(ct);var canReadPatientDocuments=await Allowed(c,actor.Value,tenantId,"tenant.patients.documents.read",ct);var canReadDrafts=await Allowed(c,actor.Value,tenantId,"tenant.contract_drafts.read",ct);if(!canReadPatientDocuments&&!canReadDrafts)return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
-        var row=await c.QuerySingleOrDefaultAsync<PdfDownloadRow>(new CommandDefinition("SELECT pdf_storage_key AS StorageKey,pdf_sha256 AS Sha256,coalesce(emission_metadata->>'title','documento') AS Title,patient_id AS PatientId FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND id=@versionId AND pdf_status='completed'",new{tenantId,versionId},tx,cancellationToken:ct));if(row is null)return NotFound();if(!canReadDrafts&&row.PatientId is null)return Forbid();var root=configuration["Documents:StoragePath"]??Path.Combine(AppContext.BaseDirectory,"App_Data","documents");var path=Path.Combine(root,row.StorageKey.Replace('/',Path.DirectorySeparatorChar));if(!System.IO.File.Exists(path))return Problem(statusCode:410,title="O arquivo final não está disponível.");var bytes=await System.IO.File.ReadAllBytesAsync(path,ct);if(!CryptographicOperations.FixedTimeEquals(SHA256.HashData(bytes),Convert.FromHexString(row.Sha256)))return Problem(statusCode:409,title="A integridade do PDF não pôde ser confirmada.");await tx.CommitAsync(ct);return File(bytes,"application/pdf",$"{SafeFileName(row.Title)}.pdf",false);
+        var row=await c.QuerySingleOrDefaultAsync<PdfDownloadRow>(new CommandDefinition("SELECT pdf_storage_key AS StorageKey,pdf_sha256 AS Sha256,coalesce(emission_metadata->>'title','documento') AS Title,patient_id AS PatientId FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND id=@versionId AND pdf_status='completed'",new{tenantId,versionId},tx,cancellationToken:ct));if(row is null)return NotFound();if(!canReadDrafts&&row.PatientId is null)return Forbid();var root=configuration["Documents:StoragePath"]??Path.Combine(AppContext.BaseDirectory,"App_Data","documents");var path=Path.Combine(root,row.StorageKey.Replace('/',Path.DirectorySeparatorChar));if(!System.IO.File.Exists(path))return Problem(statusCode:StatusCodes.Status410Gone,title:"O arquivo final não está disponível.");var bytes=await System.IO.File.ReadAllBytesAsync(path,ct);if(!CryptographicOperations.FixedTimeEquals(SHA256.HashData(bytes),Convert.FromHexString(row.Sha256)))return Problem(statusCode:StatusCodes.Status409Conflict,title:"A integridade do PDF não pôde ser confirmada.");await tx.CommitAsync(ct);return File(bytes,"application/pdf",$"{SafeFileName(row.Title)}.pdf",false);
     }
 
     [HttpGet("versions/{versionId:guid}/signature-preparation/readiness")]
@@ -459,7 +459,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     {
         var actor = Actor(); if (actor is null) return Unauthorized(); await using var c = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(c, actor.Value, tenantId, "tenant.contract_drafts.read", ct)) return Forbid(); await using var tx = await c.BeginTransactionAsync(ct); await SetTenant(c, tenantId, actor.Value, tx, ct);
-        var rows = await c.QueryAsync<StudioCommentItem>(new CommandDefinition("""
+        var rows = (await c.QueryAsync<StudioCommentItem>(new CommandDefinition("""
             SELECT m.id AS Id,m.generated_version_id AS VersionId,m.draft_revision AS DraftRevision,m.reference AS Reference,m.body AS Body,
               m.author_id AS AuthorId,u.display_name AS Author,m.parent_id AS ParentId,m.created_at AS CreatedAt,
               (m.resolved_at IS NOT NULL) AS Resolved,m.resolved_at AS ResolvedAt,m.reference_located AS ReferenceLocated,
@@ -470,8 +470,8 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             LEFT JOIN LATERAL (SELECT occurred_at FROM odca.studio_comment_events e WHERE e.tenant_id=m.tenant_id AND e.comment_id=m.id ORDER BY e.id DESC LIMIT 1) last_event ON true
             WHERE m.tenant_id=@tenantId AND m.draft_id=@draftId AND m.deleted_at IS NULL AND (@includeResolved OR m.resolved_at IS NULL)
             ORDER BY coalesce(last_event.occurred_at,m.created_at) DESC,m.id
-            """, new { tenantId, draftId, includeResolved }, tx, cancellationToken: ct));
-        await tx.CommitAsync(ct); return Ok(rows.AsList());
+            """, new { tenantId, draftId, includeResolved }, tx, cancellationToken: ct))).AsList();
+        await tx.CommitAsync(ct); return Ok(rows);
     }
 
     [HttpPost("drafts/{draftId:guid}/comments")]
@@ -605,7 +605,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     private sealed record ComparisonRow(Guid Id,Guid ContractId,int Number,string Author,DateTimeOffset CreatedAt,string Status,string Content,string Fields,string Values);
     private sealed record CommentStateRow(bool Resolved,string Reference,long DraftRevision,Guid ContractId);
     private static StudioVersionItem ToItem(ComparisonRow row)=>new(row.Id,row.Number,row.Author,row.CreatedAt,row.Status);
-    private static IReadOnlyList<PatientDataChange> PatientChanges(string? before, string? after)
+    private static PatientDataChange[] PatientChanges(string? before, string? after)
     {
         if (before is null || after is null) return [];
         using var left = JsonDocument.Parse(before); using var right = JsonDocument.Parse(after);

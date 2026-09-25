@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using Odca.Application.Contracts;
 
 namespace Odca.Domain.Tests;
@@ -121,5 +123,50 @@ public sealed class StructuredContractDocumentTests
         var html=ContractDocumentRenderer.ToHtml(content,fields,"[]");
 
         Assert.Contains("Não informado",html);
+    }
+
+    [Fact]
+    public void RendererRejectsContentThatIsNotAnArray()
+    {
+        const string malformed = """{"type":"document","content":{"type":"paragraph"}}""";
+
+        Assert.Throws<InvalidDataException>(() => ContractDocumentRenderer.ToHtml(malformed, "[]", "[]"));
+    }
+
+    [Fact]
+    public void PdfSerializationIsCultureIndependentAndCrossReferencesPointToObjects()
+    {
+        const string content = """{"type":"document","content":[{"type":"paragraph","content":[{"type":"text","text":"Conteúdo"}]}]}""";
+        var originalCulture = CultureInfo.CurrentCulture;
+        byte[] ptBr;
+        byte[] enUs;
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("pt-BR");
+            ptBr = ContractDocumentRenderer.ToPdf(content, "[]", "[]", "Documento", 1);
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+            enUs = ContractDocumentRenderer.ToPdf(content, "[]", "[]", "Documento", 1);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+        }
+
+        Assert.Equal(ptBr, enUs);
+        var pdf = Encoding.Latin1.GetString(ptBr);
+        var startXrefMarker = "startxref\n";
+        var startXref = int.Parse(
+            pdf.AsSpan(pdf.LastIndexOf(startXrefMarker, StringComparison.Ordinal) + startXrefMarker.Length)
+                .Slice(0, pdf.AsSpan(pdf.LastIndexOf(startXrefMarker, StringComparison.Ordinal) + startXrefMarker.Length).IndexOf('\n')),
+            CultureInfo.InvariantCulture);
+        Assert.StartsWith("xref\n", pdf[startXref..]);
+
+        var xrefLines = pdf[startXref..].Split('\n');
+        var objectCount = int.Parse(xrefLines[1].Split(' ')[1], CultureInfo.InvariantCulture) - 1;
+        for (var i = 0; i < objectCount; i++)
+        {
+            var offset = int.Parse(xrefLines[i + 3].AsSpan(0, 10), CultureInfo.InvariantCulture);
+            Assert.StartsWith($"{i + 1} 0 obj\n", pdf[offset..]);
+        }
     }
 }

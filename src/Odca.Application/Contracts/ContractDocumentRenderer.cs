@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -57,7 +58,7 @@ public static class ContractDocumentRenderer
         if (type == "paragraph" && node.TryGetProperty("alignment", out var alignment))
             output.Append(" class=\"align-").Append(alignment.GetString()).Append("\"");
         output.Append('>');
-        if (node.TryGetProperty("content", out var children)) foreach (var child in children)
+        if (TryGetChildren(node, out var children)) foreach (var child in children)
         {
             if (child.GetProperty("type").GetString() == "text" && child.TryGetProperty("marks", out var marks))
             {
@@ -86,7 +87,7 @@ public static class ContractDocumentRenderer
             lines.Add(line.ToString());
             return;
         }
-        if (node.TryGetProperty("content", out var children)) foreach (var child in children) Flatten(child, values, lines, depth + 1);
+        if (TryGetChildren(node, out var children)) foreach (var child in children) Flatten(child, values, lines, depth + 1);
     }
 
     private static void CollectText(JsonElement node, IReadOnlyDictionary<string, string?> values, StringBuilder line)
@@ -94,8 +95,21 @@ public static class ContractDocumentRenderer
         var type = node.GetProperty("type").GetString();
         if (type == "text") line.Append(node.GetProperty("text").GetString());
         else if (type == "field") line.Append(values.GetValueOrDefault(node.GetProperty("fieldId").GetString()!) ?? "Não informado");
-        else if (node.TryGetProperty("content", out var children)) foreach (var child in children) CollectText(child, values, line);
+        else if (TryGetChildren(node, out var children)) foreach (var child in children) CollectText(child, values, line);
         if (type == "tableCell") line.Append("  |  ");
+    }
+
+    private static bool TryGetChildren(JsonElement node, out JsonElement.ArrayEnumerator children)
+    {
+        if (!node.TryGetProperty("content", out var content))
+        {
+            children = default;
+            return false;
+        }
+        if (content.ValueKind != JsonValueKind.Array)
+            throw new InvalidDataException("O conteúdo do elemento deve ser uma lista.");
+        children = content.EnumerateArray();
+        return true;
     }
 
     private sealed record RenderModel(JsonElement Root, IReadOnlyDictionary<string, string?> Values);
@@ -104,33 +118,36 @@ public static class ContractDocumentRenderer
     {
         public static byte[] Create(IEnumerable<string> source)
         {
-            var pages = new List<List<string>> { [] };
+            var pages = new List<List<string>>
+            {
+                new List<string>()
+            };
             foreach (var raw in source)
             {
-                if (raw == "\f") { if (pages[^1].Count > 0) pages.Add([]); continue; }
-                foreach (var line in Wrap(raw, 92)) { if (pages[^1].Count >= 52) pages.Add([]); pages[^1].Add(line); }
+                if (raw == "\f") { if (pages[^1].Count > 0) pages.Add(new List<string>()); continue; }
+                foreach (var line in Wrap(raw, 92)) { if (pages[^1].Count >= 52) pages.Add(new List<string>()); pages[^1].Add(line); }
             }
             var objects = new List<byte[]>();
             objects.Add(Ascii("<< /Type /Catalog /Pages 2 0 R >>"));
             var pageIds = Enumerable.Range(0, pages.Count).Select(i => 4 + i * 2).ToArray();
-            objects.Add(Ascii($"<< /Type /Pages /Kids [{string.Join(' ', pageIds.Select(x => $"{x} 0 R"))}] /Count {pages.Count} >>"));
+            objects.Add(Ascii(FormattableString.Invariant($"<< /Type /Pages /Kids [{string.Join(' ', pageIds.Select(x => FormattableString.Invariant($"{x} 0 R")))}] /Count {pages.Count} >>")));
             objects.Add(Ascii("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>"));
             for (var p = 0; p < pages.Count; p++)
             {
                 var content = new StringBuilder("BT /F1 10 Tf 54 790 Td 14 TL ");
                 foreach (var line in pages[p]) content.Append('(').Append(Escape(line)).Append(") Tj T* ");
-                content.Append($"ET BT /F1 9 Tf 285 28 Td (Página {p + 1} de {pages.Count}) Tj ET");
+                content.Append(FormattableString.Invariant($"ET BT /F1 9 Tf 285 28 Td (Página {p + 1} de {pages.Count}) Tj ET"));
                 var bytes = Encoding.Latin1.GetBytes(content.ToString());
-                objects.Add(Ascii($"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents {pageIds[p] + 1} 0 R >>"));
-                objects.Add(Concat(Ascii($"<< /Length {bytes.Length} >>\nstream\n"), bytes, Ascii("\nendstream")));
+                objects.Add(Ascii(FormattableString.Invariant($"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents {pageIds[p] + 1} 0 R >>")));
+                objects.Add(Concat(Ascii(FormattableString.Invariant($"<< /Length {bytes.Length} >>\nstream\n")), bytes, Ascii("\nendstream")));
             }
             using var output = new MemoryStream(); output.Write(Ascii("%PDF-1.4\n%âãÏÓ\n")); var offsets = new List<long> { 0 };
-            for (var i = 0; i < objects.Count; i++) { offsets.Add(output.Position); output.Write(Ascii($"{i + 1} 0 obj\n")); output.Write(objects[i]); output.Write(Ascii("\nendobj\n")); }
-            var xref = output.Position; output.Write(Ascii($"xref\n0 {objects.Count + 1}\n0000000000 65535 f \n"));
-            foreach (var offset in offsets.Skip(1)) output.Write(Ascii($"{offset:0000000000} 00000 n \n"));
-            output.Write(Ascii($"trailer << /Size {objects.Count + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF")); return output.ToArray();
+            for (var i = 0; i < objects.Count; i++) { offsets.Add(output.Position); output.Write(Ascii(FormattableString.Invariant($"{i + 1} 0 obj\n"))); output.Write(objects[i]); output.Write(Ascii("\nendobj\n")); }
+            var xref = output.Position; output.Write(Ascii(FormattableString.Invariant($"xref\n0 {objects.Count + 1}\n0000000000 65535 f \n")));
+            foreach (var offset in offsets.Skip(1)) output.Write(Ascii(offset.ToString("0000000000", CultureInfo.InvariantCulture) + " 00000 n \n"));
+            output.Write(Ascii(FormattableString.Invariant($"trailer << /Size {objects.Count + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF"))); return output.ToArray();
         }
-        private static IEnumerable<string> Wrap(string text, int width) { if (text.Length == 0) return [""]; var words=text.Split(' '); var result=new List<string>(); var line=""; foreach(var word in words){if(line.Length>0&&line.Length+word.Length+1>width){result.Add(line);line=word;}else line+=line.Length==0?word:" "+word;} result.Add(line);return result; }
+        private static List<string> Wrap(string text, int width) { if (text.Length == 0) return new List<string> { string.Empty }; var words=text.Split(' '); var result=new List<string>(); var line=""; foreach(var word in words){if(line.Length>0&&line.Length+word.Length+1>width){result.Add(line);line=word;}else line+=line.Length==0?word:" "+word;} result.Add(line);return result; }
         private static string Escape(string text) => text.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("(", "\\(", StringComparison.Ordinal).Replace(")", "\\)", StringComparison.Ordinal).Replace("\r", " ", StringComparison.Ordinal).Replace("\n", " ", StringComparison.Ordinal);
         private static byte[] Ascii(string value) => Encoding.Latin1.GetBytes(value);
         private static byte[] Concat(params byte[][] arrays) { var result=new byte[arrays.Sum(x=>x.Length)];var offset=0;foreach(var array in arrays){Buffer.BlockCopy(array,0,result,offset,array.Length);offset+=array.Length;}return result; }
