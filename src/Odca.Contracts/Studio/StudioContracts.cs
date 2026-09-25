@@ -35,6 +35,11 @@ public sealed record SignatureReadinessResponse(bool PreparationComplete, bool I
 public sealed record SignaturePreparationResponse(Guid Id, string Status, long Version, IReadOnlyList<SignatureParticipantInput> Participants,
     int CompositionRevision = 1, int? ConfirmedRevision = null, string? ConfirmedPdfSha256 = null, DateTimeOffset? ConfirmedAt = null,
     SignatureReadinessResponse? Readiness = null);
+public sealed record SignaturePreparationHistoryItem(long Id, DateTime OccurredAt, Guid ActorId, string Actor, string Operation,
+    int CompositionRevision, string? Justification, bool Confirmed, string? PdfSha256);
+public sealed record SignaturePreparationHistoryPage(IReadOnlyList<SignaturePreparationHistoryItem> Items, int Page, int PageSize, int Total, string TimeZone);
+public sealed record SignatureCompositionChange(Guid ParticipantId, string Name, string Change, string? Before, string? After);
+public sealed record SignatureCompositionComparison(int BeforeRevision, int AfterRevision, IReadOnlyList<SignatureCompositionChange> Changes);
 public sealed record SubmitReviewRequest(Guid GeneratedVersionId, Guid ReviewerId, DateTimeOffset? DueAt, string? Instructions, Guid IdempotencyKey);
 public sealed record ReviewSubmittedResponse(Guid ReviewId, Guid GeneratedVersionId, string Status);
 public sealed record StudioVersionItem(Guid Id, int Number, string Author, DateTimeOffset CreatedAt, string Status);
