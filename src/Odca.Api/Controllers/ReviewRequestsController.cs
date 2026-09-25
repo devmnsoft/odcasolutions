@@ -25,7 +25,8 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
         scope = scope is "requested" or "assigned" or "all" ? scope : "requested";
         if ((scope == "all" || assigneeId.HasValue) && !canManage) return Forbid();
         if (from > to) return ValidationProblem("A data inicial deve ser anterior ou igual à data final.");
-        await SetTenant(connection, tenantId, actor.Value, ct);
+        await using var transaction = await connection.BeginTransactionAsync(ct);
+        await SetTenant(connection, tenantId, actor.Value, transaction, ct);
         page = Math.Max(1, page); pageSize = Math.Clamp(pageSize, 1, 100);
         const string where = """
             r.tenant_id=@tenantId
@@ -47,7 +48,7 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
             FROM odca.contract_review_requests r
             JOIN odca.contracts c ON c.tenant_id=r.tenant_id AND c.id=r.contract_id
             WHERE {where}
-            """, args, cancellationToken: ct));
+            """, args, transaction, cancellationToken: ct));
         var rows = await connection.QueryAsync<QueueRow>(new CommandDefinition($"""
             SELECT r.id AS Id,r.contract_id AS ContractId,r.requested_by AS RequestedBy,c.title AS Contract,r.status AS Status,requester.display_name AS Requester,
               assignee.display_name AS Assignee,r.opened_at AS OpenedAt,r.updated_at AS UpdatedAt,r.due_at AS DueAt,r.row_version AS Version,
@@ -60,7 +61,8 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
             LEFT JOIN odca.contract_review_comments cm ON cm.tenant_id=r.tenant_id AND cm.review_id=r.id
             WHERE {where} GROUP BY r.id,c.title,requester.display_name,assignee.display_name
             ORDER BY r.updated_at DESC,r.id LIMIT @pageSize OFFSET @offset
-            """, new { args.tenantId,args.actor,args.status,args.scope,args.assigneeId,args.contractId,args.from,args.to,args.search,args.offset,args.pageSize,canManage }, cancellationToken: ct));
+            """, new { args.tenantId,args.actor,args.status,args.scope,args.assigneeId,args.contractId,args.from,args.to,args.search,args.offset,args.pageSize,canManage }, transaction, cancellationToken: ct));
+        await transaction.CommitAsync(ct);
         return Ok(new ReviewQueuePage(rows.Select(Map).ToArray(), page, pageSize, total));
     }
 
@@ -143,7 +145,8 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(connection, actor.Value, tenantId, "tenant.reviews.read", ct)) return Forbid();
         var internalAccess = await Allowed(connection, actor.Value, tenantId, "tenant.reviews.decide", ct);
-        await SetTenant(connection, tenantId, actor.Value, ct);
+        await using var transaction = await connection.BeginTransactionAsync(ct);
+        await SetTenant(connection, tenantId, actor.Value, transaction, ct);
         var row = await connection.QuerySingleOrDefaultAsync<DetailRow>(new CommandDefinition("""
             SELECT r.id AS Id,r.contract_id AS ContractId,r.requested_by AS RequestedBy,c.title AS Contract,r.status AS Status,requester.display_name AS Requester,
               assignee.display_name AS Assignee,r.instructions AS Instructions,r.opened_at AS OpenedAt,r.updated_at AS UpdatedAt,
@@ -152,7 +155,7 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
             JOIN odca.users requester ON requester.id=r.requested_by
             LEFT JOIN odca.contract_review_steps s ON s.tenant_id=r.tenant_id AND s.review_id=r.id AND s.status='current'
             LEFT JOIN odca.users assignee ON assignee.id=s.reviewer_id WHERE r.tenant_id=@tenantId AND r.id=@reviewId
-            """, new { tenantId, reviewId }, cancellationToken: ct));
+            """, new { tenantId, reviewId }, transaction, cancellationToken: ct));
         if (row is null) return NotFound();
         if (!internalAccess && row.RequestedBy != actor.Value) return NotFound();
         var messages = await connection.QueryAsync<ReviewMessage>(new CommandDefinition("""
@@ -160,12 +163,13 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
               cm.created_at AS CreatedAt,(cm.resolved_at IS NOT NULL) AS Resolved
             FROM odca.contract_review_comments cm JOIN odca.users u ON u.id=cm.author_id
             WHERE cm.tenant_id=@tenantId AND cm.review_id=@reviewId AND (@internalAccess OR cm.visibility='client') ORDER BY cm.created_at,cm.id
-            """, new { tenantId, reviewId, internalAccess }, cancellationToken: ct));
+            """, new { tenantId, reviewId, internalAccess }, transaction, cancellationToken: ct));
         var history = await connection.QueryAsync<ReviewHistoryItem>(new CommandDefinition("""
             SELECT e.id AS Id,e.event_type AS Type,u.display_name AS Actor,e.occurred_at AS OccurredAt
             FROM odca.contract_review_events e JOIN odca.users u ON u.id=e.actor_id
             WHERE e.tenant_id=@tenantId AND e.review_id=@reviewId ORDER BY e.occurred_at,e.id
-            """, new { tenantId, reviewId }, cancellationToken: ct));
+            """, new { tenantId, reviewId }, transaction, cancellationToken: ct));
+        await transaction.CommitAsync(ct);
         return Ok(new ReviewDetail(row.Id,row.ContractId,row.Contract,row.Status,row.Requester,row.Assignee,row.Instructions,row.OpenedAt,row.UpdatedAt,row.DueAt,row.Version,row.DocumentVersionId,row.GeneratedVersionId,messages.ToArray(),history.ToArray()));
     }
 
@@ -271,7 +275,6 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
 
     private Guid? Actor()=>Guid.TryParse(User.FindFirstValue("sub"),out var id)?id:null;
     private static Task<bool> Allowed(NpgsqlConnection c,Guid actor,Guid tenant,string permission,CancellationToken ct)=>c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT odca.tenant_actor_has_permission(@actor,@tenant,@permission)",new{actor,tenant,permission},cancellationToken:ct));
-    private static Task<int> SetTenant(NpgsqlConnection c,Guid tenant,Guid actor,CancellationToken ct)=>c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenant::text,false),set_config('odca.user_id',@actor::text,false)",new{tenant,actor},cancellationToken:ct));
     private static Task<int> SetTenant(NpgsqlConnection c,Guid tenant,Guid actor,NpgsqlTransaction tx,CancellationToken ct)=>c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenant::text,true),set_config('odca.user_id',@actor::text,true)",new{tenant,actor},tx,cancellationToken:ct));
     private static ReviewQueueItem Map(QueueRow r)=>new(r.Id,r.ContractId,r.Contract,r.Status,r.Requester,r.Assignee,r.OpenedAt,r.UpdatedAt,r.DueAt,r.Version,r.PublicMessages,r.PendingComments);
     private sealed record QueueRow(Guid Id,Guid ContractId,string Contract,string Status,string Requester,string? Assignee,DateTimeOffset OpenedAt,DateTimeOffset UpdatedAt,DateTimeOffset? DueAt,long Version,int PublicMessages,int PendingComments);

@@ -32,8 +32,20 @@ de persistência.
    `odca.has_tenant_permission`. A função canônica definida e concedida nas migrations é
    `odca.tenant_actor_has_permission(actor, tenant, permission)`. O helper passou a usar
    essa função, sem alias de compatibilidade, bypass ou mudança de grants.
+3. **Contexto RLS persistente no pool:** as consultas de lista e detalhe de revisão
+   configuravam `odca.tenant_id` e `odca.user_id` no escopo da sessão. Ao devolver a
+   conexão ao pool, o próximo consumidor poderia herdar essa identidade. As duas rotas
+   agora abrem transação, usam `set_config(..., true)` e executam todas as consultas na
+   mesma transação; commit, rollback ou descarte removem o contexto antes do reuso.
 
-Não é necessária migration para as duas correções: ambas são divergências no código da
+Foi acrescentado um teste comportamental PostgreSQL que chama os métodos reais de
+responsáveis e fila com a role restrita, executa a função canônica, diferencia revisor,
+usuário sem permissão, vínculo bloqueado e organização suspensa, e força um pool de uma
+conexão para comprovar que tenant/ator não permanecem depois da resposta. Ele permanece
+condicionado ao banco descartável protegido pelas variáveis `ODCA_TEST_*` e não foi
+executado nesta máquina, que continua sem SDK e PostgreSQL.
+
+Não é necessária migration para essas correções: elas são divergências no código da
 API em relação ao schema já canônico. A busca no checkout depois da correção não encontra
 consumidor executável de `has_tenant_permission`; permanece apenas uma menção histórica
 em documentação, que não é chamada pelo runtime.
@@ -57,7 +69,7 @@ em documentação, que não é chamada pelo runtime.
 | Edição da minuta | `/estudio/minutas/{id}` | `tenant.contract_drafts.manage` | campos, blocos, pendências, comentários, autosave | draft + row version | **Ainda incompleta nesta auditoria** | Testar reload, idempotência e concorrência. |
 | Versão imutável / PDF | `/estudio/versoes/{id}` | leitura da minuta/documento | visualizar, gerar/baixar PDF, revisão | generated version + hash/PDF | **Bloqueada por dependência identificada** | Renderização e download precisam dos hosts; verificar bytes/hash e autorização. |
 | Participantes da versão | `/estudio/versoes/{id}#participantes` | gestão da minuta | incluir, editar, ordenar, retirar, confirmar e reabrir | preparation revisions/events | **Ainda incompleta nesta auditoria** | UI e API existem; confirmar contra PDF, histórico, comparação e replay no banco. |
-| Solicitações de revisão — fila | `/organizacoes/{tenantId}/solicitacoes` | `tenant.reviews.read/decide` | filtros, escopos, responsáveis | leitura paginada | **Ainda incompleta** | Helper usa função canônica; testar perfis permitido/negado, vínculo bloqueado e tenant inativo. |
+| Solicitações de revisão — fila | `/organizacoes/{tenantId}/solicitacoes` | `tenant.reviews.read/decide` | filtros, escopos, responsáveis | leitura paginada | **NÃO EXECUTADO neste agente; regressão automatizada preparada** | Métodos reais cobrem função canônica, responsáveis, fila vazia, permitido/negado, vínculo bloqueado, tenant inativo e limpeza do contexto RLS; CI com PostgreSQL precisa confirmar. |
 | Solicitação de revisão — detalhe | `/solicitacoes/{reviewId}` | `tenant.reviews.read/decide` | comentário, reatribuição, aprovar/ajustes | comments/steps/events/notifications | **Ainda incompleta** | O bloqueio 42883 foi removido; ainda requer requester e reviewer reais. |
 | Importações — lista | `/organizacoes/{tenantId}/importacoes` | `tenant.imports.read` | status, solicitante, minhas, revisão, datas | leitura paginada | **Ainda incompleta** | SQL 42601 corrigido; executar todas as combinações pedidas no PostgreSQL. |
 | Importação — revisão/preview | `/importacoes/{id}`, `/importacoes/preview/...` | `tenant.imports.manage/confirm`, documentos | diagnóstico, sugestões/manual, confirmar/cancelar | import/events/audit/contract | **Bloqueada por dependência identificada** | Scanner/OCR não podem ser simulados; testar original, estados e contrato resultante. |
