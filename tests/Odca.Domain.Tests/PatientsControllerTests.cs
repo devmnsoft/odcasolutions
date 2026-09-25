@@ -48,8 +48,7 @@ public sealed class PatientsControllerTests
         var invalid = Assert.IsAssignableFrom<ObjectResult>(result);
         Assert.Equal(StatusCodes.Status400BadRequest, invalid.StatusCode);
 
-        var json = JsonSerializer.Serialize(invalid.Value, invalid.Value!.GetType(),
-            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var json = JsonSerializer.Serialize(invalid.Value, invalid.Value!.GetType() );
         using var body = JsonDocument.Parse(json);
         var errors = body.RootElement.GetProperty("errors");
         Assert.Equal("Informe o nome completo (2 a 160 caracteres).", errors.GetProperty("fullName")[0].GetString());
