@@ -56,20 +56,27 @@ public sealed partial class ContractImportsController(
         const string filter = """
             WHERE i.tenant_id=@tenantId
               AND (CAST(@status AS text) IS NULL OR i.status=CAST(@status AS text))
-              AND (@requester IS NULL OR i.requested_by=@requester)
+              AND (CAST(@requester AS uuid) IS NULL OR i.requested_by=CAST(@requester AS uuid))
               AND (NOT @mine OR i.requested_by=@actor)
               AND (NOT @awaitingReview OR i.status='awaiting_review')
               AND (CAST(@FromInclusive AS timestamptz) IS NULL OR i.created_at>=CAST(@FromInclusive AS timestamptz))
               AND (CAST(@ToExclusive AS timestamptz) IS NULL OR i.created_at<CAST(@ToExclusive AS timestamptz))
             """;
-        var items = await connection.QueryAsync<ContractImportListItem>(new CommandDefinition("""
+        const string selectSql = """
             SELECT i.id AS Id,v.display_name AS DocumentName,u.display_name AS Requester,i.created_at AS CreatedAt,
                    i.status AS Status,i.current_step AS CurrentStep,i.safe_diagnostic_code AS DiagnosticCode,
                    i.result_contract_id AS ResultContractId,i.review_version AS ReviewVersion
               FROM odca.contract_imports i
               JOIN odca.document_versions v ON v.tenant_id=i.tenant_id AND v.id=i.document_version_id
               JOIN odca.users u ON u.id=i.requested_by
-            """ + filter + " ORDER BY i.created_at DESC", args, tx, cancellationToken: ct));
+            """;
+        var sql = selectSql
+            + Environment.NewLine
+            + filter
+            + Environment.NewLine
+            + "ORDER BY i.created_at DESC, i.id DESC";
+        var items = await connection.QueryAsync<ContractImportListItem>(new CommandDefinition(
+            sql, args, tx, cancellationToken: ct));
         var total = await connection.ExecuteScalarAsync<int>(new CommandDefinition(
             "SELECT count(*)::integer FROM odca.contract_imports i " + filter, args, tx, cancellationToken: ct));
         await tx.CommitAsync(ct); return Ok(new ContractImportPage(items.AsList(), total));
