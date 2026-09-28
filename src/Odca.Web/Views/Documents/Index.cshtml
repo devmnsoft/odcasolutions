@@ -1,0 +1,260 @@
+@model Odca.Contracts.Studio.StudioDocumentPage
+@{
+    var tenantId = (Guid)ViewData["TenantId"]!;
+    var search = ViewData["Search"] as string;
+    var type = ViewData["Type"] as string;
+    var stage = ViewData["Stage"] as string;
+    var patientId = ViewData["PatientId"] as Guid?;
+    var patients = ViewData["Patients"] as IReadOnlyList<Odca.Contracts.Patients.PatientListItem> ?? [];
+    ViewData["Title"] = "Central de Documentos";
+}
+
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">Documentos da organização</p>
+        <h1>Central de Documentos</h1>
+        <p class="muted">Acompanhe minutas, versões, revisões e preparações para assinatura de forma centralizada e rastreável.</p>
+    </div>
+    <div class="button-row">
+        <a class="button button-primary" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@tenantId">
+            <span aria-hidden="true">+</span> Novo documento
+        </a>
+        <a class="button" asp-controller="Patients" asp-action="New" asp-route-tenantId="@tenantId">
+            <span aria-hidden="true">♙</span> Cadastrar paciente
+        </a>
+    </div>
+</section>
+
+<details class="help">
+    <summary>Como usar a Central de Documentos</summary>
+    <p>
+        Esta central reúne todos os documentos contratuais e termos da sua organização. Cada documento evolui pelas seguintes etapas:
+        <strong>1. Minuta:</strong> escolha um modelo publicado e preencha os dados do paciente ou contrato;
+        <strong>2. Conferência:</strong> valide as pendências cadastrais e o checklist obrigatório;
+        <strong>3. Versão & PDF:</strong> gere uma versão imutável com identificador criptográfico SHA-256 e gere o PDF para download;
+        <strong>4. Revisão interna:</strong> solicite a conferência por outro profissional antes da formalização;
+        <strong>5. Preparação para assinatura:</strong> configure os signatários e confirme a composição documental.
+    </p>
+</details>
+
+@if (ViewData["LoadError"] is string loadError)
+{
+    <div class="error" role="alert">
+        <strong>Falha ao carregar documentos:</strong> @loadError
+    </div>
+}
+
+<form method="get" class="studio-filter" role="search" aria-label="Filtro de documentos">
+    <label>
+        Pesquisar
+        <input name="search" value="@search" placeholder="Título, referência ou paciente" />
+    </label>
+    <label>
+        Tipo
+        <select name="type">
+            <option value="">Todos os tipos</option>
+            <option value="service" selected="@(type == "service")">Prestação de serviços</option>
+            <option value="consent" selected="@(type == "consent")">Consentimento informado</option>
+            <option value="nda" selected="@(type == "nda")">Confidencialidade</option>
+            <option value="amendment" selected="@(type == "amendment")">Aditivo contratual</option>
+            <option value="supply" selected="@(type == "supply")">Fornecimento</option>
+            <option value="lease" selected="@(type == "lease")">Locação</option>
+        </select>
+    </label>
+    <label>
+        Paciente
+        <select name="patientId">
+            <option value="">Todos os pacientes</option>
+            @foreach (var p in patients)
+            {
+                <option value="@p.Id" selected="@(patientId == p.Id)">@p.FullName (@p.IdentifierValue)</option>
+            }
+        </select>
+    </label>
+    <label>
+        Etapa
+        <select name="stage">
+            <option value="">Todas as etapas</option>
+            <option value="draft" selected="@(stage == "draft")">Minutas em edição</option>
+            <option value="in_review" selected="@(stage == "in_review")">Em revisão interna</option>
+            <option value="approved" selected="@(stage == "approved")">Aprovados internamente</option>
+            <option value="ready_for_signature" selected="@(stage == "ready_for_signature")">Prontos para assinatura</option>
+            <option value="completed" selected="@(stage == "completed")">Assinados / Concluídos</option>
+        </select>
+    </label>
+    <button class="button button-primary" type="submit">Filtrar</button>
+    <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">Limpar filtros</a>
+</form>
+
+@if (Model.Items.Count > 0)
+{
+    <div class="table-responsive">
+        <table class="table" aria-label="Lista de documentos">
+            <thead>
+                <tr>
+                    <th>Documento</th>
+                    <th>Tipo</th>
+                    <th>Paciente</th>
+                    <th>Situação do fluxo</th>
+                    <th>Atualização</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var doc in Model.Items)
+                {
+                    <tr>
+                        <td>
+                            <strong>@doc.Title</strong>
+                            @if (!string.IsNullOrWhiteSpace(doc.Reference))
+                            {
+                                <br /><small class="muted">Ref: @doc.Reference</small>
+                            }
+                            <br /><small class="muted">Modelo: @doc.TemplateName</small>
+                        </td>
+                        <td>
+                            <span class="badge badge-muted">
+                                @(doc.DocumentType switch {
+                                    "service" => "Serviços",
+                                    "consent" => "Consentimento",
+                                    "nda" => "Confidencialidade",
+                                    "amendment" => "Aditivo",
+                                    _ => doc.DocumentType
+                                })
+                            </span>
+                        </td>
+                        <td>
+                            @if (doc.PatientId.HasValue)
+                            {
+                                <a asp-controller="Patients" asp-action="Get" asp-route-tenantId="@tenantId" asp-route-patientId="@doc.PatientId.Value">
+                                    @(doc.PatientName ?? "Paciente")
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="muted">Não vinculado</span>
+                            }
+                        </td>
+                        <td>
+                            <div style="display:flex; flex-direction:column; gap:4px;">
+                                <small>
+                                    <strong>Minuta:</strong>
+                                    @(doc.DraftStatus switch {
+                                        "draft" => "Em edição",
+                                        _ => doc.LatestVersionNumber.HasValue ? $"Versão {doc.LatestVersionNumber}" : "Sem minuta"
+                                    })
+                                </small>
+                                <small>
+                                    <strong>Revisão:</strong>
+                                    @(doc.ReviewStatus switch {
+                                        "none" => "Não solicitada",
+                                        "draft" => "Em preparação",
+                                        "submitted" or "in_review" => "Em análise",
+                                        "changes_requested" => "Ajustes solicitados",
+                                        "internally_approved" => "Aprovada",
+                                        _ => doc.ReviewStatus
+                                    })
+                                </small>
+                                <small>
+                                    <strong>PDF:</strong>
+                                    @(doc.PdfStatus switch {
+                                        "completed" => "Gerado",
+                                        "failed" => "Falha na geração",
+                                        "not_generated" => "Pendente",
+                                        _ => doc.PdfStatus
+                                    })
+                                </small>
+                                <small>
+                                    <strong>Assinatura:</strong>
+                                    @(doc.SignatureStatus switch {
+                                        "not_started" => "Não iniciada",
+                                        "preparing" => "Em preparação",
+                                        "confirmed" => "Composição confirmada",
+                                        "externally_signed" => "Assinado",
+                                        _ => doc.SignatureStatus
+                                    })
+                                </small>
+                            </div>
+                        </td>
+                        <td>
+                            <time datetime="@doc.UpdatedAt.ToString("o")">
+                                @doc.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            </time>
+                        </td>
+                        <td>
+                            <div class="button-row">
+                                @if (doc.DraftId.HasValue)
+                                {
+                                    <a class="button button-small button-primary"
+                                       asp-controller="Studio"
+                                       asp-action="Edit"
+                                       asp-route-tenantId="@tenantId"
+                                       asp-route-draftId="@doc.DraftId.Value">
+                                        Continuar minuta
+                                    </a>
+                                }
+                                else if (doc.LatestVersionId.HasValue && doc.CanDownloadPdf)
+                                {
+                                    <a class="button button-small button-primary"
+                                       href="/api/v1/organizations/@tenantId/studio/versions/@doc.LatestVersionId.Value/pdf"
+                                       download>
+                                        Baixar PDF
+                                    </a>
+                                }
+                                <a class="button button-small"
+                                   asp-controller="Contracts"
+                                   asp-action="Sheet"
+                                   asp-route-tenantId="@tenantId"
+                                   asp-route-contractId="@doc.ContractId">
+                                    Ficha
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.Total > Model.PageSize)
+    {
+        <nav class="pagination" aria-label="Paginação de documentos">
+            @if (Model.Page > 1)
+            {
+                <a class="button button-quiet"
+                   asp-route-tenantId="@tenantId"
+                   asp-route-search="@search"
+                   asp-route-type="@type"
+                   asp-route-stage="@stage"
+                   asp-route-patientId="@patientId"
+                   asp-route-page="@(Model.Page - 1)">Anterior</a>
+            }
+            <span>Página @Model.Page de @(Math.Ceiling((double)Model.Total / Model.PageSize)) (@Model.Total documento(s))</span>
+            @if (Model.Page * Model.PageSize < Model.Total)
+            {
+                <a class="button button-quiet"
+                   asp-route-tenantId="@tenantId"
+                   asp-route-search="@search"
+                   asp-route-type="@type"
+                   asp-route-stage="@stage"
+                   asp-route-patientId="@patientId"
+                   asp-route-page="@(Model.Page + 1)">Próxima</a>
+            }
+        </nav>
+    }
+}
+else if (ViewData["LoadError"] is null)
+{
+    <div class="card empty-state">
+        <h2>Nenhum documento encontrado</h2>
+        <p>Não há documentos para os filtros aplicados. Clique no botão abaixo para iniciar uma nova minuta a partir de um modelo publicado.</p>
+        <div class="button-row" style="margin-top: 1rem;">
+            <a class="button button-primary" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@tenantId">
+                Criar primeiro documento
+            </a>
+            <a class="button" asp-controller="Patients" asp-action="New" asp-route-tenantId="@tenantId">
+                Cadastrar paciente
+            </a>
+        </div>
+    </div>
+}

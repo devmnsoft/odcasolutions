@@ -106,11 +106,54 @@ public sealed class OnboardingController(OdcaApiClient apiClient, IUserTenantCon
             overview = overviewResult.Value;
         }
 
+        var tenantId = result.Value.TenantId;
+        var access = await tenantContext.GetAccessAsync(tenantId, cancellationToken);
+        var canCreateDocument = access?.HasAnyPermission("tenant.contract_drafts.manage", "tenant.templates.read") == true;
+        var canManagePatients = access?.HasAnyPermission("tenant.patients.manage", "tenant.patients.read") == true;
+        var canReadReviews = access?.HasPermission("tenant.reviews.read") == true;
+
+        IReadOnlyList<Odca.Contracts.Studio.StudioDocumentItem> recentDocuments = [];
+        string? documentsError = null;
+        if (access?.HasAnyPermission("tenant.contract_drafts.read", "tenant.patients.documents.read") == true)
+        {
+            var docsRes = await apiClient.GetStudioDocumentsAsync(token, tenantId, null, null, null, null, 1, 5, cancellationToken);
+            if (docsRes.Succeeded && docsRes.Value is not null)
+            {
+                recentDocuments = docsRes.Value.Items;
+            }
+            else if (!docsRes.Succeeded && docsRes.Status != ApiCallStatus.Forbidden)
+            {
+                documentsError = docsRes.UserMessage("Não foi possível carregar os documentos recentes.");
+            }
+        }
+
+        IReadOnlyList<Odca.Contracts.Reviews.ReviewQueueItem> assignedReviews = [];
+        string? reviewsError = null;
+        if (canReadReviews)
+        {
+            var reviewsRes = await apiClient.GetReviewsAsync(token, tenantId, "open", "assigned_to_me", null, null, null, null, null, 1, cancellationToken);
+            if (reviewsRes.Succeeded && reviewsRes.Value is not null)
+            {
+                assignedReviews = reviewsRes.Value.Items;
+            }
+            else if (!reviewsRes.Succeeded && reviewsRes.Status != ApiCallStatus.Forbidden)
+            {
+                reviewsError = reviewsRes.UserMessage("Não foi possível carregar as revisões atribuídas.");
+            }
+        }
+
         ViewData["OrganizationName"] = result.Value.OrganizationName;
         return View(new CustomerHomePageViewModel
         {
             Home = result.Value,
-            Overview = overview
+            Overview = overview,
+            RecentDocuments = recentDocuments,
+            AssignedReviews = assignedReviews,
+            CanCreateDocument = canCreateDocument,
+            CanManagePatients = canManagePatients,
+            CanReadReviews = canReadReviews,
+            DocumentsError = documentsError,
+            ReviewsError = reviewsError
         });
     }
     [Authorize]

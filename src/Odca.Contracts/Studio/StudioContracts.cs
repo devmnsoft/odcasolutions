@@ -4,7 +4,27 @@ namespace Odca.Contracts.Studio;
 
 public sealed record TemplateCatalogItem(Guid Id, string Name, string? Description, string ContractType, string Scope, string Status, int Version, string Author, DateTimeOffset CreatedAt, DateTimeOffset? PublishedAt);
 public sealed record TemplateCatalogPage(IReadOnlyList<TemplateCatalogItem> Items, int Page, int PageSize, int Total);
-public sealed record CreateDraftRequest(Guid TemplateId, string Title, string? Reference, Guid? PatientId = null);
+public sealed record CreateDraftRequest(Guid TemplateId, string Title, string? Reference, Guid? PatientId = null, Guid? ContractId = null);
+public sealed record StudioDocumentItem(
+    Guid ContractId,
+    Guid? DraftId,
+    Guid? LatestVersionId,
+    int? LatestVersionNumber,
+    string Title,
+    string? Reference,
+    string DocumentType,
+    string TemplateName,
+    Guid? PatientId,
+    string? PatientName,
+    DateTimeOffset UpdatedAt,
+    string DraftStatus,
+    string ReviewStatus,
+    string PdfStatus,
+    string SignatureStatus,
+    string NextAction,
+    bool CanEdit,
+    bool CanDownloadPdf);
+public sealed record StudioDocumentPage(IReadOnlyList<StudioDocumentItem> Items, int Page, int PageSize, int Total);
 public sealed record DraftCreatedResponse(Guid Id, Guid ContractId);
 public sealed record DraftResponse(Guid Id, Guid ContractId, string Title, Guid SourceTemplateId, Guid SourceTemplateVersionId, JsonElement Content, JsonElement Fields, JsonElement Values, long Version, Guid? LastClientRevision, DateTimeOffset UpdatedAt);
 public sealed record SaveDraftRequest(JsonElement Content, JsonElement Fields, JsonElement Values, long ExpectedVersion, Guid ClientRevision);

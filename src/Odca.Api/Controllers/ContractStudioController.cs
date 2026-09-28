@@ -80,17 +80,245 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         if (request.PatientId is not null && !await c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.patients WHERE tenant_id=@tenantId AND id=@PatientId AND inactive_at IS NULL)", new { tenantId, request.PatientId }, tx, cancellationToken: ct)))
             return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"patientId",["Selecione um paciente ativo desta organização."]}}));
         Validate(source.Content, source.Fields, "[]", false);
-        var contractId = Guid.NewGuid(); var draftId = Guid.NewGuid();
+
+        Guid contractId;
+        if (request.ContractId.HasValue)
+        {
+            var targetContractId = request.ContractId.Value;
+            var contractExists = await c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.contracts WHERE tenant_id=@tenantId AND id=@targetContractId)", new { tenantId, targetContractId }, tx, cancellationToken: ct));
+            if (!contractExists) return NotFound();
+
+            var existingDraftId = await c.QuerySingleOrDefaultAsync<Guid?>(new CommandDefinition("SELECT id FROM odca.contract_drafts WHERE tenant_id=@tenantId AND contract_id=@targetContractId", new { tenantId, targetContractId }, tx, cancellationToken: ct));
+            if (existingDraftId.HasValue)
+            {
+                await tx.CommitAsync(ct);
+                return Ok(new { id = existingDraftId.Value, contractId = targetContractId });
+            }
+            contractId = targetContractId;
+        }
+        else
+        {
+            contractId = Guid.NewGuid();
+            await c.ExecuteAsync(new CommandDefinition("""
+                INSERT INTO odca.contracts(id,tenant_id,title,reference) VALUES(@contractId,@tenantId,@title,@reference);
+                """, new { contractId, tenantId, title = request.Title.Trim(), request.Reference }, tx, cancellationToken: ct));
+        }
+
+        var draftId = Guid.NewGuid();
         await c.ExecuteAsync(new CommandDefinition("""
-            INSERT INTO odca.contracts(id,tenant_id,title,reference) VALUES(@contractId,@tenantId,@title,@reference);
             INSERT INTO odca.contract_drafts(id,tenant_id,contract_id,source_template_id,source_template_version_id,content,fields,created_by,updated_by,patient_id,patient_row_version,patient_selection_snapshot)
             VALUES(@draftId,@tenantId,@contractId,@templateId,@versionId,@content::jsonb,@fields::jsonb,@actor,@actor,@PatientId,
               (SELECT row_version FROM odca.patients WHERE tenant_id=@tenantId AND id=@PatientId),
               odca.patient_document_snapshot(@tenantId,@PatientId));
             INSERT INTO odca.contract_events(tenant_id,contract_id,actor_id,event_type,details) VALUES(@tenantId,@contractId,@actor,'draft.created',jsonb_build_object('templateId',@templateId,'templateVersionId',@versionId));
-            """, new { contractId, tenantId, title=request.Title.Trim(), request.Reference, request.PatientId, draftId, templateId=source.TemplateId, versionId=source.VersionId, source.Content, source.Fields, actor }, tx, cancellationToken: ct));
+            """, new { contractId, tenantId, request.PatientId, draftId, templateId = source.TemplateId, versionId = source.VersionId, source.Content, source.Fields, actor }, tx, cancellationToken: ct));
+
+        if (request.ContractId.HasValue)
+        {
+            await c.ExecuteAsync(new CommandDefinition("""
+                UPDATE odca.contract_change_requests
+                SET draft_id = @draftId, row_version = row_version + 1, updated_at = now()
+                WHERE tenant_id = @tenantId AND contract_id = @contractId AND draft_id IS NULL AND status IN ('draft', 'proposed');
+                """, new { tenantId, contractId, draftId }, tx, cancellationToken: ct));
+        }
+
         await tx.CommitAsync(ct);
-        return Created($"/api/v1/organizations/{tenantId}/studio/drafts/{draftId}", new { id=draftId, contractId });
+        return Created($"/api/v1/organizations/{tenantId}/studio/drafts/{draftId}", new { id = draftId, contractId });
+    }
+
+    [HttpGet("documents")]
+    public async Task<IActionResult> ListDocuments(
+        Guid tenantId,
+        [FromQuery] string? search,
+        [FromQuery] string? type,
+        [FromQuery] string? stage,
+        [FromQuery] Guid? patientId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        var actor = Actor(); if (actor is null) return Unauthorized();
+        await using var c = await dataSource.OpenConnectionAsync(ct);
+        var canReadDrafts = await Allowed(c, actor.Value, tenantId, "tenant.contract_drafts.read", ct);
+        var canReadPatientDocs = await Allowed(c, actor.Value, tenantId, "tenant.patients.documents.read", ct);
+        var canDownloadDocs = await Allowed(c, actor.Value, tenantId, "tenant.documents.download", ct);
+        var canManageDrafts = await Allowed(c, actor.Value, tenantId, "tenant.contract_drafts.manage", ct);
+        var canRequestReview = await Allowed(c, actor.Value, tenantId, "tenant.reviews.request", ct);
+
+        if (!canReadDrafts && !canReadPatientDocs && !canDownloadDocs) return Forbid();
+
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 50);
+        var offset = (page - 1) * pageSize;
+
+        await using var tx = await c.BeginTransactionAsync(ct);
+        await SetTenant(c, tenantId, actor.Value, tx, ct);
+
+        var queryParams = new DynamicParameters();
+        queryParams.Add("tenantId", tenantId);
+        queryParams.Add("offset", offset);
+        queryParams.Add("limit", pageSize);
+
+        var filters = new List<string> { "c.tenant_id = @tenantId" };
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            queryParams.Add("search", $"%{search.Trim()}%");
+            filters.Add("(c.title ILIKE @search OR c.reference ILIKE @search OR p.full_name ILIKE @search OR p.identifier_value ILIKE @search)");
+        }
+
+        if (!string.IsNullOrWhiteSpace(type))
+        {
+            queryParams.Add("type", type.Trim());
+            filters.Add("t.contract_type = @type");
+        }
+
+        if (patientId.HasValue)
+        {
+            queryParams.Add("patientId", patientId.Value);
+            filters.Add("p.id = @patientId");
+        }
+
+        if (!string.IsNullOrWhiteSpace(stage))
+        {
+            switch (stage.Trim().ToLowerInvariant())
+            {
+                case "draft":
+                    filters.Add("d.id IS NOT NULL AND v.id IS NULL");
+                    break;
+                case "in_review":
+                    filters.Add("v.review_status IN ('submitted', 'in_review')");
+                    break;
+                case "approved":
+                    filters.Add("v.review_status = 'internally_approved'");
+                    break;
+                case "ready_for_signature":
+                    filters.Add("v.review_status = 'internally_approved' AND sp.confirmed_revision IS NOT NULL");
+                    break;
+                case "completed":
+                    filters.Add("v.review_status = 'externally_signed'");
+                    break;
+            }
+        }
+
+        var whereClause = string.Join(" AND ", filters);
+
+        var countSql = $"""
+            SELECT count(DISTINCT c.id)::int
+            FROM odca.contracts c
+            LEFT JOIN odca.contract_drafts d ON (d.tenant_id, d.contract_id) = (c.tenant_id, c.id)
+            LEFT JOIN LATERAL (
+                SELECT v1.id, v1.source_template_id, v1.patient_id, v1.review_status
+                FROM odca.generated_contract_versions v1
+                WHERE (v1.tenant_id, v1.contract_id) = (c.tenant_id, c.id)
+                ORDER BY v1.version_number DESC LIMIT 1
+            ) v ON true
+            LEFT JOIN odca.contract_templates t ON t.id = COALESCE(d.source_template_id, v.source_template_id)
+            LEFT JOIN odca.patients p ON (p.tenant_id, p.id) = (c.tenant_id, COALESCE(d.patient_id, v.patient_id))
+            LEFT JOIN LATERAL (
+                SELECT sp1.confirmed_revision
+                FROM odca.signature_preparations sp1
+                WHERE (sp1.tenant_id, sp1.generated_version_id) = (c.tenant_id, v.id)
+                ORDER BY sp1.updated_at DESC LIMIT 1
+            ) sp ON true
+            WHERE {whereClause}
+            """;
+
+        var total = await c.ExecuteScalarAsync<int>(new CommandDefinition(countSql, queryParams, tx, cancellationToken: ct));
+
+        var selectSql = $"""
+            SELECT c.id AS ContractId,
+                   d.id AS DraftId,
+                   v.id AS LatestVersionId,
+                   v.version_number AS LatestVersionNumber,
+                   c.title AS Title,
+                   c.reference AS Reference,
+                   COALESCE(t.contract_type, 'service') AS DocumentType,
+                   COALESCE(t.name, 'Modelo de documento') AS TemplateName,
+                   p.id AS PatientId,
+                   p.full_name AS PatientName,
+                   COALESCE(d.updated_at, v.created_at, c.updated_at) AS UpdatedAt,
+                   CASE WHEN d.id IS NOT NULL THEN 'draft' ELSE 'none' END AS DraftStatus,
+                   COALESCE(v.review_status, 'none') AS ReviewStatus,
+                   COALESCE(v.pdf_status, 'not_generated') AS PdfStatus,
+                   CASE WHEN sp.id IS NOT NULL THEN (CASE WHEN sp.confirmed_revision IS NOT NULL THEN 'confirmed' ELSE 'preparing' END) ELSE 'not_started' END AS SignatureStatus,
+                   v.pdf_byte_size AS PdfByteSize,
+                   v.pdf_storage_key AS PdfStorageKey
+            FROM odca.contracts c
+            LEFT JOIN odca.contract_drafts d ON (d.tenant_id, d.contract_id) = (c.tenant_id, c.id)
+            LEFT JOIN LATERAL (
+                SELECT v1.id, v1.version_number, v1.created_at, v1.review_status, v1.pdf_status, v1.pdf_byte_size, v1.pdf_storage_key, v1.source_template_id, v1.patient_id
+                FROM odca.generated_contract_versions v1
+                WHERE (v1.tenant_id, v1.contract_id) = (c.tenant_id, c.id)
+                ORDER BY v1.version_number DESC LIMIT 1
+            ) v ON true
+            LEFT JOIN odca.contract_templates t ON t.id = COALESCE(d.source_template_id, v.source_template_id)
+            LEFT JOIN odca.patients p ON (p.tenant_id, p.id) = (c.tenant_id, COALESCE(d.patient_id, v.patient_id))
+            LEFT JOIN LATERAL (
+                SELECT sp1.id, sp1.status, sp1.confirmed_revision
+                FROM odca.signature_preparations sp1
+                WHERE (sp1.tenant_id, sp1.generated_version_id) = (c.tenant_id, v.id)
+                ORDER BY sp1.updated_at DESC LIMIT 1
+            ) sp ON true
+            WHERE {whereClause}
+            ORDER BY COALESCE(d.updated_at, v.created_at, c.updated_at) DESC
+            LIMIT @limit OFFSET @offset
+            """;
+
+        var rows = (await c.QueryAsync<DocumentRow>(new CommandDefinition(selectSql, queryParams, tx, cancellationToken: ct))).AsList();
+        await tx.CommitAsync(ct);
+
+        var items = rows.Select(r =>
+        {
+            var nextAction = "view_sheet";
+            if (r.LatestVersionId is null && r.DraftId is not null)
+            {
+                nextAction = "edit_draft";
+            }
+            else if (r.LatestVersionId is not null && r.PdfStatus != "completed")
+            {
+                nextAction = "generate_pdf";
+            }
+            else if (r.LatestVersionId is not null && r.ReviewStatus == "generated")
+            {
+                nextAction = canRequestReview ? "request_review" : "view_version";
+            }
+            else if (r.LatestVersionId is not null && (r.ReviewStatus == "submitted" || r.ReviewStatus == "in_review"))
+            {
+                nextAction = "open_review";
+            }
+            else if (r.LatestVersionId is not null && r.ReviewStatus == "internally_approved" && r.SignatureStatus != "confirmed")
+            {
+                nextAction = "prepare_signature";
+            }
+            else if (r.PdfStatus == "completed")
+            {
+                nextAction = "download_pdf";
+            }
+
+            var canDownloadPdf = r.PdfStatus == "completed" && (canReadDrafts || canDownloadDocs || (canReadPatientDocs && r.PatientId is not null));
+            return new StudioDocumentItem(
+                r.ContractId,
+                r.DraftId,
+                r.LatestVersionId,
+                r.LatestVersionNumber,
+                r.Title,
+                r.Reference,
+                r.DocumentType,
+                r.TemplateName,
+                r.PatientId,
+                r.PatientName,
+                r.UpdatedAt,
+                r.DraftStatus,
+                r.ReviewStatus,
+                r.PdfStatus,
+                r.SignatureStatus,
+                nextAction,
+                canManageDrafts,
+                canDownloadPdf);
+        }).ToList();
+
+        return Ok(new StudioDocumentPage(items, page, pageSize, total));
     }
 
     [HttpGet("drafts/{draftId:guid}/conference")]
@@ -715,4 +943,22 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     private sealed record PreparationOperationRow(string OperationType,string CommandHash,string ResponseJson);
     private sealed record ComparisonParticipant(Guid Id,string Name,string ParticipantType,Guid? SourceId,string Role,string? Email,string? Phone,int Position,int Revision);
     private sealed record SubmittedReviewRow(Guid ReviewId,Guid GeneratedVersionId,string Status,string? Instructions,DateTimeOffset? DueAt,Guid ReviewerId);
+    private sealed record DocumentRow(
+        Guid ContractId,
+        Guid? DraftId,
+        Guid? LatestVersionId,
+        int? LatestVersionNumber,
+        string Title,
+        string? Reference,
+        string DocumentType,
+        string TemplateName,
+        Guid? PatientId,
+        string? PatientName,
+        DateTimeOffset UpdatedAt,
+        string DraftStatus,
+        string ReviewStatus,
+        string PdfStatus,
+        string SignatureStatus,
+        long? PdfByteSize,
+        string? PdfStorageKey);
 }

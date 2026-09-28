@@ -44,12 +44,12 @@ public static class ContractDocumentRenderer
     private static void RenderHtml(JsonElement node, IReadOnlyDictionary<string, string?> values, StringBuilder output)
     {
         var type = node.GetProperty("type").GetString();
-        if (type == "text") { output.Append(WebUtility.HtmlEncode(node.GetProperty("text").GetString())); return; }
+        if (type == "text") { output.Append(SafeHtmlEncode(node.GetProperty("text").GetString())); return; }
         if (type == "field")
         {
             var id = node.GetProperty("fieldId").GetString()!;
             output.Append("<span class=\"document-field").Append(string.IsNullOrWhiteSpace(values.GetValueOrDefault(id)) ? " document-field-empty" : "")
-                .Append("\">").Append(WebUtility.HtmlEncode(values.GetValueOrDefault(id) ?? "Não informado")).Append("</span>");
+                .Append("\">").Append(SafeHtmlEncode(values.GetValueOrDefault(id) ?? "Não informado")).Append("</span>");
             return;
         }
         if (type == "pageBreak") { output.Append("<hr class=\"document-page-break\" aria-label=\"Quebra de página\">"); return; }
@@ -97,6 +97,16 @@ public static class ContractDocumentRenderer
         else if (type == "field") line.Append(values.GetValueOrDefault(node.GetProperty("fieldId").GetString()!) ?? "Não informado");
         else if (TryGetChildren(node, out var children)) foreach (var child in children) CollectText(child, values, line);
         if (type == "tableCell") line.Append("  |  ");
+    }
+
+    private static string SafeHtmlEncode(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return string.Empty;
+        return text.Replace("&", "&amp;", StringComparison.Ordinal)
+            .Replace("<", "&lt;", StringComparison.Ordinal)
+            .Replace(">", "&gt;", StringComparison.Ordinal)
+            .Replace("\"", "&quot;", StringComparison.Ordinal)
+            .Replace("'", "&#39;", StringComparison.Ordinal);
     }
 
     private static bool TryGetChildren(JsonElement node, out JsonElement.ArrayEnumerator children)

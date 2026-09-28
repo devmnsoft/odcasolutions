@@ -53,6 +53,7 @@ public sealed class PatientsController(IPatientRepository repository, IClock clo
     public Task<IActionResult> Restore(Guid tenantId, Guid patientId, [FromQuery] long expectedVersion, CancellationToken ct) => SetActive(tenantId, patientId, true, expectedVersion, ct);
 
     [HttpGet("{patientId:guid}/documents")]
+    [HttpGet("{patientId:guid}/archive")]
     public async Task<IActionResult> Archive(Guid tenantId, Guid patientId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     { if (!Actor(out var actor)) return Unauthorized(); page = Math.Max(1, page); pageSize = Math.Clamp(pageSize, 1, 50); var result = await repository.ArchiveAsync(actor, tenantId, patientId, page, pageSize, ct); return result is null ? Forbid() : Ok(result); }
 

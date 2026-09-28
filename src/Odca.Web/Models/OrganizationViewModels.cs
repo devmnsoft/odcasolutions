@@ -109,6 +109,13 @@ public sealed class CustomerHomePageViewModel
 {
     public required CustomerHomeResponse Home { get; init; }
     public OrganizationOverviewResponse? Overview { get; init; }
+    public IReadOnlyList<Odca.Contracts.Studio.StudioDocumentItem> RecentDocuments { get; init; } = [];
+    public IReadOnlyList<Odca.Contracts.Reviews.ReviewQueueItem> AssignedReviews { get; init; } = [];
+    public bool CanCreateDocument { get; init; }
+    public bool CanManagePatients { get; init; }
+    public bool CanReadReviews { get; init; }
+    public string? DocumentsError { get; init; }
+    public string? ReviewsError { get; init; }
 }
 
 public sealed class GettingStartedPageViewModel

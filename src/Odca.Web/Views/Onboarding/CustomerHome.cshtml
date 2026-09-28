@@ -3,19 +3,224 @@
     ViewData["Title"] = "Visão geral";
     var home = Model.Home;
     var overview = Model.Overview;
+    var isSuspended = home.TenantStatus == "suspended";
+    var isCommercialActive = home.CommercialState == "active";
 }
+
 <section>
     <div class="dashboard-heading page-heading">
         <div>
             <p class="eyebrow">Organização</p>
             <h1>@home.OrganizationName</h1>
-            <p class="muted">Estado comercial: <strong>@home.CommercialState</strong>. O uso operacional permanece limitado até ativação comercial validada.</p>
+            @if (isSuspended)
+            {
+                <div class="error" role="alert" style="margin-top: 0.5rem;">
+                    <strong>Organização suspensa:</strong> As operações de criação e edição estão temporariamente bloqueadas no servidor.
+                </div>
+            }
+            else if (isCommercialActive)
+            {
+                <p class="muted">Situação comercial: <strong style="color: var(--color-success, #16a34a);">Ativa</strong>. Operação documental liberada.</p>
+            }
+            else
+            {
+                <p class="muted">Situação comercial: <strong>@home.CommercialState</strong>. Algumas operações podem requerer ativação comercial validada.</p>
+            }
         </div>
         <div class="button-row">
-            <a class="button button-primary" asp-controller="Onboarding" asp-action="GettingStarted" asp-route-tenantId="@home.TenantId">Continuar configuração</a>
+            @if (Model.CanCreateDocument && !isSuspended)
+            {
+                <a class="button button-primary" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@home.TenantId">
+                    <span aria-hidden="true">+</span> Novo documento
+                </a>
+            }
+            @if (Model.CanManagePatients && !isSuspended)
+            {
+                <a class="button" asp-controller="Patients" asp-action="New" asp-route-tenantId="@home.TenantId">
+                    <span aria-hidden="true">♙</span> Cadastrar paciente
+                </a>
+            }
+            @if (overview?.Pendencies is { Count: > 0 } || !isCommercialActive)
+            {
+                <a class="button button-quiet" asp-controller="Onboarding" asp-action="GettingStarted" asp-route-tenantId="@home.TenantId">
+                    Configurações pendentes
+                </a>
+            }
             <a class="button" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@home.TenantId">Abrir equipe</a>
         </div>
     </div>
+
+    @* Documentos Recentes *@
+    <section class="card" style="margin-bottom: 2rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+            <h2 style="margin:0;">Documentos recentes</h2>
+            <a class="button button-small" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@home.TenantId">
+                Ver todos os documentos →
+            </a>
+        </div>
+
+        @if (Model.DocumentsError is not null)
+        {
+            <div class="error" role="alert">
+                <strong>Falha ao obter documentos:</strong> @Model.DocumentsError
+            </div>
+        }
+        else if (Model.RecentDocuments.Count > 0)
+        {
+            <div class="table-responsive">
+                <table class="table" aria-label="Documentos recentes">
+                    <thead>
+                        <tr>
+                            <th>Título</th>
+                            <th>Tipo</th>
+                            <th>Paciente</th>
+                            <th>Situação</th>
+                            <th>Atualizado em</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var doc in Model.RecentDocuments)
+                        {
+                            <tr>
+                                <td>
+                                    <strong>@doc.Title</strong>
+                                    @if (!string.IsNullOrWhiteSpace(doc.Reference))
+                                    {
+                                        <br /><small class="muted">Ref: @doc.Reference</small>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge badge-muted">
+                                        @(doc.DocumentType switch {
+                                            "service" => "Serviços",
+                                            "consent" => "Consentimento",
+                                            "nda" => "Confidencialidade",
+                                            "amendment" => "Aditivo",
+                                            _ => doc.DocumentType
+                                        })
+                                    </span>
+                                </td>
+                                <td>@(doc.PatientName ?? "—")</td>
+                                <td>
+                                    <small>
+                                        @(doc.DraftStatus == "draft" ? "Minuta em edição" :
+                                          doc.ReviewStatus == "submitted" ? "Em revisão" :
+                                          doc.ReviewStatus == "internally_approved" ? "Aprovado" :
+                                          doc.PdfStatus == "completed" ? "PDF concluído" : "Registrado")
+                                    </small>
+                                </td>
+                                <td>
+                                    <time datetime="@doc.UpdatedAt.ToString("o")">
+                                        @doc.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                    </time>
+                                </td>
+                                <td>
+                                    @if (doc.DraftId.HasValue && !isSuspended)
+                                    {
+                                        <a class="button button-small button-primary"
+                                           asp-controller="Studio"
+                                           asp-action="Edit"
+                                           asp-route-tenantId="@home.TenantId"
+                                           asp-route-draftId="@doc.DraftId.Value">
+                                            Continuar
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <a class="button button-small"
+                                           asp-controller="Contracts"
+                                           asp-action="Sheet"
+                                           asp-route-tenantId="@home.TenantId"
+                                           asp-route-contractId="@doc.ContractId">
+                                            Abrir
+                                        </a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="empty-state" style="padding: 1.5rem 0;">
+                <p class="muted">Nenhum documento recente nesta organização.</p>
+                @if (Model.CanCreateDocument && !isSuspended)
+                {
+                    <a class="button button-small button-primary" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@home.TenantId">
+                        Criar primeiro documento
+                    </a>
+                }
+            </div>
+        }
+    </section>
+
+    @* Revisões atribuídas ao usuário *@
+    @if (Model.CanReadReviews)
+    {
+        <section class="card" style="margin-bottom: 2rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                <h2 style="margin:0;">Revisões atribuídas a você</h2>
+                <a class="button button-small" asp-controller="Reviews" asp-action="Index" asp-route-tenantId="@home.TenantId">
+                    Ver todas as solicitações →
+                </a>
+            </div>
+
+            @if (Model.ReviewsError is not null)
+            {
+                <div class="error" role="alert">
+                    <strong>Falha ao obter revisões:</strong> @Model.ReviewsError
+                </div>
+            }
+            else if (Model.AssignedReviews.Count > 0)
+            {
+                <div class="table-responsive">
+                    <table class="table" aria-label="Revisões atribuídas">
+                        <thead>
+                            <tr>
+                                <th>Contrato / Documento</th>
+                                <th>Prazo limite</th>
+                                <th>Situação</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var review in Model.AssignedReviews)
+                            {
+                                <tr>
+                                    <td>
+                                        <strong>@review.ContractTitle</strong>
+                                        <br /><small class="muted">Versão @review.TargetVersion · Por @review.RequesterName</small>
+                                    </td>
+                                    <td>
+                                        @(review.DueAt.HasValue ? review.DueAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "Sem prazo")
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-muted">@review.Status</span>
+                                    </td>
+                                    <td>
+                                        <a class="button button-small button-primary"
+                                           asp-controller="Reviews"
+                                           asp-action="Detail"
+                                           asp-route-tenantId="@home.TenantId"
+                                           asp-route-reviewId="@review.Id">
+                                            Avaliar revisão
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="muted">Nenhuma revisão pendente atribuída a você no momento.</p>
+            }
+        </section>
+    }
 
     <div class="metrics">
         <a class="metric" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@home.TenantId" asp-route-tab="pessoas" asp-route-status="active">
@@ -38,11 +243,11 @@
             <strong>@home.PlanName</strong>
         </div>
         <div class="metric">
-            <span>Limite contratado de usuários</span>
+            <span>Limite de usuários</span>
             <strong>@(overview?.SeatLimit ?? home.ActiveSeats)</strong>
         </div>
         <div class="metric">
-            <span>Capacidade contratada de armazenamento</span>
+            <span>Capacidade de armazenamento</span>
             <strong>@(home.StorageBytes / 1_000_000_000) GB</strong>
         </div>
     </div>
@@ -65,13 +270,6 @@
                     </li>
                 }
             </ul>
-        </section>
-    }
-    else if (overview is null)
-    {
-        <section class="card empty-state">
-            <h2>Próximo passo</h2>
-            <p>Confira o estado comercial acima. Os limites exibidos pertencem à versão contratada do plano. Métricas de uso de assentos aparecerão quando a visão operacional estiver disponível.</p>
         </section>
     }
 </section>

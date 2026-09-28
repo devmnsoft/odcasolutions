@@ -544,6 +544,18 @@ public sealed partial class OdcaApiClient(HttpClient client)
     public Task<ApiCallResult<TemplatePreview>> GetOfficialStudioTemplateByKeyAsync(string token, Guid tenantId, string key, CancellationToken ct) =>
         SendAsync<TemplatePreview>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/studio/templates/official/{Uri.EscapeDataString(key)}", token), false, ct);
 
+    public Task<ApiCallResult<StudioDocumentPage>> GetStudioDocumentsAsync(
+        string token, Guid tenantId, string? search = null, string? type = null, string? stage = null, Guid? patientId = null, int page = 1, int pageSize = 20, CancellationToken ct = default)
+    {
+        var query = new List<string> { $"page={page}", $"pageSize={pageSize}" };
+        if (!string.IsNullOrWhiteSpace(search)) query.Add($"search={Uri.EscapeDataString(search.Trim())}");
+        if (!string.IsNullOrWhiteSpace(type)) query.Add($"type={Uri.EscapeDataString(type.Trim())}");
+        if (!string.IsNullOrWhiteSpace(stage)) query.Add($"stage={Uri.EscapeDataString(stage.Trim())}");
+        if (patientId.HasValue) query.Add($"patientId={patientId.Value}");
+        var qs = string.Join("&", query);
+        return SendAsync<StudioDocumentPage>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/studio/documents?{qs}", token), false, ct);
+    }
+
     public async Task<ApiCallResult<JsonElement>> CreateStudioDraftAsync(string token, Guid tenantId, CreateDraftRequest request, CancellationToken ct)
     {
         using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/drafts", token);
