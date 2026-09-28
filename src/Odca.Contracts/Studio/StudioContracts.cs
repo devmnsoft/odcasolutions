@@ -4,7 +4,7 @@ namespace Odca.Contracts.Studio;
 
 public sealed record TemplateCatalogItem(Guid Id, string Name, string? Description, string ContractType, string Scope, string Status, int Version, string Author, DateTimeOffset CreatedAt, DateTimeOffset? PublishedAt);
 public sealed record TemplateCatalogPage(IReadOnlyList<TemplateCatalogItem> Items, int Page, int PageSize, int Total);
-public sealed record CreateDraftRequest(Guid TemplateId, string Title, string? Reference, Guid? PatientId = null, Guid? ContractId = null);
+public sealed record CreateDraftRequest(Guid TemplateId, string Title, string? Reference, Guid? PatientId = null, Guid? ContractId = null, Guid? ChangeRequestId = null, string? Purpose = null);
 public sealed record StudioDocumentItem(
     Guid ContractId,
     Guid? DraftId,

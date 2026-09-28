@@ -116,6 +116,7 @@ public sealed class CustomerHomePageViewModel
     public bool CanReadReviews { get; init; }
     public string? DocumentsError { get; init; }
     public string? ReviewsError { get; init; }
+    public string? OverviewError { get; init; }
 }
 
 public sealed class GettingStartedPageViewModel

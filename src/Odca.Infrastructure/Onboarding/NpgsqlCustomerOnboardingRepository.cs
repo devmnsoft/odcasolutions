@@ -309,6 +309,15 @@ public sealed class NpgsqlCustomerOnboardingRepository(NpgsqlDataSource dataSour
             new { userId, tenantId },
             transaction,
             cancellationToken: cancellationToken));
+        string? timezone = null;
+        if (row is not null)
+        {
+            timezone = await connection.ExecuteScalarAsync<string>(new CommandDefinition(
+                "SELECT timezone FROM odca.tenants WHERE id = @tenantId",
+                new { tenantId = row.TenantId },
+                transaction,
+                cancellationToken: cancellationToken));
+        }
         await transaction.CommitAsync(cancellationToken);
         if (row is null)
         {
@@ -329,7 +338,8 @@ public sealed class NpgsqlCustomerOnboardingRepository(NpgsqlDataSource dataSour
                 row.UserStorageBytes,
                 row.FileBytes,
                 row.OcrPagesMonthly,
-                row.SignatureEnvelopesMonthly));
+                row.SignatureEnvelopesMonthly),
+            timezone);
     }
 
     private sealed class RegistrationInsertRow

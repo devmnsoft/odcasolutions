@@ -25,7 +25,8 @@ public sealed record CustomerHome(
     string OrganizationName,
     string TenantStatus,
     string CommercialState,
-    PlanCatalogItem Plan);
+    PlanCatalogItem Plan,
+    string? Timezone = null);
 
 public sealed record CustomerRegistrationDraft(
     Guid Id,

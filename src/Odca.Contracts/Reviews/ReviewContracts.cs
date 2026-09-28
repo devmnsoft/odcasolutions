@@ -3,11 +3,12 @@ namespace Odca.Contracts.Reviews;
 public sealed record ReviewQueuePage(IReadOnlyList<ReviewQueueItem> Items, int Page, int PageSize, int Total);
 public sealed record ReviewQueueItem(Guid Id, Guid ContractId, string Contract, string Status, string Requester,
     string? Assignee, DateTimeOffset OpenedAt, DateTimeOffset UpdatedAt, DateTimeOffset? DueAt, long Version,
-    int PublicMessages, int PendingComments);
+    int PublicMessages, int PendingComments, int? DocumentVersionNumber = null);
 public sealed record ReviewDetail(Guid Id, Guid ContractId, string Contract, string Status, string Requester,
     string? Assignee, string? Instructions, DateTimeOffset OpenedAt, DateTimeOffset UpdatedAt,
     DateTimeOffset? DueAt, long Version, Guid? DocumentVersionId, Guid? GeneratedVersionId,
-    IReadOnlyList<ReviewMessage> Messages, IReadOnlyList<ReviewHistoryItem> History);
+    IReadOnlyList<ReviewMessage> Messages, IReadOnlyList<ReviewHistoryItem> History,
+    int? DocumentVersionNumber = null);
 public sealed record ReviewMessage(Guid Id, string Body, string? Reference, string Author, string Visibility,
     DateTimeOffset CreatedAt, bool Resolved);
 public sealed record ReviewHistoryItem(long Id, string Type, string Actor, DateTimeOffset OccurredAt);

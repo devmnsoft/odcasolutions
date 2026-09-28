@@ -1,5 +1,9 @@
 $ErrorActionPreference = 'Stop'
-$npgsql = (Resolve-Path 'src/Odca.Bootstrap/bin/Release/net10.0/Npgsql.dll').Path
+$npgsql = if (Test-Path 'src/Odca.Bootstrap/bin/Debug/net10.0/Npgsql.dll') {
+    (Resolve-Path 'src/Odca.Bootstrap/bin/Debug/net10.0/Npgsql.dll').Path
+} else {
+    (Resolve-Path 'src/Odca.Bootstrap/bin/Release/net10.0/Npgsql.dll').Path
+}
 [System.Reflection.Assembly]::LoadFrom($npgsql) | Out-Null
 $conn = [Npgsql.NpgsqlConnection]::new('Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=123456')
 $conn.Open()

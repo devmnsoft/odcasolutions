@@ -91,6 +91,7 @@ public sealed class OnboardingController(
             home.Plan.DisplayName,
             home.Plan.Version,
             home.Plan.ActiveSeats,
-            home.Plan.StorageBytes));
+            home.Plan.StorageBytes,
+            home.Timezone));
     }
 }

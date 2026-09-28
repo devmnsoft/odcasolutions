@@ -52,14 +52,17 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
         var rows = await connection.QueryAsync<QueueRow>(new CommandDefinition($"""
             SELECT r.id AS Id,r.contract_id AS ContractId,r.requested_by AS RequestedBy,c.title AS Contract,r.status AS Status,requester.display_name AS Requester,
               assignee.display_name AS Assignee,r.opened_at AS OpenedAt,r.updated_at AS UpdatedAt,r.due_at AS DueAt,r.row_version AS Version,
+              coalesce(gv.version_number, dv.version_number) AS DocumentVersionNumber,
               count(cm.id) FILTER(WHERE cm.visibility='client')::integer AS PublicMessages,
               count(cm.id) FILTER(WHERE cm.resolved_at IS NULL AND (@canManage OR cm.visibility='client'))::integer AS PendingComments
             FROM odca.contract_review_requests r JOIN odca.contracts c ON c.tenant_id=r.tenant_id AND c.id=r.contract_id
             JOIN odca.users requester ON requester.id=r.requested_by
+            LEFT JOIN odca.generated_contract_versions gv ON gv.tenant_id=r.tenant_id AND gv.id=r.generated_version_id
+            LEFT JOIN odca.document_versions dv ON dv.tenant_id=r.tenant_id AND dv.id=r.document_version_id
             LEFT JOIN odca.contract_review_steps s ON s.tenant_id=r.tenant_id AND s.review_id=r.id AND s.status='current'
             LEFT JOIN odca.users assignee ON assignee.id=s.reviewer_id
             LEFT JOIN odca.contract_review_comments cm ON cm.tenant_id=r.tenant_id AND cm.review_id=r.id
-            WHERE {where} GROUP BY r.id,c.title,requester.display_name,assignee.display_name
+            WHERE {where} GROUP BY r.id,c.title,requester.display_name,assignee.display_name,gv.version_number,dv.version_number
             ORDER BY r.updated_at DESC,r.id LIMIT @pageSize OFFSET @offset
             """, new { args.tenantId,args.actor,args.status,args.scope,args.assigneeId,args.contractId,args.from,args.to,args.search,args.offset,args.pageSize,canManage }, transaction, cancellationToken: ct));
         await transaction.CommitAsync(ct);
@@ -150,9 +153,12 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
         var row = await connection.QuerySingleOrDefaultAsync<DetailRow>(new CommandDefinition("""
             SELECT r.id AS Id,r.contract_id AS ContractId,r.requested_by AS RequestedBy,c.title AS Contract,r.status AS Status,requester.display_name AS Requester,
               assignee.display_name AS Assignee,r.instructions AS Instructions,r.opened_at AS OpenedAt,r.updated_at AS UpdatedAt,
-              r.due_at AS DueAt,r.row_version AS Version,r.document_version_id AS DocumentVersionId,r.generated_version_id AS GeneratedVersionId
+              r.due_at AS DueAt,r.row_version AS Version,r.document_version_id AS DocumentVersionId,r.generated_version_id AS GeneratedVersionId,
+              coalesce(gv.version_number, dv.version_number) AS DocumentVersionNumber
             FROM odca.contract_review_requests r JOIN odca.contracts c ON c.tenant_id=r.tenant_id AND c.id=r.contract_id
             JOIN odca.users requester ON requester.id=r.requested_by
+            LEFT JOIN odca.generated_contract_versions gv ON gv.tenant_id=r.tenant_id AND gv.id=r.generated_version_id
+            LEFT JOIN odca.document_versions dv ON dv.tenant_id=r.tenant_id AND dv.id=r.document_version_id
             LEFT JOIN odca.contract_review_steps s ON s.tenant_id=r.tenant_id AND s.review_id=r.id AND s.status='current'
             LEFT JOIN odca.users assignee ON assignee.id=s.reviewer_id WHERE r.tenant_id=@tenantId AND r.id=@reviewId
             """, new { tenantId, reviewId }, transaction, cancellationToken: ct));
@@ -170,7 +176,7 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
             WHERE e.tenant_id=@tenantId AND e.review_id=@reviewId ORDER BY e.occurred_at,e.id
             """, new { tenantId, reviewId }, transaction, cancellationToken: ct));
         await transaction.CommitAsync(ct);
-        return Ok(new ReviewDetail(row.Id,row.ContractId,row.Contract,row.Status,row.Requester,row.Assignee,row.Instructions,row.OpenedAt,row.UpdatedAt,row.DueAt,row.Version,row.DocumentVersionId,row.GeneratedVersionId,messages.ToArray(),history.ToArray()));
+        return Ok(new ReviewDetail(row.Id,row.ContractId,row.Contract,row.Status,row.Requester,row.Assignee,row.Instructions,row.OpenedAt,row.UpdatedAt,row.DueAt,row.Version,row.DocumentVersionId,row.GeneratedVersionId,messages.ToArray(),history.ToArray(),row.DocumentVersionNumber));
     }
 
     [HttpPost("{reviewId:guid}/messages")]
@@ -276,9 +282,25 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
     private Guid? Actor()=>Guid.TryParse(User.FindFirstValue("sub"),out var id)?id:null;
     private static Task<bool> Allowed(NpgsqlConnection c,Guid actor,Guid tenant,string permission,CancellationToken ct)=>c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT odca.tenant_actor_has_permission(@actor,@tenant,@permission)",new{actor,tenant,permission},cancellationToken:ct));
     private static Task<int> SetTenant(NpgsqlConnection c,Guid tenant,Guid actor,NpgsqlTransaction tx,CancellationToken ct)=>c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenant::text,true),set_config('odca.user_id',@actor::text,true)",new{tenant,actor},tx,cancellationToken:ct));
-    private static ReviewQueueItem Map(QueueRow r)=>new(r.Id,r.ContractId,r.Contract,r.Status,r.Requester,r.Assignee,r.OpenedAt,r.UpdatedAt,r.DueAt,r.Version,r.PublicMessages,r.PendingComments);
-    private sealed record QueueRow(Guid Id,Guid ContractId,string Contract,string Status,string Requester,string? Assignee,DateTimeOffset OpenedAt,DateTimeOffset UpdatedAt,DateTimeOffset? DueAt,long Version,int PublicMessages,int PendingComments);
-    private sealed record DetailRow(Guid Id,Guid ContractId,Guid RequestedBy,string Contract,string Status,string Requester,string? Assignee,string? Instructions,DateTimeOffset OpenedAt,DateTimeOffset UpdatedAt,DateTimeOffset? DueAt,long Version,Guid? DocumentVersionId,Guid? GeneratedVersionId);
+    private static ReviewQueueItem Map(QueueRow r)=>new(r.Id,r.ContractId,r.Contract,r.Status,r.Requester,r.Assignee,r.OpenedAt,r.UpdatedAt,r.DueAt,r.Version,r.PublicMessages,r.PendingComments,r.DocumentVersionNumber);
+    private sealed class QueueRow
+    {
+        public Guid Id { get; set; }
+        public Guid ContractId { get; set; }
+        public Guid RequestedBy { get; set; }
+        public string Contract { get; set; } = "";
+        public string Status { get; set; } = "";
+        public string Requester { get; set; } = "";
+        public string? Assignee { get; set; }
+        public DateTimeOffset OpenedAt { get; set; }
+        public DateTimeOffset UpdatedAt { get; set; }
+        public DateTimeOffset? DueAt { get; set; }
+        public long Version { get; set; }
+        public int? DocumentVersionNumber { get; set; }
+        public int PublicMessages { get; set; }
+        public int PendingComments { get; set; }
+    }
+    private sealed record DetailRow(Guid Id,Guid ContractId,Guid RequestedBy,string Contract,string Status,string Requester,string? Assignee,string? Instructions,DateTimeOffset OpenedAt,DateTimeOffset UpdatedAt,DateTimeOffset? DueAt,long Version,Guid? DocumentVersionId,Guid? GeneratedVersionId,int? DocumentVersionNumber);
     private sealed record DecisionRow(long Version,string Status,Guid? GeneratedVersionId,Guid? StepId,Guid? ReviewerId);
     private sealed record DecisionReceipt(string EventType,string Status,string Action,long ExpectedVersion);
     private sealed record AssignmentReceipt(Guid AssigneeId,long ExpectedVersion);

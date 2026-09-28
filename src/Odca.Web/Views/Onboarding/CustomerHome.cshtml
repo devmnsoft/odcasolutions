@@ -5,6 +5,17 @@
     var overview = Model.Overview;
     var isSuspended = home.TenantStatus == "suspended";
     var isCommercialActive = home.CommercialState == "active";
+    var tzId = string.IsNullOrWhiteSpace(home.Timezone) ? "America/Sao_Paulo" : home.Timezone.Trim();
+    TimeZoneInfo timeZone;
+    try
+    {
+        timeZone = TimeZoneInfo.FindSystemTimeZoneById(tzId);
+    }
+    catch
+    {
+        try { timeZone = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo"); }
+        catch { timeZone = TimeZoneInfo.Utc; }
+    }
 }
 
 <section>
@@ -112,7 +123,7 @@
                                 </td>
                                 <td>
                                     <time datetime="@doc.UpdatedAt.ToString("o")">
-                                        @doc.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                        @TimeZoneInfo.ConvertTime(doc.UpdatedAt, timeZone).ToString("dd/MM/yyyy HH:mm")
                                     </time>
                                 </td>
                                 <td>
@@ -192,10 +203,13 @@
                                 <tr>
                                     <td>
                                         <strong>@review.Contract</strong>
-                                        <br /><small class="muted">Versão @review.Version · Por @review.Requester</small>
+                                        <br />
+                                        <small class="muted">
+                                            @(review.DocumentVersionNumber.HasValue ? $"Versão {review.DocumentVersionNumber.Value}" : "Sem versão documental") · Por @review.Requester
+                                        </small>
                                     </td>
                                     <td>
-                                        @(review.DueAt.HasValue ? review.DueAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "Sem prazo")
+                                        @(review.DueAt.HasValue ? TimeZoneInfo.ConvertTime(review.DueAt.Value, timeZone).ToString("dd/MM/yyyy HH:mm") : "Sem prazo")
                                     </td>
                                     <td>
                                         <span class="badge badge-muted">@review.Status</span>
@@ -251,6 +265,13 @@
             <strong>@(home.StorageBytes / 1_000_000_000) GB</strong>
         </div>
     </div>
+
+    @if (Model.OverviewError is not null)
+    {
+        <div class="error" role="alert" style="margin-top: 1.5rem;">
+            <strong>Aviso da organização:</strong> @Model.OverviewError
+        </div>
+    }
 
     @if (overview?.Pendencies is { Count: > 0 })
     {

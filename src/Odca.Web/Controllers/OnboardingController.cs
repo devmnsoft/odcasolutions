@@ -100,10 +100,15 @@ public sealed class OnboardingController(OdcaApiClient apiClient, IUserTenantCon
         }
 
         OrganizationOverviewResponse? overview = null;
+        string? overviewError = null;
         var overviewResult = await apiClient.GetOrganizationOverviewAsync(token, result.Value!.TenantId, cancellationToken);
         if (overviewResult.Succeeded)
         {
             overview = overviewResult.Value;
+        }
+        else if (overviewResult.Status != ApiCallStatus.Forbidden)
+        {
+            overviewError = overviewResult.UserMessage("Não foi possível carregar as informações da organização e pendências.");
         }
 
         var tenantId = result.Value.TenantId;
@@ -153,7 +158,8 @@ public sealed class OnboardingController(OdcaApiClient apiClient, IUserTenantCon
             CanManagePatients = canManagePatients,
             CanReadReviews = canReadReviews,
             DocumentsError = documentsError,
-            ReviewsError = reviewsError
+            ReviewsError = reviewsError,
+            OverviewError = overviewError
         });
     }
     [Authorize]

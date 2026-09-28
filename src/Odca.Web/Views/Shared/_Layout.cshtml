@@ -109,6 +109,7 @@
                             @if (canReadOrganization)
                             {
                                 <a class="nav-item @(controller == "Organizations" && ViewContext.RouteData.Values["action"]?.ToString() == "Team" ? "active" : null)" aria-label="Equipe e perfis" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">◎</span><span>Equipe e perfis</span></a>
+                                <a class="nav-item @(controller == "Organizations" && ViewContext.RouteData.Values["action"]?.ToString() == "Edit" ? "active" : null)" aria-label="Configurações da organização" asp-controller="Organizations" asp-action="Edit" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">⚙</span><span>Configurações</span></a>
                                 <a class="nav-item @(controller == "Consumption" ? "active" : null)" asp-controller="Consumption" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">◫</span><span>Plano e consumo</span></a>
                             }
                         }
@@ -156,6 +157,7 @@
                             @if (canReadOrganization)
                             {
                                 <a class="nav-item @(controller == "Organizations" && ViewContext.RouteData.Values["action"]?.ToString() == "Team" ? "active" : null)" aria-label="Equipe e perfis" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">◎</span><span>Equipe e perfis</span></a>
+                                <a class="nav-item @(controller == "Organizations" && ViewContext.RouteData.Values["action"]?.ToString() == "Edit" ? "active" : null)" aria-label="Configurações da organização" asp-controller="Organizations" asp-action="Edit" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">⚙</span><span>Configurações</span></a>
                                 <a class="nav-item @(controller == "Consumption" ? "active" : null)" asp-controller="Consumption" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">◫</span><span>Plano e consumo</span></a>
                             }
                             @if (canReadImports)

@@ -1,27 +1,29 @@
-@model Odca.Contracts.Studio.StudioDocumentPage
+@model DocumentsIndexViewModel
 @{
-    var tenantId = (Guid)ViewData["TenantId"]!;
-    var search = ViewData["Search"] as string;
-    var type = ViewData["Type"] as string;
-    var stage = ViewData["Stage"] as string;
-    var patientId = ViewData["PatientId"] as Guid?;
-    var patients = ViewData["Patients"] as IReadOnlyList<Odca.Contracts.Patients.PatientSummary> ?? [];
     ViewData["Title"] = "Central de Documentos";
+    var tenantId = Model.TenantId;
+    var docs = Model.Documents;
 }
 
 <section class="page-heading">
     <div>
-        <p class="eyebrow">Documentos da organização</p>
+        <p class="eyebrow">Gestão documental</p>
         <h1>Central de Documentos</h1>
         <p class="muted">Acompanhe minutas, versões, revisões e preparações para assinatura de forma centralizada e rastreável.</p>
     </div>
     <div class="button-row">
-        <a class="button button-primary" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@tenantId">
-            <span aria-hidden="true">+</span> Novo documento
-        </a>
-        <a class="button" asp-controller="Patients" asp-action="New" asp-route-tenantId="@tenantId">
-            <span aria-hidden="true">♙</span> Cadastrar paciente
-        </a>
+        @if (Model.CanCreateDocument)
+        {
+            <a class="button button-primary" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@tenantId" asp-route-patientId="@Model.PatientId">
+                <span aria-hidden="true">+</span> Novo documento
+            </a>
+        }
+        @if (Model.CanManagePatients)
+        {
+            <a class="button" asp-controller="Patients" asp-action="New" asp-route-tenantId="@tenantId">
+                <span aria-hidden="true">♙</span> Cadastrar paciente
+            </a>
+        }
     </div>
 </section>
 
@@ -37,56 +39,113 @@
     </p>
 </details>
 
-@if (ViewData["LoadError"] is string loadError)
+@if (TempData["ErrorMessage"] is string tempError)
 {
-    <div class="error" role="alert">
-        <strong>Falha ao carregar documentos:</strong> @loadError
+    <div class="error" role="alert" style="margin-bottom: 1rem;">
+        <strong>Aviso:</strong> @tempError
+    </div>
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="error" role="alert" style="margin-bottom: 1rem;">
+        <strong>Falha ao carregar documentos:</strong> @Model.ErrorMessage
     </div>
 }
 
 <form method="get" class="studio-filter" role="search" aria-label="Filtro de documentos">
     <label>
         Pesquisar
-        <input name="search" value="@search" placeholder="Título, referência ou paciente" />
+        <input name="search" value="@Model.Search" placeholder="Título, referência ou paciente" />
     </label>
     <label>
         Tipo
         <select name="type">
             <option value="">Todos os tipos</option>
-            <option value="service" selected="@(type == "service")">Prestação de serviços</option>
-            <option value="consent" selected="@(type == "consent")">Consentimento informado</option>
-            <option value="nda" selected="@(type == "nda")">Confidencialidade</option>
-            <option value="amendment" selected="@(type == "amendment")">Aditivo contratual</option>
-            <option value="supply" selected="@(type == "supply")">Fornecimento</option>
-            <option value="lease" selected="@(type == "lease")">Locação</option>
+            <option value="service" selected="@(Model.Type == "service")">Prestação de serviços</option>
+            <option value="consent" selected="@(Model.Type == "consent")">Consentimento informado</option>
+            <option value="nda" selected="@(Model.Type == "nda")">Confidencialidade</option>
+            <option value="amendment" selected="@(Model.Type == "amendment")">Aditivo contratual</option>
+            <option value="supply" selected="@(Model.Type == "supply")">Fornecimento</option>
+            <option value="lease" selected="@(Model.Type == "lease")">Locação</option>
         </select>
     </label>
-    <label>
-        Paciente
-        <select name="patientId">
-            <option value="">Todos os pacientes</option>
-            @foreach (var p in patients)
-            {
-                <option value="@p.Id" selected="@(patientId == p.Id)">@p.FullName (@(p.MaskedIdentifier ?? "—"))</option>
-            }
-        </select>
-    </label>
+    @if (Model.CanReadPatients)
+    {
+        <label>
+            Buscar paciente
+            <input name="patientSearch" value="@Model.PatientSearch" placeholder="Filtrar paciente por nome" />
+        </label>
+        <label>
+            Paciente
+            <select name="patientId">
+                <option value="">Todos os pacientes</option>
+                @if (Model.SelectedPatient is not null && !Model.PatientOptions.Any(p => p.Id == Model.SelectedPatient.Id))
+                {
+                    <option value="@Model.SelectedPatient.Id" selected="selected">
+                        @Model.SelectedPatient.FullName (@(Model.SelectedPatient.MaskedIdentifier ?? "—"))@(Model.SelectedPatient.Active ? "" : " [Inativo]")
+                    </option>
+                }
+                @foreach (var p in Model.PatientOptions)
+                {
+                    <option value="@p.Id" selected="@(Model.PatientId == p.Id)">
+                        @p.FullName (@(p.MaskedIdentifier ?? "—"))@(p.Active ? "" : " [Inativo]")
+                    </option>
+                }
+            </select>
+        </label>
+    }
     <label>
         Etapa
         <select name="stage">
             <option value="">Todas as etapas</option>
-            <option value="draft" selected="@(stage == "draft")">Minutas em edição</option>
-            <option value="in_review" selected="@(stage == "in_review")">Em revisão interna</option>
-            <option value="approved" selected="@(stage == "approved")">Aprovados internamente</option>
-            <option value="ready_for_signature" selected="@(stage == "ready_for_signature")">Prontos para assinatura</option>
-            <option value="completed" selected="@(stage == "completed")">Assinados / Concluídos</option>
+            <option value="draft" selected="@(Model.Stage == "draft")">Minutas em edição</option>
+            <option value="in_review" selected="@(Model.Stage == "in_review")">Em revisão interna</option>
+            <option value="approved" selected="@(Model.Stage == "approved")">Aprovados internamente</option>
+            <option value="ready_for_signature" selected="@(Model.Stage == "ready_for_signature")">Prontos para assinatura</option>
+            <option value="completed" selected="@(Model.Stage == "completed")">Assinados / Concluídos</option>
         </select>
     </label>
-    <button class="button button-primary" type="submit">Filtrar</button>
-    <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">Limpar filtros</a>
+    <div style="display:flex; gap:0.5rem; align-items:flex-end;">
+        <button class="button button-primary" type="submit">Filtrar</button>
+        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">Limpar</a>
+    </div>
 </form>
 
-@if (Model.Items.Count > 0)
+@if (Model.SelectedPatient is not null)
+{
+    <div class="card" style="padding: 0.75rem 1rem; margin-bottom: 1.5rem; background: var(--color-surface-subtle, #f8fafc); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <span class="muted">Filtrando por paciente:</span>
+            <strong>@Model.SelectedPatient.FullName</strong>
+            @if (!string.IsNullOrWhiteSpace(Model.SelectedPatient.MaskedIdentifier))
+            {
+                <small class="muted">(@Model.SelectedPatient.MaskedIdentifier)</small>
+            }
+            @if (!Model.SelectedPatient.Active)
+            {
+                <span class="badge badge-muted" style="margin-left: 0.5rem;">Inativo no cadastro</span>
+            }
+        </div>
+        <a class="button button-small button-quiet"
+           asp-action="Index"
+           asp-route-tenantId="@tenantId"
+           asp-route-search="@Model.Search"
+           asp-route-type="@Model.Type"
+           asp-route-stage="@Model.Stage">
+            Remover filtro de paciente ✕
+        </a>
+    </div>
+}
+
+@if (Model.PatientErrorMessage is not null)
+{
+    <div class="error" role="alert" style="margin-bottom: 1rem;">
+        <strong>Aviso da lista de pacientes:</strong> @Model.PatientErrorMessage
+    </div>
+}
+
+@if (docs.Items.Count > 0)
 {
     <div class="table-responsive">
         <table class="table" aria-label="Lista de documentos">
@@ -96,12 +155,13 @@
                     <th>Tipo</th>
                     <th>Paciente</th>
                     <th>Situação do fluxo</th>
+                    <th>Próxima ação</th>
                     <th>Atualização</th>
                     <th>Ações</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var doc in Model.Items)
+                @foreach (var doc in docs.Items)
                 {
                     <tr>
                         <td>
@@ -151,7 +211,7 @@
                                         "draft" => "Em preparação",
                                         "submitted" or "in_review" => "Em análise",
                                         "changes_requested" => "Ajustes solicitados",
-                                        "internally_approved" => "Aprovada",
+                                        "internally_approved" => "Aprovada internamente",
                                         _ => doc.ReviewStatus
                                     })
                                 </small>
@@ -177,28 +237,58 @@
                             </div>
                         </td>
                         <td>
+                            <span class="badge @(doc.NextAction switch {
+                                "edit_draft" => "badge-primary",
+                                "submit_review" or "in_review" => "badge-warning",
+                                "download_pdf" => "badge-info",
+                                "prepare_signature" => "badge-success",
+                                "completed" => "badge-muted",
+                                _ => "badge-muted"
+                            })">
+                                @(doc.NextAction switch {
+                                    "edit_draft" => "Continuar minuta",
+                                    "submit_review" => "Solicitar revisão",
+                                    "in_review" => "Aguardando revisão",
+                                    "download_pdf" => "Baixar PDF",
+                                    "prepare_signature" => "Preparar assinatura",
+                                    "completed" => "Concluído",
+                                    _ => doc.NextAction
+                                })
+                            </span>
+                        </td>
+                        <td>
                             <time datetime="@doc.UpdatedAt.ToString("o")">
                                 @doc.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                             </time>
                         </td>
                         <td>
                             <div class="button-row">
-                                @if (doc.DraftId.HasValue)
+                                @if (doc.DraftId.HasValue && doc.CanEdit)
                                 {
                                     <a class="button button-small button-primary"
                                        asp-controller="Studio"
                                        asp-action="Edit"
                                        asp-route-tenantId="@tenantId"
                                        asp-route-draftId="@doc.DraftId.Value">
-                                        Continuar minuta
+                                        Continuar
                                     </a>
                                 }
-                                else if (doc.LatestVersionId.HasValue && doc.CanDownloadPdf)
+                                @if (doc.LatestVersionId.HasValue && doc.CanDownloadPdf)
                                 {
-                                    <a class="button button-small button-primary"
+                                    <a class="button button-small"
                                        href="/api/v1/organizations/@tenantId/studio/versions/@doc.LatestVersionId.Value/pdf"
                                        download>
-                                        Baixar PDF
+                                        PDF
+                                    </a>
+                                }
+                                @if (doc.LatestVersionId.HasValue)
+                                {
+                                    <a class="button button-small"
+                                       asp-controller="Studio"
+                                       asp-action="Version"
+                                       asp-route-tenantId="@tenantId"
+                                       asp-route-versionId="@doc.LatestVersionId.Value">
+                                        Versão
                                     </a>
                                 }
                                 <a class="button button-small"
@@ -216,45 +306,53 @@
         </table>
     </div>
 
-    @if (Model.Total > Model.PageSize)
+    @if (docs.Total > docs.PageSize)
     {
         <nav class="pagination" aria-label="Paginação de documentos">
-            @if (Model.Page > 1)
+            @if (docs.Page > 1)
             {
                 <a class="button button-quiet"
                    asp-route-tenantId="@tenantId"
-                   asp-route-search="@search"
-                   asp-route-type="@type"
-                   asp-route-stage="@stage"
-                   asp-route-patientId="@patientId"
-                   asp-route-page="@(Model.Page - 1)">Anterior</a>
+                   asp-route-search="@Model.Search"
+                   asp-route-type="@Model.Type"
+                   asp-route-stage="@Model.Stage"
+                   asp-route-patientId="@Model.PatientId"
+                   asp-route-patientSearch="@Model.PatientSearch"
+                   asp-route-page="@(docs.Page - 1)">Anterior</a>
             }
-            <span>Página @Model.Page de @(Math.Ceiling((double)Model.Total / Model.PageSize)) (@Model.Total documento(s))</span>
-            @if (Model.Page * Model.PageSize < Model.Total)
+            <span>Página @docs.Page de @(Math.Ceiling((double)docs.Total / docs.PageSize)) (@docs.Total documento(s))</span>
+            @if (docs.Page * docs.PageSize < docs.Total)
             {
                 <a class="button button-quiet"
                    asp-route-tenantId="@tenantId"
-                   asp-route-search="@search"
-                   asp-route-type="@type"
-                   asp-route-stage="@stage"
-                   asp-route-patientId="@patientId"
-                   asp-route-page="@(Model.Page + 1)">Próxima</a>
+                   asp-route-search="@Model.Search"
+                   asp-route-type="@Model.Type"
+                   asp-route-stage="@Model.Stage"
+                   asp-route-patientId="@Model.PatientId"
+                   asp-route-patientSearch="@Model.PatientSearch"
+                   asp-route-page="@(docs.Page + 1)">Próxima</a>
             }
         </nav>
     }
 }
-else if (ViewData["LoadError"] is null)
+else if (Model.ErrorMessage is null)
 {
     <div class="card empty-state">
         <h2>Nenhum documento encontrado</h2>
         <p>Não há documentos para os filtros aplicados. Clique no botão abaixo para iniciar uma nova minuta a partir de um modelo publicado.</p>
         <div class="button-row" style="margin-top: 1rem;">
-            <a class="button button-primary" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@tenantId">
-                Criar primeiro documento
-            </a>
-            <a class="button" asp-controller="Patients" asp-action="New" asp-route-tenantId="@tenantId">
-                Cadastrar paciente
-            </a>
+            @if (Model.CanCreateDocument)
+            {
+                <a class="button button-primary" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@tenantId" asp-route-patientId="@Model.PatientId">
+                    Criar primeiro documento
+                </a>
+            }
+            @if (Model.CanManagePatients)
+            {
+                <a class="button" asp-controller="Patients" asp-action="New" asp-route-tenantId="@tenantId">
+                    Cadastrar paciente
+                </a>
+            }
         </div>
     </div>
 }

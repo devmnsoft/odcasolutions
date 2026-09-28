@@ -32,4 +32,5 @@ public sealed record CustomerHomeResponse(
     string PlanName,
     int PlanVersion,
     int ActiveSeats,
-    long StorageBytes);
+    long StorageBytes,
+    string? Timezone = null);

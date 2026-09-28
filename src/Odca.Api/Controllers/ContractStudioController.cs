@@ -72,7 +72,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         if (!await Allowed(c, actor.Value, tenantId, "tenant.contract_drafts.manage", ct)) return Forbid();
         await using var tx = await c.BeginTransactionAsync(ct); await SetTenant(c, tenantId, actor.Value, tx, ct);
         var source = await c.QuerySingleOrDefaultAsync<TemplateSource>(new CommandDefinition("""
-            SELECT t.id AS TemplateId,v.id AS VersionId,v.content::text AS Content,v.fields::text AS Fields
+            SELECT t.id AS TemplateId,v.id AS VersionId,v.content::text AS Content,v.fields::text AS Fields,t.name AS TemplateName
             FROM odca.contract_templates t JOIN odca.contract_template_versions v ON v.template_id=t.id AND v.version_number=t.current_version
             WHERE t.id=@templateId AND t.status='published' AND (t.scope='global' OR t.owner_tenant_id=@tenantId OR EXISTS(SELECT 1 FROM odca.contract_template_access a WHERE a.template_id=t.id AND a.tenant_id=@tenantId AND a.revoked_at IS NULL))
             """, new { request.TemplateId, tenantId }, tx, cancellationToken: ct));
@@ -82,17 +82,50 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         Validate(source.Content, source.Fields, "[]", false);
 
         Guid contractId;
+        string? effectiveReference = request.Reference?.Trim();
         if (request.ContractId.HasValue)
         {
             var targetContractId = request.ContractId.Value;
-            var contractExists = await c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.contracts WHERE tenant_id=@tenantId AND id=@targetContractId)", new { tenantId, targetContractId }, tx, cancellationToken: ct));
-            if (!contractExists) return NotFound();
+            var contractRow = await c.QuerySingleOrDefaultAsync<ContractInfoRow>(new CommandDefinition(
+                "SELECT id AS Id, title AS Title, reference AS Reference FROM odca.contracts WHERE tenant_id=@tenantId AND id=@targetContractId",
+                new { tenantId, targetContractId }, tx, cancellationToken: ct));
+            if (contractRow is null) return NotFound();
 
-            var existingDraftId = await c.QuerySingleOrDefaultAsync<Guid?>(new CommandDefinition("SELECT id FROM odca.contract_drafts WHERE tenant_id=@tenantId AND contract_id=@targetContractId", new { tenantId, targetContractId }, tx, cancellationToken: ct));
-            if (existingDraftId.HasValue)
+            if (string.IsNullOrWhiteSpace(effectiveReference))
             {
+                effectiveReference = contractRow.Reference;
+            }
+
+            var existingDraft = await c.QuerySingleOrDefaultAsync<ExistingDraftRow>(new CommandDefinition("""
+                SELECT d.id AS Id, d.source_template_id AS TemplateId, d.patient_id AS PatientId, t.name AS TemplateName
+                FROM odca.contract_drafts d
+                JOIN odca.contract_templates t ON t.id = d.source_template_id
+                WHERE d.tenant_id = @tenantId AND d.contract_id = @targetContractId
+                """, new { tenantId, targetContractId }, tx, cancellationToken: ct));
+
+            if (existingDraft is not null)
+            {
+                if (existingDraft.TemplateId != source.TemplateId)
+                {
+                    return Conflict(new {
+                        title = $"O contrato já possui uma minuta em andamento com o modelo \"{existingDraft.TemplateName}\". Conclua ou remova a minuta existente para usar outro modelo.",
+                        code = "draft_template_conflict",
+                        existingDraftId = existingDraft.Id,
+                        existingTemplateId = existingDraft.TemplateId
+                    });
+                }
+
+                if (request.PatientId.HasValue && existingDraft.PatientId.HasValue && existingDraft.PatientId.Value != request.PatientId.Value)
+                {
+                    return Conflict(new {
+                        title = "A minuta em andamento deste contrato está vinculada a outro paciente.",
+                        code = "draft_patient_conflict",
+                        existingDraftId = existingDraft.Id
+                    });
+                }
+
                 await tx.CommitAsync(ct);
-                return Ok(new { id = existingDraftId.Value, contractId = targetContractId });
+                return Ok(new { id = existingDraft.Id, contractId = targetContractId, resumed = true, message = "Continuando minuta existente." });
             }
             contractId = targetContractId;
         }
@@ -101,25 +134,96 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             contractId = Guid.NewGuid();
             await c.ExecuteAsync(new CommandDefinition("""
                 INSERT INTO odca.contracts(id,tenant_id,title,reference) VALUES(@contractId,@tenantId,@title,@reference);
-                """, new { contractId, tenantId, title = request.Title.Trim(), request.Reference }, tx, cancellationToken: ct));
+                """, new { contractId, tenantId, title = request.Title.Trim(), reference = effectiveReference }, tx, cancellationToken: ct));
         }
 
         var draftId = Guid.NewGuid();
-        await c.ExecuteAsync(new CommandDefinition("""
-            INSERT INTO odca.contract_drafts(id,tenant_id,contract_id,source_template_id,source_template_version_id,content,fields,created_by,updated_by,patient_id,patient_row_version,patient_selection_snapshot)
-            VALUES(@draftId,@tenantId,@contractId,@templateId,@versionId,@content::jsonb,@fields::jsonb,@actor,@actor,@PatientId,
-              (SELECT row_version FROM odca.patients WHERE tenant_id=@tenantId AND id=@PatientId),
-              odca.patient_document_snapshot(@tenantId,@PatientId));
-            INSERT INTO odca.contract_events(tenant_id,contract_id,actor_id,event_type,details) VALUES(@tenantId,@contractId,@actor,'draft.created',jsonb_build_object('templateId',@templateId,'templateVersionId',@versionId));
-            """, new { contractId, tenantId, request.PatientId, draftId, templateId = source.TemplateId, versionId = source.VersionId, source.Content, source.Fields, actor }, tx, cancellationToken: ct));
-
-        if (request.ContractId.HasValue)
+        try
         {
             await c.ExecuteAsync(new CommandDefinition("""
+                INSERT INTO odca.contract_drafts(id,tenant_id,contract_id,source_template_id,source_template_version_id,content,fields,created_by,updated_by,patient_id,patient_row_version,patient_selection_snapshot)
+                VALUES(@draftId,@tenantId,@contractId,@templateId,@versionId,@content::jsonb,@fields::jsonb,@actor,@actor,@PatientId,
+                  (SELECT row_version FROM odca.patients WHERE tenant_id=@tenantId AND id=@PatientId),
+                  odca.patient_document_snapshot(@tenantId,@PatientId));
+                INSERT INTO odca.contract_events(tenant_id,contract_id,actor_id,event_type,details) VALUES(@tenantId,@contractId,@actor,'draft.created',jsonb_build_object('templateId',@templateId,'templateVersionId',@versionId));
+                """, new { contractId, tenantId, request.PatientId, draftId, templateId = source.TemplateId, versionId = source.VersionId, source.Content, source.Fields, actor }, tx, cancellationToken: ct));
+        }
+        catch (PostgresException ex) when (ex.SqlState == "23505")
+        {
+            var conflictDraft = await c.QuerySingleOrDefaultAsync<ExistingDraftRow>(new CommandDefinition("""
+                SELECT d.id AS Id, d.source_template_id AS TemplateId, d.patient_id AS PatientId, t.name AS TemplateName
+                FROM odca.contract_drafts d
+                JOIN odca.contract_templates t ON t.id = d.source_template_id
+                WHERE d.tenant_id = @tenantId AND d.contract_id = @contractId
+                """, new { tenantId, contractId }, tx, cancellationToken: ct));
+
+            if (conflictDraft is not null && conflictDraft.TemplateId == source.TemplateId)
+            {
+                await tx.CommitAsync(ct);
+                return Ok(new { id = conflictDraft.Id, contractId, resumed = true, message = "Continuando minuta existente." });
+            }
+
+            return Conflict(new {
+                title = conflictDraft is not null
+                    ? $"O contrato já possui uma minuta em andamento com o modelo \"{conflictDraft.TemplateName}\"."
+                    : "Conflito de concorrência ao criar minuta.",
+                code = "draft_concurrency_conflict",
+                existingDraftId = conflictDraft?.Id
+            });
+        }
+
+        if (request.ContractId.HasValue && request.ChangeRequestId.HasValue)
+        {
+            var changeRequestId = request.ChangeRequestId.Value;
+            var changeReq = await c.QuerySingleOrDefaultAsync<ChangeRequestRow>(new CommandDefinition("""
+                SELECT id AS Id, contract_id AS ContractId, status AS Status, draft_id AS DraftId, row_version AS RowVersion
+                FROM odca.contract_change_requests
+                WHERE tenant_id = @tenantId AND id = @changeRequestId
+                FOR UPDATE
+                """, new { tenantId, changeRequestId }, tx, cancellationToken: ct));
+
+            if (changeReq is null || changeReq.ContractId != contractId)
+            {
+                return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]> {
+                    { "changeRequestId", ["A solicitação de alteração não pertence a este contrato ou organização."] }
+                }));
+            }
+
+            if (changeReq.Status is not ("draft" or "proposed"))
+            {
+                return Conflict(new {
+                    title = $"A solicitação de alteração está na situação '{changeReq.Status}' e não permite vinculação a nova minuta.",
+                    code = "change_request_invalid_status"
+                });
+            }
+
+            if (changeReq.DraftId.HasValue && changeReq.DraftId.Value != draftId)
+            {
+                return Conflict(new {
+                    title = "A solicitação de alteração já está vinculada a outra minuta.",
+                    code = "change_request_already_linked",
+                    draftId = changeReq.DraftId.Value
+                });
+            }
+
+            var updatedCr = await c.ExecuteAsync(new CommandDefinition("""
                 UPDATE odca.contract_change_requests
                 SET draft_id = @draftId, row_version = row_version + 1, updated_at = now()
-                WHERE tenant_id = @tenantId AND contract_id = @contractId AND draft_id IS NULL AND status IN ('draft', 'proposed');
-                """, new { tenantId, contractId, draftId }, tx, cancellationToken: ct));
+                WHERE tenant_id = @tenantId AND id = @changeRequestId AND draft_id IS NULL AND status IN ('draft', 'proposed');
+                """, new { tenantId, changeRequestId, draftId }, tx, cancellationToken: ct));
+
+            if (updatedCr != 1)
+            {
+                return Conflict(new {
+                    title = "Não foi possível vincular a solicitação de alteração. Ela pode ter sido modificada concorrentemente.",
+                    code = "change_request_concurrency_conflict"
+                });
+            }
+
+            await c.ExecuteAsync(new CommandDefinition("""
+                INSERT INTO odca.audit_events(scope_type, tenant_id, actor_user_id, action, entity_type, entity_id, result, metadata)
+                VALUES('tenant', @tenantId, @actor, 'change_request.draft_linked', 'contract_change_request', @changeRequestId, 'success', jsonb_build_object('contractId', @contractId, 'draftId', @draftId));
+                """, new { tenantId, actor, changeRequestId, contractId, draftId }, tx, cancellationToken: ct));
         }
 
         await tx.CommitAsync(ct);
@@ -908,10 +1012,15 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     private static async Task<SignaturePreparationResponse?> ReadPreparation(NpgsqlConnection c,Guid tenantId,Guid versionId,NpgsqlTransaction tx,CancellationToken ct)
     {
         var preparation=await c.QuerySingleOrDefaultAsync<PreparationRow>(new CommandDefinition("SELECT id AS Id,status AS Status,row_version AS Version,composition_revision AS CompositionRevision,confirmed_revision AS ConfirmedRevision,confirmed_pdf_sha256 AS ConfirmedPdfSha256,confirmed_at AS ConfirmedAt,confirmation_operation_id AS ConfirmationOperationId FROM odca.signature_preparations WHERE tenant_id=@tenantId AND generated_version_id=@versionId",new{tenantId,versionId},tx,cancellationToken:ct));if(preparation is null)return null;
-        var participants=await c.QueryAsync<SignatureParticipantInput>(new CommandDefinition("SELECT client_id AS Id,participant_type AS ParticipantType,source_id AS SourceId,role AS Role,name AS Name,email AS Email,phone AS Phone,position AS Position FROM odca.signature_participants WHERE tenant_id=@tenantId AND preparation_id=@id AND composition_revision=@revision ORDER BY position",new{tenantId,preparation.Id,revision=preparation.CompositionRevision},tx,cancellationToken:ct));return new(preparation.Id,preparation.Status,preparation.Version,participants.AsList(),preparation.CompositionRevision,preparation.ConfirmedRevision,preparation.ConfirmedPdfSha256,preparation.ConfirmedAt);
+        var participants=await c.QueryAsync<SignatureParticipantInput>(new CommandDefinition("SELECT client_id AS Id,participant_type AS ParticipantType,source_id AS SourceId,role AS Role,name AS Name,email AS Email,phone AS Phone,position AS Position FROM odca.signature_participants WHERE tenant_id=@tenantId AND preparation_id=@id AND composition_revision=@revision ORDER BY position",new{tenantId,preparation.Id,revision=preparation.CompositionRevision},tx,cancellationToken:ct));
+        return new(preparation.Id,preparation.Status,preparation.Version,participants.AsList(),preparation.CompositionRevision,preparation.ConfirmedRevision,preparation.ConfirmedPdfSha256,preparation.ConfirmedAt);
     }
+
     private static string SafeFileName(string value)=>string.Concat(value.Normalize().Select(x=>char.IsLetterOrDigit(x)||x is '-' or '_'?x:'_')).Trim('_') is {Length:>0} safe?safe:"documento";
-    private sealed record TemplateSource(Guid TemplateId,Guid VersionId,string Content,string Fields);
+    private sealed record TemplateSource(Guid TemplateId,Guid VersionId,string Content,string Fields,string? TemplateName = null);
+    private sealed record ExistingDraftRow(Guid Id, Guid TemplateId, Guid? PatientId, string TemplateName);
+    private sealed record ContractInfoRow(Guid Id, string Title, string? Reference);
+    private sealed record ChangeRequestRow(Guid Id, Guid ContractId, string Status, Guid? DraftId, long RowVersion);
     private sealed record DraftRow(Guid Id,Guid ContractId,string Title,Guid SourceTemplateId,Guid SourceTemplateVersionId,string Content,string Fields,string Values,long Version,Guid? LastClientRevision,DateTimeOffset UpdatedAt,Guid? PatientId=null,string? PatientSnapshot=null,long? PatientVersion=null,long? CurrentPatientVersion=null,DateTimeOffset? PatientInactiveAt=null,string? TemplateStatus=null);
     private sealed record SaveRow(long Version,Guid ClientRevision,DateTimeOffset SavedAt);
     private sealed record VersionRow(Guid Id,Guid ContractId,string Content,string Sha256,string Status);
