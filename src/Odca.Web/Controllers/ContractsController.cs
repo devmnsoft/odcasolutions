@@ -322,7 +322,7 @@ public sealed class ContractsController(OdcaApiClient api) : Controller
         var draftTitle = $"{contractTitle} — {templateResult.Value.Name}";
         if (draftTitle.Length > 160) draftTitle = draftTitle[..160];
 
-        var draftResult = await api.CreateStudioDraftAsync(token, tenantId, new Odca.Contracts.Studio.CreateDraftRequest(templateResult.Value.Id, draftTitle, sheet.Reference, null, contractId), ct);
+        var draftResult = await api.CreateStudioDraftAsync(token, tenantId, new Odca.Contracts.Studio.CreateDraftRequest(templateResult.Value.Id, draftTitle, null, null, contractId), ct);
         if (!draftResult.Succeeded)
         {
             TempData["ContractSheetError"] = draftResult.UserMessage("Não foi possível criar o rascunho da minuta oficial.");

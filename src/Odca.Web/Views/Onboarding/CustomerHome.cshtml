@@ -191,8 +191,8 @@
                             {
                                 <tr>
                                     <td>
-                                        <strong>@review.ContractTitle</strong>
-                                        <br /><small class="muted">Versão @review.TargetVersion · Por @review.RequesterName</small>
+                                        <strong>@review.Contract</strong>
+                                        <br /><small class="muted">Versão @review.Version · Por @review.Requester</small>
                                     </td>
                                     <td>
                                         @(review.DueAt.HasValue ? review.DueAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "Sem prazo")

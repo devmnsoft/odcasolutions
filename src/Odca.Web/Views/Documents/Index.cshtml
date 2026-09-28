@@ -5,7 +5,7 @@
     var type = ViewData["Type"] as string;
     var stage = ViewData["Stage"] as string;
     var patientId = ViewData["PatientId"] as Guid?;
-    var patients = ViewData["Patients"] as IReadOnlyList<Odca.Contracts.Patients.PatientListItem> ?? [];
+    var patients = ViewData["Patients"] as IReadOnlyList<Odca.Contracts.Patients.PatientSummary> ?? [];
     ViewData["Title"] = "Central de Documentos";
 }
 
@@ -67,7 +67,7 @@
             <option value="">Todos os pacientes</option>
             @foreach (var p in patients)
             {
-                <option value="@p.Id" selected="@(patientId == p.Id)">@p.FullName (@p.IdentifierValue)</option>
+                <option value="@p.Id" selected="@(patientId == p.Id)">@p.FullName (@(p.MaskedIdentifier ?? "—"))</option>
             }
         </select>
     </label>

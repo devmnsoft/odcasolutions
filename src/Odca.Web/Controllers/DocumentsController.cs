@@ -35,8 +35,8 @@ public sealed class DocumentsController(OdcaApiClient api) : Controller
         if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
 
-        IReadOnlyList<PatientListItem> patients = [];
-        var patientsRes = await api.GetPatientsAsync(token, tenantId, null, false, 1, 100, ct);
+        IReadOnlyList<PatientSummary> patients = [];
+        var patientsRes = await api.GetPatientsAsync(token, tenantId, null, false, 1, ct);
         if (patientsRes.Succeeded && patientsRes.Value is not null)
         {
             patients = patientsRes.Value.Items;
