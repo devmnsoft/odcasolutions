@@ -57,13 +57,13 @@ BEGIN
 
     -- Reexecution deliberately preserves password hashes, MFA enrollment and sessions.
     -- Credential rotation is an explicit Bootstrap operation, never a side effect of this seed.
-    INSERT INTO odca.tenants (id,business_code,display_name,status) VALUES (v_tenant_id,'12345678000195','Cliente Teste ODCA','active')
-    ON CONFLICT (business_code) DO UPDATE
-       SET display_name=EXCLUDED.display_name,status='active',is_deleted=false,deleted_at=NULL,deleted_by=NULL,deletion_reason=NULL,updated_at=now();
     UPDATE odca.tenants
        SET business_code='12345678000195',display_name='Cliente Teste ODCA',status='active',
            is_deleted=false,deleted_at=NULL,deleted_by=NULL,deletion_reason=NULL,updated_at=now()
      WHERE id=v_tenant_id AND business_code='ODCA-DEMO-LOCAL';
+    INSERT INTO odca.tenants (id,business_code,display_name,status) VALUES (v_tenant_id,'12345678000195','Cliente Teste ODCA','active')
+    ON CONFLICT (business_code) DO UPDATE
+       SET display_name=EXCLUDED.display_name,status='active',is_deleted=false,deleted_at=NULL,deleted_by=NULL,deletion_reason=NULL,updated_at=now();
     IF NOT EXISTS (SELECT 1 FROM odca.tenants WHERE business_code='12345678000195' AND display_name='Cliente Teste ODCA' AND status='active' AND NOT is_deleted) THEN
         RAISE EXCEPTION 'The reserved demo tenant exists with incompatible state or id.';
     END IF;

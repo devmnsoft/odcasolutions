@@ -22,17 +22,31 @@ public sealed class PatientsController(OdcaApiClient api) : Controller
     }
 
     [HttpGet("novo")]
-    public IActionResult Create(Guid tenantId) { ViewData["Title"] = "Novo paciente"; ViewData["TenantId"] = tenantId; return View("Form", new PatientFormViewModel()); }
+    public IActionResult Create(Guid tenantId, [FromQuery] string? returnUrl = null)
+    {
+        ViewData["Title"] = "Novo paciente";
+        ViewData["TenantId"] = tenantId;
+        ViewData["ReturnUrl"] = returnUrl;
+        return View("Form", new PatientFormViewModel());
+    }
 
     [HttpPost("novo")]
-    public async Task<IActionResult> Create(Guid tenantId, PatientFormViewModel model, CancellationToken ct)
+    public async Task<IActionResult> Create(Guid tenantId, PatientFormViewModel model, [FromForm] string? returnUrl = null, CancellationToken ct = default)
     {
-        ViewData["Title"] = "Novo paciente"; ViewData["TenantId"] = tenantId;
+        ViewData["Title"] = "Novo paciente";
+        ViewData["TenantId"] = tenantId;
+        ViewData["ReturnUrl"] = returnUrl;
         if (!ModelState.IsValid) return View("Form", model);
         var token = await Token(); if (token is null) return Challenge();
         var result = await api.CreatePatientAsync(token, tenantId, model.ToRequest(), ct);
         if (!result.Succeeded) { AddPatientErrors(result, "Revise os dados e tente novamente."); return View("Form", model); }
-        TempData["PatientSuccess"] = "Paciente cadastrado."; return RedirectToAction(nameof(Details), new { tenantId, patientId = result.Value!.Id });
+        TempData["PatientSuccess"] = "Paciente cadastrado com sucesso.";
+        if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+        {
+            var separator = returnUrl.Contains('?') ? "&" : "?";
+            return Redirect($"{returnUrl}{separator}patientId={result.Value!.Id}");
+        }
+        return RedirectToAction(nameof(Details), new { tenantId, patientId = result.Value!.Id });
     }
 
     [HttpGet("{patientId:guid}")]

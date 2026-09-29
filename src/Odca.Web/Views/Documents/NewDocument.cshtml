@@ -1,0 +1,100 @@
+@model NewDocumentViewModel
+@{
+    ViewData["Title"] = "Novo documento";
+    var tenantId = Model.TenantId;
+    var currentUrl = Url.Action("NewDocument", "Documents", new { tenantId });
+    var returnUrlForNewPatient = currentUrl;
+}
+
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">Gestão documental</p>
+        <h1>Novo documento</h1>
+        <p class="muted">Inicie a criação de um documento a partir de um modelo oficial ou rascunho de sua organização.</p>
+    </div>
+    <div class="button-row">
+        <a class="button button-quiet" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantId">
+            ← Voltar para Central de Documentos
+        </a>
+    </div>
+</section>
+
+<details class="help" style="margin-bottom: 1.5rem;">
+    <summary>Como funciona a criação de documentos</summary>
+    <p>
+        A elaboração de documentos no ODCA Legal Med segue um fluxo seguro em etapas:
+        <strong>1. Origem:</strong> escolha entre criar a partir de um modelo da biblioteca ou importar um arquivo pré-existente;
+        <strong>2. Partes/Paciente:</strong> selecione o paciente correspondente ou continue sem paciente caso seja uma relação B2B entre pessoas jurídicas;
+        <strong>3. Modelo:</strong> selecione o modelo de contrato ou termo mais adequado na biblioteca;
+        <strong>4. Preenchimento e geração:</strong> revise os dados no estúdio e gere versões auditáveis com hash criptográfico SHA-256.
+    </p>
+</details>
+
+<div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+    @* Card 1: Criar por Modelo *@
+    <section class="card" style="display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid var(--color-primary, #0a2540);">
+        <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <span class="badge badge-primary">Recomendado</span>
+                <span class="badge badge-muted">Etapas 1 e 2</span>
+            </div>
+            <h2>Elaborar a partir de modelo</h2>
+            <p class="muted">
+                Utilize modelos estruturados em Legal Design (Prestação de Serviços, Consentimento Informado, Confidencialidade, Locação, etc.) com preenchimento assistido e conferência cadastral.
+            </p>
+
+            <form method="get" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@tenantId" style="margin-top: 1.5rem;">
+                <input type="hidden" name="tenantId" value="@tenantId" />
+
+                <label style="display: block; margin-bottom: 1rem; font-weight: 600;">
+                    Vincular paciente (opcional para B2B):
+                    <select name="patientId" id="patientSelector" style="width: 100%; margin-top: 0.25rem;">
+                        <option value="">Nenhum (relação B2B / Contrato sem paciente)</option>
+                        @foreach (var patient in Model.Patients)
+                        {
+                            <option value="@patient.Id" selected="@(Model.PatientId == patient.Id)">
+                                @patient.FullName (@(patient.MaskedIdentifier ?? "Sem documento"))
+                            </option>
+                        }
+                    </select>
+                </label>
+
+                <p class="muted" style="font-size: 0.875rem; margin-bottom: 1rem;">
+                    Não encontrou o paciente?
+                    @if (Model.CanManagePatients)
+                    {
+                        <a asp-controller="Patients" asp-action="Create" asp-route-tenantId="@tenantId" asp-route-returnUrl="@returnUrlForNewPatient" style="font-weight: 600;">
+                            + Cadastrar novo paciente agora
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="muted">Solicite o cadastro a um administrador da organização.</span>
+                    }
+                </p>
+
+                <button class="button button-primary" type="submit" style="width: 100%; margin-top: 0.5rem;">
+                    Avançar para escolha de modelo →
+                </button>
+            </form>
+        </div>
+    </section>
+
+    @* Card 2: Importar Documento Existente *@
+    <section class="card" style="display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid var(--color-secondary, #475569);">
+        <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <span class="badge badge-muted">Arquivo Externo</span>
+            </div>
+            <h2>Importar documento já assinado ou legado</h2>
+            <p class="muted">
+                Caso já possua um contrato ou termo assinado em papel ou PDF externo, utilize a Central de Importações para catalogá-lo no acervo sem passar pela geração de minuta.
+            </p>
+        </div>
+        <div style="margin-top: 1.5rem;">
+            <a class="button button-quiet" asp-controller="Imports" asp-action="Index" asp-route-tenantId="@tenantId" style="width: 100%; text-align: center; display: inline-block;">
+                Abrir Central de Importações →
+            </a>
+        </div>
+    </section>
+</div>

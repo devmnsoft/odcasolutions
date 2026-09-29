@@ -20,7 +20,7 @@
         }
         @if (Model.CanManagePatients)
         {
-            <a class="button" asp-controller="Patients" asp-action="New" asp-route-tenantId="@tenantId">
+            <a class="button" asp-controller="Patients" asp-action="Create" asp-route-tenantId="@tenantId">
                 <span aria-hidden="true">♙</span> Cadastrar paciente
             </a>
         }
@@ -94,6 +94,20 @@
                 }
             </select>
         </label>
+        @if (Model.PatientTotal > Model.PatientPageSize)
+        {
+            <div style="font-size: 0.8rem; grid-column: 1 / -1; display:flex; gap: 0.5rem; align-items: center;" class="muted">
+                <span>Pacientes (pág. @Model.PatientPage de @Math.Ceiling((double)Model.PatientTotal / Model.PatientPageSize)):</span>
+                @if (Model.PatientPage > 1)
+                {
+                    <a class="button button-small button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-search="@Model.Search" asp-route-type="@Model.Type" asp-route-stage="@Model.Stage" asp-route-patientSearch="@Model.PatientSearch" asp-route-patientId="@Model.PatientId" asp-route-patientPage="@(Model.PatientPage - 1)">← Anteriores</a>
+                }
+                @if (Model.PatientPage * Model.PatientPageSize < Model.PatientTotal)
+                {
+                    <a class="button button-small button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-search="@Model.Search" asp-route-type="@Model.Type" asp-route-stage="@Model.Stage" asp-route-patientSearch="@Model.PatientSearch" asp-route-patientId="@Model.PatientId" asp-route-patientPage="@(Model.PatientPage + 1)">Próximos →</a>
+                }
+            </div>
+        }
     }
     <label>
         Etapa
@@ -186,7 +200,7 @@
                         <td>
                             @if (doc.PatientId.HasValue)
                             {
-                                <a asp-controller="Patients" asp-action="Get" asp-route-tenantId="@tenantId" asp-route-patientId="@doc.PatientId.Value">
+                                <a asp-controller="Patients" asp-action="Details" asp-route-tenantId="@tenantId" asp-route-patientId="@doc.PatientId.Value">
                                     @(doc.PatientName ?? "Paciente")
                                 </a>
                             }

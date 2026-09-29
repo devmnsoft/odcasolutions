@@ -161,7 +161,7 @@
                                 @if (canReadObligations)
                                 {
                                     <a class="nav-item @(controller == "Obligations" ? "active" : null)" aria-label="Central de obrigações" aria-current="@(controller == "Obligations" ? "page" : null)" asp-controller="Obligations" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">✓</span><span>Obrigações</span></a>
-                                    <a class="nav-item" asp-controller="Obligations" asp-action="Index" asp-route-tenantId="@tenantIdForLinks" asp-fragment="saved-views"><span aria-hidden="true">☆</span><span>Views salvas</span></a>
+                                    <a class="nav-item" asp-controller="Obligations" asp-action="Index" asp-route-tenantId="@tenantIdForLinks" asp-fragment="saved-views"><span aria-hidden="true">☆</span><span>Filtros salvos</span></a>
                                 }
                                 @if (canReadRenewals)
                                 {

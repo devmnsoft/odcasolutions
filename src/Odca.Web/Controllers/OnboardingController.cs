@@ -113,8 +113,8 @@ public sealed class OnboardingController(OdcaApiClient apiClient, IUserTenantCon
 
         var tenantId = result.Value.TenantId;
         var access = await tenantContext.GetAccessAsync(tenantId, cancellationToken);
-        var canCreateDocument = access?.HasAnyPermission("tenant.contract_drafts.manage", "tenant.templates.read") == true;
-        var canManagePatients = access?.HasAnyPermission("tenant.patients.manage", "tenant.patients.read") == true;
+        var canCreateDocument = access?.HasPermission("tenant.contract_drafts.manage") == true;
+        var canManagePatients = access?.HasPermission("tenant.patients.manage") == true;
         var canReadReviews = access?.HasPermission("tenant.reviews.read") == true;
 
         IReadOnlyList<Odca.Contracts.Studio.StudioDocumentItem> recentDocuments = [];

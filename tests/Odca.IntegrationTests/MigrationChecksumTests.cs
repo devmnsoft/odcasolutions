@@ -303,4 +303,14 @@ public sealed class MigrationChecksumTests
             Assert.Equal(MigrationBlock(snapshot, version), MigrationBlock(canonical, version));
     }
 
+    [Fact]
+    public void ReleaseV028PreservesItsHistoricalMigrations()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v028.sql")).Replace("\r\n", "\n");
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        DatabaseMigrator.ValidateChecksums(canonical);
+        for (var version = 1; version <= 28; version++)
+            Assert.Equal(MigrationBlock(snapshot, version), MigrationBlock(canonical, version));
+    }
 }

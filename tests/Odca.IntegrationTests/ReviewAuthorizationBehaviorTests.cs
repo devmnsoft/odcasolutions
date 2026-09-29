@@ -94,9 +94,9 @@ public sealed class ReviewAuthorizationBehaviorTests(DatabaseFixture database) :
     private async Task SeedAsync()
     {
         const string sql = """
-            DELETE FROM odca.member_roles WHERE tenant_id=@tenant;
+            DELETE FROM odca.member_roles WHERE tenant_id=@tenant OR user_id IN (@reviewer,@reader,@blocked);
             DELETE FROM odca.role_permissions WHERE role_id=@role;
-            DELETE FROM odca.memberships WHERE tenant_id=@tenant;
+            DELETE FROM odca.memberships WHERE tenant_id=@tenant OR user_id IN (@reviewer,@reader,@blocked);
             DELETE FROM odca.roles WHERE tenant_id=@tenant;
             DELETE FROM odca.tenants WHERE id=@tenant;
             DELETE FROM odca.sessions WHERE user_id IN (@reviewer,@reader,@blocked);

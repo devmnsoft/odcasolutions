@@ -47,7 +47,7 @@
             }
             @if (Model.CanManagePatients && !isSuspended)
             {
-                <a class="button" asp-controller="Patients" asp-action="New" asp-route-tenantId="@home.TenantId">
+                <a class="button" asp-controller="Patients" asp-action="Create" asp-route-tenantId="@home.TenantId">
                     <span aria-hidden="true">♙</span> Cadastrar paciente
                 </a>
             }

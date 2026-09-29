@@ -20,6 +20,7 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
         [FromQuery] string? stage = null,
         [FromQuery] Guid? patientId = null,
         [FromQuery] string? patientSearch = null,
+        [FromQuery] int patientPage = 1,
         [FromQuery] int page = 1,
         CancellationToken ct = default)
     {
@@ -33,20 +34,24 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
         if (access is null) return Forbid();
 
         var canReadPatients = access.HasPermission("tenant.patients.read");
-        var canManagePatients = access.HasAnyPermission("tenant.patients.manage", "tenant.patients.read");
-        var canCreateDocument = access.HasAnyPermission("tenant.contract_drafts.manage", "tenant.templates.read");
+        var canManagePatients = access.HasPermission("tenant.patients.manage");
+        var canCreateDocument = access.HasPermission("tenant.contract_drafts.manage");
 
         // Load patient options and resolve selected patient if needed
         IReadOnlyList<PatientSummary> patientOptions = [];
         PatientSummary? selectedPatient = null;
         string? patientErrorMessage = null;
+        int patientTotal = 0;
+        int patientPageSize = 20;
 
         if (canReadPatients)
         {
-            var patientsRes = await api.GetPatientsAsync(token, tenantId, patientSearch?.Trim(), includeInactive: true, 1, ct);
+            var patientsRes = await api.GetPatientsAsync(token, tenantId, patientSearch?.Trim(), includeInactive: true, Math.Max(1, patientPage), ct);
             if (patientsRes.Succeeded && patientsRes.Value is not null)
             {
                 patientOptions = patientsRes.Value.Items;
+                patientTotal = patientsRes.Value.Total;
+                patientPageSize = patientsRes.Value.PageSize;
             }
             else if (!patientsRes.Succeeded && patientsRes.Status != ApiCallStatus.Forbidden)
             {
@@ -108,7 +113,10 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
             PatientErrorMessage = patientErrorMessage,
             CanCreateDocument = canCreateDocument,
             CanManagePatients = canManagePatients,
-            CanReadPatients = canReadPatients
+            CanReadPatients = canReadPatients,
+            PatientPage = Math.Max(1, patientPage),
+            PatientTotal = patientTotal,
+            PatientPageSize = patientPageSize
         };
 
         return View(viewModel);
@@ -120,20 +128,50 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
         [FromQuery] Guid? patientId = null,
         CancellationToken ct = default)
     {
+        ViewData["Title"] = "Novo documento";
+        ViewData["TenantId"] = tenantId;
+
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+
+        var access = await tenantContext.GetAccessAsync(tenantId, ct);
+        if (access is null) return Forbid();
+
+        if (!access.HasPermission("tenant.contract_drafts.manage"))
+        {
+            TempData["ErrorMessage"] = "Você não possui permissão para elaborar novos documentos.";
+            return RedirectToAction(nameof(Index), new { tenantId });
+        }
+
         if (patientId.HasValue)
         {
-            var token = await HttpContext.GetTokenAsync("access_token");
-            if (token is not null)
+            var patient = await api.GetPatientAsync(token, tenantId, patientId.Value, ct);
+            if (patient.Succeeded && patient.Value is not null && !patient.Value.Active)
             {
-                var patient = await api.GetPatientAsync(token, tenantId, patientId.Value, ct);
-                if (patient.Succeeded && patient.Value is not null && !patient.Value.Active)
-                {
-                    TempData["ErrorMessage"] = "Pacientes inativos não podem ser selecionados para novas emissões.";
-                    return RedirectToAction(nameof(Index), new { tenantId });
-                }
+                TempData["ErrorMessage"] = "Pacientes inativos não podem ser selecionados para novas emissões.";
+                return RedirectToAction(nameof(Index), new { tenantId });
             }
         }
-        return RedirectToAction("Index", "Studio", new { tenantId, patientId });
+
+        IReadOnlyList<PatientSummary> activePatients = [];
+        if (access.HasPermission("tenant.patients.read"))
+        {
+            var pRes = await api.GetPatientsAsync(token, tenantId, null, includeInactive: false, 1, ct);
+            if (pRes.Succeeded && pRes.Value is not null)
+            {
+                activePatients = pRes.Value.Items;
+            }
+        }
+
+        var vm = new NewDocumentViewModel
+        {
+            TenantId = tenantId,
+            PatientId = patientId,
+            Patients = activePatients,
+            CanManagePatients = access.HasPermission("tenant.patients.manage")
+        };
+
+        return View(vm);
     }
 
     private static string MaskIdentifier(string value)

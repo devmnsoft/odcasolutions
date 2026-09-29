@@ -146,6 +146,228 @@ public sealed class DocumentCentralAndStudioTests(DatabaseFixture database) : IC
         }
     }
 
+    [Fact]
+    public async Task CreateDraftReturnsExistingDraftWhenSameTemplateAndPatient()
+    {
+        await SeedScenarioAsync();
+        await using var dataSource = NpgsqlDataSource.Create(database.AppConnectionString);
+
+        var controller = CreateStudioController(dataSource, ActorId);
+
+        var request = new CreateDraftRequest(
+            TemplateId: TemplateAId,
+            Title: "Contrato Base Studio",
+            Reference: "REF-BASE-001",
+            ContractId: ContractId,
+            PatientId: null);
+
+        var result = await controller.CreateDraft(TenantId, request, default);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        dynamic val = ok.Value!;
+        Guid draftId = val.id;
+        Assert.Equal(Guid.Parse("73000000-0000-0000-0000-000000000051"), draftId);
+    }
+
+    [Fact]
+    public async Task CreateDraftAssociatesPatientWhenExistingDraftHasNoPatient()
+    {
+        await SeedScenarioAsync();
+        var patientId = Guid.NewGuid();
+
+        await using (var adminConn = new NpgsqlConnection(database.AdminConnectionString))
+        {
+            await adminConn.ExecuteAsync("""
+                INSERT INTO odca.patients(id, tenant_id, full_name, created_by, updated_by)
+                VALUES (@patientId, @TenantId, 'Paciente Novo Studio', @ActorId, @ActorId)
+                ON CONFLICT (tenant_id, id) DO NOTHING;
+                """, new { patientId, TenantId, ActorId });
+        }
+
+        await using var dataSource = NpgsqlDataSource.Create(database.AppConnectionString);
+        var controller = CreateStudioController(dataSource, ActorId);
+
+        var request = new CreateDraftRequest(
+            TemplateId: TemplateAId,
+            Title: "Contrato Base Studio",
+            Reference: "REF-BASE-001",
+            ContractId: ContractId,
+            PatientId: patientId);
+
+        var result = await controller.CreateDraft(TenantId, request, default);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        dynamic val = ok.Value!;
+        Guid draftId = val.id;
+        Assert.Equal(Guid.Parse("73000000-0000-0000-0000-000000000051"), draftId);
+
+        // Verify patient was canonically associated
+        await using (var adminConn = new NpgsqlConnection(database.AdminConnectionString))
+        {
+            var pId = await adminConn.QuerySingleAsync<Guid?>(
+                "SELECT patient_id FROM odca.contract_drafts WHERE id = @draftId", new { draftId });
+            Assert.Equal(patientId, pId);
+
+            var eventCount = await adminConn.ExecuteScalarAsync<int>("""
+                SELECT count(*)::int FROM odca.contract_events
+                WHERE tenant_id = @TenantId AND event_type = 'draft.patient_associated' AND contract_id = @ContractId;
+                """, new { TenantId, ContractId });
+            Assert.True(eventCount >= 1);
+        }
+    }
+
+    [Fact]
+    public async Task CreateDraftReturnsConflictWhenExistingDraftHasDifferentPatient()
+    {
+        await SeedScenarioAsync();
+        var patientA = Guid.NewGuid();
+        var patientB = Guid.NewGuid();
+
+        await using (var adminConn = new NpgsqlConnection(database.AdminConnectionString))
+        {
+            await adminConn.ExecuteAsync("""
+                INSERT INTO odca.patients(id, tenant_id, full_name, created_by, updated_by)
+                VALUES
+                    (@patientA, @TenantId, 'Paciente A', @ActorId, @ActorId),
+                    (@patientB, @TenantId, 'Paciente B', @ActorId, @ActorId)
+                ON CONFLICT (tenant_id, id) DO NOTHING;
+
+                UPDATE odca.contract_drafts
+                SET patient_id = @patientA,
+                    patient_row_version = 1,
+                    patient_selection_snapshot = odca.patient_document_snapshot(tenant_id, @patientA)
+                WHERE id = '73000000-0000-0000-0000-000000000051';
+                """, new { patientA, patientB, TenantId, ActorId });
+        }
+
+        await using var dataSource = NpgsqlDataSource.Create(database.AppConnectionString);
+        var controller = CreateStudioController(dataSource, ActorId);
+
+        // Attempt to resume with patientB
+        var request = new CreateDraftRequest(
+            TemplateId: TemplateAId,
+            Title: "Contrato Base Studio",
+            Reference: null,
+            ContractId: ContractId,
+            PatientId: patientB);
+
+        var result = await controller.CreateDraft(TenantId, request, default);
+
+        var conflict = Assert.IsType<ConflictObjectResult>(result);
+        dynamic val = conflict.Value!;
+        Assert.Equal("draft_patient_conflict", (string)val.code);
+    }
+
+    [Fact]
+    public async Task CreateDraftReturnsConflictWhenExistingDraftHasPatientButRequestDoesNot()
+    {
+        await SeedScenarioAsync();
+        var patientA = Guid.NewGuid();
+
+        await using (var adminConn = new NpgsqlConnection(database.AdminConnectionString))
+        {
+            await adminConn.ExecuteAsync("""
+                INSERT INTO odca.patients(id, tenant_id, full_name, created_by, updated_by)
+                VALUES (@patientA, @TenantId, 'Paciente A Existente', @ActorId, @ActorId)
+                ON CONFLICT (tenant_id, id) DO NOTHING;
+
+                UPDATE odca.contract_drafts
+                SET patient_id = @patientA,
+                    patient_row_version = 1,
+                    patient_selection_snapshot = odca.patient_document_snapshot(tenant_id, @patientA)
+                WHERE id = '73000000-0000-0000-0000-000000000051';
+                """, new { patientA, TenantId, ActorId });
+        }
+
+        await using var dataSource = NpgsqlDataSource.Create(database.AppConnectionString);
+        var controller = CreateStudioController(dataSource, ActorId);
+
+        // Attempt to resume with null patient
+        var request = new CreateDraftRequest(
+            TemplateId: TemplateAId,
+            Title: "Contrato Base Studio",
+            Reference: null,
+            ContractId: ContractId,
+            PatientId: null);
+
+        var result = await controller.CreateDraft(TenantId, request, default);
+
+        var conflict = Assert.IsType<ConflictObjectResult>(result);
+        dynamic val = conflict.Value!;
+        Assert.Equal("draft_patient_required", (string)val.code);
+    }
+
+    [Fact]
+    public async Task CreateDraftRejectsChangeRequestWithoutContractId()
+    {
+        await SeedScenarioAsync();
+        await using var dataSource = NpgsqlDataSource.Create(database.AppConnectionString);
+        var controller = CreateStudioController(dataSource, ActorId);
+
+        var request = new CreateDraftRequest(
+            TemplateId: TemplateAId,
+            Title: "Minuta sem contrato",
+            Reference: null,
+            ContractId: null,
+            ChangeRequestId: Guid.NewGuid());
+
+        var result = await controller.CreateDraft(TenantId, request, default);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var problem = Assert.IsType<ValidationProblemDetails>(badRequest.Value);
+        Assert.True(problem.Errors.ContainsKey("changeRequestId"));
+    }
+
+    [Fact]
+    public async Task CreateDraftConcurrentRequestsHandleSavepointGracefully()
+    {
+        await SeedScenarioAsync();
+        await using var dataSource = NpgsqlDataSource.Create(database.AppConnectionString);
+
+        // Pre-create a contract for both tasks to target
+        var targetContractId = Guid.NewGuid();
+        await using (var adminConn = new NpgsqlConnection(database.AdminConnectionString))
+        {
+            await adminConn.ExecuteAsync("""
+                INSERT INTO odca.contracts(id, tenant_id, title, reference)
+                VALUES (@targetContractId, @TenantId, 'Contrato Concorrente', 'REF-CONC');
+                """, new { targetContractId, TenantId });
+        }
+
+        var controller1 = CreateStudioController(dataSource, ActorId);
+        var controller2 = CreateStudioController(dataSource, ActorId);
+
+        var req1 = new CreateDraftRequest(
+            TemplateId: TemplateAId,
+            Title: "Minuta Concorrente 1",
+            Reference: "REF-CONC",
+            ContractId: targetContractId);
+
+        var req2 = new CreateDraftRequest(
+            TemplateId: TemplateAId,
+            Title: "Minuta Concorrente 2",
+            Reference: "REF-CONC",
+            ContractId: targetContractId);
+
+        // Run both concurrently
+        var task1 = controller1.CreateDraft(TenantId, req1, default);
+        var task2 = controller2.CreateDraft(TenantId, req2, default);
+
+        var results = await Task.WhenAll(task1, task2);
+
+        // Both should succeed (one Created 201, one Ok 200) without 23505 throwing an unhandled transaction aborted error!
+        Assert.All(results, res => Assert.True(res is CreatedResult or OkObjectResult));
+
+        // Exactly one draft exists for targetContractId in database
+        await using (var adminConn = new NpgsqlConnection(database.AdminConnectionString))
+        {
+            var count = await adminConn.ExecuteScalarAsync<int>(
+                "SELECT count(*)::int FROM odca.contract_drafts WHERE tenant_id = @TenantId AND contract_id = @targetContractId",
+                new { TenantId, targetContractId });
+            Assert.Equal(1, count);
+        }
+    }
+
     private static ReviewRequestsController CreateReviewsController(NpgsqlDataSource ds, Guid actorId)
     {
         var controller = new ReviewRequestsController(ds);
@@ -243,7 +465,7 @@ public sealed class DocumentCentralAndStudioTests(DatabaseFixture database) : IC
             INSERT INTO odca.contract_drafts(id, tenant_id, contract_id, source_template_id, source_template_version_id, content, fields, created_by, updated_by)
             VALUES
                 ('73000000-0000-0000-0000-000000000051', @TenantId, @ContractId, @TemplateAId, (SELECT id FROM odca.contract_template_versions WHERE template_id = @TemplateAId LIMIT 1), '{"type":"document","content":[]}'::jsonb, '[]'::jsonb, @ActorId, @ActorId)
-            ON CONFLICT (tenant_id, contract_id) DO UPDATE SET content = EXCLUDED.content, fields = EXCLUDED.fields;
+            ON CONFLICT (tenant_id, contract_id) DO UPDATE SET content = EXCLUDED.content, fields = EXCLUDED.fields, patient_id = NULL, patient_row_version = NULL, patient_selection_snapshot = NULL;
 
             -- Generated contract version 1
             INSERT INTO odca.generated_contract_versions(

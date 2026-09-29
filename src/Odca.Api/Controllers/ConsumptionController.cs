@@ -23,6 +23,24 @@ public sealed class ConsumptionController(IConsumptionRepository repository) : C
     [HttpGet("api/v1/platform/customers")]
     public async Task<IActionResult> Customers([FromQuery]string? search,CancellationToken ct){var actor=Actor();return actor is null?Unauthorized():Ok(await repository.ListCustomersAsync(actor.Value,search,ct));}
     [Authorize(Policy="PlatformAdministrator")]
+    [HttpPost("api/v1/platform/customers")]
+    public async Task<IActionResult> CreateCustomer([FromBody]CreatePlatformCustomerRequest request,CancellationToken ct)
+    {
+        var actor=Actor();if(actor is null)return Unauthorized();
+        if(string.IsNullOrWhiteSpace(request.OrganizationName)||string.IsNullOrWhiteSpace(request.Document)||string.IsNullOrWhiteSpace(request.AdminEmail)||string.IsNullOrWhiteSpace(request.InitialPassword))
+            return ValidationProblem("Preencha todos os campos obrigatórios da organização e administrador.");
+        try
+        {
+            var result=await repository.CreateCustomerAsync(actor.Value,request,ct);
+            if(result is null)return Conflict(new ProblemDetails{Title="Já existe uma organização cadastrada com este documento ou plano indisponível.",Status=409});
+            return Created($"api/v1/platform/customers/{result.TenantId}",result);
+        }
+        catch(ArgumentException ex)
+        {
+            return ValidationProblem(ex.Message);
+        }
+    }
+    [Authorize(Policy="PlatformAdministrator")]
     [HttpGet("api/v1/platform/customers/{tenantId:guid}")]
     public async Task<IActionResult> Customer(Guid tenantId,CancellationToken ct){var actor=Actor();if(actor is null)return Unauthorized();var summary=await repository.GetSummaryAsync(actor.Value,tenantId,true,ct);if(summary is null)return NotFound();var requests=await repository.ListRequestsAsync(actor.Value,tenantId,true,ct);return Ok(new PlatformCustomerDetail(summary,requests));}
     [Authorize(Policy="PlatformAdministrator")]

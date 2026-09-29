@@ -1,11 +1,14 @@
 using Dapper;
 using Npgsql;
+using Odca.Application.Common;
 using Odca.Application.Consumption;
+using Odca.Application.Identity;
+using Odca.Application.Onboarding;
 using Odca.Contracts.Consumption;
 
 namespace Odca.Infrastructure.Consumption;
 
-public sealed class NpgsqlConsumptionRepository(NpgsqlDataSource dataSource) : IConsumptionRepository
+public sealed class NpgsqlConsumptionRepository(NpgsqlDataSource dataSource, IPasswordService passwordService) : IConsumptionRepository
 {
     public async Task<ConsumptionSummary?> GetSummaryAsync(Guid actorId, Guid tenantId, bool platformAccess, CancellationToken cancellationToken)
     {
@@ -85,6 +88,144 @@ public sealed class NpgsqlConsumptionRepository(NpgsqlDataSource dataSource) : I
             row.SubscriptionStatus, row.ActiveUsers, row.UsedBytes, row.LimitBytes,
             row.PendingRequests, ToOffset(row.LastActivity))).ToArray();
     }
+
+    public async Task<CreatePlatformCustomerResponse?> CreateCustomerAsync(Guid actorId, CreatePlatformCustomerRequest request, CancellationToken cancellationToken)
+    {
+        var doc = BrazilianDocument.NormalizeAndValidate(request.Document);
+        var email = request.AdminEmail.Trim().ToLowerInvariant();
+        var emailNormalized = email.ToUpperInvariant();
+        var orgName = request.OrganizationName.Trim();
+        var adminName = request.AdminName.Trim();
+
+        await using var c = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var tx = await c.BeginTransactionAsync(cancellationToken);
+
+        var existsTenant = await c.ExecuteScalarAsync<bool>(new CommandDefinition(
+            "SELECT EXISTS(SELECT 1 FROM odca.tenants WHERE business_code = @businessCode AND NOT is_deleted)",
+            new { businessCode = doc.Normalized }, tx, cancellationToken: cancellationToken));
+        if (existsTenant)
+        {
+            await tx.RollbackAsync(cancellationToken);
+            return null;
+        }
+
+        var planVersion = await c.QuerySingleOrDefaultAsync<PlanVersionRow>(new CommandDefinition(
+            """
+            SELECT id AS Id, code AS Code
+            FROM odca.plan_versions
+            WHERE code = @planCode AND status = 'published'
+            ORDER BY version DESC LIMIT 1
+            """,
+            new { planCode = request.PlanCode.Trim() }, tx, cancellationToken: cancellationToken));
+
+        if (planVersion is null)
+        {
+            planVersion = await c.QuerySingleOrDefaultAsync<PlanVersionRow>(new CommandDefinition(
+                """
+                SELECT id AS Id, code AS Code
+                FROM odca.plan_versions
+                WHERE status = 'published'
+                ORDER BY version DESC LIMIT 1
+                """, tx, cancellationToken: cancellationToken));
+
+            if (planVersion is null)
+            {
+                await tx.RollbackAsync(cancellationToken);
+                return null;
+            }
+        }
+
+        var userId = await c.QuerySingleOrDefaultAsync<Guid?>(new CommandDefinition(
+            "SELECT id FROM odca.users WHERE email_normalized = @emailNormalized",
+            new { emailNormalized }, tx, cancellationToken: cancellationToken));
+
+        if (userId is null || userId == Guid.Empty)
+        {
+            userId = Guid.NewGuid();
+            var template = new UserCredential(userId.Value, email, adminName, string.Empty, 1, false, false, null, false, null);
+            var passwordHash = passwordService.Hash(template, request.InitialPassword);
+
+            await c.ExecuteAsync(new CommandDefinition(
+                """
+                INSERT INTO odca.users(id, email, email_normalized, login_normalized, display_name, password_hash, email_verified_at, must_change_password, is_platform_administrator)
+                VALUES (@userId, @email, @emailNormalized, @emailNormalized, @adminName, @passwordHash, now(), false, false)
+                """,
+                new { userId, email, emailNormalized, adminName, passwordHash }, tx, cancellationToken: cancellationToken));
+        }
+
+        var tenantId = Guid.NewGuid();
+        var tenantStatus = request.ActivateDirectly ? "active" : "pending";
+        var commercialState = request.ActivateDirectly ? "active" : "commercial_pending";
+        var subscriptionStatus = request.ActivateDirectly ? "active" : "pending";
+
+        await c.ExecuteAsync(new CommandDefinition(
+            "SELECT set_config('odca.tenant_id', @tenantId, true);",
+            new { tenantId = tenantId.ToString() }, tx, cancellationToken: cancellationToken));
+
+        try
+        {
+            await c.ExecuteAsync(new CommandDefinition(
+                """
+                INSERT INTO odca.tenants(id, business_code, display_name, status, timezone)
+                VALUES (@tenantId, @businessCode, @orgName, @tenantStatus, 'America/Sao_Paulo');
+
+                INSERT INTO odca.memberships(tenant_id, user_id, status)
+                VALUES (@tenantId, @userId, 'active');
+
+                INSERT INTO odca.roles(scope_type, tenant_id, code, display_name, is_system)
+                VALUES ('tenant', @tenantId, 'tenant-administrator', 'Administrador da organização', true)
+                ON CONFLICT DO NOTHING;
+
+                INSERT INTO odca.role_permissions(role_id, permission_code)
+                SELECT r.id, p.code FROM odca.roles r CROSS JOIN odca.permissions p
+                WHERE r.tenant_id = @tenantId AND r.code = 'tenant-administrator' AND p.code LIKE 'tenant.%'
+                ON CONFLICT DO NOTHING;
+
+                INSERT INTO odca.member_roles(tenant_id, user_id, role_id, assigned_by)
+                SELECT @tenantId, @userId, r.id, @actorId FROM odca.roles r
+                WHERE r.tenant_id = @tenantId AND r.code = 'tenant-administrator'
+                ON CONFLICT DO NOTHING;
+
+                INSERT INTO odca.subscriptions(id, tenant_id, plan_version_id, commercial_state, status, created_by)
+                VALUES (gen_random_uuid(), @tenantId, @planVersionId, @commercialState, @subscriptionStatus, @actorId);
+
+                INSERT INTO odca.audit_events(scope_type, tenant_id, actor_user_id, action, entity_type, entity_id, occurred_at, result, metadata)
+                VALUES ('tenant', @tenantId, @actorId, 'organization.created_by_platform', 'tenant', @tenantId, now(), 'success',
+                    jsonb_build_object('organization', @orgName, 'adminEmail', @email, 'plan', @planCode, 'status', @tenantStatus));
+                """,
+                new {
+                    tenantId,
+                    businessCode = doc.Normalized,
+                    orgName,
+                    tenantStatus,
+                    userId,
+                    actorId,
+                    planVersionId = planVersion.Id,
+                    commercialState,
+                    subscriptionStatus,
+                    email,
+                    planCode = planVersion.Code
+                }, tx, cancellationToken: cancellationToken));
+
+            await tx.CommitAsync(cancellationToken);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            await tx.RollbackAsync(cancellationToken);
+            return null;
+        }
+
+        return new CreatePlatformCustomerResponse(
+            tenantId,
+            userId.Value,
+            orgName,
+            email,
+            planVersion.Code,
+            tenantStatus,
+            commercialState);
+    }
+
+    private sealed class PlanVersionRow { public Guid Id { get; set; } public string Code { get; set; } = ""; }
 
     private async Task<bool> MutatePlatform(Guid actorId,Guid tenantId,Func<NpgsqlConnection,NpgsqlTransaction,CancellationToken,Task<bool>> action,CancellationToken cancellationToken){await using var c=await dataSource.OpenConnectionAsync(cancellationToken);await using var tx=await c.BeginTransactionAsync(cancellationToken);await Context(c,tx,actorId,tenantId,cancellationToken);var ok=await action(c,tx,cancellationToken);if(ok)await tx.CommitAsync(cancellationToken);else await tx.RollbackAsync(cancellationToken);return ok;}
     private static Task<int> Context(NpgsqlConnection c,NpgsqlTransaction tx,Guid actor,Guid tenant,CancellationToken ct)=>c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.user_id',@actor,true),set_config('odca.tenant_id',@tenant,true)",new{actor=actor.ToString(),tenant=tenant.ToString()},tx,cancellationToken:ct));

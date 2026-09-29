@@ -130,16 +130,17 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
         await using (var conn = new NpgsqlConnection(database.AdminConnectionString))
         {
             await conn.ExecuteAsync("""
-                DELETE FROM odca.customer_registration_outbox WHERE registration_id IN (SELECT id FROM odca.customer_registration_requests WHERE email_normalized = 'CLIENTE.SINTETICO@EXAMPLE.TEST' OR document_normalized = '12345678000195');
-                DELETE FROM odca.customer_registration_requests WHERE email_normalized = 'CLIENTE.SINTETICO@EXAMPLE.TEST' OR document_normalized = '12345678000195';
-                DELETE FROM odca.audit_events WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code = '12345678000195') OR actor_user_id IN (SELECT id FROM odca.users WHERE email_normalized = 'CLIENTE.SINTETICO@EXAMPLE.TEST');
-                DELETE FROM odca.subscriptions WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code = '12345678000195') OR created_by IN (SELECT id FROM odca.users WHERE email_normalized = 'CLIENTE.SINTETICO@EXAMPLE.TEST');
-                DELETE FROM odca.member_roles WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code = '12345678000195') OR user_id IN (SELECT id FROM odca.users WHERE email_normalized = 'CLIENTE.SINTETICO@EXAMPLE.TEST') OR assigned_by IN (SELECT id FROM odca.users WHERE email_normalized = 'CLIENTE.SINTETICO@EXAMPLE.TEST');
-                DELETE FROM odca.memberships WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code = '12345678000195') OR user_id IN (SELECT id FROM odca.users WHERE email_normalized = 'CLIENTE.SINTETICO@EXAMPLE.TEST');
-                DELETE FROM odca.roles WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code = '12345678000195');
+                DELETE FROM odca.customer_registration_outbox WHERE registration_id IN (SELECT id FROM odca.customer_registration_requests WHERE email_normalized = 'CLIENTE.SINTETICO@EXAMPLE.TEST' OR document_normalized = '00000000000191');
+                DELETE FROM odca.customer_registration_requests WHERE email_normalized = 'CLIENTE.SINTETICO@EXAMPLE.TEST' OR document_normalized = '00000000000191';
+                DELETE FROM odca.audit_events WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code = '00000000000191') OR actor_user_id IN (SELECT id FROM odca.users WHERE email_normalized = 'CLIENTE.SINTETICO@EXAMPLE.TEST');
+                DELETE FROM odca.subscriptions WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code = '00000000000191') OR created_by IN (SELECT id FROM odca.users WHERE email_normalized = 'CLIENTE.SINTETICO@EXAMPLE.TEST');
+                DELETE FROM odca.member_roles WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code = '00000000000191') OR user_id IN (SELECT id FROM odca.users WHERE email_normalized = 'CLIENTE.SINTETICO@EXAMPLE.TEST') OR assigned_by IN (SELECT id FROM odca.users WHERE email_normalized = 'CLIENTE.SINTETICO@EXAMPLE.TEST');
+                DELETE FROM odca.memberships WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code = '00000000000191') OR user_id IN (SELECT id FROM odca.users WHERE email_normalized = 'CLIENTE.SINTETICO@EXAMPLE.TEST');
+                DELETE FROM odca.role_permissions WHERE role_id IN (SELECT id FROM odca.roles WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code = '00000000000191'));
+                DELETE FROM odca.roles WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code = '00000000000191');
                 DELETE FROM odca.mfa_recovery_codes WHERE user_id IN (SELECT id FROM odca.users WHERE email_normalized = 'CLIENTE.SINTETICO@EXAMPLE.TEST');
                 DELETE FROM odca.sessions WHERE user_id IN (SELECT id FROM odca.users WHERE email_normalized = 'CLIENTE.SINTETICO@EXAMPLE.TEST');
-                DELETE FROM odca.tenants WHERE business_code = '12345678000195' OR deleted_by IN (SELECT id FROM odca.users WHERE email_normalized = 'CLIENTE.SINTETICO@EXAMPLE.TEST');
+                DELETE FROM odca.tenants WHERE business_code = '00000000000191' OR deleted_by IN (SELECT id FROM odca.users WHERE email_normalized = 'CLIENTE.SINTETICO@EXAMPLE.TEST');
                 DELETE FROM odca.users WHERE email_normalized = 'CLIENTE.SINTETICO@EXAMPLE.TEST';
             """);
         }
@@ -148,7 +149,7 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
         using var client = factory.CreateClient();
         var request = new StartCustomerRegistrationRequest(
             "basic",
-            "12.345.678/0001-95",
+            "00.000.000/0001-91",
             "Cliente Sintético",
             "cliente.sintetico@example.test",
             "Cliente!Password2026",

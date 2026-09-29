@@ -1,0 +1,93 @@
+@model Odca.Web.Models.CreateCustomerViewModel
+@{
+    ViewData["Title"] = "Nova organização";
+}
+<nav class="breadcrumb">
+    <a asp-controller="Home" asp-action="Index">Visão global</a>
+    <span>/</span>
+    <a asp-action="Index">Clientes</a>
+    <span>/</span>
+    <span>Nova organização</span>
+</nav>
+
+<header class="page-heading">
+    <div>
+        <p class="eyebrow">Administração global</p>
+        <h1>Cadastrar nova organização</h1>
+        <p class="muted">Provisione a organização com plano contratado e administrador inicial responsável.</p>
+    </div>
+    <details class="help-card">
+        <summary>Como usar</summary>
+        <p>Informe os dados da organização (clínica, consultório ou empresa) e do usuário que atuará como Administrador da Organização. Ao ativar imediatamente, a organização e o administrador estarão prontos para operar e cadastrar pacientes e minutas.</p>
+    </details>
+</header>
+
+<form method="post" asp-action="Create" class="patient-form" data-submit-once>
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="All" class="alert alert-error" role="alert"></div>
+
+    <section class="card">
+        <h2>Dados da Organização</h2>
+        <div class="form-grid">
+            <label>
+                Nome da organização / Razão social *
+                <input asp-for="OrganizationName" autocomplete="organization" required />
+                <span asp-validation-for="OrganizationName" class="validation"></span>
+            </label>
+            <label>
+                CNPJ ou CPF do contratante *
+                <input asp-for="Document" placeholder="00.000.000/0000-00 ou 000.000.000-00" autocomplete="off" required />
+                <span asp-validation-for="Document" class="validation"></span>
+            </label>
+            <label>
+                Plano contratado *
+                <select asp-for="PlanCode" required>
+                    <option value="odca-pro">ODCA Pro (Recomendado)</option>
+                    <option value="odca-starter">ODCA Starter</option>
+                    <option value="odca-enterprise">ODCA Enterprise</option>
+                </select>
+                <span asp-validation-for="PlanCode" class="validation"></span>
+            </label>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>Administrador Inicial da Organização</h2>
+        <p class="muted" style="margin-top: 0; font-size: 0.875rem;">
+            O usuário receberá o perfil <strong>Administrador da organização</strong>, podendo gerenciar a equipe, pacientes e documentos da clínica.
+        </p>
+        <div class="form-grid">
+            <label>
+                Nome completo do responsável *
+                <input asp-for="AdminName" autocomplete="name" required />
+                <span asp-validation-for="AdminName" class="validation"></span>
+            </label>
+            <label>
+                E-mail corporativo / Login *
+                <input asp-for="AdminEmail" type="email" autocomplete="email" required />
+                <span asp-validation-for="AdminEmail" class="validation"></span>
+            </label>
+            <label>
+                Senha de acesso inicial *
+                <input asp-for="InitialPassword" type="password" autocomplete="new-password" minlength="8" required />
+                <span asp-validation-for="InitialPassword" class="validation"></span>
+            </label>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>Situação Operacional</h2>
+        <label class="check-label">
+            <input asp-for="ActivateDirectly" type="checkbox" />
+            <strong>Liberar operação imediatamente</strong>
+        </label>
+        <p class="muted" style="font-size: 0.85rem; margin-top: 0.25rem;">
+            Se desmarcado, a organização ficará em estado <em>comercial pendente</em> até validação comercial posterior.
+        </p>
+    </section>
+
+    <div class="form-actions-row">
+        <button class="button button-primary" type="submit">Cadastrar organização</button>
+        <a class="button button-link" asp-action="Index">Cancelar</a>
+    </div>
+</form>

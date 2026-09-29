@@ -56,7 +56,7 @@ public sealed class OrganizationAccessMaterializationTests(DatabaseFixture datab
     {
         const string sql = """
             DELETE FROM odca.member_roles WHERE tenant_id IN (@emptyTenant, @populatedTenant);
-            DELETE FROM odca.role_permissions WHERE role_id=@roleId;
+            DELETE FROM odca.role_permissions WHERE role_id IN (SELECT id FROM odca.roles WHERE tenant_id IN (@emptyTenant, @populatedTenant)) OR role_id = @roleId;
             DELETE FROM odca.memberships WHERE tenant_id IN (@emptyTenant, @populatedTenant);
             DELETE FROM odca.roles WHERE tenant_id IN (@emptyTenant, @populatedTenant);
             DELETE FROM odca.tenants WHERE id IN (@emptyTenant, @populatedTenant);

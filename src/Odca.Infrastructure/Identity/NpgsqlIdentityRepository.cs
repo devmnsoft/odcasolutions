@@ -15,32 +15,7 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
                    is_platform_administrator AS "IsPlatformAdministrator",
                    mfa_confirmed_at AS "MfaConfirmedAt",
                    is_deleted AS "IsDeleted", locked_until AS "LockedUntil",
-                   (is_platform_administrator OR EXISTS (
-                       SELECT 1
-                         FROM odca.memberships m
-                         JOIN odca.tenants t ON t.id = m.tenant_id
-                        WHERE m.user_id = odca.users.id
-                          AND m.status = 'active'
-                          AND (
-                              t.status = 'active'
-                              OR (
-                                  t.status = 'pending'
-                                  AND EXISTS (
-                                      SELECT 1
-                                        FROM odca.subscriptions s
-                                       WHERE s.tenant_id = t.id
-                                         AND s.commercial_state = 'commercial_pending')
-                                  AND EXISTS (
-                                      SELECT 1
-                                        FROM odca.member_roles mr
-                                        JOIN odca.roles r ON r.id = mr.role_id
-                                       WHERE mr.tenant_id = m.tenant_id
-                                         AND mr.user_id = m.user_id
-                                         AND r.tenant_id = m.tenant_id
-                                         AND r.code = 'tenant-administrator')
-                              ))
-                          AND NOT t.is_deleted
-                   )) AS "HasActiveAccess"
+                   (is_platform_administrator OR odca.user_has_active_access(odca.users.id)) AS "HasActiveAccess"
             FROM odca.users
             WHERE email_normalized = @normalizedLogin OR login_normalized = @normalizedLogin
             LIMIT 1;
@@ -61,30 +36,7 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
                    is_platform_administrator AS "IsPlatformAdministrator",
                    mfa_confirmed_at AS "MfaConfirmedAt",
                    is_deleted AS "IsDeleted", locked_until AS "LockedUntil",
-                   (is_platform_administrator OR EXISTS (
-                       SELECT 1
-                         FROM odca.memberships m
-                         JOIN odca.tenants t ON t.id = m.tenant_id
-                        WHERE m.user_id = odca.users.id
-                          AND m.status = 'active'
-                          AND (
-                              t.status = 'active'
-                              OR (
-                                  t.status = 'pending'
-                                  AND EXISTS (
-                                      SELECT 1 FROM odca.subscriptions s
-                                       WHERE s.tenant_id = t.id
-                                         AND s.commercial_state = 'commercial_pending')
-                                  AND EXISTS (
-                                      SELECT 1 FROM odca.member_roles mr
-                                      JOIN odca.roles r ON r.id = mr.role_id
-                                       WHERE mr.tenant_id = m.tenant_id
-                                         AND mr.user_id = m.user_id
-                                         AND r.tenant_id = m.tenant_id
-                                         AND r.code = 'tenant-administrator')
-                              ))
-                          AND NOT t.is_deleted
-                   )) AS "HasActiveAccess"
+                   (is_platform_administrator OR odca.user_has_active_access(odca.users.id)) AS "HasActiveAccess"
             FROM odca.users WHERE id = @userId;
             """;
 
@@ -175,30 +127,7 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
                    AND u.security_version = @securityVersion
                    AND NOT u.is_deleted
                    AND (u.locked_until IS NULL OR u.locked_until <= @now)
-                   AND (u.is_platform_administrator OR EXISTS (
-                       SELECT 1
-                         FROM odca.memberships m
-                         JOIN odca.tenants t ON t.id = m.tenant_id
-                        WHERE m.user_id = u.id
-                          AND m.status = 'active'
-                          AND (
-                              t.status = 'active'
-                              OR (
-                                  t.status = 'pending'
-                                  AND EXISTS (
-                                      SELECT 1 FROM odca.subscriptions s
-                                       WHERE s.tenant_id = t.id
-                                         AND s.commercial_state = 'commercial_pending')
-                                  AND EXISTS (
-                                      SELECT 1 FROM odca.member_roles mr
-                                      JOIN odca.roles r ON r.id = mr.role_id
-                                       WHERE mr.tenant_id = m.tenant_id
-                                         AND mr.user_id = m.user_id
-                                         AND r.tenant_id = m.tenant_id
-                                         AND r.code = 'tenant-administrator')
-                              ))
-                          AND NOT t.is_deleted
-                   ))
+                   AND (u.is_platform_administrator OR odca.user_has_active_access(u.id))
             );
             """;
 

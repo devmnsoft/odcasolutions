@@ -41,6 +41,7 @@ public sealed class DevelopmentAccessProvisioningTests(DatabaseFixture database)
     [Fact]
     public async Task ProvisionedAccountsAuthenticateFromDatabaseAndRemainRestricted()
     {
+        await ResetScenarioAsync();
         var seed = FindRepositoryFile("database", "development", "seed-test-access.sql");
         var provisioner = new TestAccessProvisioner(new AspNetPasswordService(), seed);
         var generated = new Queue<string>([
@@ -124,6 +125,7 @@ public sealed class DevelopmentAccessProvisioningTests(DatabaseFixture database)
     [Fact]
     public async Task ClientCannotAuthenticateOrKeepSessionWhenDemoTenantIsBlocked()
     {
+        await ResetScenarioAsync();
         var seed = FindRepositoryFile("database", "development", "seed-test-access.sql");
         var provisioner = new TestAccessProvisioner(new AspNetPasswordService(), seed);
         var provisioned = await provisioner.ProvisionAsync(
@@ -185,5 +187,24 @@ public sealed class DevelopmentAccessProvisioningTests(DatabaseFixture database)
             current = current.Parent;
         }
         throw new FileNotFoundException(string.Join('/', segments));
+    }
+
+    private async Task ResetScenarioAsync()
+    {
+        await using var conn = new NpgsqlConnection(database.AdminConnectionString);
+        await conn.ExecuteAsync("""
+            DELETE FROM odca.audit_events WHERE actor_user_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'))
+                                             OR tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.sessions WHERE user_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));
+            DELETE FROM odca.member_roles WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'))
+                                             OR user_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));
+            DELETE FROM odca.memberships WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'))
+                                            OR user_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));
+            DELETE FROM odca.subscriptions WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.role_permissions WHERE role_id IN (SELECT id FROM odca.roles WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL')));
+            DELETE FROM odca.roles WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL');
+            DELETE FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL');
+        """);
     }
 }
