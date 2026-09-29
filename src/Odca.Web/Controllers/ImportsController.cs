@@ -88,4 +88,20 @@ public sealed class ImportsController(OdcaApiClient api) : Controller
         TempData["ImportError"] = result.UserMessage("Não foi possível confirmar. Confira os dados e tente novamente.");
         return RedirectToAction(nameof(Review), new { tenantId, importId });
     }
+
+    [HttpPost("{importId:guid}/cancelar")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Cancel(Guid tenantId, Guid importId, CancellationToken ct)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
+        var result = await api.CancelContractImportAsync(token, tenantId, importId, ct);
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (result.Succeeded)
+        {
+            TempData["ImportNotice"] = "Importação cancelada com sucesso.";
+            return RedirectToAction(nameof(Index), new { tenantId });
+        }
+        TempData["ImportError"] = result.UserMessage("Não foi possível cancelar a importação.");
+        return RedirectToAction(nameof(Review), new { tenantId, importId });
+    }
 }

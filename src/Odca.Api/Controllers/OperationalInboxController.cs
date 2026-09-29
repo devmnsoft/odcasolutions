@@ -140,7 +140,7 @@ public sealed class OperationalInboxController(
                 EXISTS(SELECT 1 FROM odca.contract_obligations o
                         WHERE o.tenant_id=@tenant AND o.contract_id=@contract
                           AND o.owner_id=@actor AND o.deleted_at IS NULL) AS OwnsObligation,
-                EXISTS(SELECT 1 FROM odca.contract_reviews r
+                EXISTS(SELECT 1 FROM odca.contract_review_requests r
                         JOIN odca.contract_review_steps s ON s.tenant_id=r.tenant_id AND s.review_id=r.id
                         WHERE r.tenant_id=@tenant AND r.contract_id=@contract
                           AND s.reviewer_id=@actor AND s.status='current') AS IsAssignedReviewer,

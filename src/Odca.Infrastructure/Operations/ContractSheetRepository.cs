@@ -62,10 +62,10 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             "SELECT odca.tenant_actor_has_permission(@viewerId,@tenantId,'tenant.documents.download') OR odca.tenant_actor_has_permission(@viewerId,@tenantId,'tenant.documents.manage') OR odca.tenant_actor_has_permission(@viewerId,@tenantId,'tenant.contract_drafts.read')",
             new { viewerId, tenantId }, transaction, cancellationToken: cancellationToken));
 
-        var documents = (await connection.QueryAsync<ContractSheetDocumentDto>(new CommandDefinition(
+        var documentRows = (await connection.QueryAsync<ContractSheetDocumentRow>(new CommandDefinition(
             """
             SELECT d.id AS DocumentId, v.id AS VersionId, d.title AS Name,
-                   v.security_status AS SafetyState, v.created_at AS UpdatedAt
+                   v.security_status AS SafetyState, v.uploaded_at AS UpdatedAt
               FROM odca.contract_documents d
               JOIN odca.document_versions v
                 ON v.document_id = d.id AND v.tenant_id = d.tenant_id
@@ -74,18 +74,22 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
                       FROM odca.document_versions x
                      WHERE x.document_id = d.id AND x.tenant_id = d.tenant_id)
              WHERE @canReadDocuments AND d.tenant_id = @tenantId AND d.contract_id = @contractId AND d.deleted_at IS NULL
-             ORDER BY v.created_at DESC
+             ORDER BY v.uploaded_at DESC
              LIMIT 8
             """,
             new { tenantId, contractId, canReadDocuments },
             transaction,
             cancellationToken: cancellationToken))).AsList();
 
-        var review = await connection.QuerySingleOrDefaultAsync<ContractSheetReviewDto>(new CommandDefinition(
+        var documents = documentRows
+            .Select(d => new ContractSheetDocumentDto(d.DocumentId, d.VersionId, d.Name, d.SafetyState, ToUtcOffset(d.UpdatedAt)))
+            .ToList();
+
+        var reviewRow = await connection.QuerySingleOrDefaultAsync<ContractSheetReviewRow>(new CommandDefinition(
             """
             SELECT r.id AS ReviewId, r.status AS Status, s.reviewer_id AS CurrentReviewerId,
                    u.display_name AS CurrentReviewerName, r.due_at AS DueAt
-              FROM odca.contract_reviews r
+              FROM odca.contract_review_requests r
               LEFT JOIN odca.contract_review_steps s
                 ON s.review_id = r.id AND s.tenant_id = r.tenant_id AND s.status = 'current'
               LEFT JOIN odca.users u ON u.id = s.reviewer_id
@@ -97,6 +101,10 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             new { tenantId, contractId },
             transaction,
             cancellationToken: cancellationToken));
+
+        var review = reviewRow is null
+            ? null
+            : new ContractSheetReviewDto(reviewRow.ReviewId, reviewRow.Status, reviewRow.CurrentReviewerId, reviewRow.CurrentReviewerName, ToUtcOffset(reviewRow.DueAt));
 
         var obligations = (await connection.QueryAsync<OperationalInboxRow>(new CommandDefinition(
             """
@@ -143,7 +151,7 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
         var publishedCount = await connection.ExecuteScalarAsync<int>(new CommandDefinition(
             """
             SELECT count(DISTINCT CASE 
-                WHEN t.contract_type IN ('non_disclosure_agreement', 'nda') AND t.fields::text LIKE '%"discloser_name"%' THEN 'nda-unilateral'
+                WHEN t.contract_type IN ('non_disclosure_agreement', 'nda') AND v.fields::text LIKE '%"discloser_name"%' THEN 'nda-unilateral'
                 WHEN t.contract_type IN ('non_disclosure_agreement', 'nda') THEN 'nda-mutual'
                 WHEN t.contract_type IN ('service_agreement', 'services') THEN 'services-agreement'
                 WHEN t.contract_type IN ('amendment') THEN 'contract-amendment'
@@ -151,6 +159,7 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
                 WHEN t.contract_type IN ('lease_agreement', 'lease') THEN 'lease-agreement'
                 ELSE NULL END)::int
               FROM odca.contract_templates t
+              JOIN odca.contract_template_versions v ON v.template_id = t.id AND v.version_number = t.current_version
              WHERE t.status = 'published'
                AND (t.scope = 'global' OR (t.scope = 'private' AND t.owner_tenant_id = @tenantId))
             """,
@@ -233,4 +242,30 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
         string? OwnerName,
         int? NoticeAmount,
         string? NoticeUnit);
+
+    private sealed class ContractSheetDocumentRow
+    {
+        public Guid DocumentId { get; set; }
+        public Guid VersionId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string SafetyState { get; set; } = string.Empty;
+        public DateTime UpdatedAt { get; set; }
+    }
+
+    private sealed class ContractSheetReviewRow
+    {
+        public Guid ReviewId { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public Guid? CurrentReviewerId { get; set; }
+        public string? CurrentReviewerName { get; set; }
+        public DateTime? DueAt { get; set; }
+    }
+
+    private static DateTimeOffset ToUtcOffset(DateTime dt) =>
+        dt.Kind == DateTimeKind.Utc
+            ? new DateTimeOffset(dt, TimeSpan.Zero)
+            : new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc), TimeSpan.Zero);
+
+    private static DateTimeOffset? ToUtcOffset(DateTime? dt) =>
+        dt.HasValue ? ToUtcOffset(dt.Value) : null;
 }

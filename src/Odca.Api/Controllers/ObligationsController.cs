@@ -32,7 +32,7 @@ public sealed class ObligationsController(NpgsqlDataSource dataSource) : Control
         var canReadAll = await Allowed(connection, actor.Value, tenantId, "tenant.obligations.read_all", ct, transaction);
         if (obligation.OwnerId != actor.Value && !canReadAll) return Forbid();
 
-        var events = await connection.QueryAsync<ObligationHistoryItem>(new CommandDefinition("""
+        var rows = await connection.QueryAsync<ObligationHistoryRow>(new CommandDefinition("""
             SELECT e.id AS Id,e.event_type AS EventType,e.actor_id AS ActorId,u.display_name AS Actor,
                    e.details::text AS Details,e.occurred_at AS OccurredAt
             FROM odca.obligation_events e
@@ -40,8 +40,15 @@ public sealed class ObligationsController(NpgsqlDataSource dataSource) : Control
             WHERE e.tenant_id=@tenantId AND e.obligation_id=@id
             ORDER BY e.occurred_at,e.id
             """, new { tenantId, id }, transaction, cancellationToken: ct));
+        var events = rows.Select(r => new ObligationHistoryItem(
+            r.Id,
+            r.EventType,
+            r.ActorId,
+            r.Actor,
+            r.Details,
+            ToUtcOffset(r.OccurredAt))).ToList();
         await transaction.CommitAsync(ct);
-        return Ok(new ObligationHistoryResponse(id, obligation.Title, events.AsList()));
+        return Ok(new ObligationHistoryResponse(id, obligation.Title, events));
     }
 
     [HttpGet]
@@ -131,4 +138,19 @@ public sealed class ObligationsController(NpgsqlDataSource dataSource) : Control
     private static List<DateOnly> Materialize(MonthlyRecurrenceRequest recurrence){var availableMonths=((DateOnly.MaxValue.Year-recurrence.BaseDate.Year)*12)+(DateOnly.MaxValue.Month-recurrence.BaseDate.Month);var count=Math.Min(Math.Min(recurrence.OccurrenceCount??24,24),availableMonths+1);var result=new List<DateOnly>();for(var i=0;i<count;i++){var month=recurrence.BaseDate.AddMonths(i);var date=new DateOnly(month.Year,month.Month,Math.Min(recurrence.IntendedDay,DateTime.DaysInMonth(month.Year,month.Month)));if(recurrence.EndsOn is not null&&date>recurrence.EndsOn)break;result.Add(date);}return result;}
     private static readonly HashSet<string> Categories=["delivery","document","renewal","communication","financial","other"]; private static readonly HashSet<string> Priorities=["low","normal","high","critical"];private static readonly HashSet<string> Origins=["manual","reviewed_suggestion"];
     private sealed record ContractTerm(DateOnly? EndDate);private sealed record ActionRow(string Status,long Version,DateOnly DueDate,bool EvidenceRequired,Guid OwnerId);private sealed record ObligationRow(Guid Id,Guid ContractId,string Contract,string Title,string Category,string ObligatedParty,Guid OwnerId,string Owner,DateOnly DueDate,string Priority,string Status,bool Overdue,bool OwnerBlocked,long Version,decimal? Amount,string? Currency);private sealed record HistoryHeader(Guid Id,string Title,Guid OwnerId);
+
+    private static DateTimeOffset ToUtcOffset(DateTime dt) =>
+        dt.Kind == DateTimeKind.Utc
+            ? new DateTimeOffset(dt, TimeSpan.Zero)
+            : new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc), TimeSpan.Zero);
+
+    private sealed class ObligationHistoryRow
+    {
+        public long Id { get; set; }
+        public string EventType { get; set; } = string.Empty;
+        public Guid ActorId { get; set; }
+        public string Actor { get; set; } = string.Empty;
+        public string Details { get; set; } = string.Empty;
+        public DateTime OccurredAt { get; set; }
+    }
 }

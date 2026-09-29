@@ -412,7 +412,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
                 r.TemplateName,
                 r.PatientId,
                 r.PatientName,
-                r.UpdatedAt,
+                ToUtcOffset(r.UpdatedAt),
                 r.DraftStatus,
                 r.ReviewStatus,
                 r.PdfStatus,
@@ -576,9 +576,9 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         try { html=ContractDocumentRenderer.ToHtml(row.Content,row.Fields,row.Values); }
         catch(InvalidDataException exception) { return Problem(statusCode:StatusCodes.Status422UnprocessableEntity,title:"A estrutura histórica não pode ser apresentada.",detail:exception.Message); }
         await tx.CommitAsync(ct); return Ok(new GeneratedVersionDetail(row.Id,row.ContractId,row.DraftId,row.Number,row.Title,row.DocumentType,
-            row.Organization,row.Template,row.TemplateVersion,row.Author,row.CreatedAt,row.Sha256,row.ReviewStatus,
+            row.Organization,row.Template,row.TemplateVersion,row.Author,ToUtcOffset(row.CreatedAt),row.Sha256,row.ReviewStatus,
             row.SignatureStatus,row.ReviewId,ParseOptional(row.PatientSnapshot),JsonSerializer.Deserialize<JsonElement>(row.Content),
-            JsonSerializer.Deserialize<JsonElement>(row.Fields),JsonSerializer.Deserialize<JsonElement>(row.Values),html,row.PdfStatus,row.PdfByteSize,row.PdfCompletedAt,preparation));
+            JsonSerializer.Deserialize<JsonElement>(row.Fields),JsonSerializer.Deserialize<JsonElement>(row.Values),html,row.PdfStatus,row.PdfByteSize,ToUtcOffset(row.PdfCompletedAt),preparation));
     }
 
     [HttpPost("versions/{versionId:guid}/pdf")]
@@ -801,12 +801,13 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         await using var c = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(c, actor.Value, tenantId, "tenant.contract_drafts.read", ct)) return Forbid();
         await using var tx = await c.BeginTransactionAsync(ct); await SetTenant(c, tenantId, actor.Value, tx, ct);
-        var rows = await c.QueryAsync<StudioVersionItem>(new CommandDefinition("""
+        var rows = await c.QueryAsync<StudioVersionRow>(new CommandDefinition("""
             SELECT v.id AS Id,v.version_number AS Number,u.display_name AS Author,v.created_at AS CreatedAt,v.review_status AS Status
             FROM odca.generated_contract_versions v JOIN odca.users u ON u.id=v.created_by
             WHERE v.tenant_id=@tenantId AND v.draft_id=@draftId ORDER BY v.version_number DESC
             """, new { tenantId, draftId }, tx, cancellationToken: ct));
-        await tx.CommitAsync(ct); return Ok(rows.AsList());
+        var items = rows.Select(r => new StudioVersionItem(r.Id, r.Number, r.Author, ToUtcOffset(r.CreatedAt), r.Status)).AsList();
+        await tx.CommitAsync(ct); return Ok(items);
     }
 
     [HttpGet("versions/compare")]
@@ -851,7 +852,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     {
         var actor = Actor(); if (actor is null) return Unauthorized(); await using var c = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(c, actor.Value, tenantId, "tenant.contract_drafts.read", ct)) return Forbid(); await using var tx = await c.BeginTransactionAsync(ct); await SetTenant(c, tenantId, actor.Value, tx, ct);
-        var rows = (await c.QueryAsync<StudioCommentItem>(new CommandDefinition("""
+        var rows = (await c.QueryAsync<StudioCommentRow>(new CommandDefinition("""
             SELECT m.id AS Id,m.generated_version_id AS VersionId,m.draft_revision AS DraftRevision,m.reference AS Reference,m.body AS Body,
               m.author_id AS AuthorId,u.display_name AS Author,m.parent_id AS ParentId,m.created_at AS CreatedAt,
               (m.resolved_at IS NOT NULL) AS Resolved,m.resolved_at AS ResolvedAt,m.reference_located AS ReferenceLocated,
@@ -863,7 +864,11 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             WHERE m.tenant_id=@tenantId AND m.draft_id=@draftId AND m.deleted_at IS NULL AND (@includeResolved OR m.resolved_at IS NULL)
             ORDER BY coalesce(last_event.occurred_at,m.created_at) DESC,m.id
             """, new { tenantId, draftId, includeResolved }, tx, cancellationToken: ct))).AsList();
-        await tx.CommitAsync(ct); return Ok(rows);
+        var items = rows.Select(r => new StudioCommentItem(
+            r.Id, r.VersionId, r.DraftRevision, r.Reference, r.Body, r.AuthorId, r.Author,
+            r.ParentId, ToUtcOffset(r.CreatedAt), r.Resolved, ToUtcOffset(r.ResolvedAt), r.ReferenceLocated,
+            r.ResolvedBy, ToUtcOffset(r.LastMovementAt), r.OriginVersion)).ToList();
+        await tx.CommitAsync(ct); return Ok(items);
     }
 
     [HttpPost("drafts/{draftId:guid}/comments")]
@@ -1013,7 +1018,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     {
         var preparation=await c.QuerySingleOrDefaultAsync<PreparationRow>(new CommandDefinition("SELECT id AS Id,status AS Status,row_version AS Version,composition_revision AS CompositionRevision,confirmed_revision AS ConfirmedRevision,confirmed_pdf_sha256 AS ConfirmedPdfSha256,confirmed_at AS ConfirmedAt,confirmation_operation_id AS ConfirmationOperationId FROM odca.signature_preparations WHERE tenant_id=@tenantId AND generated_version_id=@versionId",new{tenantId,versionId},tx,cancellationToken:ct));if(preparation is null)return null;
         var participants=await c.QueryAsync<SignatureParticipantInput>(new CommandDefinition("SELECT client_id AS Id,participant_type AS ParticipantType,source_id AS SourceId,role AS Role,name AS Name,email AS Email,phone AS Phone,position AS Position FROM odca.signature_participants WHERE tenant_id=@tenantId AND preparation_id=@id AND composition_revision=@revision ORDER BY position",new{tenantId,preparation.Id,revision=preparation.CompositionRevision},tx,cancellationToken:ct));
-        return new(preparation.Id,preparation.Status,preparation.Version,participants.AsList(),preparation.CompositionRevision,preparation.ConfirmedRevision,preparation.ConfirmedPdfSha256,preparation.ConfirmedAt);
+        return new(preparation.Id,preparation.Status,preparation.Version,participants.AsList(),preparation.CompositionRevision,preparation.ConfirmedRevision,preparation.ConfirmedPdfSha256,ToUtcOffset(preparation.ConfirmedAt));
     }
 
     private static string SafeFileName(string value)=>string.Concat(value.Normalize().Select(x=>char.IsLetterOrDigit(x)||x is '-' or '_'?x:'_')).Trim('_') is {Length:>0} safe?safe:"documento";
@@ -1025,9 +1030,41 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     private sealed record SaveRow(long Version,Guid ClientRevision,DateTimeOffset SavedAt);
     private sealed record VersionRow(Guid Id,Guid ContractId,string Content,string Sha256,string Status);
     private sealed record GeneratedExistingRow(Guid Id,Guid DraftId,int Number,string Sha256,long ByteSize,DateTimeOffset CreatedAt,string Status,long DraftVersion);
-    private sealed record ComparisonRow(Guid Id,Guid ContractId,int Number,string Author,DateTimeOffset CreatedAt,string Status,string Content,string Fields,string Values);
+    private static DateTimeOffset ToUtcOffset(DateTime dt) => dt.Kind == DateTimeKind.Utc ? new DateTimeOffset(dt, TimeSpan.Zero) : new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc), TimeSpan.Zero);
+    private static DateTimeOffset? ToUtcOffset(DateTime? dt) => dt.HasValue ? ToUtcOffset(dt.Value) : null;
+    private sealed class StudioVersionRow { public Guid Id { get; init; } public int Number { get; init; } public string Author { get; init; } = ""; public DateTime CreatedAt { get; init; } public string Status { get; init; } = ""; }
+    private sealed class StudioCommentRow
+    {
+        public Guid Id { get; init; }
+        public Guid? VersionId { get; init; }
+        public long DraftRevision { get; init; }
+        public string Reference { get; init; } = "";
+        public string Body { get; init; } = "";
+        public Guid AuthorId { get; init; }
+        public string Author { get; init; } = "";
+        public Guid? ParentId { get; init; }
+        public DateTime CreatedAt { get; init; }
+        public bool Resolved { get; init; }
+        public DateTime? ResolvedAt { get; init; }
+        public bool ReferenceLocated { get; init; }
+        public string? ResolvedBy { get; init; }
+        public DateTime? LastMovementAt { get; init; }
+        public int? OriginVersion { get; init; }
+    }
+    private sealed class ComparisonRow
+    {
+        public Guid Id { get; init; }
+        public Guid ContractId { get; init; }
+        public int Number { get; init; }
+        public string Author { get; init; } = "";
+        public DateTime CreatedAt { get; init; }
+        public string Status { get; init; } = "";
+        public string Content { get; init; } = "";
+        public string Fields { get; init; } = "";
+        public string Values { get; init; } = "";
+    }
     private sealed record CommentStateRow(bool Resolved,string Reference,long DraftRevision,Guid ContractId);
-    private static StudioVersionItem ToItem(ComparisonRow row)=>new(row.Id,row.Number,row.Author,row.CreatedAt,row.Status);
+    private static StudioVersionItem ToItem(ComparisonRow row)=>new(row.Id,row.Number,row.Author,ToUtcOffset(row.CreatedAt),row.Status);
     private static PatientDataChange[] PatientChanges(string? before, string? after)
     {
         if (before is null || after is null) return [];
@@ -1040,34 +1077,76 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     private static JsonElement? ParseOptional(string? json)=>json is null?null:JsonSerializer.Deserialize<JsonElement>(json);
     private sealed record ConferenceRow(Guid DraftId,long DraftVersion,string Organization,string Template,int TemplateVersion,string DocumentType,string TemplateStatus,Guid? PatientId,string? PatientName,string? RepresentativeName,long? SelectedPatientVersion,long? CurrentPatientVersion,bool PatientActive,string? SelectedPatientSnapshot,string? CurrentPatientSnapshot,string Content,string Fields,string Values,string ReviewStatus);
     private sealed record PatientConfirmationRow(Guid ContractId,long DraftVersion,long SelectedPatientVersion,long CurrentPatientVersion,DateTimeOffset? PatientInactiveAt);
-    private sealed record GeneratedDetailRow(Guid Id,Guid ContractId,Guid DraftId,Guid? PatientId,int Number,string Title,string DocumentType,
-        string Organization,string Template,int TemplateVersion,string Author,DateTimeOffset CreatedAt,string Sha256,
-        string ReviewStatus,string SignatureStatus,Guid? ReviewId,string? PatientSnapshot,string Content,string Fields,string Values,string PdfStatus,long? PdfByteSize,DateTimeOffset? PdfCompletedAt);
+    private sealed class GeneratedDetailRow
+    {
+        public Guid Id { get; set; }
+        public Guid ContractId { get; set; }
+        public Guid DraftId { get; set; }
+        public Guid? PatientId { get; set; }
+        public int Number { get; set; }
+        public string Title { get; set; } = "";
+        public string DocumentType { get; set; } = "";
+        public string Organization { get; set; } = "";
+        public string Template { get; set; } = "";
+        public int TemplateVersion { get; set; }
+        public string Author { get; set; } = "";
+        public DateTime CreatedAt { get; set; }
+        public string Sha256 { get; set; } = "";
+        public string ReviewStatus { get; set; } = "";
+        public string SignatureStatus { get; set; } = "";
+        public Guid? ReviewId { get; set; }
+        public string? PatientSnapshot { get; set; }
+        public string Content { get; set; } = "";
+        public string Fields { get; set; } = "";
+        public string Values { get; set; } = "";
+        public string PdfStatus { get; set; } = "";
+        public long? PdfByteSize { get; set; }
+        public DateTime? PdfCompletedAt { get; set; }
+    }
     private sealed record PdfRow(Guid Id,string Title,int Number,string Content,string Fields,string Values,string Status,string? StorageKey,long? ByteSize);
     private sealed record PdfDownloadRow(string StorageKey,string Sha256,string Title,Guid? PatientId);
-    private sealed record PreparationRow(Guid Id,string Status,long Version,int CompositionRevision,int? ConfirmedRevision,string? ConfirmedPdfSha256,DateTimeOffset? ConfirmedAt);
+    private sealed class PreparationRow
+    {
+        public Guid Id { get; set; }
+        public string Status { get; set; } = "";
+        public long Version { get; set; }
+        public int CompositionRevision { get; set; }
+        public int? ConfirmedRevision { get; set; }
+        public string? ConfirmedPdfSha256 { get; set; }
+        public DateTime? ConfirmedAt { get; set; }
+    }
     private sealed record PreparationStateRow(Guid Id,string Status,long Version,int CompositionRevision,int? ConfirmedRevision,string? ConfirmedPdfSha256,DateTimeOffset? ConfirmedAt,Guid? ConfirmationOperationId);
     private sealed record PreparationVersionRow(Guid Id,Guid? PatientId,string? PatientSnapshot,string PdfStatus,string? PdfStorageKey,string? PdfSha256,string ReviewStatus);
     private sealed record ReadinessRow(string PdfStatus,string? PdfStorageKey,string? PdfSha256,string ReviewStatus,Guid? PreparationId,string? PreparationStatus,int? CompositionRevision,int ParticipantCount);
     private sealed record PreparationOperationRow(string OperationType,string CommandHash,string ResponseJson);
     private sealed record ComparisonParticipant(Guid Id,string Name,string ParticipantType,Guid? SourceId,string Role,string? Email,string? Phone,int Position,int Revision);
-    private sealed record SubmittedReviewRow(Guid ReviewId,Guid GeneratedVersionId,string Status,string? Instructions,DateTimeOffset? DueAt,Guid ReviewerId);
-    private sealed record DocumentRow(
-        Guid ContractId,
-        Guid? DraftId,
-        Guid? LatestVersionId,
-        int? LatestVersionNumber,
-        string Title,
-        string? Reference,
-        string DocumentType,
-        string TemplateName,
-        Guid? PatientId,
-        string? PatientName,
-        DateTimeOffset UpdatedAt,
-        string DraftStatus,
-        string ReviewStatus,
-        string PdfStatus,
-        string SignatureStatus,
-        long? PdfByteSize,
-        string? PdfStorageKey);
+    private sealed class SubmittedReviewRow
+    {
+        public Guid ReviewId { get; set; }
+        public Guid GeneratedVersionId { get; set; }
+        public string Status { get; set; } = "";
+        public string? Instructions { get; set; }
+        public DateTime? DueAt { get; set; }
+        public Guid ReviewerId { get; set; }
+    }
+    private sealed class DocumentRow
+    {
+        public Guid ContractId { get; init; }
+        public Guid? DraftId { get; init; }
+        public Guid? LatestVersionId { get; init; }
+        public int? LatestVersionNumber { get; init; }
+        public string Title { get; init; } = "";
+        public string? Reference { get; init; }
+        public string DocumentType { get; init; } = "";
+        public string TemplateName { get; init; } = "";
+        public Guid? PatientId { get; init; }
+        public string? PatientName { get; init; }
+        public DateTime UpdatedAt { get; init; }
+        public string DraftStatus { get; init; } = "";
+        public string ReviewStatus { get; init; } = "";
+        public string PdfStatus { get; init; } = "";
+        public string SignatureStatus { get; init; } = "";
+        public long? PdfByteSize { get; init; }
+        public string? PdfStorageKey { get; init; }
+    }
 }

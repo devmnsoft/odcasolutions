@@ -164,19 +164,25 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
             """, new { tenantId, reviewId }, transaction, cancellationToken: ct));
         if (row is null) return NotFound();
         if (!internalAccess && row.RequestedBy != actor.Value) return NotFound();
-        var messages = await connection.QueryAsync<ReviewMessage>(new CommandDefinition("""
+        var messages = (await connection.QueryAsync<ReviewMessageRow>(new CommandDefinition("""
             SELECT cm.id AS Id,cm.body AS Body,cm.reference AS Reference,u.display_name AS Author,cm.visibility AS Visibility,
               cm.created_at AS CreatedAt,(cm.resolved_at IS NOT NULL) AS Resolved
             FROM odca.contract_review_comments cm JOIN odca.users u ON u.id=cm.author_id
             WHERE cm.tenant_id=@tenantId AND cm.review_id=@reviewId AND (@internalAccess OR cm.visibility='client') ORDER BY cm.created_at,cm.id
-            """, new { tenantId, reviewId, internalAccess }, transaction, cancellationToken: ct));
-        var history = await connection.QueryAsync<ReviewHistoryItem>(new CommandDefinition("""
+            """, new { tenantId, reviewId, internalAccess }, transaction, cancellationToken: ct))).AsList();
+        var history = (await connection.QueryAsync<ReviewHistoryRow>(new CommandDefinition("""
             SELECT e.id AS Id,e.event_type AS Type,u.display_name AS Actor,e.occurred_at AS OccurredAt
             FROM odca.contract_review_events e JOIN odca.users u ON u.id=e.actor_id
             WHERE e.tenant_id=@tenantId AND e.review_id=@reviewId ORDER BY e.occurred_at,e.id
-            """, new { tenantId, reviewId }, transaction, cancellationToken: ct));
+            """, new { tenantId, reviewId }, transaction, cancellationToken: ct))).AsList();
         await transaction.CommitAsync(ct);
-        return Ok(new ReviewDetail(row.Id,row.ContractId,row.Contract,row.Status,row.Requester,row.Assignee,row.Instructions,row.OpenedAt,row.UpdatedAt,row.DueAt,row.Version,row.DocumentVersionId,row.GeneratedVersionId,messages.ToArray(),history.ToArray(),row.DocumentVersionNumber));
+        return Ok(new ReviewDetail(
+            row.Id, row.ContractId, row.Contract, row.Status, row.Requester, row.Assignee, row.Instructions,
+            ToUtcOffset(row.OpenedAt), ToUtcOffset(row.UpdatedAt), ToUtcOffset(row.DueAt),
+            row.Version, row.DocumentVersionId, row.GeneratedVersionId,
+            messages.Select(m => new ReviewMessage(m.Id, m.Body, m.Reference, m.Author, m.Visibility, ToUtcOffset(m.CreatedAt), m.Resolved)).ToArray(),
+            history.Select(h => new ReviewHistoryItem(h.Id, h.Type, h.Actor, ToUtcOffset(h.OccurredAt))).ToArray(),
+            row.DocumentVersionNumber));
     }
 
     [HttpPost("{reviewId:guid}/messages")]
@@ -300,7 +306,43 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
         public int PublicMessages { get; set; }
         public int PendingComments { get; set; }
     }
-    private sealed record DetailRow(Guid Id,Guid ContractId,Guid RequestedBy,string Contract,string Status,string Requester,string? Assignee,string? Instructions,DateTimeOffset OpenedAt,DateTimeOffset UpdatedAt,DateTimeOffset? DueAt,long Version,Guid? DocumentVersionId,Guid? GeneratedVersionId,int? DocumentVersionNumber);
+    private static DateTimeOffset ToUtcOffset(DateTime dt) => dt.Kind == DateTimeKind.Utc ? new DateTimeOffset(dt, TimeSpan.Zero) : new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc), TimeSpan.Zero);
+    private static DateTimeOffset? ToUtcOffset(DateTime? dt) => dt.HasValue ? ToUtcOffset(dt.Value) : null;
+    private sealed class DetailRow
+    {
+        public Guid Id { get; set; }
+        public Guid ContractId { get; set; }
+        public Guid RequestedBy { get; set; }
+        public string Contract { get; set; } = "";
+        public string Status { get; set; } = "";
+        public string Requester { get; set; } = "";
+        public string? Assignee { get; set; }
+        public string? Instructions { get; set; }
+        public DateTime OpenedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+        public DateTime? DueAt { get; set; }
+        public long Version { get; set; }
+        public Guid? DocumentVersionId { get; set; }
+        public Guid? GeneratedVersionId { get; set; }
+        public int? DocumentVersionNumber { get; set; }
+    }
+    private sealed class ReviewMessageRow
+    {
+        public Guid Id { get; set; }
+        public string Body { get; set; } = "";
+        public string? Reference { get; set; }
+        public string Author { get; set; } = "";
+        public string Visibility { get; set; } = "";
+        public DateTime CreatedAt { get; set; }
+        public bool Resolved { get; set; }
+    }
+    private sealed class ReviewHistoryRow
+    {
+        public long Id { get; set; }
+        public string Type { get; set; } = "";
+        public string Actor { get; set; } = "";
+        public DateTime OccurredAt { get; set; }
+    }
     private sealed record DecisionRow(long Version,string Status,Guid? GeneratedVersionId,Guid? StepId,Guid? ReviewerId);
     private sealed record DecisionReceipt(string EventType,string Status,string Action,long ExpectedVersion);
     private sealed record AssignmentReceipt(Guid AssigneeId,long ExpectedVersion);

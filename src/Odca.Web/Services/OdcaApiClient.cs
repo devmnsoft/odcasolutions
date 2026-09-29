@@ -115,6 +115,11 @@ public sealed partial class OdcaApiClient(HttpClient client)
         request.Content = JsonContent.Create(body);
         return await SendAsync<ContractImportResult>(request, false, ct);
     }
+    public async Task<ApiCallResult<bool>> CancelContractImportAsync(string token, Guid tenantId, Guid importId, CancellationToken ct)
+    {
+        using var request = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/contract-imports/{importId}/cancel", token);
+        return await SendAsync<bool>(request, false, ct, true);
+    }
     public Task<ApiCallResult<ConsumptionSummary>> GetConsumptionAsync(string token,Guid tenantId,CancellationToken ct)=>SendAsync<ConsumptionSummary>(CreateAuthorized(HttpMethod.Get,$"api/v1/organizations/{tenantId}/consumption",token),false,ct);
     public Task<ApiCallResult<AdditionalStorageRequest[]>> GetStorageRequestsAsync(string token,Guid tenantId,CancellationToken ct)=>SendAsync<AdditionalStorageRequest[]>(CreateAuthorized(HttpMethod.Get,$"api/v1/organizations/{tenantId}/storage-requests",token),false,ct);
     public Task<ApiCallResult<StoragePackage[]>> GetStoragePackagesAsync(string token,CancellationToken ct)=>SendAsync<StoragePackage[]>(CreateAuthorized(HttpMethod.Get,"api/v1/storage-packages",token),false,ct);

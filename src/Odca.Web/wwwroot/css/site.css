@@ -38,7 +38,7 @@ button, input, select, textarea { font: inherit; }
 .icon-button:focus-visible, a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid #8fb4ff; outline-offset: 2px; }
 .context-card { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); border-radius: var(--radius); display: grid; margin: 1.5rem 0; padding: .875rem; }
 .context-label, .menu-caption { color: #91a9bc; font-size: .7rem; font-weight: 750; letter-spacing: .08em; }
-.side-nav { display: grid; gap: .25rem; }.nav-item { align-items: center; border-radius: var(--radius-sm); color: #d9e7f2; display: flex; gap: .75rem; min-height: 2.75rem; padding: .625rem .75rem; text-decoration: none; }
+.side-nav { display: grid; gap: .25rem; overflow-y: auto; padding-right: .25rem; }.nav-item { align-items: center; border-radius: var(--radius-sm); color: #d9e7f2; display: flex; gap: .75rem; min-height: 2.75rem; padding: .625rem .75rem; text-decoration: none; }
 .nav-item:hover { background: rgba(255,255,255,.06); }.nav-item.active { background: #fff; color: var(--navy-950); font-weight: 750; }
 .sidebar-footer { border-top: 1px solid rgba(255,255,255,.12); font-size: .825rem; margin-top: auto; padding: 1rem .5rem 0; }.status-dot { background: #4ade80; border-radius: 50%; display: inline-block; height: .5rem; margin-right: .5rem; width: .5rem; }
 .app-content { min-width: 0; }.app-topbar { align-items: center; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; height: 4.5rem; justify-content: space-between; padding: 0 clamp(1rem, 3vw, 2rem); position: sticky; top: 0; z-index: 20; }

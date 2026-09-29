@@ -75,11 +75,21 @@ public sealed partial class ContractImportsController(
             + filter
             + Environment.NewLine
             + "ORDER BY i.created_at DESC, i.id DESC";
-        var items = await connection.QueryAsync<ContractImportListItem>(new CommandDefinition(
-            sql, args, tx, cancellationToken: ct));
+        var rows = (await connection.QueryAsync<ImportListItemRow>(new CommandDefinition(
+            sql, args, tx, cancellationToken: ct))).AsList();
+        var items = rows.Select(r => new ContractImportListItem(
+            r.Id,
+            r.DocumentName,
+            r.Requester,
+            ToUtcOffset(r.CreatedAt),
+            r.Status,
+            r.CurrentStep,
+            r.DiagnosticCode,
+            r.ResultContractId,
+            r.ReviewVersion)).AsList();
         var total = await connection.ExecuteScalarAsync<int>(new CommandDefinition(
             "SELECT count(*)::integer FROM odca.contract_imports i " + filter, args, tx, cancellationToken: ct));
-        await tx.CommitAsync(ct); return Ok(new ContractImportPage(items.AsList(), total));
+        await tx.CommitAsync(ct); return Ok(new ContractImportPage(items, total));
     }
 
     internal static (DateTimeOffset? FromInclusive, DateTimeOffset? ToExclusive) CreateUtcRange(
@@ -305,6 +315,19 @@ public sealed partial class ContractImportsController(
     [LoggerMessage(EventId = 2102, Level = LogLevel.Error, Message = "Limite local inválido para tenant={TenantId}.")]
     private static partial void LogInvalidLocalRange(ILogger logger, Exception exception, Guid tenantId);
 
+    private static DateTimeOffset ToUtcOffset(DateTime dt) => dt.Kind == DateTimeKind.Utc ? new DateTimeOffset(dt, TimeSpan.Zero) : new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc), TimeSpan.Zero);
+    private sealed class ImportListItemRow
+    {
+        public Guid Id { get; init; }
+        public string DocumentName { get; init; } = "";
+        public string Requester { get; init; } = "";
+        public DateTime CreatedAt { get; init; }
+        public string Status { get; init; } = "";
+        public string CurrentStep { get; init; } = "";
+        public string? DiagnosticCode { get; init; }
+        public Guid? ResultContractId { get; init; }
+        public long ReviewVersion { get; init; }
+    }
     private sealed record ImportSource(Guid VersionId, Guid ContractId, string Sha256, string SecurityStatus, Guid? JobId, string? JobStatus);
     internal sealed record ContractForValidation(string Title, DateOnly? StartDate, DateOnly? EndDate, decimal? Value, string? Currency, int? RenewalNoticeDays);
     private sealed record ConfirmableImport(string Status, long ReviewVersion, Guid? ResultContractId, Guid ContractId, string SecurityStatus, string? ExtractionStatus);

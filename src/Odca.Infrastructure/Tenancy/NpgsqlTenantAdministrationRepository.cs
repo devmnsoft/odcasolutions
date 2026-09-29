@@ -689,7 +689,7 @@ public sealed class NpgsqlTenantAdministrationRepository(
             transaction,
             cancellationToken: cancellationToken));
 
-        var rows = await connection.QueryAsync<InvitationListItem>(new CommandDefinition(
+        var rows = await connection.QueryAsync<InvitationListItemRow>(new CommandDefinition(
             """
             SELECT i.id AS "Id",
                    i.recipient_email AS "Recipient",
@@ -720,9 +720,19 @@ public sealed class NpgsqlTenantAdministrationRepository(
             cancellationToken: cancellationToken));
 
         await transaction.CommitAsync(cancellationToken);
+        var items = rows.Select(r => new InvitationListItem(
+            r.Id,
+            r.Recipient,
+            r.RoleName,
+            r.RoleId,
+            ToUtcOffset(r.CreatedAt),
+            ToUtcOffset(r.ExpiresAt),
+            r.Status,
+            r.DeliveryStatus,
+            r.DeliveryErrorCode)).ToList();
         return new QueryAccess<TenantPage<InvitationListItem>>(
             QueryAccessStatus.Ok,
-            new TenantPage<InvitationListItem>(rows.AsList(), total, page, pageSize));
+            new TenantPage<InvitationListItem>(items, total, page, pageSize));
     }
 
     public async Task<CreateInvitationResult> CreateInvitationAsync(
@@ -845,7 +855,7 @@ public sealed class NpgsqlTenantAdministrationRepository(
         var id = Guid.NewGuid();
         var expires = DateTimeOffset.UtcNow.AddDays(7);
 
-        var row = await connection.QuerySingleAsync<InvitationRecord>(new CommandDefinition(
+        var row = await connection.QuerySingleAsync<InvitationRecordRow>(new CommandDefinition(
             """
             INSERT INTO odca.tenant_invitations(
               id, tenant_id, recipient_email, recipient_normalized, role_id, token_hash, protected_token, idempotency_key, expires_at, created_by)
@@ -868,7 +878,7 @@ public sealed class NpgsqlTenantAdministrationRepository(
             cancellationToken: cancellationToken));
 
         await transaction.CommitAsync(cancellationToken);
-        return new CreateInvitationResult(CreateInvitationResultStatus.Created, row);
+        return new CreateInvitationResult(CreateInvitationResultStatus.Created, new InvitationRecord(row.Id, row.Recipient, row.State, ToUtcOffset(row.ExpiresAt)));
     }
 
     public async Task<InvitationMutationResult> CancelInvitationAsync(
@@ -1035,7 +1045,7 @@ public sealed class NpgsqlTenantAdministrationRepository(
         CancellationToken cancellationToken)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
-        return await connection.QuerySingleOrDefaultAsync<InvitationPreview>(new CommandDefinition(
+        var row = await connection.QuerySingleOrDefaultAsync<InvitationPreviewRow>(new CommandDefinition(
             """
             SELECT invitation_id AS "InvitationId",
                    organization_name AS "OrganizationName",
@@ -1047,6 +1057,9 @@ public sealed class NpgsqlTenantAdministrationRepository(
             """,
             new { invitationId, tokenHash },
             cancellationToken: cancellationToken));
+        return row is null
+            ? null
+            : new InvitationPreview(row.InvitationId, row.OrganizationName, row.RoleName, row.RecipientEmail, ToUtcOffset(row.ExpiresAt), row.Status);
     }
 
     public async Task<UpdateRolePermissionsResult> UpdateRoleAsync(
@@ -1158,4 +1171,40 @@ public sealed class NpgsqlTenantAdministrationRepository(
         int FailedInvitations,
         int BlockedMembers,
         bool HasContracts);
+
+    private static DateTimeOffset ToUtcOffset(DateTime dt) =>
+        dt.Kind == DateTimeKind.Utc
+            ? new DateTimeOffset(dt, TimeSpan.Zero)
+            : new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc), TimeSpan.Zero);
+
+    private sealed class InvitationListItemRow
+    {
+        public Guid Id { get; set; }
+        public string Recipient { get; set; } = string.Empty;
+        public string RoleName { get; set; } = string.Empty;
+        public Guid RoleId { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime ExpiresAt { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public string? DeliveryStatus { get; set; }
+        public string? DeliveryErrorCode { get; set; }
+    }
+
+    private sealed class InvitationRecordRow
+    {
+        public Guid Id { get; set; }
+        public string Recipient { get; set; } = string.Empty;
+        public string State { get; set; } = string.Empty;
+        public DateTime ExpiresAt { get; set; }
+    }
+
+    private sealed class InvitationPreviewRow
+    {
+        public Guid InvitationId { get; set; }
+        public string OrganizationName { get; set; } = string.Empty;
+        public string RoleName { get; set; } = string.Empty;
+        public string RecipientEmail { get; set; } = string.Empty;
+        public DateTime ExpiresAt { get; set; }
+        public string Status { get; set; } = string.Empty;
+    }
 }
