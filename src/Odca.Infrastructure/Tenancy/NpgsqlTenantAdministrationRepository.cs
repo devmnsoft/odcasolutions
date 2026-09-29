@@ -205,7 +205,7 @@ public sealed class NpgsqlTenantAdministrationRepository(
             transaction,
             cancellationToken: cancellationToken));
 
-        var rows = await connection.QueryAsync<TeamMember>(new CommandDefinition(
+        var rows = await connection.QueryAsync<TeamMemberRow>(new CommandDefinition(
             """
             SELECT u.id AS "UserId",
                    u.display_name AS "Name",
@@ -228,7 +228,7 @@ public sealed class NpgsqlTenantAdministrationRepository(
             cancellationToken: cancellationToken));
 
         await transaction.CommitAsync(cancellationToken);
-        return new QueryAccess<TenantPage<TeamMember>>(QueryAccessStatus.Ok, new TenantPage<TeamMember>(rows.AsList(), total, page, pageSize));
+        return new QueryAccess<TenantPage<TeamMember>>(QueryAccessStatus.Ok, new TenantPage<TeamMember>(rows.Select(static r => r.ToModel()).ToList(), total, page, pageSize));
     }
 
     public async Task<QueryAccess<TeamMemberDetail?>> GetMemberAsync(
@@ -244,7 +244,7 @@ public sealed class NpgsqlTenantAdministrationRepository(
             return new QueryAccess<TeamMemberDetail?>(QueryAccessStatus.Forbidden, null);
         }
 
-        var row = await connection.QuerySingleOrDefaultAsync<TeamMemberDetail>(new CommandDefinition(
+        var row = await connection.QuerySingleOrDefaultAsync<TeamMemberDetailRow>(new CommandDefinition(
             """
             SELECT u.id AS "UserId",
                    u.display_name AS "Name",
@@ -266,7 +266,7 @@ public sealed class NpgsqlTenantAdministrationRepository(
             cancellationToken: cancellationToken));
 
         await transaction.CommitAsync(cancellationToken);
-        return new QueryAccess<TeamMemberDetail?>(QueryAccessStatus.Ok, row);
+        return new QueryAccess<TeamMemberDetail?>(QueryAccessStatus.Ok, row?.ToModel());
     }
 
     public async Task<MemberActionResult> ChangeMemberStatusAsync(
@@ -524,7 +524,7 @@ public sealed class NpgsqlTenantAdministrationRepository(
             return new QueryAccess<IReadOnlyList<TenantRole>>(QueryAccessStatus.Forbidden, null);
         }
 
-        var rows = await connection.QueryAsync<TenantRole>(new CommandDefinition(
+        var rows = await connection.QueryAsync<TenantRoleRow>(new CommandDefinition(
             """
             SELECT r.id AS "Id",
                    r.display_name AS "Name",
@@ -533,14 +533,14 @@ public sealed class NpgsqlTenantAdministrationRepository(
               FROM odca.roles r
               LEFT JOIN odca.role_permissions rp ON rp.role_id = r.id
              WHERE r.tenant_id = @tenantId
-             GROUP BY r.id
+             GROUP BY r.id, r.display_name, r.is_system
              ORDER BY r.display_name;
             """,
             new { tenantId },
             transaction,
             cancellationToken: cancellationToken));
         await transaction.CommitAsync(cancellationToken);
-        return new QueryAccess<IReadOnlyList<TenantRole>>(QueryAccessStatus.Ok, rows.AsList());
+        return new QueryAccess<IReadOnlyList<TenantRole>>(QueryAccessStatus.Ok, rows.Select(static r => r.ToModel()).ToList());
     }
 
     public async Task<TenantRole?> CreateRoleAsync(
@@ -1162,6 +1162,43 @@ public sealed class NpgsqlTenantAdministrationRepository(
         public string Status { get; init; } = string.Empty;
         public long Version { get; init; }
         public string[] Permissions { get; init; } = [];
+    }
+
+    private sealed class TenantRoleRow
+    {
+        public Guid Id { get; init; }
+        public string Name { get; init; } = string.Empty;
+        public bool IsSystem { get; init; }
+        public string[] Permissions { get; init; } = [];
+
+        public TenantRole ToModel() =>
+            new(Id, Name, IsSystem, Permissions.ToArray());
+    }
+
+    private sealed class TeamMemberRow
+    {
+        public Guid UserId { get; init; }
+        public string Name { get; init; } = string.Empty;
+        public string Email { get; init; } = string.Empty;
+        public string Status { get; init; } = string.Empty;
+        public string[] Roles { get; init; } = [];
+
+        public TeamMember ToModel() =>
+            new(UserId, Name, Email, Status, Roles.ToArray());
+    }
+
+    private sealed class TeamMemberDetailRow
+    {
+        public Guid UserId { get; init; }
+        public string Name { get; init; } = string.Empty;
+        public string Email { get; init; } = string.Empty;
+        public string Status { get; init; } = string.Empty;
+        public Guid[] RoleIds { get; init; } = [];
+        public string[] Roles { get; init; } = [];
+        public int SecurityVersion { get; init; }
+
+        public TeamMemberDetail ToModel() =>
+            new(UserId, Name, Email, Status, RoleIds.ToArray(), Roles.ToArray(), SecurityVersion);
     }
 
     private sealed record OverviewMetrics(

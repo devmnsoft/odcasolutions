@@ -8,7 +8,7 @@ public sealed class OfficialContractTemplatesTests
     public void OfficialLibraryParsesAgainstCanonicalSchema()
     {
         OfficialContractTemplates.EnsureValid();
-        Assert.Equal(6, OfficialContractTemplates.All.Count);
+        Assert.Equal(7, OfficialContractTemplates.All.Count);
         Assert.Equal(OfficialContractTemplates.All.Count, OfficialContractTemplates.All.Select(item => item.Key).Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(OfficialContractTemplates.All.Count, OfficialContractTemplates.All.Select(item => item.Name).Distinct(StringComparer.Ordinal).Count());
     }

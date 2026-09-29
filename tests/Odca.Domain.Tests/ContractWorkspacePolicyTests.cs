@@ -1,3 +1,4 @@
+using Odca.Application.Contracts;
 using Odca.Application.Operations;
 
 namespace Odca.Domain.Tests;
@@ -67,7 +68,7 @@ public sealed class ContractWorkspacePolicyTests
     {
         Assert.True(ContractWorkspacePolicy.CanInstallOfficialLibrary(true, 0));
         Assert.False(ContractWorkspacePolicy.CanInstallOfficialLibrary(false, 0));
-        Assert.False(ContractWorkspacePolicy.CanInstallOfficialLibrary(true, 6));
+        Assert.False(ContractWorkspacePolicy.CanInstallOfficialLibrary(true, OfficialContractTemplates.All.Count));
     }
 
     [Fact]

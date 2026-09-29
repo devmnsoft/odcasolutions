@@ -25,7 +25,8 @@ public static class OfficialContractTemplates
         ServicesAgreement(),
         ContractAmendment(),
         SupplyAgreement(),
-        LeaseAgreement()
+        LeaseAgreement(),
+        MultipleTherapiesAgreement()
     ];
 
     public static string? NormalizeType(string? value) =>
@@ -293,6 +294,78 @@ public static class OfficialContractTemplates
             new("start_date", "Início", ContractFieldType.Date, true),
             new("end_date", "Término", ContractFieldType.Date, true),
             new("jurisdiction", "Foro", ContractFieldType.Choice, true, ["São Paulo/SP", "Rio de Janeiro/RJ", "Brasília/DF", "Porto Alegre/RS"])
+        ]);
+
+    private static OfficialContractTemplate MultipleTherapiesAgreement() => new(
+        "multiple-therapies",
+        "Contrato de Acompanhamento Contínuo — Múltiplas Terapias",
+        "Modelo para prestação de serviços terapêuticos (Neuropsicologia, Psicologia, Terapia Ocupacional e Fonoaudiologia) com discriminação de valores por sessão e identificação de paciente/contratante/responsável.",
+        "services",
+        Document(
+            Heading("CONTRATO DE ACOMPANHAMENTO TERAPÊUTICO CONTÍNUO INDIVIDUAL — MÚLTIPLAS TERAPIAS"),
+            Paragraph(
+                Text("CONTRATADO(A): "), Field("contracted_name"),
+                Text(", inscrito(a) no CNPJ sob o nº "), Field("contracted_cnpj"),
+                Text(", com sede em "), Field("contracted_address"),
+                Text(", CEP "), Field("contracted_cep"),
+                Text(", e-mail "), Field("contracted_email"), Text(".")),
+            Paragraph(
+                Text("CONTRATANTE: "), Field("contractor_name"),
+                Text(", documento "), Field("contractor_document"),
+                Text(", residente em "), Field("contractor_address"),
+                Text(", CEP "), Field("contractor_cep"),
+                Text(", e-mail "), Field("contractor_email"),
+                Text(", telefone "), Field("contractor_phone"), Text(".")),
+            Paragraph(
+                Text("RESPONSÁVEL LEGAL (se houver): "), Field("legal_representative_info"),
+                Text(". Identificação do Paciente: "), Field("patient_identification"), Text(".")),
+            Paragraph(
+                Text("CLÁUSULA 1ª — DO OBJETO: Prestação de serviços terapêuticos continuados nas áreas selecionadas: "),
+                Field("selected_therapies"),
+                Text(". Os trabalhos desenvolvidos configuram-se como obrigação de meio e não de resultado, com duração média de 60 minutos por sessão.")),
+            Paragraph(
+                Text("CLÁUSULA 2ª — DO INVESTIMENTO: O(A) CONTRATANTE pagará os seguintes valores individuais por sessão realizada:"),
+                Text(" Neuropsicologia: R$ "), Field("fee_neuropsychology"),
+                Text("; Psicologia: R$ "), Field("fee_psychology"),
+                Text("; Terapia Ocupacional: R$ "), Field("fee_occupational_therapy"),
+                Text("; Fonoaudiologia: R$ "), Field("fee_speech_therapy"), Text(".")),
+            Paragraph(
+                Text("FORMA E VENCIMENTO DO PAGAMENTO: Pagamento mensal com vencimento selecionado: "),
+                Field("payment_due_day"),
+                Text(". Dados para pagamento: "), Field("payment_banking_details"), Text(".")),
+            Paragraph(
+                Text("CLÁUSULA 3ª — SIGILO, PROTEÇÃO DE DADOS E IMAGEM: O tratamento dos dados do paciente e contratante observa estritamente a LGPD. Autorização de imagem: "),
+                Field("image_consent_option"), Text(".")),
+            Paragraph(
+                Text("CLÁUSULA 4ª — DO FORO E ENCERRAMENTO: As partes elegem a Comarca de "),
+                Field("jurisdiction_city"), Text(" para dirimir eventuais controvérsias. Firmam o presente em "),
+                Field("signing_date"), Text(", com os participantes e testemunhas identificados: "),
+                Field("witnesses_identification"), Text("."))),
+        [
+            new("contracted_name", "Nome / Razão Social da Clínica", ContractFieldType.ShortText, true),
+            new("contracted_cnpj", "CNPJ da Clínica", ContractFieldType.BrazilianDocument, true),
+            new("contracted_address", "Endereço da Clínica", ContractFieldType.ShortText, true),
+            new("contracted_cep", "CEP da Clínica", ContractFieldType.ShortText, true),
+            new("contracted_email", "E-mail da Clínica", ContractFieldType.ShortText, true),
+            new("contractor_name", "Nome do Contratante", ContractFieldType.ShortText, true),
+            new("contractor_document", "CPF/CNPJ do Contratante", ContractFieldType.BrazilianDocument, true),
+            new("contractor_address", "Endereço do Contratante", ContractFieldType.ShortText, true),
+            new("contractor_cep", "CEP do Contratante", ContractFieldType.ShortText, true),
+            new("contractor_email", "E-mail do Contratante", ContractFieldType.ShortText, true),
+            new("contractor_phone", "Telefone do Contratante", ContractFieldType.ShortText, true),
+            new("legal_representative_info", "Responsável Legal (Nome, CPF e Relação)", ContractFieldType.ShortText, true),
+            new("patient_identification", "Identificação do Paciente (Nome e Documento)", ContractFieldType.ShortText, true),
+            new("selected_therapies", "Terapias Selecionadas", ContractFieldType.Choice, true, ["Neuropsicologia, Psicologia, Terapia Ocupacional e Fonoaudiologia", "Neuropsicologia e Psicologia", "Terapia Ocupacional e Fonoaudiologia", "Psicologia e Fonoaudiologia", "Psicologia"]),
+            new("fee_neuropsychology", "Valor por Sessão — Neuropsicologia", ContractFieldType.Currency, true),
+            new("fee_psychology", "Valor por Sessão — Psicologia", ContractFieldType.Currency, true),
+            new("fee_occupational_therapy", "Valor por Sessão — Terapia Ocupacional", ContractFieldType.Currency, true),
+            new("fee_speech_therapy", "Valor por Sessão — Fonoaudiologia", ContractFieldType.Currency, true),
+            new("payment_due_day", "Vencimento da Mensalidade", ContractFieldType.Choice, true, ["Todo dia 05 do mês", "Todo dia 10 do mês", "Todo dia 15 do mês"]),
+            new("payment_banking_details", "Dados de Pagamento (PIX / Agência / Conta)", ContractFieldType.ShortText, true),
+            new("image_consent_option", "Autorização de Imagem", ContractFieldType.Choice, true, ["Não autorizo uso de imagem", "Autorizo exclusivamente para fins de estudo de caso com anonimato"]),
+            new("jurisdiction_city", "Cidade do Foro", ContractFieldType.Choice, true, ["Belém/PA", "São Paulo/SP", "Rio de Janeiro/RJ", "Brasília/DF"]),
+            new("signing_date", "Data de Assinatura", ContractFieldType.Date, true),
+            new("witnesses_identification", "Testemunhas", ContractFieldType.ShortText, true)
         ]);
 
     private static string Document(params string[] blocks) =>

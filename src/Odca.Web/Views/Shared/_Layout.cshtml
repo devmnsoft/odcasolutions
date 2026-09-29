@@ -27,15 +27,18 @@
         organizationName = activeAccess.OrganizationName;
     }
 
-    var canReadObligations = activeAccess?.HasAnyPermission("tenant.obligations.read", "tenant.obligations.read_all") == true;
-    var canReadRenewals = activeAccess?.HasPermission("tenant.renewals.read") == true;
-    var canReadStudio = activeAccess?.HasAnyPermission("tenant.templates.read", "tenant.contract_drafts.read") == true;
-    var canReadPatients = activeAccess?.HasPermission("tenant.patients.read") == true;
-    var canReadImports = activeAccess?.HasPermission("tenant.imports.read") == true;
-    var canReadReviews = activeAccess?.HasPermission("tenant.reviews.read") == true;
-    var canReadOrganization = activeAccess?.HasAnyPermission("tenant.organization.read", "tenant.organization.manage") == true;
+    var canReadObligations = activeAccess?.HasAnyPermission("tenant.obligations.read", "tenant.obligations.read_all") == true || isPlatform;
+    var canReadRenewals = activeAccess?.HasPermission("tenant.renewals.read") == true || isPlatform;
+    var canReadStudio = activeAccess?.HasAnyPermission("tenant.templates.read", "tenant.templates.manage", "tenant.contract_drafts.read", "tenant.contract_drafts.manage") == true || isPlatform;
+    var canManageTemplates = activeAccess?.HasPermission("tenant.templates.manage") == true || isPlatform;
+    var canReadDrafts = activeAccess?.HasAnyPermission("tenant.contract_drafts.read", "tenant.contract_drafts.manage") == true || isPlatform;
+    var canCreateDocument = activeAccess?.HasAnyPermission("tenant.contract_drafts.manage", "tenant.documents.manage") == true || isPlatform;
+    var canReadPatients = activeAccess?.HasAnyPermission("tenant.patients.read", "tenant.patients.manage") == true || isPlatform;
+    var canReadImports = activeAccess?.HasPermission("tenant.imports.read") == true || isPlatform;
+    var canReadReviews = activeAccess?.HasPermission("tenant.reviews.read") == true || isPlatform;
+    var canReadOrganization = activeAccess?.HasAnyPermission("tenant.organization.read", "tenant.organization.manage") == true || isPlatform;
     var canAccessWorkspace = canReadObligations || canReadRenewals || canReadReviews;
-    var canReadDocuments = canReadStudio || activeAccess?.HasAnyPermission("tenant.documents.download", "tenant.documents.manage", "tenant.patients.documents.read") == true;
+    var canReadDocuments = canReadStudio || activeAccess?.HasAnyPermission("tenant.documents.download", "tenant.documents.manage", "tenant.patients.documents.read") == true || isPlatform;
 }
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -67,7 +70,7 @@
                         <a class="nav-item @(controller == "Customers" ? "active" : null)" asp-controller="Customers" asp-action="Index"><span aria-hidden="true">▣</span><span>Clientes</span></a>
                         <a class="nav-item @(controller == "Organizations" && string.IsNullOrWhiteSpace(activeTenantId) ? "active" : null)" asp-controller="Organizations" asp-action="Index"><span aria-hidden="true">◎</span><span>Organizações</span></a>
                         <a class="nav-item @(controller == "Plans" ? "active" : null)" aria-label="Catálogo de planos" aria-current="@(controller == "Plans" ? "page" : null)" asp-controller="Plans" asp-action="Index"><span aria-hidden="true">▦</span><span>Catálogo de planos</span></a>
-                        @if (!string.IsNullOrWhiteSpace(tenantIdForLinks) && hasActiveMembership)
+                        @if (!string.IsNullOrWhiteSpace(tenantIdForLinks) && (hasActiveMembership || isPlatform))
                         {
                             @if (canAccessWorkspace)
                             {
@@ -84,11 +87,16 @@
                             }
                             @if (canReadDocuments)
                             {
-                                <a class="nav-item @(controller == "Documents" ? "active" : null)" aria-label="Central de documentos" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">🗂</span><span>Documentos</span></a>
+                                <a class="nav-item @(controller == "Documents" && ViewContext.RouteData.Values["action"]?.ToString() != "NewDocument" && Context.Request.Query["stage"] != "draft" ? "active" : null)" aria-label="Acervo de documentos" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">🗂</span><span>Acervo</span></a>
                             }
                             @if (canReadStudio)
                             {
-                                <a class="nav-item @(controller == "Studio" ? "active" : null)" aria-label="Modelos e estúdio" aria-current="@(controller == "Studio" ? "page" : null)" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">▤</span><span>Modelos e minutas</span></a>
+                                <a class="nav-item @(controller == "Studio" ? "active" : null)" aria-label="Modelos de documento" aria-current="@(controller == "Studio" ? "page" : null)" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">▤</span><span>Modelos</span></a>
+                                <a class="nav-item @(controller == "Documents" && Context.Request.Query["stage"] == "draft" ? "active" : null)" aria-label="Minhas minutas" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantIdForLinks" asp-route-stage="draft"><span aria-hidden="true">✎</span><span>Minhas minutas</span></a>
+                                @if (canCreateDocument)
+                                {
+                                    <a class="nav-item @(controller == "Documents" && ViewContext.RouteData.Values["action"]?.ToString() == "NewDocument" ? "active" : null)" aria-label="Criar documento" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">+</span><span>Criar documento</span></a>
+                                }
                             }
                             @if (canReadPatients)
                             {
@@ -131,11 +139,17 @@
                                 <span class="menu-caption" style="margin-top: .75rem; text-transform: uppercase;">Documentos</span>
                                 @if (canReadDocuments)
                                 {
-                                    <a class="nav-item @(controller == "Documents" ? "active" : null)" aria-label="Central de documentos" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">🗂</span><span>Documentos</span></a>
+                                    <a class="nav-item @(controller == "Documents" && ViewContext.RouteData.Values["action"]?.ToString() != "NewDocument" && Context.Request.Query["stage"] != "draft" ? "active" : null)" aria-label="Central de documentos" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">🗂</span><span>Acervo de documentos</span></a>
                                 }
                                 @if (canReadStudio)
                                 {
-                                    <a class="nav-item @(controller == "Studio" ? "active" : null)" aria-label="Modelos e estúdio" aria-current="@(controller == "Studio" ? "page" : null)" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">▤</span><span>Modelos e minutas</span></a>
+                                    <span class="menu-caption" style="margin-top: .5rem; font-size: 0.75rem; text-transform: uppercase;">Estúdio de documentos</span>
+                                    <a class="nav-item @(controller == "Studio" ? "active" : null)" aria-label="Modelos de documento" aria-current="@(controller == "Studio" ? "page" : null)" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">▤</span><span>Modelos</span></a>
+                                    <a class="nav-item @(controller == "Documents" && Context.Request.Query["stage"] == "draft" ? "active" : null)" aria-label="Minhas minutas" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantIdForLinks" asp-route-stage="draft"><span aria-hidden="true">✎</span><span>Minhas minutas</span></a>
+                                    @if (canCreateDocument)
+                                    {
+                                        <a class="nav-item @(controller == "Documents" && ViewContext.RouteData.Values["action"]?.ToString() == "NewDocument" ? "active" : null)" aria-label="Criar documento" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">+</span><span>Criar documento</span></a>
+                                    }
                                 }
                                 @if (canReadImports)
                                 {

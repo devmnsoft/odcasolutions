@@ -1,0 +1,393 @@
+@model Odca.Web.Models.TemplateEditViewModel
+@{
+    var isNew = Model.IsNew;
+    var tenantId = Model.TenantId;
+    var isPublished = string.Equals(Model.Status, "published", StringComparison.OrdinalIgnoreCase);
+}
+
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">Estúdio de Documentos · Gestão de Modelos</p>
+        <h1>@(isNew ? "Criar Novo Modelo" : $"Editar Modelo: {Model.Name}")</h1>
+        <p class="muted">
+            Configure o conteúdo estruturado, insira campos variáveis assistidos e publique para disponibilização na organização.
+        </p>
+    </div>
+    <div class="button-row">
+        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">
+            ← Voltar ao Catálogo
+        </a>
+    </div>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div class="error" role="alert">
+        <strong>Atenção:</strong> @Model.ErrorMessage
+    </div>
+}
+@if (TempData["StudioSuccess"] is string successMsg)
+{
+    <div class="success" role="status">
+        @successMsg
+    </div>
+}
+@if (TempData["StudioError"] is string errorMsg)
+{
+    <div class="error" role="alert">
+        @errorMsg
+    </div>
+}
+
+<form method="post" asp-action="@(isNew ? "CreateTemplate" : "SaveTemplate")" asp-route-tenantId="@tenantId" asp-route-templateId="@Model.TemplateId" id="templateForm">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="TenantId" />
+    <input type="hidden" asp-for="TemplateId" />
+    <input type="hidden" asp-for="Version" />
+    <input type="hidden" asp-for="RowVersion" />
+    <input type="hidden" asp-for="Status" />
+
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2 style="margin: 0;">Identificação do Modelo</h2>
+            <div>
+                <span class="badge @(isPublished ? "badge-success" : "badge-muted")">
+                    Status: @(isPublished ? "Publicado" : "Rascunho")
+                </span>
+                <span class="badge">Versão: @Model.Version</span>
+            </div>
+        </div>
+
+        <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr; gap: 1rem;">
+            <label style="display: block;">
+                <strong>Nome do Modelo *</strong>
+                <input asp-for="Name" required maxlength="160" placeholder="Ex: Contrato de Múltiplas Terapias" style="width: 100%;" />
+            </label>
+            <label style="display: block;">
+                <strong>Tipo Contratual</strong>
+                <select asp-for="ContractType" style="width: 100%;">
+                    <option value="services">Prestação de serviços</option>
+                    <option value="nda">Confidencialidade (NDA)</option>
+                    <option value="amendment">Aditivo</option>
+                    <option value="supply">Fornecimento</option>
+                    <option value="lease">Locação</option>
+                </select>
+            </label>
+            <label style="display: block;">
+                <strong>Escopo</strong>
+                <select asp-for="Scope" style="width: 100%;">
+                    <option value="private">Particular (exclusivo desta org)</option>
+                    <option value="consultancy">Consultoria</option>
+                </select>
+            </label>
+        </div>
+
+        <label style="display: block; margin-top: 1rem;">
+            <strong>Descrição e Finalidade</strong>
+            <textarea asp-for="Description" rows="2" placeholder="Resumo do escopo deste modelo para orientação da equipe..." style="width: 100%;"></textarea>
+        </label>
+    </div>
+
+    @* Painel de Campos Variáveis e Conteúdo *@
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+        @* Coluna da Esquerda: Assistente de Campos Variáveis *@
+        <div class="card">
+            <h3>Campos Variáveis do Modelo</h3>
+            <p class="muted" style="font-size: 0.875rem;">
+                Defina os campos dinâmicos (paciente, valores, terapias, datas) que serão preenchidos pelo operador.
+            </p>
+
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 1rem;">
+                <h4 style="margin-top: 0; font-size: 0.95rem;">+ Adicionar Novo Campo</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <div>
+                        <label style="font-size: 0.8rem; font-weight: 600;">Identificador (ex: contractor_name):</label>
+                        <input type="text" id="newFieldId" placeholder="identificador_unico" style="width: 100%; font-size: 0.85rem;" />
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; font-weight: 600;">Rótulo exibido:</label>
+                        <input type="text" id="newFieldLabel" placeholder="Nome Completo" style="width: 100%; font-size: 0.85rem;" />
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <div>
+                        <label style="font-size: 0.8rem; font-weight: 600;">Tipo de Dado:</label>
+                        <select id="newFieldType" style="width: 100%; font-size: 0.85rem;">
+                            <option value="ShortText">Texto Curto</option>
+                            <option value="LongText">Texto Longo</option>
+                            <option value="BrazilianDocument">CPF ou CNPJ</option>
+                            <option value="Currency">Moeda (R$)</option>
+                            <option value="Date">Data</option>
+                            <option value="Number">Número</option>
+                            <option value="Choice">Seleção de Opções</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; font-weight: 600;">Opções (separadas por vírgula):</label>
+                        <input type="text" id="newFieldChoices" placeholder="Opção 1, Opção 2" style="width: 100%; font-size: 0.85rem;" />
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+                    <label style="font-size: 0.85rem;">
+                        <input type="checkbox" id="newFieldRequired" checked /> Campo Obrigatório
+                    </label>
+                    <button type="button" class="button button-quiet" style="font-size: 0.85rem;" onclick="addNewField()">
+                        + Incluir Campo
+                    </button>
+                </div>
+            </div>
+
+            <h4>Campos Cadastrados:</h4>
+            <div id="fieldsList" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 250px; overflow-y: auto; padding-right: 0.25rem;">
+                <!-- Preenchido via script -->
+            </div>
+
+            <textarea asp-for="FieldsJson" id="fieldsJsonInput" style="display: none;"></textarea>
+        </div>
+
+        @* Coluna da Direita: Conteúdo Estruturado / Editor *@
+        <div class="card" style="display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <h3 style="margin: 0;">Conteúdo Estruturado do Modelo</h3>
+                <span class="badge badge-muted">Legal Design</span>
+            </div>
+            <p class="muted" style="font-size: 0.875rem;">
+                Texto das cláusulas e termos do documento. Clique em um campo à esquerda para inseri-lo no texto.
+            </p>
+
+            <label style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.25rem;">
+                Texto Simples com Marcadores (ex: Use {{identificador_do_campo}} para variáveis):
+            </label>
+            <textarea id="textEditor" rows="14" style="width: 100%; font-family: monospace; font-size: 0.9rem; line-height: 1.4; padding: 0.75rem; border-radius: 4px; border: 1px solid #cbd5e1;"></textarea>
+
+            <textarea asp-for="ContentJson" id="contentJsonInput" style="display: none;"></textarea>
+        </div>
+    </div>
+
+    @* Barra de Ações *@
+    <div class="button-row" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 1rem;">
+        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">
+            Cancelar
+        </a>
+
+        <div style="display: flex; gap: 0.75rem;">
+            @if (!isNew && !isPublished)
+            {
+                <button type="submit" class="button button-primary">
+                    💾 Salvar Rascunho
+                </button>
+            }
+            else if (isNew)
+            {
+                <button type="submit" class="button button-primary">
+                    Criar Modelo como Rascunho →
+                </button>
+            }
+
+            @if (!isNew && !isPublished)
+            {
+                <button type="submit" formaction="@Url.Action("PublishTemplate", "Studio", new { tenantId, templateId = Model.TemplateId })" class="button" style="background: #059669; color: #fff;" onclick="return confirm('Deseja publicar este modelo? Modelos publicados ficam imediatamente disponíveis para a equipe gerar documentos.');">
+                    ✓ Publicar Modelo
+                </button>
+            }
+            @if (!isNew && isPublished)
+            {
+                <button type="submit" formaction="@Url.Action("ArchiveTemplate", "Studio", new { tenantId, templateId = Model.TemplateId })" class="button button-quiet" style="color: #dc2626;" onclick="return confirm('Deseja arquivar este modelo?');">
+                    Arquivar Modelo
+                </button>
+            }
+        </div>
+    </div>
+</form>
+
+<script>
+    let fieldsData = [];
+    try {
+        const raw = document.getElementById('fieldsJsonInput').value;
+        fieldsData = JSON.parse(raw || '[]');
+    } catch(e) {
+        fieldsData = [];
+    }
+
+    function renderFieldsList() {
+        const list = document.getElementById('fieldsList');
+        list.innerHTML = '';
+        if (fieldsData.length === 0) {
+            list.innerHTML = '<p class="muted" style="font-size: 0.85rem;">Nenhum campo variável configurado.</p>';
+            return;
+        }
+
+        fieldsData.forEach((f, idx) => {
+            const item = document.createElement('div');
+            item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 4px;';
+            item.innerHTML = `
+                <div>
+                    <strong>${f.label || f.id}</strong> 
+                    <code style="font-size: 0.75rem; background: #e0f2fe; padding: 2px 4px; border-radius: 3px; color: #0369a1;">{{${f.id}}}</code>
+                    <span style="font-size: 0.75rem; color: #64748b; margin-left: 0.5rem;">[${f.type}${f.required ? ', Obrigatório' : ''}]</span>
+                </div>
+                <div style="display: flex; gap: 0.25rem;">
+                    <button type="button" class="button button-quiet" style="padding: 2px 6px; font-size: 0.75rem;" onclick="insertFieldToken('${f.id}')" title="Inserir no cursor do texto">Inserir</button>
+                    <button type="button" class="button button-quiet" style="padding: 2px 6px; font-size: 0.75rem; color: #ef4444;" onclick="removeField(${idx})">×</button>
+                </div>
+            `;
+            list.appendChild(item);
+        });
+
+        document.getElementById('fieldsJsonInput').value = JSON.stringify(fieldsData);
+    }
+
+    function addNewField() {
+        const idInput = document.getElementById('newFieldId');
+        const labelInput = document.getElementById('newFieldLabel');
+        const typeInput = document.getElementById('newFieldType');
+        const choicesInput = document.getElementById('newFieldChoices');
+        const reqInput = document.getElementById('newFieldRequired');
+
+        const id = (idInput.value || '').trim();
+        const label = (labelInput.value || '').trim() || id;
+        const type = typeInput.value;
+        const required = reqInput.checked;
+        const rawChoices = (choicesInput.value || '').split(',').map(s => s.trim()).filter(Boolean);
+
+        if (!id) {
+            alert('Informe o identificador do campo.');
+            return;
+        }
+
+        if (fieldsData.some(f => f.id === id)) {
+            alert('Já existe um campo com este identificador.');
+            return;
+        }
+
+        const newF = {
+            id: id,
+            label: label,
+            type: type,
+            required: required
+        };
+        if (type === 'Choice' && rawChoices.length > 0) {
+            newF.choices = rawChoices;
+        }
+
+        fieldsData.push(newF);
+        idInput.value = '';
+        labelInput.value = '';
+        choicesInput.value = '';
+        renderFieldsList();
+    }
+
+    function removeField(index) {
+        fieldsData.splice(index, 1);
+        renderFieldsList();
+    }
+
+    function insertFieldToken(fieldId) {
+        const editor = document.getElementById('textEditor');
+        const token = `{{${fieldId}}}`;
+        const startPos = editor.selectionStart;
+        const endPos = editor.selectionEnd;
+        editor.value = editor.value.substring(0, startPos) + token + editor.value.substring(endPos, editor.value.length);
+        editor.selectionStart = startPos + token.length;
+        editor.selectionEnd = startPos + token.length;
+        editor.focus();
+    }
+
+    // Conversão de texto estruturado para o JSON canônico antes do submit
+    function convertTextToStructuredJson(text) {
+        const paragraphs = text.split('\n\n').filter(p => p.trim().length > 0);
+        const contentNodes = [];
+
+        paragraphs.forEach((pText, pIdx) => {
+            const trimmed = pText.trim();
+            if (pIdx === 0 && (trimmed.startsWith('# ') || trimmed.toUpperCase() === trimmed)) {
+                // Título principal
+                const headingText = trimmed.replace(/^#\s*/, '');
+                contentNodes.push({
+                    type: "heading",
+                    level: 1,
+                    content: [{ type: "text", text: headingText }]
+                });
+                return;
+            }
+
+            // Parágrafo com possíveis campos {{fieldId}}
+            const regex = /\{\{([a-zA-Z0-9_.-]+)\}\}/g;
+            let lastIndex = 0;
+            let match;
+            const paragraphContent = [];
+
+            while ((match = regex.exec(trimmed)) !== null) {
+                if (match.index > lastIndex) {
+                    paragraphContent.push({
+                        type: "text",
+                        text: trimmed.substring(lastIndex, match.index)
+                    });
+                }
+                const fieldId = match[1];
+                paragraphContent.push({
+                    type: "field",
+                    fieldId: fieldId
+                });
+                lastIndex = regex.lastIndex;
+            }
+
+            if (lastIndex < trimmed.length) {
+                paragraphContent.push({
+                    type: "text",
+                    text: trimmed.substring(lastIndex)
+                });
+            }
+
+            if (paragraphContent.length === 0) {
+                paragraphContent.push({ type: "text", text: trimmed });
+            }
+
+            contentNodes.push({
+                type: "paragraph",
+                alignment: "justify",
+                content: paragraphContent
+            });
+        });
+
+        return {
+            type: "document",
+            content: contentNodes
+        };
+    }
+
+    // Inicialização do editor de texto a partir do ContentJson existente
+    (function initEditor() {
+        renderFieldsList();
+        try {
+            const rawContent = document.getElementById('contentJsonInput').value;
+            const parsed = JSON.parse(rawContent || '{}');
+            if (parsed.content && Array.isArray(parsed.content)) {
+                let reconstructed = '';
+                parsed.content.forEach(node => {
+                    if (node.type === 'heading') {
+                        const hText = (node.content || []).map(c => c.text || '').join('');
+                        reconstructed += '# ' + hText + '\n\n';
+                    } else if (node.type === 'paragraph') {
+                        let pText = '';
+                        (node.content || []).forEach(child => {
+                            if (child.type === 'text') pText += child.text;
+                            else if (child.type === 'field') pText += `{{${child.fieldId}}}`;
+                        });
+                        reconstructed += pText + '\n\n';
+                    }
+                });
+                document.getElementById('textEditor').value = reconstructed.trim();
+            }
+        } catch(e) {
+            console.error('Erro ao inicializar texto do modelo:', e);
+        }
+
+        document.getElementById('templateForm').addEventListener('submit', function(e) {
+            const text = document.getElementById('textEditor').value;
+            const structuredDoc = convertTextToStructuredJson(text);
+            document.getElementById('contentJsonInput').value = JSON.stringify(structuredDoc);
+            document.getElementById('fieldsJsonInput').value = JSON.stringify(fieldsData);
+        });
+    })();
+</script>

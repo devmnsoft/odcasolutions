@@ -1,25 +1,224 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Odca.Contracts.Studio;
+using Odca.Web.Models;
 using Odca.Web.Services;
 
 namespace Odca.Web.Controllers;
 
 [Authorize]
 [Route("organizacoes/{tenantId:guid}/estudio")]
-public sealed class StudioController(OdcaApiClient api, IConfiguration configuration) : Controller
+public sealed class StudioController(OdcaApiClient api, IConfiguration configuration, IUserTenantContext tenantContext) : Controller
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(Guid tenantId,string? search,string? type,string? scope,Guid? patientId,int page=1,CancellationToken ct=default)
     {
         var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
+        var access = await tenantContext.GetAccessAsync(tenantId, ct);
+        var isSuperAdmin = User.IsInRole("SuperAdministrator") || User.HasClaim("role", "SuperAdministrator") || (User.FindFirst("permissions")?.Value.Contains("tenant:all") == true);
+        var canManage = isSuperAdmin || (access?.HasPermission("tenant.templates.manage") ?? false);
         ViewData["Title"]="Modelos de contrato";ViewData["TenantId"]=tenantId;ViewData["Search"]=search;ViewData["Type"]=type;ViewData["Scope"]=scope;ViewData["PatientId"]=patientId;
+        ViewData["CanManageTemplates"]=canManage;
         var result=await GetCatalogAsync(token,tenantId,search,type,scope,page,ct);
         if(!result.Succeeded){if(result.Status==ApiCallStatus.Forbidden)return Forbid();ViewData["LoadError"]=result.UserMessage("Não foi possível carregar o catálogo.");return View(new TemplateCatalogPage([],Math.Max(1,page),12,0));}
         return View(result.Value!);
+    }
+
+    [HttpGet("modelos/novo")]
+    public async Task<IActionResult> NewTemplate(Guid tenantId, CancellationToken ct)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
+        var access = await tenantContext.GetAccessAsync(tenantId, ct);
+        var isSuperAdmin = User.IsInRole("SuperAdministrator") || User.HasClaim("role", "SuperAdministrator") || (User.FindFirst("permissions")?.Value.Contains("tenant:all") == true);
+        if (!isSuperAdmin && !(access?.HasPermission("tenant.templates.manage") ?? false)) return Forbid();
+
+        var vm = new TemplateEditViewModel
+        {
+            TenantId = tenantId,
+            Status = "draft",
+            Version = 1,
+            RowVersion = 1,
+            ContentJson = JsonSerializer.Serialize(new
+            {
+                type = "document",
+                content = new object[]
+                {
+                    new { type = "heading", level = 1, content = new object[] { new { type = "text", text = "CONTRATO DE PRESTAÇÃO DE SERVIÇOS" } } },
+                    new { type = "paragraph", alignment = "justify", content = new object[] { new { type = "text", text = "Pelo presente instrumento particular, as partes qualificadas têm entre si justo e acordado o presente contrato." } } }
+                }
+            }),
+            FieldsJson = "[]"
+        };
+        return View("TemplateEdit", vm);
+    }
+
+    [HttpPost("modelos/novo")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateTemplate(Guid tenantId, TemplateEditViewModel model, CancellationToken ct)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
+
+        if (string.IsNullOrWhiteSpace(model.Name))
+        {
+            model.TenantId = tenantId;
+            model.ErrorMessage = "O nome do modelo é obrigatório.";
+            return View("TemplateEdit", model);
+        }
+
+        JsonElement contentEl;
+        try
+        {
+            contentEl = JsonDocument.Parse(string.IsNullOrWhiteSpace(model.ContentJson) ? "{\"type\":\"document\",\"content\":[]}" : model.ContentJson).RootElement;
+        }
+        catch
+        {
+            model.TenantId = tenantId;
+            model.ErrorMessage = "O conteúdo do modelo possui formato JSON inválido.";
+            return View("TemplateEdit", model);
+        }
+
+        JsonElement fieldsEl;
+        try
+        {
+            fieldsEl = JsonDocument.Parse(string.IsNullOrWhiteSpace(model.FieldsJson) ? "[]" : model.FieldsJson).RootElement;
+        }
+        catch
+        {
+            model.TenantId = tenantId;
+            model.ErrorMessage = "Os campos variáveis possuem formato JSON inválido.";
+            return View("TemplateEdit", model);
+        }
+
+        var req = new CreateTemplateRequest(model.Name.Trim(), model.Description?.Trim(), model.ContractType, model.Scope, contentEl, fieldsEl);
+        var r = await api.CreateStudioTemplateAsync(token, tenantId, req, ct);
+        if (!r.Succeeded)
+        {
+            model.TenantId = tenantId;
+            model.ErrorMessage = r.ErrorDetail ?? r.ErrorTitle ?? "Não foi possível criar o modelo.";
+            return View("TemplateEdit", model);
+        }
+
+        TempData["StudioSuccess"] = "Modelo criado como rascunho com sucesso! Você pode continuar editando ou publicá-lo.";
+        return RedirectToAction(nameof(EditTemplate), new { tenantId, templateId = r.Value!.Id });
+    }
+
+    [HttpGet("modelos/{templateId:guid}/editar")]
+    public async Task<IActionResult> EditTemplate(Guid tenantId, Guid templateId, CancellationToken ct)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
+        var access = await tenantContext.GetAccessAsync(tenantId, ct);
+        var isSuperAdmin = User.IsInRole("SuperAdministrator") || User.HasClaim("role", "SuperAdministrator") || (User.FindFirst("permissions")?.Value.Contains("tenant:all") == true);
+        if (!isSuperAdmin && !(access?.HasPermission("tenant.templates.manage") ?? false)) return Forbid();
+
+        var r = await api.GetStudioTemplateAsync(token, tenantId, templateId, ct);
+        if (!r.Succeeded || r.Value is null)
+        {
+            TempData["StudioError"] = r.UserMessage("Não foi possível carregar o modelo.");
+            return RedirectToAction(nameof(Index), new { tenantId });
+        }
+
+        var t = r.Value;
+        var vm = new TemplateEditViewModel
+        {
+            TemplateId = t.Id,
+            TenantId = tenantId,
+            Name = t.Name,
+            Description = t.Description,
+            ContractType = t.ContractType,
+            Scope = t.Scope,
+            Status = t.Status,
+            Version = t.Version,
+            RowVersion = t.RowVersion,
+            ContentJson = t.Content?.GetRawText() ?? "{\"type\":\"document\",\"content\":[]}",
+            FieldsJson = t.Fields.GetRawText()
+        };
+
+        return View("TemplateEdit", vm);
+    }
+
+    [HttpPost("modelos/{templateId:guid}/salvar")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveTemplate(Guid tenantId, Guid templateId, TemplateEditViewModel model, CancellationToken ct)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
+
+        JsonElement contentEl;
+        try
+        {
+            contentEl = JsonDocument.Parse(string.IsNullOrWhiteSpace(model.ContentJson) ? "{\"type\":\"document\",\"content\":[]}" : model.ContentJson).RootElement;
+        }
+        catch
+        {
+            model.TenantId = tenantId;
+            model.TemplateId = templateId;
+            model.ErrorMessage = "O conteúdo do modelo possui formato JSON inválido.";
+            return View("TemplateEdit", model);
+        }
+
+        JsonElement fieldsEl;
+        try
+        {
+            fieldsEl = JsonDocument.Parse(string.IsNullOrWhiteSpace(model.FieldsJson) ? "[]" : model.FieldsJson).RootElement;
+        }
+        catch
+        {
+            model.TenantId = tenantId;
+            model.TemplateId = templateId;
+            model.ErrorMessage = "Os campos variáveis possuem formato JSON inválido.";
+            return View("TemplateEdit", model);
+        }
+
+        var req = new UpdateTemplateRequest(model.Name.Trim(), model.Description?.Trim(), model.ContractType, contentEl, fieldsEl, model.RowVersion);
+        var r = await api.UpdateStudioTemplateAsync(token, tenantId, templateId, req, ct);
+        if (!r.Succeeded)
+        {
+            model.TenantId = tenantId;
+            model.TemplateId = templateId;
+            model.ErrorMessage = r.ErrorDetail ?? r.ErrorTitle ?? "Não foi possível salvar o modelo.";
+            return View("TemplateEdit", model);
+        }
+
+        TempData["StudioSuccess"] = "Rascunho do modelo atualizado com sucesso.";
+        return RedirectToAction(nameof(EditTemplate), new { tenantId, templateId });
+    }
+
+    [HttpPost("modelos/{templateId:guid}/publicar")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PublishTemplate(Guid tenantId, Guid templateId, long rowVersion, CancellationToken ct)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
+        var expectedVersion = rowVersion > 0 ? rowVersion : (long.TryParse(Request.Form["RowVersion"], out var parsed) ? parsed : 1);
+        var r = await api.PublishStudioTemplateAsync(token, tenantId, templateId, expectedVersion, ct);
+        if (r.Succeeded)
+        {
+            TempData["StudioSuccess"] = "Modelo publicado com sucesso e disponível para emissão!";
+            return RedirectToAction(nameof(Index), new { tenantId });
+        }
+
+        TempData["StudioError"] = r.ErrorDetail ?? r.ErrorTitle ?? "Não foi possível publicar o modelo. Verifique se todos os campos estão configurados.";
+        return RedirectToAction(nameof(EditTemplate), new { tenantId, templateId });
+    }
+
+    [HttpPost("modelos/{templateId:guid}/arquivar")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ArchiveTemplate(Guid tenantId, Guid templateId, long rowVersion, CancellationToken ct)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
+        var expectedVersion = rowVersion > 0 ? rowVersion : (long.TryParse(Request.Form["RowVersion"], out var parsed) ? parsed : 1);
+        var r = await api.ArchiveStudioTemplateAsync(token, tenantId, templateId, expectedVersion, ct);
+        if (r.Succeeded)
+        {
+            TempData["StudioSuccess"] = "Modelo arquivado com sucesso.";
+        }
+        else
+        {
+            TempData["StudioError"] = r.ErrorDetail ?? r.ErrorTitle ?? "Não foi possível arquivar o modelo.";
+        }
+        return RedirectToAction(nameof(Index), new { tenantId });
     }
     [HttpPost("biblioteca-oficial")]
     public async Task<IActionResult> InstallOfficial(Guid tenantId,string? search,string? type,string? scope,CancellationToken ct)
