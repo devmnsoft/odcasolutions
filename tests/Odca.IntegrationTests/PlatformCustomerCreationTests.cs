@@ -110,6 +110,59 @@ public sealed class PlatformCustomerCreationTests(DatabaseFixture database) : IC
         var conflictResult = Assert.IsType<ConflictObjectResult>(dupResponse);
         var problem = Assert.IsType<ProblemDetails>(conflictResult.Value);
         Assert.Equal(409, problem.Status);
+
+        // 7. Verify first access policy: new user has email_verified_at NULL and must_change_password true
+        var userAudit = await adminConn.QuerySingleAsync<(DateTime? Verified, bool MustChange)>(
+            "SELECT email_verified_at, must_change_password FROM odca.users WHERE id = @UserId",
+            new { createdValue.UserId });
+        Assert.Null(userAudit.Verified);
+        Assert.True(userAudit.MustChange);
+    }
+
+    [Fact]
+    public async Task NonExistentPlanReturnsValidationProblemWithoutFallback()
+    {
+        await using var adminConn = new NpgsqlConnection(database.AdminConnectionString);
+        await adminConn.OpenAsync();
+
+        var superAdminId = Guid.NewGuid();
+        var passwordService = new AspNetPasswordService();
+        var superCred = new UserCredential(superAdminId, "super.platform2@odca.local", "Super Admin Platform 2", string.Empty, 1, false, true, null, false, null);
+        var hash = passwordService.Hash(superCred, "SuperAdmin@123");
+
+        superAdminId = await adminConn.QuerySingleAsync<Guid>("""
+            INSERT INTO odca.users(id, email, email_normalized, login_normalized, display_name, password_hash, is_platform_administrator, email_verified_at)
+            VALUES (@superAdminId, 'super.platform2@odca.local', 'SUPER.PLATFORM2@ODCA.LOCAL', 'SUPER.PLATFORM2@ODCA.LOCAL', 'Super Admin Platform 2', @hash, true, now())
+            ON CONFLICT (email_normalized) DO UPDATE SET is_platform_administrator = true, password_hash = @hash
+            RETURNING id;
+            """, new { superAdminId, hash });
+
+        await using var dataSource = NpgsqlDataSource.Create(database.AppConnectionString);
+        var repo = new NpgsqlConsumptionRepository(dataSource, passwordService);
+        var controller = new ConsumptionController(repo);
+        var httpContext = new DefaultHttpContext();
+        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim("sub", superAdminId.ToString()),
+            new Claim(ClaimTypes.NameIdentifier, superAdminId.ToString()),
+            new Claim("is_platform_admin", "true")
+        ], "test"));
+        controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+
+        var request = new CreatePlatformCustomerRequest(
+            OrganizationName: "Organização Teste Plano Inexistente",
+            Document: GenerateValidCnpj(),
+            PlanCode: "plano-fantasma-inexistente",
+            AdminName: "Administrador Teste",
+            AdminEmail: $"admin.fantasma.{Guid.NewGuid():N}@odca.local",
+            InitialPassword: "SenhaValida@2026",
+            ActivateDirectly: true);
+
+        var response = await controller.CreateCustomer(request, default);
+
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(response);
+        var problem = Assert.IsType<ProblemDetails>(badRequestResult.Value);
+        Assert.Equal(400, problem.Status);
+        Assert.Contains("plano-fantasma-inexistente", problem.Detail, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string GenerateValidCnpj()

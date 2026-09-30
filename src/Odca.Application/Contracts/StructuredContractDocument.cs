@@ -48,9 +48,13 @@ public sealed class StructuredContractDocument
         try { root = JsonNode.Parse(json, documentOptions: new() { MaxDepth = 64 })!; }
         catch (JsonException exception) { throw new InvalidDataException("O conteúdo estruturado é inválido.", exception); }
 
-        var definitions = fields.ToDictionary(x => x.Id, StringComparer.Ordinal);
-        if (definitions.Any(x => !SafeId.IsMatch(x.Key)) || definitions.Count != fields.Count)
+        if (fields.Any(x => string.IsNullOrWhiteSpace(x.Id) || !SafeId.IsMatch(x.Id)) ||
+            fields.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != fields.Count)
+        {
             throw new InvalidDataException("Os campos precisam de identificadores únicos e estáveis.");
+        }
+
+        var definitions = fields.ToDictionary(x => x.Id, StringComparer.Ordinal);
 
         var occurrences = new Dictionary<string, int>(StringComparer.Ordinal);
         ValidateNode(root, definitions, occurrences, isRoot: true);
@@ -62,6 +66,9 @@ public sealed class StructuredContractDocument
         IReadOnlyCollection<ContractFieldValue> values,
         bool requireConfirmed)
     {
+        if (values.Any(x => string.IsNullOrWhiteSpace(x.FieldId)))
+            throw new InvalidDataException("Não é permitido valor com identificador de campo ausente.");
+
         Dictionary<string, ContractFieldValue> byId;
         try { byId = values.ToDictionary(x => x.FieldId, StringComparer.Ordinal); }
         catch (ArgumentException exception) { throw new InvalidDataException("Cada campo deve possuir somente um valor confirmado.", exception); }

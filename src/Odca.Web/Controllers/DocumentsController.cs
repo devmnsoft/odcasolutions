@@ -143,23 +143,39 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
             return RedirectToAction(nameof(Index), new { tenantId });
         }
 
+        PatientDetails? selectedPatient = null;
         if (patientId.HasValue)
         {
             var patient = await api.GetPatientAsync(token, tenantId, patientId.Value, ct);
-            if (patient.Succeeded && patient.Value is not null && !patient.Value.Active)
+            if (patient.Succeeded && patient.Value is not null)
             {
-                TempData["ErrorMessage"] = "Pacientes inativos não podem ser selecionados para novas emissões.";
-                return RedirectToAction(nameof(Index), new { tenantId });
+                if (!patient.Value.Active)
+                {
+                    TempData["ErrorMessage"] = "Pacientes inativos não podem ser selecionados para novas emissões.";
+                    return RedirectToAction(nameof(Index), new { tenantId });
+                }
+                selectedPatient = patient.Value;
             }
         }
 
-        IReadOnlyList<PatientSummary> activePatients = [];
+        var activePatients = new List<PatientSummary>();
         if (access.HasPermission("tenant.patients.read"))
         {
             var pRes = await api.GetPatientsAsync(token, tenantId, null, includeInactive: false, 1, ct);
             if (pRes.Succeeded && pRes.Value is not null)
             {
-                activePatients = pRes.Value.Items;
+                activePatients.AddRange(pRes.Value.Items);
+            }
+            if (selectedPatient != null && !activePatients.Any(p => p.Id == selectedPatient.Id))
+            {
+                activePatients.Insert(0, new PatientSummary(
+                    selectedPatient.Id,
+                    selectedPatient.FullName,
+                    selectedPatient.PreferredName,
+                    !string.IsNullOrWhiteSpace(selectedPatient.IdentifierValue) ? MaskIdentifier(selectedPatient.IdentifierValue) : null,
+                    selectedPatient.Active,
+                    selectedPatient.Version,
+                    selectedPatient.UpdatedAt));
             }
         }
 

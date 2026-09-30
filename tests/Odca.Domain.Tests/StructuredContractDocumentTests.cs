@@ -169,4 +169,77 @@ public sealed class StructuredContractDocumentTests
             Assert.StartsWith($"{i + 1} 0 obj\n", pdf[offset..]);
         }
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void RejectsValuesWithMissingOrWhitespaceFieldId(string? missingId)
+    {
+        var definition = new ContractFieldDefinition("field_a", "Campo A", ContractFieldType.ShortText, false);
+        var ex = Assert.Throws<InvalidDataException>(() =>
+            StructuredContractDocument.ValidateValues([definition], [new(missingId!, "valor", true)], false));
+        Assert.Contains("ausente", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void RejectsDuplicateFieldDefinitionIdentifiers()
+    {
+        var def1 = new ContractFieldDefinition("client_name", "Nome do Cliente", ContractFieldType.ShortText, true);
+        var def2 = new ContractFieldDefinition("client_name", "Nome da Empresa", ContractFieldType.ShortText, true);
+        var docJson = """{"type":"document","content":[{"type":"paragraph","content":[{"type":"field","fieldId":"client_name"}]}]}""";
+
+        var ex = Assert.Throws<InvalidDataException>(() =>
+            StructuredContractDocument.Parse(docJson, [def1, def2]));
+        Assert.Contains("únicos", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void DistinctFieldTypesAreRenderedAndIsolatedInOutput()
+    {
+        var defs = new ContractFieldDefinition[]
+        {
+            new("therapies", "Terapias", ContractFieldType.Choice, true, ["Neuropsicologia", "Psicologia"]),
+            new("session_fee", "Valor da Sessão", ContractFieldType.Currency, true),
+            new("start_date", "Data de Início", ContractFieldType.Date, true)
+        };
+
+        var docJson = """
+            {"type":"document","content":[
+                {"type":"heading","level":2,"content":[{"type":"text","text":"Cláusula de Terapias"}]},
+                {"type":"paragraph","alignment":"justify","content":[
+                    {"type":"text","text":"Terapia: "},{"type":"field","fieldId":"therapies"},
+                    {"type":"text","text":", com valor de R$ "},{"type":"field","fieldId":"session_fee"},
+                    {"type":"text","text":" a partir de "},{"type":"field","fieldId":"start_date"}
+                ]}
+            ]}
+            """;
+
+        var values = new ContractFieldValue[]
+        {
+            new("therapies", "Neuropsicologia", true),
+            new("session_fee", "250.00", true),
+            new("start_date", "2026-10-01", true)
+        };
+
+        StructuredContractDocument.ValidateValues(defs, values, requireConfirmed: true);
+        var html = ContractDocumentRenderer.ToHtml(docJson,
+            OfficialContractTemplates.SerializeFields(defs),
+            System.Text.Json.JsonSerializer.Serialize(values));
+
+        Assert.Contains("Neuropsicologia", html);
+        Assert.Contains("250.00", html);
+        Assert.Contains("2026-10-01", html);
+
+        var pdfBytes = ContractDocumentRenderer.ToPdf(docJson,
+            OfficialContractTemplates.SerializeFields(defs),
+            System.Text.Json.JsonSerializer.Serialize(values),
+            "Contrato de Terapias", 1);
+
+        Assert.NotEmpty(pdfBytes);
+        var pdfStr = Encoding.Latin1.GetString(pdfBytes);
+        Assert.Contains("Neuropsicologia", pdfStr);
+        Assert.Contains("250.00", pdfStr);
+        Assert.Contains("2026-10-01", pdfStr);
+    }
 }

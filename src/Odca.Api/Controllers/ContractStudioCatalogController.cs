@@ -55,7 +55,12 @@ public sealed class ContractStudioCatalogController(NpgsqlDataSource dataSource)
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(connection, actor.Value, tenantId, "tenant.templates.read", ct)) return Forbid();
 
-        var officialDef = OfficialContractTemplates.All.FirstOrDefault(x => string.Equals(x.Key, key, StringComparison.OrdinalIgnoreCase));
+        var officialDef = OfficialContractTemplates.All.FirstOrDefault(x =>
+            string.Equals(x.Key, key, StringComparison.OrdinalIgnoreCase) ||
+            (string.Equals(x.Key, "multiple-therapies", StringComparison.OrdinalIgnoreCase) &&
+             (string.Equals(key, "services-multiple-therapies", StringComparison.OrdinalIgnoreCase) || string.Equals(key, "multiplas-terapias", StringComparison.OrdinalIgnoreCase))) ||
+            (string.Equals(x.Key, "services-agreement", StringComparison.OrdinalIgnoreCase) &&
+             (string.Equals(key, "services-generic", StringComparison.OrdinalIgnoreCase) || string.Equals(key, "servicos", StringComparison.OrdinalIgnoreCase))));
         if (officialDef is null) return NotFound();
 
         var sql = """
@@ -76,6 +81,14 @@ public sealed class ContractStudioCatalogController(NpgsqlDataSource dataSource)
         else if (string.Equals(officialDef.Key, "nda-mutual", StringComparison.OrdinalIgnoreCase))
         {
             sql += " AND v.fields::text LIKE '%party_a_name%'";
+        }
+        else if (string.Equals(officialDef.Key, "multiple-therapies", StringComparison.OrdinalIgnoreCase))
+        {
+            sql += " AND (v.fields::text LIKE '%selected_therapies%' OR t.name ILIKE '%múltiplas terapias%')";
+        }
+        else if (string.Equals(officialDef.Key, "services-agreement", StringComparison.OrdinalIgnoreCase))
+        {
+            sql += " AND v.fields::text NOT LIKE '%selected_therapies%' AND t.name NOT ILIKE '%múltiplas terapias%'";
         }
 
         sql += " ORDER BY t.published_at DESC NULLS LAST, t.created_at DESC LIMIT 1";
@@ -124,14 +137,22 @@ public sealed class ContractStudioCatalogController(NpgsqlDataSource dataSource)
             {
                 existsSql += " AND v.fields::text LIKE '%party_a_name%')";
             }
+            else if (string.Equals(template.Key, "multiple-therapies", StringComparison.OrdinalIgnoreCase))
+            {
+                existsSql += " AND (v.fields::text LIKE '%selected_therapies%' OR t.name ILIKE '%múltiplas terapias%'))";
+            }
+            else if (string.Equals(template.Key, "services-agreement", StringComparison.OrdinalIgnoreCase))
+            {
+                existsSql += " AND v.fields::text NOT LIKE '%selected_therapies%' AND t.name NOT ILIKE '%múltiplas terapias%')";
+            }
             else
             {
-                existsSql += ")";
+                existsSql += " AND t.name = @templateName)";
             }
 
             var exists = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
                 existsSql,
-                new { contractType = template.ContractType, tenantId },
+                new { contractType = template.ContractType, tenantId, templateName = template.Name },
                 tx,
                 cancellationToken: ct));
 

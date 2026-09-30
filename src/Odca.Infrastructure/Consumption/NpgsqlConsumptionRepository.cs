@@ -120,19 +120,8 @@ public sealed class NpgsqlConsumptionRepository(NpgsqlDataSource dataSource, IPa
 
         if (planVersion is null)
         {
-            planVersion = await c.QuerySingleOrDefaultAsync<PlanVersionRow>(new CommandDefinition(
-                """
-                SELECT id AS Id, code AS Code
-                FROM odca.plan_versions
-                WHERE status = 'published'
-                ORDER BY version DESC LIMIT 1
-                """, tx, cancellationToken: cancellationToken));
-
-            if (planVersion is null)
-            {
-                await tx.RollbackAsync(cancellationToken);
-                return null;
-            }
+            await tx.RollbackAsync(cancellationToken);
+            throw new ArgumentException($"O plano informado '{request.PlanCode}' não existe ou não está publicado.");
         }
 
         var userId = await c.QuerySingleOrDefaultAsync<Guid?>(new CommandDefinition(
@@ -148,7 +137,7 @@ public sealed class NpgsqlConsumptionRepository(NpgsqlDataSource dataSource, IPa
             await c.ExecuteAsync(new CommandDefinition(
                 """
                 INSERT INTO odca.users(id, email, email_normalized, login_normalized, display_name, password_hash, email_verified_at, must_change_password, is_platform_administrator)
-                VALUES (@userId, @email, @emailNormalized, @emailNormalized, @adminName, @passwordHash, now(), false, false)
+                VALUES (@userId, @email, @emailNormalized, @emailNormalized, @adminName, @passwordHash, NULL, true, false)
                 """,
                 new { userId, email, emailNormalized, adminName, passwordHash }, tx, cancellationToken: cancellationToken));
         }

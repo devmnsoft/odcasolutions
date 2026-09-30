@@ -188,19 +188,70 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
 
     [HttpPost("modelos/{templateId:guid}/publicar")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> PublishTemplate(Guid tenantId, Guid templateId, long rowVersion, CancellationToken ct)
+    public async Task<IActionResult> PublishTemplate(Guid tenantId, Guid templateId, TemplateEditViewModel model, CancellationToken ct)
     {
         var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
-        var expectedVersion = rowVersion > 0 ? rowVersion : (long.TryParse(Request.Form["RowVersion"], out var parsed) ? parsed : 1);
-        var r = await api.PublishStudioTemplateAsync(token, tenantId, templateId, expectedVersion, ct);
+        var effectiveRowVersion = model.RowVersion > 0 
+            ? model.RowVersion 
+            : (long.TryParse(Request.Form["RowVersion"], out var parsed) ? parsed : 0);
+
+        if (effectiveRowVersion <= 0)
+        {
+            TempData["StudioError"] = "Versão do modelo inválida ou desatualizada. Recarregue a página.";
+            return RedirectToAction(nameof(EditTemplate), new { tenantId, templateId });
+        }
+
+        if (!string.IsNullOrWhiteSpace(model.Name))
+        {
+            JsonElement contentEl;
+            try
+            {
+                contentEl = JsonDocument.Parse(string.IsNullOrWhiteSpace(model.ContentJson) ? "{\"type\":\"document\",\"content\":[]}" : model.ContentJson).RootElement;
+            }
+            catch
+            {
+                model.TenantId = tenantId;
+                model.TemplateId = templateId;
+                model.ErrorMessage = "O conteúdo do modelo possui formato estruturado inválido.";
+                return View("TemplateEdit", model);
+            }
+
+            JsonElement fieldsEl;
+            try
+            {
+                fieldsEl = JsonDocument.Parse(string.IsNullOrWhiteSpace(model.FieldsJson) ? "[]" : model.FieldsJson).RootElement;
+            }
+            catch
+            {
+                model.TenantId = tenantId;
+                model.TemplateId = templateId;
+                model.ErrorMessage = "Os campos variáveis possuem formato inválido.";
+                return View("TemplateEdit", model);
+            }
+
+            var saveReq = new UpdateTemplateRequest(model.Name.Trim(), model.Description?.Trim(), model.ContractType, contentEl, fieldsEl, effectiveRowVersion);
+            var saveRes = await api.UpdateStudioTemplateAsync(token, tenantId, templateId, saveReq, ct);
+            if (!saveRes.Succeeded)
+            {
+                model.TenantId = tenantId;
+                model.TemplateId = templateId;
+                model.ErrorMessage = saveRes.ErrorDetail ?? saveRes.ErrorTitle ?? "Não foi possível salvar as alterações antes de publicar.";
+                return View("TemplateEdit", model);
+            }
+            effectiveRowVersion++;
+        }
+
+        var r = await api.PublishStudioTemplateAsync(token, tenantId, templateId, effectiveRowVersion, ct);
         if (r.Succeeded)
         {
             TempData["StudioSuccess"] = "Modelo publicado com sucesso e disponível para emissão!";
             return RedirectToAction(nameof(Index), new { tenantId });
         }
 
-        TempData["StudioError"] = r.ErrorDetail ?? r.ErrorTitle ?? "Não foi possível publicar o modelo. Verifique se todos os campos estão configurados.";
-        return RedirectToAction(nameof(EditTemplate), new { tenantId, templateId });
+        model.TenantId = tenantId;
+        model.TemplateId = templateId;
+        model.ErrorMessage = r.ErrorDetail ?? r.ErrorTitle ?? "Não foi possível publicar o modelo. Verifique se todos os campos estão configurados e presentes no documento.";
+        return View("TemplateEdit", model);
     }
 
     [HttpPost("modelos/{templateId:guid}/arquivar")]
@@ -208,7 +259,12 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
     public async Task<IActionResult> ArchiveTemplate(Guid tenantId, Guid templateId, long rowVersion, CancellationToken ct)
     {
         var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
-        var expectedVersion = rowVersion > 0 ? rowVersion : (long.TryParse(Request.Form["RowVersion"], out var parsed) ? parsed : 1);
+        var expectedVersion = rowVersion > 0 ? rowVersion : (long.TryParse(Request.Form["RowVersion"], out var parsed) ? parsed : 0);
+        if (expectedVersion <= 0)
+        {
+            TempData["StudioError"] = "Versão do modelo inválida ou desatualizada. Recarregue a página.";
+            return RedirectToAction(nameof(EditTemplate), new { tenantId, templateId });
+        }
         var r = await api.ArchiveStudioTemplateAsync(token, tenantId, templateId, expectedVersion, ct);
         if (r.Succeeded)
         {

@@ -37,7 +37,7 @@ public sealed class ConsumptionController(IConsumptionRepository repository) : C
         }
         catch(ArgumentException ex)
         {
-            return ValidationProblem(ex.Message);
+            return BadRequest(new ProblemDetails{Title="Plano inválido.",Detail=ex.Message,Status=400});
         }
     }
     [Authorize(Policy="PlatformAdministrator")]
