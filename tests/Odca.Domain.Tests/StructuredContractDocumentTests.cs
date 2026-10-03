@@ -33,7 +33,39 @@ public sealed class StructuredContractDocumentTests
     {
         var definition = new ContractFieldDefinition("field", "Campo", type, true);
         Assert.Throws<InvalidDataException>(() => StructuredContractDocument.ValidateValues(
-            [definition], [new("field", value, true)], requireConfirmed: true));
+            [definition], [new("field", value, true)], ContractValidationMode.Confirmed));
+    }
+
+    [Fact]
+    public void StructuralModeSavesIncompleteDraftsButStillRejectsMalformedPresentValues()
+    {
+        StructuredContractDocument.ValidateValues([Amount], [], ContractValidationMode.Structural);
+        StructuredContractDocument.ValidateValues([Amount], [new("amount", null, false)], ContractValidationMode.Structural);
+        StructuredContractDocument.ValidateValues([Amount], [new("amount", "1000.00", false)], ContractValidationMode.Structural);
+        Assert.Throws<InvalidDataException>(() =>
+            StructuredContractDocument.ValidateValues([Amount], [new("amount", "150,00", false)], ContractValidationMode.Structural));
+    }
+
+    [Fact]
+    public void CompleteModeRequiresFilledValuesWithoutConfirmation()
+    {
+        Assert.Throws<InvalidDataException>(() =>
+            StructuredContractDocument.ValidateValues([Amount], [], ContractValidationMode.Complete));
+        Assert.Throws<InvalidDataException>(() =>
+            StructuredContractDocument.ValidateValues([Amount], [new("amount", " ", false)], ContractValidationMode.Complete));
+        Assert.Throws<InvalidDataException>(() =>
+            StructuredContractDocument.ValidateValues([Amount], [new("amount", "150,00", false)], ContractValidationMode.Complete));
+        StructuredContractDocument.ValidateValues([Amount], [new("amount", "1000.00", false)], ContractValidationMode.Complete);
+    }
+
+    [Fact]
+    public void ConfirmedModeRequiresExplicitConfirmationOnRequiredFields()
+    {
+        Assert.Throws<InvalidDataException>(() =>
+            StructuredContractDocument.ValidateValues([Amount], [new("amount", "1000.00", false)], ContractValidationMode.Confirmed));
+        Assert.Throws<InvalidDataException>(() =>
+            StructuredContractDocument.ValidateValues([Amount], [new("amount", null, true)], ContractValidationMode.Confirmed));
+        StructuredContractDocument.ValidateValues([Amount], [new("amount", "1000.00", true)], ContractValidationMode.Confirmed);
     }
 
     [Fact]
@@ -96,7 +128,7 @@ public sealed class StructuredContractDocumentTests
         var html=ContractDocumentRenderer.ToHtml(Content.Replace("Contrato","<Contrato & seguro>"),fields,values);
 
         Assert.Contains("&lt;Contrato &amp; seguro&gt;",html);
-        Assert.Equal(2,html.Split("1000.00",StringSplitOptions.None).Length-1);
+        Assert.Equal(2,html.Split("1.000,00",StringSplitOptions.None).Length-1);
         Assert.DoesNotContain("<Contrato",html);
     }
 
@@ -178,7 +210,7 @@ public sealed class StructuredContractDocumentTests
     {
         var definition = new ContractFieldDefinition("field_a", "Campo A", ContractFieldType.ShortText, false);
         var ex = Assert.Throws<InvalidDataException>(() =>
-            StructuredContractDocument.ValidateValues([definition], [new(missingId!, "valor", true)], false));
+            StructuredContractDocument.ValidateValues([definition], [new(missingId!, "valor", true)], ContractValidationMode.Structural));
         Assert.Contains("ausente", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -222,13 +254,13 @@ public sealed class StructuredContractDocumentTests
             new("start_date", "2026-10-01", true)
         };
 
-        StructuredContractDocument.ValidateValues(defs, values, requireConfirmed: true);
+        StructuredContractDocument.ValidateValues(defs, values, ContractValidationMode.Confirmed);
         var html = ContractDocumentRenderer.ToHtml(docJson,
             OfficialContractTemplates.SerializeFields(defs),
             System.Text.Json.JsonSerializer.Serialize(values));
 
         Assert.Contains("Neuropsicologia", html);
-        Assert.Contains("250.00", html);
+        Assert.Contains("250,00", html);
         Assert.Contains("2026-10-01", html);
 
         var pdfBytes = ContractDocumentRenderer.ToPdf(docJson,
@@ -239,7 +271,7 @@ public sealed class StructuredContractDocumentTests
         Assert.NotEmpty(pdfBytes);
         var pdfStr = Encoding.Latin1.GetString(pdfBytes);
         Assert.Contains("Neuropsicologia", pdfStr);
-        Assert.Contains("250.00", pdfStr);
+        Assert.Contains("250,00", pdfStr);
         Assert.Contains("2026-10-01", pdfStr);
     }
 }

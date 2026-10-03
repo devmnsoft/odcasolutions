@@ -21,6 +21,7 @@
         <h2>Acesse sua conta</h2>
         <p class="muted">Use seu e-mail ou CPF e sua senha pessoal.</p>
         <form method="post" novalidate data-processing>
+            @Html.AntiForgeryToken()
             <input type="hidden" asp-for="ReturnUrl" />
             <div asp-validation-summary="ModelOnly" class="validation" role="alert"></div>
             <label asp-for="Login"></label>

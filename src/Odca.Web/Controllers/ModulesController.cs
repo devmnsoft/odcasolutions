@@ -24,7 +24,7 @@ public sealed class ModulesController : Controller
             ["assinaturas"] = new("Assinaturas", "A estrutura de planos e assinaturas está ativa, e esta visão operacional está em construção.", "Consulte o Catálogo de planos e Clientes e consumo para acompanhar a configuração atual.", true),
             ["cobrancas"] = new("Cobranças e faturas", "A base de faturamento está preparada, sem integração de pagamento nesta sprint.", "Nenhuma cobrança automática será realizada. A operação financeira será habilitada somente após validação.", true),
             ["contratos"] = new("Contratos da plataforma", "O acesso global consolidado a contratos está em construção controlada.", "Selecione uma empresa para trabalhar no contexto autorizado, sem misturar dados entre clientes.", true),
-            ["auditoria"] = new("Auditoria", "Os eventos importantes já são registrados; a consulta global amigável está em construção.", "Até a tela ser liberada, preserve os eventos existentes e use consultas operacionais autorizadas no banco.", true),
+            ["auditoria"] = new("Auditoria", "Os eventos importantes da plataforma já podem ser consultados em uma tela com busca, filtro por organização, paginação e metadados preservados.", "Use o menu Auditoria na administração global ou abra a tela diretamente para pesquisar os eventos.", true, OpenHref: "/administracao/auditoria", OpenLinkText: "Abrir auditoria da plataforma"),
             ["configuracoes"] = new("Configurações", "As configurações globais serão reunidas aqui após a estabilização dos fluxos principais.", "Use apenas as configurações de ambiente documentadas; nenhuma mudança é aplicada nesta tela.", true)
         };
 

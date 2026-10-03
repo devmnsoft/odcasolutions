@@ -15,6 +15,7 @@ public sealed class DevelopmentAccessProvisioningTests(DatabaseFixture database)
     {
         Assert.Empty(Odca.Domain.Identity.PasswordPolicy.Validate(TestAccessProvisioner.AdministratorInitialPassword));
         Assert.Empty(Odca.Domain.Identity.PasswordPolicy.Validate(TestAccessProvisioner.ClientInitialPassword));
+        Assert.Empty(Odca.Domain.Identity.PasswordPolicy.Validate(TestAccessProvisioner.OperatorInitialPassword));
     }
 
     [Fact]
@@ -170,6 +171,50 @@ public sealed class DevelopmentAccessProvisioningTests(DatabaseFixture database)
         }
     }
 
+    [Fact]
+    public async Task OperatorPasswordIsNotRotatedWhenTheRequestedSecretDiffers()
+    {
+        await ResetScenarioAsync();
+        var provisioner = new TestAccessProvisioner(new AspNetPasswordService(), FindRepositoryFile("database", "development", "seed-test-access.sql"));
+        var created = await provisioner.ProvisionAsync(
+            database.AdminConnectionString,
+            TestAccessProvisioner.AdministratorInitialPassword,
+            TestAccessProvisioner.ClientInitialPassword,
+            true, true, () => throw new InvalidOperationException("A criação não deve sortear outra senha."),
+            requestedAdministratorPassword: TestAccessProvisioner.AdministratorInitialPassword,
+            requestedClientPassword: TestAccessProvisioner.ClientInitialPassword,
+            requestedOperatorPassword: TestAccessProvisioner.OperatorInitialPassword,
+            rotateOperator: true,
+            integrationTestFixture: true);
+
+        var conflict = await Assert.ThrowsAsync<InvalidOperationException>(() => provisioner.ProvisionAsync(
+            database.AdminConnectionString,
+            created.AdministratorPassword, created.ClientPassword, false, false,
+            () => throw new InvalidOperationException("A preservação não deve gerar senha."),
+            requestedOperatorPassword: "Outra!SenhaOperador2026",
+            rotateOperator: false,
+            integrationTestFixture: true));
+
+        Assert.Contains("rotação explícita", conflict.Message, StringComparison.OrdinalIgnoreCase);
+        await using var factory = database.CreateApi();
+        using var http = factory.CreateClient();
+        var login = await LoginAsync(http, TestAccessProvisioner.OperatorEmail, TestAccessProvisioner.OperatorInitialPassword);
+        Assert.False(login.IsPlatformAdministrator);
+    }
+
+    [Fact]
+    public void LocalInstructionsDoNotPublishASecondOperatorPassword()
+    {
+        var root = FindRepositoryFile("docs", "execution", "LOCAL_ACCESS.md");
+        var docs = File.ReadAllText(root);
+        var script = File.ReadAllText(FindRepositoryFile("scripts", "provision-local-superadmin.ps1"));
+        var shell = File.ReadAllText(FindRepositoryFile("scripts", "provision-local-superadmin.sh"));
+        Assert.DoesNotContain("OdcaOperador#2026Local", docs, StringComparison.Ordinal);
+        Assert.DoesNotContain("OdcaOperador#2026Local", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("OdcaOperador#2026Local", shell, StringComparison.Ordinal);
+        Assert.Contains("rotação", docs, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static async Task<LoginResponse> LoginAsync(HttpClient client, string email, string password)
     {
         using var response = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(email, password));
@@ -193,18 +238,88 @@ public sealed class DevelopmentAccessProvisioningTests(DatabaseFixture database)
     {
         await using var conn = new NpgsqlConnection(database.AdminConnectionString);
         await conn.ExecuteAsync("""
+            -- Transitive FK closure of the demo tenants/users: children first, parents last.
+            DELETE FROM odca.contract_change_applications WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.contract_change_events WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.contract_review_comments WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.contract_review_events WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.contract_review_notifications WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.contract_review_steps WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.extraction_suggestions WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.signature_participants WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.signature_preparation_events WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.signature_preparation_operations WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.studio_comment_events WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.contract_change_requests WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.contract_review_requests WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.contract_copy_issuances WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.contract_import_events WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.signature_preparations WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.studio_comments WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.extraction_results WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.extraction_reviews WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.contract_imports WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.extraction_jobs WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.obligation_events WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.obligation_evidence WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.obligation_reminders WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.user_notifications WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.contract_obligations WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.draft_save_receipts WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.generated_contract_versions WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.document_versions WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.contract_drafts WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.contract_documents WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.contract_events WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.contract_renewal_cycles WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.invoice_payments WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.obligation_series WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.storage_capacity_grants WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.patient_representatives WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.privacy_legal_holds WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.privacy_request_actions WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.privacy_request_events WHERE privacy_request_id IN (SELECT id FROM odca.privacy_requests WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL')))
+                                                      OR actor_user_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));
+            DELETE FROM odca.support_session_events WHERE session_id IN (SELECT id FROM odca.support_sessions WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL')))
+                                                     OR actor_user_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));
+            DELETE FROM odca.notification_outbox WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.additional_storage_requests WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.patients WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.privacy_requests WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.privacy_contacts WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.resource_movements WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'))
+                                                 OR actor_user_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));
+            DELETE FROM odca.support_sessions WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.tenant_invitations WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.saved_work_views WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.organization_feature_blocks WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.tenant_storage_usage WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.storage_reservations WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.contract_template_access WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.contract_template_versions WHERE template_id IN (SELECT id FROM odca.contract_templates
+                                                                               WHERE owner_tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'))
+                                                                                  OR author_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL')));
+            DELETE FROM odca.contracts WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.contract_templates WHERE owner_tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'))
+                                                OR author_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));
+            DELETE FROM odca.invoices WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.mfa_recovery_codes WHERE user_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));
+            DELETE FROM odca.financial_audit_events WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'))
+                                                   OR actor_user_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));
             DELETE FROM odca.audit_events WHERE actor_user_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'))
-                                             OR tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+                                          OR tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
             DELETE FROM odca.sessions WHERE user_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));
             DELETE FROM odca.member_roles WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'))
-                                             OR user_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));
+                                           OR user_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));
             DELETE FROM odca.memberships WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'))
-                                            OR user_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));
+                                           OR user_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));
             DELETE FROM odca.subscriptions WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
             DELETE FROM odca.role_permissions WHERE role_id IN (SELECT id FROM odca.roles WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL')));
             DELETE FROM odca.roles WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.storage_package_versions WHERE created_by IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));
             DELETE FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL');
             DELETE FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL');
         """);
+
     }
 }

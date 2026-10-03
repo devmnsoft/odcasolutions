@@ -14,9 +14,19 @@
     <a class="button button-primary" asp-controller="Home" asp-action="Index">Voltar ao painel</a>
 </section>
 <section class="panel controlled-state" role="status">
-    <span class="status-badge status-pending">Em construção controlada</span>
-    <h2>Esta área ainda não executa alterações</h2>
-    <p>Estamos preparando este módulo sem criar integrações provisórias ou expor dados fora do seu perfil. As funcionalidades já prontas permanecem acessíveis pelo menu.</p>
+    @if (Model.OpenHref is not null)
+    {
+        <span class="status-badge status-approved">Tela disponível</span>
+        <h2>Este módulo já está operando</h2>
+        <p>O módulo indicado está disponível para uso no fluxo principal, sem alterar dados enquanto você apenas consulta.</p>
+        <p><a class="button button-primary" href="@Model.OpenHref">@Model.OpenLinkText</a></p>
+    }
+    else
+    {
+        <span class="status-badge status-pending">Em construção controlada</span>
+        <h2>Esta área ainda não executa alterações</h2>
+        <p>Estamos preparando este módulo sem criar integrações provisórias ou expor dados fora do seu perfil. As funcionalidades já prontas permanecem acessíveis pelo menu.</p>
+    }
 </section>
 <section class="panel help-card">
     <h2>Como usar agora</h2>

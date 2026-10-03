@@ -75,7 +75,7 @@ O arquivo `database/development/seed-test-access.sql` também pode ser executado
 
 `show-login` consulta o banco configurado e só exibe uma senha inicial local quando ela confere com o hash persistido. A senha precisa ser alterada no primeiro acesso. Para recuperação explícita somente do superadministrador:
 
-As credenciais reservadas deste ambiente são `admin@odca.local` / `V7!qM2#rL9@xT4$p` e `cliente.teste@odca.local` / `K8@wR3!nF6#zP2$m`. Elas existem exclusivamente no provisionador de Development: o banco recebe hashes ASP.NET Identity, nunca essas senhas em texto puro. O cliente de demonstração recebe a role tenant `tenant-client`, com as permissões tenant do catálogo atual, sem qualquer permissão global de plataforma.
+As identidades reservadas deste ambiente são `admin@odca.local`, `operador@odca.local` e `cliente.teste@odca.local`. O banco recebe hashes ASP.NET Identity produzidos pelo mesmo serviço do login. As senhas não são impressas aqui: após o provisionamento, `show-login` confirma apenas o que confere com o hash. Reexecução preserva a senha; rotação é explícita. O cliente de demonstração recebe a role tenant `tenant-client`, com as permissões tenant do catálogo atual, sem qualquer permissão global de plataforma.
 
 ```powershell
 dotnet run --project src/Odca.Bootstrap -- reset-password

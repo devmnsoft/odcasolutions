@@ -15,7 +15,7 @@ public static class ContractDocumentRenderer
     {
         var model = Read(contentJson, fieldsJson, valuesJson);
         var html = new StringBuilder("<article class=\"legal-document\">");
-        RenderHtml(model.Root, model.Values, html);
+        RenderHtml(model.Root, model.Values, model.Definitions, html);
         return html.Append("</article>").ToString();
     }
 
@@ -23,7 +23,7 @@ public static class ContractDocumentRenderer
     {
         var model = Read(contentJson, fieldsJson, valuesJson);
         var lines = new List<string> { title, $"Versão {version}" };
-        Flatten(model.Root, model.Values, lines, 0);
+        Flatten(model.Root, model.Values, model.Definitions, lines, 0);
         return SimplePdf.Create(lines);
     }
 
@@ -35,21 +35,32 @@ public static class ContractDocumentRenderer
         var values = JsonSerializer.Deserialize<ContractFieldValue[]>(valuesJson,
             options) ?? [];
         StructuredContractDocument.Parse(contentJson, definitions);
-        StructuredContractDocument.ValidateValues(definitions, values, false);
+        StructuredContractDocument.ValidateValues(definitions, values, ContractValidationMode.Complete);
         var valueMap = values.ToDictionary(x => x.FieldId, x => x.Value, StringComparer.Ordinal);
+        var definitionMap = definitions.ToDictionary(x => x.Id, StringComparer.Ordinal);
         using var parsed = JsonDocument.Parse(contentJson, new JsonDocumentOptions { MaxDepth = 64 });
-        return new(parsed.RootElement.Clone(), valueMap);
+        return new(parsed.RootElement.Clone(), valueMap, definitionMap);
     }
 
-    private static void RenderHtml(JsonElement node, IReadOnlyDictionary<string, string?> values, StringBuilder output)
+    private static string Display(string fieldId, IReadOnlyDictionary<string, string?> values, IReadOnlyDictionary<string, ContractFieldDefinition> definitions)
+    {
+        var value = values.GetValueOrDefault(fieldId);
+        if (string.IsNullOrWhiteSpace(value)) return "Não informado";
+        if (definitions.TryGetValue(fieldId, out var definition) && definition.Type == ContractFieldType.Currency && CanonicalDecimal.TryFormatPtBr(value, out var formatted))
+            return formatted;
+        return value;
+    }
+
+    private static void RenderHtml(JsonElement node, IReadOnlyDictionary<string, string?> values, IReadOnlyDictionary<string, ContractFieldDefinition> definitions, StringBuilder output)
     {
         var type = node.GetProperty("type").GetString();
         if (type == "text") { output.Append(SafeHtmlEncode(node.GetProperty("text").GetString())); return; }
         if (type == "field")
         {
             var id = node.GetProperty("fieldId").GetString()!;
-            output.Append("<span class=\"document-field").Append(string.IsNullOrWhiteSpace(values.GetValueOrDefault(id)) ? " document-field-empty" : "")
-                .Append("\">").Append(SafeHtmlEncode(values.GetValueOrDefault(id) ?? "Não informado")).Append("</span>");
+            var shown = Display(id, values, definitions);
+            output.Append("<span class=\"document-field").Append(shown == "Não informado" ? " document-field-empty" : "")
+                .Append("\">").Append(SafeHtmlEncode(shown)).Append("</span>");
             return;
         }
         if (type == "pageBreak") { output.Append("<hr class=\"document-page-break\" aria-label=\"Quebra de página\">"); return; }
@@ -66,36 +77,36 @@ public static class ContractDocumentRenderer
                 if (markNames.Contains("bold")) output.Append("<strong>");
                 if (markNames.Contains("italic")) output.Append("<em>");
                 if (markNames.Contains("underline")) output.Append("<u>");
-                RenderHtml(child, values, output);
+                RenderHtml(child, values, definitions, output);
                 if (markNames.Contains("underline")) output.Append("</u>");
                 if (markNames.Contains("italic")) output.Append("</em>");
                 if (markNames.Contains("bold")) output.Append("</strong>");
             }
-            else RenderHtml(child, values, output);
+            else RenderHtml(child, values, definitions, output);
         }
         output.Append("</").Append(tag).Append('>');
     }
 
-    private static void Flatten(JsonElement node, IReadOnlyDictionary<string, string?> values, List<string> lines, int depth)
+    private static void Flatten(JsonElement node, IReadOnlyDictionary<string, string?> values, IReadOnlyDictionary<string, ContractFieldDefinition> definitions, List<string> lines, int depth)
     {
         var type = node.GetProperty("type").GetString();
         if (type == "pageBreak") { lines.Add("\f"); return; }
         if (type is "paragraph" or "heading" or "listItem" or "tableRow")
         {
             var line = new StringBuilder(type == "listItem" ? "• " : "");
-            CollectText(node, values, line);
+            CollectText(node, values, definitions, line);
             lines.Add(line.ToString());
             return;
         }
-        if (TryGetChildren(node, out var children)) foreach (var child in children) Flatten(child, values, lines, depth + 1);
+        if (TryGetChildren(node, out var children)) foreach (var child in children) Flatten(child, values, definitions, lines, depth + 1);
     }
 
-    private static void CollectText(JsonElement node, IReadOnlyDictionary<string, string?> values, StringBuilder line)
+    private static void CollectText(JsonElement node, IReadOnlyDictionary<string, string?> values, IReadOnlyDictionary<string, ContractFieldDefinition> definitions, StringBuilder line)
     {
         var type = node.GetProperty("type").GetString();
         if (type == "text") line.Append(node.GetProperty("text").GetString());
-        else if (type == "field") line.Append(values.GetValueOrDefault(node.GetProperty("fieldId").GetString()!) ?? "Não informado");
-        else if (TryGetChildren(node, out var children)) foreach (var child in children) CollectText(child, values, line);
+        else if (type == "field") line.Append(Display(node.GetProperty("fieldId").GetString()!, values, definitions));
+        else if (TryGetChildren(node, out var children)) foreach (var child in children) CollectText(child, values, definitions, line);
         if (type == "tableCell") line.Append("  |  ");
     }
 
@@ -122,7 +133,7 @@ public static class ContractDocumentRenderer
         return true;
     }
 
-    private sealed record RenderModel(JsonElement Root, IReadOnlyDictionary<string, string?> Values);
+    private sealed record RenderModel(JsonElement Root, IReadOnlyDictionary<string, string?> Values, IReadOnlyDictionary<string, ContractFieldDefinition> Definitions);
 
     private static class SimplePdf
     {

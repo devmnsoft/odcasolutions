@@ -201,6 +201,7 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
             return RedirectToAction(nameof(EditTemplate), new { tenantId, templateId });
         }
 
+        var savedBeforePublish = false;
         if (!string.IsNullOrWhiteSpace(model.Name))
         {
             JsonElement contentEl;
@@ -231,27 +232,84 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
 
             var saveReq = new UpdateTemplateRequest(model.Name.Trim(), model.Description?.Trim(), model.ContractType, contentEl, fieldsEl, effectiveRowVersion);
             var saveRes = await api.UpdateStudioTemplateAsync(token, tenantId, templateId, saveReq, ct);
-            if (!saveRes.Succeeded)
+            if (saveRes.Succeeded)
+            {
+                effectiveRowVersion = saveRes.Value!.RowVersion;
+                savedBeforePublish = true;
+            }
+            else if (saveRes.Status == ApiCallStatus.Conflict)
+            {
+                var current = await api.GetStudioTemplateAsync(token, tenantId, templateId, ct);
+                if (current.Succeeded && current.Value!.Status == "draft" && SameTemplatePayload(current.Value, model))
+                {
+                    effectiveRowVersion = current.Value.RowVersion;
+                    savedBeforePublish = true;
+                }
+                else
+                {
+                    model.TenantId = tenantId;
+                    model.TemplateId = templateId;
+                    model.RowVersion = current.Succeeded ? current.Value!.RowVersion : model.RowVersion;
+                    model.ErrorMessage = "A etapa de salvamento não foi concluída: o modelo mudou em outra sessão. A publicação não foi realizada. Recarregue e confira a revisão antes de tentar de novo.";
+                    return View("TemplateEdit", model);
+                }
+            }
+            else
             {
                 model.TenantId = tenantId;
                 model.TemplateId = templateId;
-                model.ErrorMessage = saveRes.ErrorDetail ?? saveRes.ErrorTitle ?? "Não foi possível salvar as alterações antes de publicar.";
+                model.ErrorMessage = "A etapa de salvamento falhou e a publicação não foi iniciada. " + (saveRes.ErrorDetail ?? saveRes.ErrorTitle ?? "Tente novamente. O conteúdo digitado permanece neste formulário.");
                 return View("TemplateEdit", model);
             }
-            effectiveRowVersion++;
         }
 
         var r = await api.PublishStudioTemplateAsync(token, tenantId, templateId, effectiveRowVersion, ct);
         if (r.Succeeded)
         {
-            TempData["StudioSuccess"] = "Modelo publicado com sucesso e disponível para emissão!";
+            TempData["StudioSuccess"] = $"Modelo publicado na revisão {r.Value!.RowVersion} e disponível para emissão.";
             return RedirectToAction(nameof(Index), new { tenantId });
+        }
+
+        if (r.Status == ApiCallStatus.Conflict)
+        {
+            var current = await api.GetStudioTemplateAsync(token, tenantId, templateId, ct);
+            if (current.Succeeded && current.Value!.Status == "published")
+            {
+                TempData["StudioSuccess"] = $"O modelo já está publicado na revisão {current.Value.RowVersion}. Nenhuma publicação adicional foi feita.";
+                return RedirectToAction(nameof(Index), new { tenantId });
+            }
         }
 
         model.TenantId = tenantId;
         model.TemplateId = templateId;
-        model.ErrorMessage = r.ErrorDetail ?? r.ErrorTitle ?? "Não foi possível publicar o modelo. Verifique se todos os campos estão configurados e presentes no documento.";
+        model.RowVersion = effectiveRowVersion;
+        model.Status = "draft";
+        model.ErrorMessage = savedBeforePublish
+            ? $"A etapa de salvamento foi concluída na revisão {effectiveRowVersion}. A etapa de publicação falhou: {r.ErrorDetail ?? r.ErrorTitle ?? r.Status.ToString()}. O modelo continua como rascunho. Publique novamente; o conteúdo salvo permanece neste formulário."
+            : $"A etapa de publicação falhou: {r.ErrorDetail ?? r.ErrorTitle ?? r.Status.ToString()}. O modelo não foi publicado.";
         return View("TemplateEdit", model);
+    }
+
+    private static bool SameTemplatePayload(TemplatePreview current, TemplateEditViewModel model)
+    {
+        if (!string.Equals(current.Name?.Trim(), model.Name?.Trim(), StringComparison.Ordinal) ||
+            !string.Equals(current.ContractType?.Trim(), model.ContractType?.Trim(), StringComparison.Ordinal))
+            return false;
+        return SameJson(current.Content?.GetRawText(), model.ContentJson) && SameJson(current.Fields.GetRawText(), model.FieldsJson);
+    }
+
+    private static bool SameJson(string? left, string? right)
+    {
+        try
+        {
+            using var a = JsonDocument.Parse(string.IsNullOrWhiteSpace(left) ? "null" : left);
+            using var b = JsonDocument.Parse(string.IsNullOrWhiteSpace(right) ? "null" : right);
+            return JsonElement.DeepEquals(a.RootElement, b.RootElement);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 
     [HttpPost("modelos/{templateId:guid}/arquivar")]
@@ -297,9 +355,9 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         return RedirectToAction(nameof(Index),new{tenantId,search,type,scope});
     }
     [HttpPost("minutas")]
-    public async Task<IActionResult> Create(Guid tenantId,Guid templateId,string title,string? reference,Guid? patientId,CancellationToken ct)
+    public async Task<IActionResult> Create(Guid tenantId,Guid templateId,string title,string? reference,Guid? patientId,string? contractorSource,CancellationToken ct)
     {
-        var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var result=await api.CreateStudioDraftAsync(token,tenantId,new(templateId,title,reference,patientId),ct);
+        var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var result=await api.CreateStudioDraftAsync(token,tenantId,new(templateId,title,reference,patientId,ContractorSource:string.IsNullOrWhiteSpace(contractorSource)?null:contractorSource.Trim()),ct);
         if(!result.Succeeded){TempData["StudioError"]=result.ErrorDetail??result.ErrorTitle??"Não foi possível criar a minuta.";return RedirectToAction(nameof(Index),new{tenantId,patientId});}
         var id=result.Value.GetProperty("id").GetGuid();return RedirectToAction(nameof(Edit),new{tenantId,draftId=id});
     }
@@ -328,7 +386,7 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
     {var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Unauthorized();var r=await api.SaveStudioDraftAsync(token,tenantId,draftId,request,ct);return r.Succeeded?Json(r.Value):StatusCode(r.Status==ApiCallStatus.Conflict?409:422,new{title=r.ErrorTitle,detail=r.ErrorDetail});}
     [HttpPost("minutas/{draftId:guid}/gerar")]
     public async Task<IActionResult> Generate(Guid tenantId,Guid draftId,long expectedVersion,Guid idempotencyKey,CancellationToken ct)
-    {var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var r=await api.GenerateStudioVersionAsync(token,tenantId,draftId,new(idempotencyKey,expectedVersion),ct);TempData[r.Succeeded?"StudioSuccess":"StudioError"]=r.Succeeded?$"Versão {r.Value!.Number} gerada com hash {r.Value.Sha256[..12]}…":r.ErrorDetail??"Preencha e confirme os campos obrigatórios.";return RedirectToAction(nameof(Edit),new{tenantId,draftId});}
+    {var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var r=await api.GenerateStudioVersionAsync(token,tenantId,draftId,new(idempotencyKey,expectedVersion),ct);string?pendings=null;if(!r.Succeeded&&r.ValidationErrors is not null&&r.ValidationErrors.TryGetValue("pendingFields",out var pendingFields)&&pendingFields.Length>0)pendings=string.Join(" ",pendingFields);TempData[r.Succeeded?"StudioSuccess":"StudioError"]=r.Succeeded?$"Versão {r.Value!.Number} gerada com hash {r.Value.Sha256[..12]}…":string.IsNullOrEmpty(pendings)?r.ErrorDetail??"Preencha e confirme os campos obrigatórios.":$"A geração foi bloqueada porque há campos obrigatórios pendentes. {pendings}";return RedirectToAction(nameof(Edit),new{tenantId,draftId});}
     [HttpGet("versoes/{versionId:guid}")]
     public async Task<IActionResult> Version(Guid tenantId,Guid versionId,int historyPage=1,int? beforeRevision=null,int? afterRevision=null,CancellationToken ct=default)
     {var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var r=await api.GetStudioVersionAsync(token,tenantId,versionId,ct);if(r.Status==ApiCallStatus.Forbidden)return Forbid();if(r.Status==ApiCallStatus.NotFound)return NotFound();if(!r.Succeeded)return View("~/Views/Shared/ServiceUnavailable.cshtml");var reviewers=await api.GetStudioReviewersAsync(token,tenantId,ct);var history=await api.GetSignaturePreparationHistoryAsync(token,tenantId,versionId,historyPage,ct);ApiCallResult<SignatureCompositionComparison>? comparison=null;if(beforeRevision is int before&&afterRevision is int after)comparison=await api.CompareSignaturePreparationsAsync(token,tenantId,versionId,before,after,ct);ViewData["Title"]=$"{r.Value!.Title} · versão {r.Value.Number}";ViewData["TenantId"]=tenantId;ViewData["Reviewers"]=reviewers.Succeeded?reviewers.Value:Array.Empty<StudioReviewerItem>();ViewData["ReviewersError"]=reviewers.Succeeded?null:reviewers.UserMessage("Falha ao consultar responsáveis. Tente novamente.");ViewData["PreparationHistory"]=history.Value;ViewData["PreparationComparison"]=comparison?.Value;ViewData["PreparationComparisonError"]=comparison is {Succeeded:false}?comparison.UserMessage("Não foi possível comparar as composições selecionadas."):null;return View(r.Value);}

@@ -9,11 +9,11 @@ RUNTIME="$ROOT/src/Odca.Api/development-runtime.json"
 ENV_FILE="$ROOT/database/development/local-access.env"
 
 ADMIN_EMAIL="${ODCA_DEV_ADMIN_EMAIL:-admin@odca.local}"
-ADMIN_PASSWORD="${ODCA_DEV_ADMIN_PASSWORD:-V7!qM2#rL9@xT4\$p}"
+ADMIN_PASSWORD="${ODCA_DEV_ADMIN_PASSWORD:-}"
 OPERATOR_EMAIL="${ODCA_DEV_OPERATOR_EMAIL:-operador@odca.local}"
-OPERATOR_PASSWORD="${ODCA_DEV_OPERATOR_PASSWORD:-OdcaOperador#2026Local}"
+OPERATOR_PASSWORD="${ODCA_DEV_OPERATOR_PASSWORD:-}"
 CLIENT_EMAIL="${ODCA_DEV_CLIENT_EMAIL:-cliente.teste@odca.local}"
-CLIENT_PASSWORD="${ODCA_DEV_CLIENT_PASSWORD:-K8@wR3!nF6#zP2\$m}"
+CLIENT_PASSWORD="${ODCA_DEV_CLIENT_PASSWORD:-}"
 APPLY_MIGRATIONS=0
 REQUIRE_CHANGE=0
 
@@ -63,10 +63,10 @@ ARGS=(
   run --project "$BOOTSTRAP" -- provision-test-access
   --environment Development
   --allow-postgres-development
-  --administrator-password "$ADMIN_PASSWORD"
-  --operator-password "$OPERATOR_PASSWORD"
-  --client-password "$CLIENT_PASSWORD"
 )
+if [[ -n "$ADMIN_PASSWORD" ]]; then ARGS+=(--administrator-password "$ADMIN_PASSWORD"); fi
+if [[ -n "$OPERATOR_PASSWORD" ]]; then ARGS+=(--operator-password "$OPERATOR_PASSWORD"); fi
+if [[ -n "$CLIENT_PASSWORD" ]]; then ARGS+=(--client-password "$CLIENT_PASSWORD"); fi
 if [[ "$REQUIRE_CHANGE" -eq 0 ]]; then
   ARGS+=(--allow-immediate-login)
 fi
@@ -76,12 +76,7 @@ dotnet run --project "$BOOTSTRAP" -- show-login
 
 cat <<EOF
 
-Credenciais de Development confirmadas no banco (nao estao no codigo da API):
-  Superadministrador  $ADMIN_EMAIL
-  Senha               $ADMIN_PASSWORD
-  Operador            $OPERATOR_EMAIL
-  Senha               $OPERATOR_PASSWORD
-  Cliente demo        $CLIENT_EMAIL
-  Senha               $CLIENT_PASSWORD
+Identidades reservadas: $ADMIN_EMAIL, $OPERATOR_EMAIL, $CLIENT_EMAIL.
+show-login acima confirma somente a senha cujo hash confere. Sem --rotate-passwords, uma senha diferente não substitui a existente.
 Web: https://localhost:7144/entrar
 EOF

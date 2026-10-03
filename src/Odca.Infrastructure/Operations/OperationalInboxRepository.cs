@@ -157,7 +157,7 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
                            THEN (c.end_date - (c.renewal_notice_amount || ' months')::interval)::date
                          ELSE (c.end_date - c.renewal_notice_amount)::date
                        END,
-                       CASE WHEN c.end_date < @today THEN 'expired' ELSE 'expiring' END, c.row_version::bigint
+                       CASE WHEN c.end_date < @today THEN 'expired' ELSE 'expiring' END, c.version::bigint
                   FROM odca.contracts c
                   LEFT JOIN odca.users ou ON ou.id = c.owner_id
                  WHERE c.tenant_id = @tenantId

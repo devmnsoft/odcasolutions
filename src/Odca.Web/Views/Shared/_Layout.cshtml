@@ -1,4 +1,6 @@
+@using Microsoft.AspNetCore.Authentication
 @inject Odca.Web.Services.IUserTenantContext TenantContext
+@inject Odca.Web.Services.OdcaApiClient ApiClient
 @{
     var authenticated = User.Identity?.IsAuthenticated == true;
     var pendingAccess = authenticated &&
@@ -39,6 +41,38 @@
     var canReadOrganization = activeAccess?.HasAnyPermission("tenant.organization.read", "tenant.organization.manage") == true || isPlatform;
     var canAccessWorkspace = canReadObligations || canReadRenewals || canReadReviews;
     var canReadDocuments = canReadStudio || activeAccess?.HasAnyPermission("tenant.documents.download", "tenant.documents.manage", "tenant.patients.documents.read") == true || isPlatform;
+    var featureStates = new Dictionary<string, string>(StringComparer.Ordinal);
+    string? featureLoadError = null;
+    var organizationSuspended = false;
+    if (showApplication && Guid.TryParse(tenantIdForLinks, out var featureTenantId))
+    {
+        var accessToken = await Context.GetTokenAsync("access_token");
+        if (!string.IsNullOrWhiteSpace(accessToken))
+        {
+            var featureCatalog = await ApiClient.GetOrganizationFeaturesAsync(accessToken, featureTenantId, Context.RequestAborted);
+            if (!featureCatalog.Succeeded || featureCatalog.Value is null || featureCatalog.Value.Features.Count == 0)
+            {
+                featureLoadError = featureCatalog.UserMessage("Não foi possível consultar as funcionalidades da organização.");
+            }
+            else
+            {
+                organizationSuspended = featureCatalog.Value.TenantStatus == "suspended";
+                foreach (var feature in featureCatalog.Value.Features)
+                {
+                    featureStates[feature.FeatureCode] = feature.State;
+                }
+            }
+        }
+    }
+    string MenuFeature(string code, string label)
+    {
+        if (!featureStates.TryGetValue(code, out var state) || state == "allowed")
+        {
+            return label;
+        }
+
+        return state == "plan_restricted" ? $"{label} (fora do plano)" : $"{label} (bloqueada)";
+    }
 }
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -70,6 +104,7 @@
                         <a class="nav-item @(controller == "Customers" ? "active" : null)" asp-controller="Customers" asp-action="Index"><span aria-hidden="true">▣</span><span>Clientes</span></a>
                         <a class="nav-item @(controller == "Organizations" && string.IsNullOrWhiteSpace(activeTenantId) ? "active" : null)" asp-controller="Organizations" asp-action="Index"><span aria-hidden="true">◎</span><span>Organizações</span></a>
                         <a class="nav-item @(controller == "Plans" ? "active" : null)" aria-label="Catálogo de planos" aria-current="@(controller == "Plans" ? "page" : null)" asp-controller="Plans" asp-action="Index"><span aria-hidden="true">▦</span><span>Catálogo de planos</span></a>
+                        <a class="nav-item @(controller == "PlatformAudit" ? "active" : null)" aria-label="Auditoria da plataforma" aria-current="@(controller == "PlatformAudit" ? "page" : null)" asp-controller="PlatformAudit" asp-action="Index"><span aria-hidden="true">☰</span><span>Auditoria</span></a>
                         @if (!string.IsNullOrWhiteSpace(tenantIdForLinks) && (hasActiveMembership || isPlatform))
                         {
                             @if (canAccessWorkspace)
@@ -87,28 +122,28 @@
                             }
                             @if (canReadDocuments)
                             {
-                                <a class="nav-item @(controller == "Documents" && ViewContext.RouteData.Values["action"]?.ToString() != "NewDocument" && Context.Request.Query["stage"] != "draft" ? "active" : null)" aria-label="Acervo de documentos" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">🗂</span><span>Acervo</span></a>
+                                <a class="nav-item @(controller == "Documents" && ViewContext.RouteData.Values["action"]?.ToString() != "NewDocument" && Context.Request.Query["stage"] != "draft" ? "active" : null)" aria-label="Acervo de documentos" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">🗂</span><span>@MenuFeature("documents", "Acervo")</span></a>
                             }
                             @if (canReadStudio)
                             {
-                                <a class="nav-item @(controller == "Studio" ? "active" : null)" aria-label="Modelos de documento" aria-current="@(controller == "Studio" ? "page" : null)" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">▤</span><span>Modelos</span></a>
-                                <a class="nav-item @(controller == "Documents" && Context.Request.Query["stage"] == "draft" ? "active" : null)" aria-label="Minhas minutas" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantIdForLinks" asp-route-stage="draft"><span aria-hidden="true">✎</span><span>Minhas minutas</span></a>
+                                <a class="nav-item @(controller == "Studio" ? "active" : null)" aria-label="Modelos de documento" aria-current="@(controller == "Studio" ? "page" : null)" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">▤</span><span>@MenuFeature("templates", "Modelos")</span></a>
+                                <a class="nav-item @(controller == "Documents" && Context.Request.Query["stage"] == "draft" ? "active" : null)" aria-label="Minhas minutas" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantIdForLinks" asp-route-stage="draft"><span aria-hidden="true">✎</span><span>@MenuFeature("contract_drafts", "Minhas minutas")</span></a>
                                 @if (canCreateDocument)
                                 {
-                                    <a class="nav-item @(controller == "Documents" && ViewContext.RouteData.Values["action"]?.ToString() == "NewDocument" ? "active" : null)" aria-label="Criar documento" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">+</span><span>Criar documento</span></a>
+                                    <a class="nav-item @(controller == "Documents" && ViewContext.RouteData.Values["action"]?.ToString() == "NewDocument" ? "active" : null)" aria-label="Criar documento" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">+</span><span>@MenuFeature("contract_drafts", "Criar documento")</span></a>
                                 }
                             }
                             @if (canReadPatients)
                             {
-                                <a class="nav-item @(controller == "Patients" ? "active" : null)" asp-controller="Patients" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">♙</span><span>Pacientes</span></a>
+                                <a class="nav-item @(controller == "Patients" ? "active" : null)" asp-controller="Patients" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">♙</span><span>@MenuFeature("patients", "Pacientes")</span></a>
                             }
                             @if (canReadReviews)
                             {
-                                <a class="nav-item @(controller == "Reviews" ? "active" : null)" asp-controller="Reviews" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">☵</span><span>Solicitações</span></a>
+                                <a class="nav-item @(controller == "Reviews" ? "active" : null)" asp-controller="Reviews" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">☵</span><span>@MenuFeature("reviews", "Solicitações")</span></a>
                             }
                             @if (canReadImports)
                             {
-                                <a class="nav-item @(controller == "Imports" ? "active" : null)" aria-label="Central de importações" aria-current="@(controller == "Imports" ? "page" : null)" asp-controller="Imports" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">⇧</span><span>Importações</span></a>
+                                <a class="nav-item @(controller == "Imports" ? "active" : null)" aria-label="Central de importações" aria-current="@(controller == "Imports" ? "page" : null)" asp-controller="Imports" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">⇧</span><span>@MenuFeature("imports", "Importações")</span></a>
                             }
                             @if (!string.IsNullOrWhiteSpace(activeContractId))
                             {
@@ -132,28 +167,28 @@
                             @if (canReadPatients)
                             {
                                 <span class="menu-caption" style="margin-top: .75rem; text-transform: uppercase;">Pacientes</span>
-                                <a class="nav-item @(controller == "Patients" ? "active" : null)" asp-controller="Patients" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">♙</span><span>Pacientes</span></a>
+                                <a class="nav-item @(controller == "Patients" ? "active" : null)" asp-controller="Patients" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">♙</span><span>@MenuFeature("patients", "Pacientes")</span></a>
                             }
                             @if (canReadDocuments || canReadStudio || canReadImports || !string.IsNullOrWhiteSpace(activeContractId))
                             {
                                 <span class="menu-caption" style="margin-top: .75rem; text-transform: uppercase;">Documentos</span>
                                 @if (canReadDocuments)
                                 {
-                                    <a class="nav-item @(controller == "Documents" && ViewContext.RouteData.Values["action"]?.ToString() != "NewDocument" && Context.Request.Query["stage"] != "draft" ? "active" : null)" aria-label="Central de documentos" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">🗂</span><span>Acervo de documentos</span></a>
+                                    <a class="nav-item @(controller == "Documents" && ViewContext.RouteData.Values["action"]?.ToString() != "NewDocument" && Context.Request.Query["stage"] != "draft" ? "active" : null)" aria-label="Central de documentos" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">🗂</span><span>@MenuFeature("documents", "Acervo de documentos")</span></a>
                                 }
                                 @if (canReadStudio)
                                 {
                                     <span class="menu-caption" style="margin-top: .5rem; font-size: 0.75rem; text-transform: uppercase;">Estúdio de documentos</span>
-                                    <a class="nav-item @(controller == "Studio" ? "active" : null)" aria-label="Modelos de documento" aria-current="@(controller == "Studio" ? "page" : null)" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">▤</span><span>Modelos</span></a>
-                                    <a class="nav-item @(controller == "Documents" && Context.Request.Query["stage"] == "draft" ? "active" : null)" aria-label="Minhas minutas" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantIdForLinks" asp-route-stage="draft"><span aria-hidden="true">✎</span><span>Minhas minutas</span></a>
+                                    <a class="nav-item @(controller == "Studio" ? "active" : null)" aria-label="Modelos de documento" aria-current="@(controller == "Studio" ? "page" : null)" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">▤</span><span>@MenuFeature("templates", "Modelos")</span></a>
+                                    <a class="nav-item @(controller == "Documents" && Context.Request.Query["stage"] == "draft" ? "active" : null)" aria-label="Minhas minutas" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantIdForLinks" asp-route-stage="draft"><span aria-hidden="true">✎</span><span>@MenuFeature("contract_drafts", "Minhas minutas")</span></a>
                                     @if (canCreateDocument)
                                     {
-                                        <a class="nav-item @(controller == "Documents" && ViewContext.RouteData.Values["action"]?.ToString() == "NewDocument" ? "active" : null)" aria-label="Criar documento" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">+</span><span>Criar documento</span></a>
+                                        <a class="nav-item @(controller == "Documents" && ViewContext.RouteData.Values["action"]?.ToString() == "NewDocument" ? "active" : null)" aria-label="Criar documento" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">+</span><span>@MenuFeature("contract_drafts", "Criar documento")</span></a>
                                     }
                                 }
                                 @if (canReadImports)
                                 {
-                                    <a class="nav-item @(controller == "Imports" ? "active" : null)" aria-label="Central de importações" aria-current="@(controller == "Imports" ? "page" : null)" asp-controller="Imports" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">⇧</span><span>Importações</span></a>
+                                    <a class="nav-item @(controller == "Imports" ? "active" : null)" aria-label="Central de importações" aria-current="@(controller == "Imports" ? "page" : null)" asp-controller="Imports" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">⇧</span><span>@MenuFeature("imports", "Importações")</span></a>
                                 }
                                 @if (!string.IsNullOrWhiteSpace(activeContractId))
                                 {
@@ -165,7 +200,7 @@
                                 <span class="menu-caption" style="margin-top: .75rem; text-transform: uppercase;">Operações e Revisões</span>
                                 @if (canReadReviews)
                                 {
-                                    <a class="nav-item @(controller == "Reviews" ? "active" : null)" asp-controller="Reviews" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">☵</span><span>Solicitações</span></a>
+                                    <a class="nav-item @(controller == "Reviews" ? "active" : null)" asp-controller="Reviews" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">☵</span><span>@MenuFeature("reviews", "Solicitações")</span></a>
                                 }
                                 @if (canAccessWorkspace)
                                 {
@@ -205,11 +240,21 @@
                         <summary><span class="avatar" aria-hidden="true">@avatarText</span><span class="user-name">@(string.IsNullOrWhiteSpace(displayName) ? "Usuário" : displayName)</span></summary>
                         <div class="user-menu-panel">
                             <span class="menu-caption">Conta autenticada</span>
-                            <form asp-controller="Account" asp-action="Logout" method="post"><button class="menu-action" type="submit">Sair com segurança</button></form>
+                            <form asp-controller="Account" asp-action="Logout" method="post">@Html.AntiForgeryToken()<button class="menu-action" type="submit">Sair com segurança</button></form>
                         </div>
                     </details>
                 </header>
-                <main class="page-shell" id="main-content" tabindex="-1">@RenderBody()</main>
+                <main class="page-shell" id="main-content" tabindex="-1">
+                    @if (organizationSuspended)
+                    {
+                        <div class="alert alert-error" role="status">Esta organização está suspensa. Cadastros e documentos permanecem armazenados. As operações ficam indisponíveis até o superadministrador restaurar o acesso.</div>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(featureLoadError))
+                    {
+                        <div class="alert alert-error" role="alert"><strong>Falha ao consultar funcionalidades.</strong> @featureLoadError Esta mensagem indica falha de consulta, não ausência de bloqueios.</div>
+                    }
+                    @RenderBody()
+                </main>
             </div>
         </div>
     }
@@ -223,7 +268,7 @@
             }
             else
             {
-                <form asp-controller="Account" asp-action="Logout" method="post"><button class="button button-quiet" type="submit">Sair</button></form>
+                <form asp-controller="Account" asp-action="Logout" method="post">@Html.AntiForgeryToken()<button class="button button-quiet" type="submit">Sair</button></form>
             }
         </header>
         <main class="page-shell" id="main-content">@RenderBody()</main>

@@ -17,6 +17,7 @@ public sealed class PasswordPolicyTests
     [InlineData("OdcaCliente#2026Local")]
     [InlineData("V7!qM2#rL9@xT4$p")]
     [InlineData("K8@wR3!nF6#zP2$m")]
+    [InlineData("N9!vQ4@kT7#bL2$x")]
     public void DocumentedDevelopmentPasswordsSatisfyPolicy(string password) =>
         Assert.Empty(PasswordPolicy.Validate(password));
 

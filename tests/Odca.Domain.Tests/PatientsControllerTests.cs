@@ -23,6 +23,30 @@ public sealed class PatientsControllerTests
     }
 
     [Fact]
+    public async Task ValidCnpjPassesValidationAndIsNormalizedBeforePersistence()
+    {
+        var repository = new StubRepository(new(PatientMutationStatus.Success, PatientDetails()));
+        var controller = Controller(repository);
+        var result = await controller.Create(Guid.NewGuid(), ValidRequest() with { Identifier = new("cnpj", "12.345.678/0001-95") }, default);
+
+        Assert.IsType<CreatedAtActionResult>(result);
+        Assert.NotNull(repository.LastCreateRequest);
+        Assert.Equal("cnpj", repository.LastCreateRequest!.Identifier!.Type);
+        Assert.Equal("12345678000195", repository.LastCreateRequest.Identifier.Value);
+    }
+
+    [Fact]
+    public async Task InvalidCnpjReturnsValidationProblemOnIdentifierField()
+    {
+        var controller = Controller(new StubRepository(new(PatientMutationStatus.Success)));
+        var result = await controller.Create(Guid.NewGuid(), ValidRequest() with { Identifier = new("cnpj", "12.345.678/0001-91") }, default);
+        var invalid = Assert.IsAssignableFrom<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status400BadRequest, invalid.StatusCode);
+        var problem = Assert.IsType<ValidationProblemDetails>(invalid.Value);
+        Assert.Contains("identifier", problem.Errors);
+    }
+
+    [Fact]
     public async Task ValidationUsesInjectedClockAndPreservesErrorKey()
     {
         var controller = Controller(new StubRepository(new(PatientMutationStatus.Success)));
@@ -69,10 +93,12 @@ public sealed class PatientsControllerTests
     }
 
     private static SavePatientRequest ValidRequest() => new("Maria da Silva", null, null, null, null, null, null, null);
+    private static PatientDetails PatientDetails() => new(Guid.NewGuid(), "Maria da Silva", null, null, null, null, null, "cnpj", "12345678000195", null, true, 1, DateTimeOffset.UtcNow);
     private sealed class FixedClock : IClock { public DateTimeOffset UtcNow => new(2026, 9, 24, 12, 0, 0, TimeSpan.Zero); }
     private sealed class StubRepository(PatientMutation createResult) : IPatientRepository
     {
-        public Task<PatientMutation> CreateAsync(Guid actorId, Guid tenantId, SavePatientRequest request, CancellationToken ct) => Task.FromResult(createResult);
+        public SavePatientRequest? LastCreateRequest { get; private set; }
+        public Task<PatientMutation> CreateAsync(Guid actorId, Guid tenantId, SavePatientRequest request, CancellationToken ct) { LastCreateRequest = request; return Task.FromResult(createResult); }
         public Task<PatientPage?> ListAsync(Guid actorId, Guid tenantId, string? search, bool includeInactive, int page, int pageSize, CancellationToken ct) => throw new NotSupportedException();
         public Task<PatientDetails?> GetAsync(Guid actorId, Guid tenantId, Guid patientId, CancellationToken ct) => throw new NotSupportedException();
         public Task<PatientMutation> UpdateAsync(Guid actorId, Guid tenantId, Guid patientId, SavePatientRequest request, CancellationToken ct) => throw new NotSupportedException();

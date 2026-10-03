@@ -150,17 +150,10 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
 
         var publishedCount = await connection.ExecuteScalarAsync<int>(new CommandDefinition(
             """
-            SELECT count(DISTINCT CASE 
-                WHEN t.contract_type IN ('non_disclosure_agreement', 'nda') AND v.fields::text LIKE '%"discloser_name"%' THEN 'nda-unilateral'
-                WHEN t.contract_type IN ('non_disclosure_agreement', 'nda') THEN 'nda-mutual'
-                WHEN t.contract_type IN ('service_agreement', 'services') THEN 'services-agreement'
-                WHEN t.contract_type IN ('amendment') THEN 'contract-amendment'
-                WHEN t.contract_type IN ('supply_agreement', 'supply') THEN 'supply-agreement'
-                WHEN t.contract_type IN ('lease_agreement', 'lease') THEN 'lease-agreement'
-                ELSE NULL END)::int
+            SELECT count(DISTINCT t.official_key)::int
               FROM odca.contract_templates t
-              JOIN odca.contract_template_versions v ON v.template_id = t.id AND v.version_number = t.current_version
              WHERE t.status = 'published'
+               AND t.official_key IS NOT NULL
                AND (t.scope = 'global' OR (t.scope = 'private' AND t.owner_tenant_id = @tenantId))
             """,
             new { tenantId },

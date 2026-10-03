@@ -66,17 +66,22 @@ public sealed class TestAccessProvisioner(IPasswordService passwordService, stri
         var clientCreated = client is null;
         var administratorPasswordDiffers = administrator is not null && requestedAdministratorPassword is not null &&
             !passwordService.Verify(ToCredential(administrator), administrator.PasswordHash, requestedAdministratorPassword);
+        var operatorPasswordDiffers = operatorUser is not null && requestedOperatorPassword is not null &&
+            !passwordService.Verify(ToCredential(operatorUser), operatorUser.PasswordHash, requestedOperatorPassword);
         var clientPasswordDiffers = client is not null && requestedClientPassword is not null &&
             !passwordService.Verify(ToCredential(client), client.PasswordHash, requestedClientPassword);
-        if (administratorPasswordDiffers && !rotateAdministrator || clientPasswordDiffers && !rotateClient)
-            throw new InvalidOperationException("Uma credencial reservada existente só pode ser alterada com rotação explícita.");
+        if (administratorPasswordDiffers && !rotateAdministrator || operatorPasswordDiffers && !rotateOperator || clientPasswordDiffers && !rotateClient)
+            throw new InvalidOperationException("Uma credencial reservada existente só pode ser alterada com rotação explícita. O hash, o MFA e as sessões foram preservados.");
         var updateAdministratorPassword = administratorCreated || rotateAdministrator || administratorPasswordDiffers;
         var updateClientPassword = clientCreated || rotateClient || clientPasswordDiffers;
         if (updateAdministratorPassword)
             administratorPassword = requestedAdministratorPassword ?? passwordFactory();
         if (operatorCreated || rotateOperator)
         {
-            do { operatorPassword = requestedOperatorPassword ?? passwordFactory(); }
+            do
+            {
+                operatorPassword = requestedOperatorPassword ?? (rotateOperator ? passwordFactory() : OperatorInitialPassword);
+            }
             while (string.Equals(operatorPassword, administratorPassword, StringComparison.Ordinal));
         }
         if (updateClientPassword)

@@ -28,7 +28,12 @@ public sealed class NewDocumentViewModel
 {
     public Guid TenantId { get; init; }
     public Guid? PatientId { get; init; }
+    public string? PatientSearch { get; init; }
     public IReadOnlyList<PatientSummary> Patients { get; init; } = [];
     public bool CanManagePatients { get; init; }
+    public int PatientPage { get; init; } = 1;
+    public int PatientTotal { get; init; }
+    public int PatientPageSize { get; init; } = 20;
+    public string? PatientErrorMessage { get; init; }
 }
 

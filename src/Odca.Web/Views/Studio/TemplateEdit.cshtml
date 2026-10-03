@@ -127,6 +127,16 @@
                         <input type="text" id="newFieldChoices" placeholder="Opção 1, Opção 2" style="width: 100%; font-size: 0.85rem;" />
                     </div>
                 </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <label style="font-size: 0.8rem; font-weight: 600;">Origem do preenchimento:</label>
+                    <select id="newFieldOrigin" style="width: 100%; font-size: 0.85rem;">
+                        <option value="manual">Entrada manual</option>
+                        <option value="organization">Organização/clínica</option>
+                        <option value="patient">Paciente</option>
+                        <option value="contractor">Contratante/responsável financeiro</option>
+                        <option value="representative">Representante</option>
+                    </select>
+                </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
                     <label style="font-size: 0.85rem;">
                         <input type="checkbox" id="newFieldRequired" checked /> Campo Obrigatório
@@ -154,6 +164,7 @@
             <p class="muted" style="font-size: 0.875rem;">
                 Texto das cláusulas e termos do documento. Clique em um campo à esquerda para inseri-lo no texto.
             </p>
+            <div id="editorLossBanner" class="error" role="alert" style="display:none; font-size: 0.85rem; margin-bottom: 0.75rem;"></div>
 
             <label style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.25rem;">
                 Texto Simples com Marcadores (ex: Use {{identificador_do_campo}} para variáveis):
@@ -239,7 +250,9 @@
 
             const span = document.createElement('span');
             span.style.cssText = 'font-size: 0.75rem; color: #64748b; margin-left: 0.5rem;';
-            span.textContent = `[${f.type}${f.required ? ', Obrigatório' : ''}]`;
+            const originLabel = { organization: "Organização", patient: "Paciente", contractor: "Contratante", representative: "Representante", manual: "Manual" };
+            const origin = f.origin || f.Origin;
+            span.textContent = `[${f.type}${f.required ? ", Obrigatório" : ""}${origin ? ", " + (originLabel[origin] || origin) : ""}]`;
             infoDiv.appendChild(span);
 
             item.appendChild(infoDiv);
@@ -322,13 +335,15 @@
             id: id,
             label: label,
             type: type,
-            required: required
+            required: required,
+            origin: document.getElementById('newFieldOrigin').value || 'manual'
         };
         if (type === 'Choice' && rawChoices.length > 0) {
             newF.choices = rawChoices;
         }
 
         fieldsData.push(newF);
+        fieldsDirty = true;
         idInput.value = '';
         labelInput.value = '';
         choicesInput.value = '';
@@ -338,6 +353,7 @@
 
     function removeField(index) {
         fieldsData.splice(index, 1);
+        fieldsDirty = true;
         renderFieldsList();
     }
 
@@ -509,23 +525,92 @@
         };
     }
 
+    function findEditorLosses(doc, issues) {
+        if (!doc || !Array.isArray(doc.content)) return;
+        const scanInline = (nodes) => {
+            for (const node of (nodes || [])) {
+                if (!node) continue;
+                if (node.type === 'text') {
+                    const txt = node.text || '';
+                    if (txt.includes('*')) issues.add('texto contém "*" que o editor pode reinterpretar como negrito/itálico');
+                    if (txt.includes('<u>')) issues.add('texto contém "<u>" que o editor reinterpretará como sublinhado');
+                }
+                if (Array.isArray(node.content)) scanInline(node.content);
+            }
+        };
+        const checkBlock = (node) => {
+            if (!node || !['paragraph', 'tableCell', 'listItem', 'heading'].includes(node.type)) return;
+            if (node.alignment !== 'justify') issues.add('alinhamentos diferentes de "justificado" serão substituídos por justificado');
+            if (node.type === 'tableCell' && Array.isArray(node.content) && node.content.length > 1)
+                issues.add('células de tabela com mais de um bloco interno');
+            scanInline(node.content);
+        };
+        for (const node of doc.content) {
+            if (!node) continue;
+            checkBlock(node);
+            if (node.type === 'bulletList' || node.type === 'orderedList') {
+                for (const item of (node.content || [])) checkBlock(item);
+            }
+        }
+    }
+
+    let baselineText = '';
+    let originalContentRaw = '';
+    let originalFieldsRaw = '';
+    let fieldsDirty = false;
+    let acknowledgedLossy = false;
+
     (function initEditor() {
+        originalContentRaw = document.getElementById('contentJsonInput').value;
+        originalFieldsRaw = document.getElementById('fieldsJsonInput').value;
         renderFieldsList();
         try {
-            const rawContent = document.getElementById('contentJsonInput').value;
-            const parsed = JSON.parse(rawContent || '{}');
+            const parsed = JSON.parse(originalContentRaw || '{}');
             if (parsed.content && Array.isArray(parsed.content)) {
                 document.getElementById('textEditor').value = structuredJsonToText(parsed);
+            }
+            const issues = new Set();
+            findEditorLosses(parsed, issues);
+            if (issues.size > 0) {
+                const banner = document.getElementById('editorLossBanner');
+                banner.innerHTML = '<strong>Editor limitado:</strong> este modelo usa recursos que o editor de texto simples não preserva exatamente: <ul style="margin:0.25rem 0 0 1.1rem; padding:0;">' +
+                    [...issues].map(i => `<li>${i}</li>`).join('') +
+                    '</ul> Sem alterações no texto, o conteúdo original é mantido intacto; ao editar, será pedido seu aceite antes de normalizar.';
+                banner.style.display = 'block';
             }
         } catch(e) {
             console.error('Erro ao inicializar texto do modelo:', e);
         }
+        baselineText = document.getElementById('textEditor').value;
 
         document.getElementById('templateForm').addEventListener('submit', function(e) {
             const text = document.getElementById('textEditor').value;
-            const structuredDoc = convertTextToStructuredJson(text);
-            document.getElementById('contentJsonInput').value = JSON.stringify(structuredDoc);
-            document.getElementById('fieldsJsonInput').value = JSON.stringify(fieldsData);
+            let originalOk = false;
+            try {
+                const parsed = JSON.parse(originalContentRaw || '{}');
+                originalOk = Boolean(parsed) && Array.isArray(parsed.content);
+            } catch (_) { /* conteúdo original inválido: segue pela conversão do editor */ }
+
+            if (text === baselineText && originalOk) {
+                // Texto inalterado: preserva o conteúdo persistido sem reprocessamento destrutivo.
+                document.getElementById('contentJsonInput').value = originalContentRaw;
+            } else {
+                let issues = [];
+                try {
+                    const issuesSet = new Set();
+                    findEditorLosses(JSON.parse(originalContentRaw || '{}'), issuesSet);
+                    issues = [...issuesSet];
+                } catch (_) { }
+                if (issues.length > 0 && !acknowledgedLossy) {
+                    const message = ['O editor de texto simples não preserva exatamente os recursos deste modelo:', ...issues.map(i => '• ' + i), '', 'Ao continuar, o conteúdo será normalizado pelo editor. Deseja continuar?'].join('\n');
+                    if (!window.confirm(message)) { e.preventDefault(); return; }
+                    acknowledgedLossy = true;
+                }
+                const structuredDoc = convertTextToStructuredJson(text);
+                document.getElementById('contentJsonInput').value = JSON.stringify(structuredDoc);
+            }
+
+            document.getElementById('fieldsJsonInput').value = fieldsDirty ? JSON.stringify(fieldsData) : originalFieldsRaw;
         });
     })();
 </script>

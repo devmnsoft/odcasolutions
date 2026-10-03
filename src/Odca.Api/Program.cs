@@ -9,6 +9,7 @@ using Odca.Application.Identity;
 using Odca.Infrastructure;
 using Odca.Infrastructure.Database;
 using Odca.Infrastructure.Identity;
+using Odca.Api;
 using Odca.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,6 +24,7 @@ builder.Services.AddProblemDetails(options =>
         context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
 });
 builder.Services.AddControllers();
+builder.Services.AddTransient<OrganizationFeatureGate>();
 builder.Services.AddOpenApi();
 builder.Services.AddOdcaInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<Odca.Api.StartupValidationService>();
@@ -122,6 +124,7 @@ app.UseHttpsRedirection();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<OrganizationFeatureGate>();
 
 if (app.Environment.IsDevelopment())
 {

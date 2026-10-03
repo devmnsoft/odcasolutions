@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Odca.Application.Onboarding;
 
@@ -9,12 +10,23 @@ namespace Odca.Application.Contracts;
 
 public enum ContractFieldType { ShortText, LongText, Date, Number, Currency, BrazilianDocument, Choice }
 
+/// <summary>
+/// Completeness level enforced over field values.
+/// Structural only rejects malformed values that are present;
+/// Complete also requires required fields to be filled;
+/// Confirmed also requires every required value to be explicitly confirmed.
+/// </summary>
+public enum ContractValidationMode { Structural, Complete, Confirmed }
+
 public sealed record ContractFieldDefinition(
     string Id,
     string Label,
     ContractFieldType Type,
     bool Required,
-    IReadOnlyList<string>? Choices = null);
+    IReadOnlyList<string>? Choices = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Origin = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? RequiredWhenFieldId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string>? RequiredWhenAnyOf = null);
 
 public sealed record ContractFieldValue(string FieldId, string? Value, bool Confirmed, string? Source = null);
 
@@ -64,7 +76,7 @@ public sealed class StructuredContractDocument
     public static void ValidateValues(
         IReadOnlyCollection<ContractFieldDefinition> definitions,
         IReadOnlyCollection<ContractFieldValue> values,
-        bool requireConfirmed)
+        ContractValidationMode mode)
     {
         if (values.Any(x => string.IsNullOrWhiteSpace(x.FieldId)))
             throw new InvalidDataException("Não é permitido valor com identificador de campo ausente.");
@@ -74,19 +86,22 @@ public sealed class StructuredContractDocument
         catch (ArgumentException exception) { throw new InvalidDataException("Cada campo deve possuir somente um valor confirmado.", exception); }
         if (byId.Keys.Except(definitions.Select(x => x.Id), StringComparer.Ordinal).Any())
             throw new InvalidDataException("Foi informado valor para um campo que não pertence ao documento.");
+        var presenceRequired = mode is not ContractValidationMode.Structural;
         foreach (var definition in definitions)
         {
             byId.TryGetValue(definition.Id, out var field);
             var value = field?.Value?.Trim();
-            if (definition.Required && (string.IsNullOrEmpty(value) || requireConfirmed && field?.Confirmed != true))
+            var active = IsRequirementActive(definition, byId);
+            if (definition.Required && active && presenceRequired &&
+                (string.IsNullOrEmpty(value) || (mode == ContractValidationMode.Confirmed && field?.Confirmed != true)))
                 throw new InvalidDataException($"O campo obrigatório '{definition.Label}' está pendente.");
             if (string.IsNullOrEmpty(value)) continue;
 
             var valid = definition.Type switch
             {
                 ContractFieldType.Date => DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _),
-                ContractFieldType.Number => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out _),
-                ContractFieldType.Currency => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount) && amount >= 0,
+                ContractFieldType.Number => CanonicalDecimal.IsStoredNumber(value),
+                ContractFieldType.Currency => CanonicalDecimal.IsStoredCurrency(value),
                 ContractFieldType.BrazilianDocument => BrazilianDocument.NormalizeAndValidate(value).Type != "invalid",
                 ContractFieldType.Choice => definition.Choices?.Contains(value, StringComparer.Ordinal) == true,
                 ContractFieldType.ShortText => value.Length <= 300,
@@ -95,6 +110,36 @@ public sealed class StructuredContractDocument
             };
             if (!valid) throw new InvalidDataException($"O valor de '{definition.Label}' é inválido.");
         }
+    }
+
+    public static string NormalizeStoredValues(string fieldsJson, string valuesJson)
+    {
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+        options.Converters.Add(new JsonStringEnumConverter());
+        var definitions = JsonSerializer.Deserialize<ContractFieldDefinition[]>(fieldsJson, options) ?? [];
+        var values = JsonSerializer.Deserialize<ContractFieldValue[]>(valuesJson, options) ?? [];
+        var byId = definitions.ToDictionary(item => item.Id, StringComparer.Ordinal);
+        var normalized = values.Select(value =>
+        {
+            if (string.IsNullOrWhiteSpace(value.Value) || !byId.TryGetValue(value.FieldId, out var definition))
+                return value;
+            if (definition.Type is not (ContractFieldType.Currency or ContractFieldType.Number))
+                return value;
+            var parsed = CanonicalDecimal.Parse(value.Value, definition.Type == ContractFieldType.Currency);
+            if (!parsed.Succeeded)
+                throw new InvalidDataException($"O valor de '{definition.Label}' é inválido. {parsed.Error}");
+            return value with { Value = parsed.Canonical };
+        }).ToArray();
+        return JsonSerializer.Serialize(normalized, options);
+    }
+
+    private static bool IsRequirementActive(ContractFieldDefinition definition, Dictionary<string, ContractFieldValue> values)
+    {
+        if (string.IsNullOrWhiteSpace(definition.RequiredWhenFieldId))
+            return true;
+        values.TryGetValue(definition.RequiredWhenFieldId, out var controller);
+        var current = controller?.Value?.Trim() ?? string.Empty;
+        return definition.RequiredWhenAnyOf?.Contains(current, StringComparer.Ordinal) == true;
     }
 
     private static void ValidateNode(JsonNode node, IReadOnlyDictionary<string, ContractFieldDefinition> fields,
@@ -168,7 +213,7 @@ public sealed class ContractDraft
     public PublishedContractVersion Publish(IReadOnlyCollection<ContractFieldDefinition> definitions,
         IReadOnlyCollection<ContractFieldValue> values, DateTimeOffset now)
     {
-        StructuredContractDocument.ValidateValues(definitions, values, requireConfirmed: true);
+        StructuredContractDocument.ValidateValues(definitions, values, ContractValidationMode.Confirmed);
         var version = new PublishedContractVersion(
             versions.Count + 1,
             Content.CanonicalJson,

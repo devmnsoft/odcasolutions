@@ -38,6 +38,7 @@
     {
         <p class="muted">Ao aceitar, você sairá da sessão atual e precisará entrar novamente para carregar as permissões atualizadas.</p>
         <form asp-action="Accept" method="post" data-processing>
+            @Html.AntiForgeryToken()
             <input type="hidden" asp-for="InvitationId" />
             <input type="hidden" asp-for="Token" />
             <button class="button button-primary button-block" type="submit" data-processing-label="Aceitando…">Aceitar convite</button>

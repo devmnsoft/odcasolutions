@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Odca.Contracts.Administration;
 using Odca.Contracts.Consumption;
 using Odca.Web.Models;
 using Odca.Web.Services;
@@ -9,7 +10,7 @@ namespace Odca.Web.Controllers;
 public sealed class CustomersController(OdcaApiClient api):Controller
 {
  [HttpGet]public async Task<IActionResult> Index(string? search,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var result=await api.GetCustomersAsync(token,search,ct);if(!result.Succeeded){Response.StatusCode=503;return View("ServiceUnavailable");}return View(new CustomerListViewModel(result.Value!,search));}
- [HttpGet("{tenantId:guid}")]public async Task<IActionResult> Details(Guid tenantId,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var result=await api.GetCustomerAsync(token,tenantId,ct);if(!result.Succeeded||result.Value is null)return result.Status==ApiCallStatus.NotFound?NotFound():StatusCode(503);ViewData["OrganizationName"]=result.Value.Summary.OrganizationName;return View(result.Value);}
+ [HttpGet("{tenantId:guid}")]public async Task<IActionResult> Details(Guid tenantId,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var result=await api.GetCustomerAsync(token,tenantId,ct);if(!result.Succeeded||result.Value is null)return result.Status==ApiCallStatus.NotFound?NotFound():StatusCode(503);var features=await api.GetOrganizationFeaturesAsync(token,tenantId,ct);ViewData["OrganizationName"]=result.Value.Summary.OrganizationName;ViewData["Features"]=features.Succeeded?features.Value:null;ViewData["FeaturesError"]=features.Succeeded?null:features.UserMessage("Não foi possível consultar as funcionalidades. Esta falha não significa que a organização esteja sem bloqueios.");return View(result.Value);}
  [HttpPost("{tenantId:guid}/solicitacoes/{requestId:guid}")][ValidateAntiForgeryToken]public async Task<IActionResult> Decide(Guid tenantId,Guid requestId,string decision,string? reason,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var result=await api.DecideStorageAsync(token,tenantId,requestId,new(decision,reason),ct);TempData[result.Succeeded?"Success":"Error"]=result.Succeeded?"Decisão confirmada e auditada.":result.UserMessage("A solicitação já foi decidida ou não está disponível.");return RedirectToAction(nameof(Details),new{tenantId});}
  [HttpPost("{tenantId:guid}/concessoes")][ValidateAntiForgeryToken]public async Task<IActionResult> Grant(Guid tenantId,decimal? quantity,string? unit,long? quantityBytes,string reason,Guid idempotencyKey,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();long bytes;if(quantity.HasValue&&quantity.Value>0){var cleanUnit=unit?.Trim().ToUpperInvariant()??"GB";bytes=cleanUnit switch{"TB"=>(long)Math.Round(quantity.Value*1024L*1024L*1024L*1024L),"MB"=>(long)Math.Round(quantity.Value*1024L*1024L),_ =>(long)Math.Round(quantity.Value*1024L*1024L*1024L)};}else if(quantityBytes.HasValue&&quantityBytes.Value>0){bytes=quantityBytes.Value;}else{TempData["Error"]="Informe uma quantidade válida maior que zero.";return RedirectToAction(nameof(Details),new{tenantId});}if(bytes<=0||bytes>100L*1024L*1024L*1024L*1024L){TempData["Error"]="A capacidade informada está fora dos limites operacionais permitidos.";return RedirectToAction(nameof(Details),new{tenantId});}var result=await api.GrantStorageAsync(token,tenantId,new(bytes,reason,idempotencyKey,null),ct);TempData[result.Succeeded?"Success":"Error"]=result.Succeeded?"Capacidade adicional concedida e auditada.":result.UserMessage("Não foi possível conceder a capacidade.");return RedirectToAction(nameof(Details),new{tenantId});}
  [HttpGet("novo")]
@@ -42,6 +43,21 @@ public sealed class CustomersController(OdcaApiClient api):Controller
      }
      TempData["Success"] = $"Organização '{result.Value!.OrganizationName}' cadastrada com sucesso.";
      return RedirectToAction(nameof(Details), new { tenantId = result.Value.TenantId });
+ }
+
+ [HttpPost("{tenantId:guid}/funcionalidades/{featureCode}")]
+ [ValidateAntiForgeryToken]
+ public async Task<IActionResult> SetFeature(Guid tenantId, string featureCode, bool blocked, string reason, CancellationToken ct)
+ {
+     var token = await HttpContext.GetTokenAsync("access_token");
+     if (token is null) return Challenge();
+     var result = await api.SetOrganizationFeatureAsync(token, tenantId, featureCode, new SetOrganizationFeatureRequest(blocked, reason ?? string.Empty), ct);
+     TempData[result.Succeeded ? "Success" : "Error"] = result.Succeeded
+         ? (blocked
+             ? "Funcionalidade bloqueada para esta organização. Plano, permissões e documentos foram preservados."
+             : "Bloqueio administrativo removido. Se o plano não incluir a funcionalidade, ela continua indisponível por restrição de plano.")
+         : result.UserMessage("Não foi possível registrar a decisão. Nenhuma liberação ou pagamento foi presumido.");
+     return RedirectToAction(nameof(Details), new { tenantId });
  }
 
  [HttpPost("{tenantId:guid}/situacao")][ValidateAntiForgeryToken]public async Task<IActionResult> ChangeStatus(Guid tenantId,bool restore,string reason,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();if(string.IsNullOrWhiteSpace(reason)||reason.Trim().Length<5){TempData["Error"]="Informe uma justificativa com pelo menos 5 caracteres.";return RedirectToAction(nameof(Details),new{tenantId});}var result=await api.ChangeOrganizationStatusAsync(token,tenantId,restore,new(reason.Trim()),ct);TempData[result.Succeeded?"Success":"Error"]=result.Succeeded?(restore?"Organização restaurada. Os bloqueios individuais foram preservados.":"Organização suspensa. Novas operações do cliente foram bloqueadas."):result.UserMessage("A situação da organização não pôde ser alterada.");return RedirectToAction(nameof(Details),new{tenantId});}

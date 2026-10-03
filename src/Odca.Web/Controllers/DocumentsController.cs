@@ -126,6 +126,8 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
     public async Task<IActionResult> NewDocument(
         Guid tenantId,
         [FromQuery] Guid? patientId = null,
+        [FromQuery] string? patientSearch = null,
+        [FromQuery] int patientPage = 1,
         CancellationToken ct = default)
     {
         ViewData["Title"] = "Novo documento";
@@ -159,12 +161,22 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
         }
 
         var activePatients = new List<PatientSummary>();
+        string? patientErrorMessage = null;
+        var normalizedPatientPage = Math.Max(1, patientPage);
+        var patientTotal = 0;
+        var patientPageSize = 20;
         if (access.HasPermission("tenant.patients.read"))
         {
-            var pRes = await api.GetPatientsAsync(token, tenantId, null, includeInactive: false, 1, ct);
+            var pRes = await api.GetPatientsAsync(token, tenantId, patientSearch?.Trim(), includeInactive: false, normalizedPatientPage, ct);
             if (pRes.Succeeded && pRes.Value is not null)
             {
                 activePatients.AddRange(pRes.Value.Items);
+                patientTotal = pRes.Value.Total;
+                patientPageSize = pRes.Value.PageSize;
+            }
+            else if (!pRes.Succeeded)
+            {
+                patientErrorMessage = pRes.UserMessage("Não foi possível carregar os pacientes. A busca não ficou limitada à primeira página; tente novamente.");
             }
             if (selectedPatient != null && !activePatients.Any(p => p.Id == selectedPatient.Id))
             {
@@ -183,8 +195,13 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
         {
             TenantId = tenantId,
             PatientId = patientId,
+            PatientSearch = patientSearch,
             Patients = activePatients,
-            CanManagePatients = access.HasPermission("tenant.patients.manage")
+            CanManagePatients = access.HasPermission("tenant.patients.manage"),
+            PatientPage = normalizedPatientPage,
+            PatientTotal = patientTotal,
+            PatientPageSize = patientPageSize,
+            PatientErrorMessage = patientErrorMessage
         };
 
         return View(vm);

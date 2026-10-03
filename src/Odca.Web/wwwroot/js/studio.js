@@ -20,6 +20,70 @@ if (studio) {
     return "ShortText";
   };
 
+  const originLabels = {
+    organization: "Organização/clínica",
+    patient: "Paciente",
+    contractor: "Contratante/responsável financeiro",
+    representative: "Representante",
+    manual: "Entrada manual"
+  };
+  const fieldOrigin = definition => String(definition?.origin ?? definition?.Origin ?? "manual").toLowerCase();
+  const isStoredCurrency = value => /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(value);
+  const formatCurrency = value => {
+    if (!isStoredCurrency(value)) return value;
+    const negative = value.startsWith("-");
+    const [integer, fraction = ""] = value.replace("-", "").split(".");
+    const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return `${negative ? "-" : ""}${grouped},${(fraction + "00").slice(0, 2)}`;
+  };
+  const parseDecimal = (raw, currency) => {
+    let text = String(raw ?? "").trim().replace(/\u00A0/g, "");
+    if (/^r\$/i.test(text)) text = text.slice(2).trim();
+    if (!text || /[a-zA-Z\s]/.test(text)) return { ok: false, error: "Informe apenas o valor numérico." };
+    let negative = false;
+    if (text.startsWith("+")) text = text.slice(1);
+    else if (text.startsWith("-")) { negative = true; text = text.slice(1); }
+    if (negative && currency) return { ok: false, error: "Valor monetário negativo não é permitido." };
+    if (!/^[\d.,]+$/.test(text)) return { ok: false, error: "O valor numérico é inválido." };
+    const comma = text.lastIndexOf(",");
+    const dot = text.lastIndexOf(".");
+    let integer = "";
+    let fraction = "";
+    const groups = (value, separator) => {
+      const parts = value.split(separator);
+      if (parts.length < 2 || parts.some(part => !/^\d+$/.test(part))) return null;
+      if (parts[0].length < 1 || parts[0].length > 3 || (parts[0].length > 1 && parts[0].startsWith("0"))) return null;
+      if (parts.slice(1).some(part => part.length !== 3)) return null;
+      return parts.join("");
+    };
+    if (comma >= 0 && dot >= 0) {
+      const decimalSeparator = comma > dot ? "," : ".";
+      const groupSeparator = decimalSeparator === "," ? "." : ",";
+      const split = text.lastIndexOf(decimalSeparator);
+      fraction = text.slice(split + 1);
+      integer = groups(text.slice(0, split), groupSeparator);
+      if (integer === null || fraction.length === 0 || text.indexOf(decimalSeparator) !== split) return { ok: false, error: "Separe milhar e decimal de forma explícita." };
+    } else if (comma < 0 && dot < 0) {
+      if (text.length > 1 && text.startsWith("0")) return { ok: false, error: "O valor numérico é inválido." };
+      integer = text;
+    } else {
+      const separator = comma >= 0 ? "," : ".";
+      const pieces = text.split(separator);
+      const tail = pieces.at(-1);
+      if (pieces.length === 2 && tail.length === 3) return { ok: false, error: "Valor ambíguo. Use 1.250,00 ou 1250.00." };
+      if (pieces.length === 2) {
+        integer = pieces[0];
+        fraction = tail;
+        if (!/^\d+$/.test(integer) || !/^\d+$/.test(fraction) || integer.length === 0) return { ok: false, error: "O valor numérico é inválido." };
+      } else {
+        integer = groups(text, separator);
+        if (integer === null) return { ok: false, error: "O separador de milhar está inconsistente." };
+      }
+    }
+    if (currency && fraction.length > 2) return { ok: false, error: "A moeda aceita no máximo duas casas decimais." };
+    const canonical = `${negative ? "-" : ""}${integer}${fraction ? "." + fraction : ""}`;
+    return { ok: true, canonical: currency ? `${integer}.${(fraction + "00").slice(0, 2)}` : canonical };
+  };
   const values = new Map(
     initialValues
       .filter(val => Boolean(val.fieldId ?? val.FieldId))
@@ -53,7 +117,8 @@ if (studio) {
       const label = definition?.label ?? definition?.Label ?? fId;
       const button = document.createElement("button"); button.type = "button"; button.className = `smart-field ${value?.confirmed ? "confirmed" : "pending"}`;
       button.dataset.fieldId = fId; button.setAttribute("aria-label", `${label}: ${value?.confirmed ? "confirmado" : "pendente"}`);
-      button.textContent = value?.value ? value.value : `⚠ ${label}`;
+      const shown = normalizeFieldType(definition?.type ?? definition?.Type) === "Currency" && value?.value ? formatCurrency(value.value) : value?.value;
+      button.textContent = shown ? shown : `⚠ ${label}`;
       button.addEventListener("click", () => document.querySelector(`[data-field-editor="${CSS.escape(fId)}"]`)?.focus());
       parent.append(button); return;
     }
@@ -95,27 +160,61 @@ if (studio) {
         input = document.createElement("input"); input.value = value.value || "";
         if (fieldType === "Date") input.type = "date";
         else if (fieldType === "Number") { input.type = "number"; input.step = "any"; }
-        else if (fieldType === "Currency") { input.type = "text"; input.inputMode = "decimal"; input.placeholder = "0,00"; }
+        else if (fieldType === "Currency") { input.type = "text"; input.inputMode = "decimal"; input.placeholder = "0,00"; input.value = formatCurrency(value.value || ""); input.autocomplete = "off"; }
         else if (fieldType === "BrazilianDocument") { input.type = "text"; input.maxLength = 18; input.placeholder = "000.000.000-00 ou 00.000.000/0000-00"; }
         else input.type = "text";
       }
       input.dataset.fieldEditor = id; input.className = "field-input";
-      const source = document.createElement("small"); source.textContent = `Origem: ${value.source || "entrada manual"}`;
+      const configuredOrigin = fieldOrigin(definition);
+      const source = document.createElement("small"); source.textContent = `Origem: ${originLabels[configuredOrigin] || configuredOrigin}`;
+      const fieldError = document.createElement("small"); fieldError.className = "field-error"; fieldError.hidden = true;
       const confirm = document.createElement("button"); confirm.type = "button"; confirm.className = "button button-small button-link"; confirm.textContent = value.confirmed ? "Confirmado" : "Confirmar valor";
-      const update = () => { value.value = input.value; value.fieldId = id; value.confirmed = false; values.set(id, value); markDirty(); };
+      let normalizing = false;
+      const commitInput = confirmValue => {
+        if (normalizing) return true;
+        normalizing = true;
+        let next = input.value;
+        if (fieldType === "Currency" || fieldType === "Number") {
+          if (!String(next).trim()) { value.value = ""; fieldError.hidden = true; }
+          else {
+            const parsed = parseDecimal(next, fieldType === "Currency");
+            if (!parsed.ok) { fieldError.hidden = false; fieldError.textContent = parsed.error; value.confirmed = false; normalizing = false; return false; }
+            value.value = parsed.canonical;
+            input.value = fieldType === "Currency" ? formatCurrency(parsed.canonical) : parsed.canonical;
+            fieldError.hidden = true;
+          }
+        } else value.value = next;
+        value.fieldId = id;
+        value.confirmed = confirmValue && Boolean(String(value.value).trim());
+        if (!confirmValue) value.confirmed = false;
+        if (value.source && value.source !== "manual" && value.value !== (values.get(id)?.value ?? value.value)) value.source = "manual";
+        values.set(id, value);
+        markDirty();
+        normalizing = false;
+        return true;
+      };
+      const update = () => { commitInput(false); };
       input.addEventListener("input", update);
       if (input.tagName === "SELECT") input.addEventListener("change", update);
-      confirm.addEventListener("click", () => {
-        value.value = input.value; value.fieldId = id; value.confirmed = Boolean(input.value.trim()); value.source = value.source || "manual";
-        values.set(id, value); markDirty(); refresh();
-      });
-      label.append(input); box.append(label, source, confirm); panel.append(box);
+      confirm.addEventListener("click", () => { if (commitInput(true)) refresh(); });
+      label.append(input); box.append(label, source, fieldError, confirm); panel.append(box);
     }
     studio.querySelector("[data-pending-count]").textContent = String(pending);
   };
   const save = async () => {
     if (conflict || activeRequest || localRevision === acknowledgedRevision) return; const sentRevision = localRevision; state.textContent = "Salvando…"; state.dataset.state = "saving";
     const requestId = crypto.randomUUID(); const token = studio.querySelector('input[name="__RequestVerificationToken"]')?.value;
+    for (const definition of fields) {
+      const id = defId(definition);
+      const fieldType = normalizeFieldType(definition.type ?? definition.Type);
+      const current = values.get(id);
+      if (!current || !String(current.value ?? "").trim() || (fieldType !== "Currency" && fieldType !== "Number")) continue;
+      const parsed = parseDecimal(current.value, fieldType === "Currency");
+      if (!parsed.ok && !isStoredCurrency(current.value) && fieldType === "Currency") {
+        state.textContent = parsed.error; state.dataset.state = "failed"; return;
+      }
+      if (parsed.ok) current.value = parsed.canonical;
+    }
     const cleanValues = [...values.values()].filter(v => Boolean(v.fieldId));
     activeRequest = fetch(studio.dataset.saveUrl, { method: "PUT", headers: { "Content-Type": "application/json", ...(token ? { "RequestVerificationToken": token } : {}) }, body: JSON.stringify({ content, fields, values: cleanValues, expectedVersion: version, clientRevision: requestId }) });
     try {

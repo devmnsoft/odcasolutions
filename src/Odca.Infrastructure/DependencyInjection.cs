@@ -24,6 +24,9 @@ using Odca.Application.Contracts;
 using Odca.Infrastructure.Contracts;
 using Odca.Application.Patients;
 using Odca.Infrastructure.Patients;
+using Odca.Application.Administration;
+using Odca.Infrastructure.Administration;
+using Odca.Infrastructure.Operations;
 
 namespace Odca.Infrastructure;
 
@@ -74,6 +77,9 @@ public static class DependencyInjection
         services.AddScoped<IConsumptionRepository, NpgsqlConsumptionRepository>();
         services.AddScoped<ITemplateCatalogRepository, NpgsqlTemplateCatalogRepository>();
         services.AddScoped<IPatientRepository, NpgsqlPatientRepository>();
+        services.AddScoped<IOrganizationFeatureRepository, NpgsqlOrganizationFeatureRepository>();
+        services.AddScoped<IPlatformAuditRepository, NpgsqlPlatformAuditRepository>();
+        services.AddOdcaOperationalInbox();
         services.AddScoped<AuthenticationService>();
         services.AddScoped<MfaService>();
         services.AddScoped<CustomerOnboardingService>();

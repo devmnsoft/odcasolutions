@@ -2,8 +2,7 @@
 @{
     ViewData["Title"] = "Novo documento";
     var tenantId = Model.TenantId;
-    var currentUrl = Url.Action("NewDocument", "Documents", new { tenantId });
-    var returnUrlForNewPatient = currentUrl;
+    var returnUrlForNewPatient = Url.Action("NewDocument", "Documents", new { tenantId, patientSearch = Model.PatientSearch, patientPage = Model.PatientPage });
 }
 
 <section class="page-heading">
@@ -43,9 +42,33 @@
                 Utilize modelos estruturados em Legal Design (Prestação de Serviços, Consentimento Informado, Confidencialidade, Locação, etc.) com preenchimento assistido e conferência cadastral.
             </p>
 
+            <form id="patient-search" method="get" asp-action="NewDocument" asp-route-tenantId="@tenantId"></form>
             <form method="get" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@tenantId" style="margin-top: 1.5rem;">
                 <input type="hidden" name="tenantId" value="@tenantId" />
 
+                @if (!string.IsNullOrWhiteSpace(Model.PatientErrorMessage))
+                {
+                    <div class="error" role="alert">@Model.PatientErrorMessage</div>
+                }
+                <label style="display: block; margin-bottom: 0.75rem; font-weight: 600;">
+                    Buscar paciente por nome ou identificador
+                    <input name="patientSearch" form="patient-search" value="@Model.PatientSearch" placeholder="Nome ou CPF/CNPJ autorizado" style="width: 100%; margin-top: 0.25rem;" />
+                </label>
+                <div style="display:flex; gap:0.5rem; align-items:center; margin-bottom: 1rem;">
+                    <button class="button button-quiet" type="submit" form="patient-search">Buscar</button>
+                    @if (Model.PatientTotal > Model.PatientPageSize)
+                    {
+                        <span class="muted">Página @Model.PatientPage de @Math.Ceiling((double)Model.PatientTotal / Model.PatientPageSize)</span>
+                        @if (Model.PatientPage > 1)
+                        {
+                            <a class="button button-small button-quiet" asp-action="NewDocument" asp-route-tenantId="@tenantId" asp-route-patientSearch="@Model.PatientSearch" asp-route-patientId="@Model.PatientId" asp-route-patientPage="@(Model.PatientPage - 1)">Anteriores</a>
+                        }
+                        @if (Model.PatientPage * Model.PatientPageSize < Model.PatientTotal)
+                        {
+                            <a class="button button-small button-quiet" asp-action="NewDocument" asp-route-tenantId="@tenantId" asp-route-patientSearch="@Model.PatientSearch" asp-route-patientId="@Model.PatientId" asp-route-patientPage="@(Model.PatientPage + 1)">Próximos</a>
+                        }
+                    }
+                </div>
                 <label style="display: block; margin-bottom: 1rem; font-weight: 600;">
                     Vincular paciente (opcional para B2B):
                     <select name="patientId" id="patientSelector" style="width: 100%; margin-top: 0.25rem;">

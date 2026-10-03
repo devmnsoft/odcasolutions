@@ -93,7 +93,7 @@ public sealed class TemplateCatalogPersistenceTests(DatabaseFixture database) : 
         var mtOk = Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(mtResult);
         var mtPreview = Assert.IsType<Odca.Contracts.Studio.TemplatePreview>(mtOk.Value);
         Assert.Contains("Múltiplas Terapias", mtPreview.Name, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains(mtPreview.FieldLabels, l => l.Contains("Terapias Selecionadas", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(mtPreview.FieldLabels, l => l.Contains("Neuropsicologia", StringComparison.OrdinalIgnoreCase));
 
         // 3. Query generic services official template
         var srvResult = await controller.OfficialTemplate(testTenantId, "services-agreement", default);

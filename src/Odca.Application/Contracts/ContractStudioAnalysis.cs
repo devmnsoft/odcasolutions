@@ -33,7 +33,7 @@ public static class ContractStudioAnalysis
         if (hasConflict) result.Add(new("blocker", "draft.conflict", "Resolva o conflito de edição antes de encaminhar.", null));
         var definitions = JsonSerializer.Deserialize<ContractFieldDefinition[]>(fields, JsonOptions) ?? [];
         var fieldValues = JsonSerializer.Deserialize<ContractFieldValue[]>(values, JsonOptions) ?? [];
-        try { StructuredContractDocument.ValidateValues(definitions, fieldValues, true); }
+        try { StructuredContractDocument.ValidateValues(definitions, fieldValues, ContractValidationMode.Confirmed); }
         catch (InvalidDataException exception) { result.Add(new("blocker", "fields.invalid", exception.Message, "fields")); }
         if (openComments > 0) result.Add(new("warning", "comments.open", $"Há {openComments} comentário(s) aberto(s).", "comments"));
         foreach (var value in fieldValues.Where(x => string.Equals(x.Source, "manual", StringComparison.OrdinalIgnoreCase)))

@@ -1,0 +1,15 @@
+@{
+    ViewData["Title"] = "Acesso negado";
+}
+<dialog class="unavailable-dialog" role="alertdialog" open aria-labelledby="dialog-title" aria-describedby="dialog-desc">
+    <div class="dialog-content card">
+        <h2 id="dialog-title">Acesso negado</h2>
+        <p id="dialog-desc">Seu perfil não tem acesso à auditoria da plataforma ou a verificação administrativa falhou. Nenhum evento foi ocultado por erro de consulta.</p>
+        <div class="dialog-actions">
+            <form method="dialog" style="display:inline;">
+                <button type="submit" class="button button-quiet">Fechar</button>
+            </form>
+            <a class="button button-primary" href="/" id="btn-back-to-home">Voltar ao painel</a>
+        </div>
+    </div>
+</dialog>

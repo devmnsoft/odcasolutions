@@ -4,4 +4,6 @@ public sealed record ModuleStatusViewModel(
     string Title,
     string Description,
     string NextStep,
-    bool IsPlatformModule);
+    bool IsPlatformModule,
+    string? OpenHref = null,
+    string? OpenLinkText = null);

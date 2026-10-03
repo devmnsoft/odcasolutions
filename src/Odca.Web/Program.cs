@@ -50,12 +50,25 @@ builder.Services.AddRateLimiter(options =>
             AutoReplenishment = true
         }));
 });
-builder.Services.AddHttpClient<OdcaApiClient>(client =>
+var odcaApiHttpClient = builder.Services.AddHttpClient<OdcaApiClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Api:BaseUrl"]
         ?? throw new InvalidOperationException("Api:BaseUrl não foi configurada."));
     client.Timeout = TimeSpan.FromSeconds(15);
 });
+// Development apenas: aceita o certificado self-signed da API local (loopback).
+// Em produção use certificado confiável e mantenha a flag desativada.
+if (builder.Environment.IsDevelopment() && builder.Configuration.GetValue("Api:AllowInsecureTls", false))
+{
+    odcaApiHttpClient.ConfigurePrimaryHttpMessageHandler(() =>
+    {
+        var handler = new System.Net.Http.SocketsHttpHandler();
+        handler.SslOptions.RemoteCertificateValidationCallback = static (sender, certificate, chain, sslPolicyErrors) =>
+            sslPolicyErrors == System.Net.Security.SslPolicyErrors.None
+            || sslPolicyErrors == System.Net.Security.SslPolicyErrors.RemoteCertificateChainErrors;
+        return handler;
+    });
+}
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUserTenantContext, UserTenantContext>();
 

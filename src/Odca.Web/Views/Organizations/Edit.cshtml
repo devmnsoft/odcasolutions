@@ -21,6 +21,7 @@
 
 <section class="card" data-dirty-form>
     <form asp-action="Edit" asp-route-tenantId="@Model.TenantId" method="post" novalidate data-processing>
+        @Html.AntiForgeryToken()
         <div asp-validation-summary="All" class="validation-summary" role="alert"></div>
         <input type="hidden" asp-for="TenantId" />
         <input type="hidden" asp-for="Version" />

@@ -2,10 +2,12 @@
 
 A autenticacao sempre consulta odca.users (email_normalized/login_normalized + password_hash). Nao existe senha em Odca.Api ou Odca.Web.
 
-Development:
-- Superadministrador: admin@odca.local / V7!qM2#rL9@xT4$p (plataforma + membership no tenant demo)
-- Operador da organização: operador@odca.local / OdcaOperador#2026Local (permissões operacionais completas)
-- Cliente: cliente.teste@odca.local / K8@wR3!nF6#zP2$m (perfil de cliente do tenant demo, com os módulos tenant implementados)
+Development — identidades reservadas, sem senha neste documento:
+- Superadministrador: admin@odca.local (plataforma + membership no tenant demo)
+- Operador da organização: operador@odca.local (permissões operacionais completas)
+- Cliente: cliente.teste@odca.local (perfil de cliente do tenant demo)
+
+A senha inicial de cada conta nova sai do provisionador, com o mesmo hash da autenticação, e fica apenas no arquivo local de credenciais. `show-login` exibe a senha somente quando ela confere com o hash já gravado. Reexecução preserva hash, MFA e sessões. Rotação exige `--rotate-passwords` ou `reset-password --account operator` (também `admin` ou `client`). Uma senha antiga impressa no script não é mais padrão e não é aplicada a um banco já existente.
 
 Landing:
 - Operador autenticado: /organizacoes/{tenantId}/caixa

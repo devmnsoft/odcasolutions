@@ -8,6 +8,7 @@
         <h1>Comece pelo plano escolhido</h1>
         <p class="muted">O acesso à organização só é liberado após confirmação do e-mail. A contratação fica pendente até validação comercial.</p>
         <form method="post" novalidate data-processing>
+            @Html.AntiForgeryToken()
             <div asp-validation-summary="ModelOnly" class="validation" role="alert"></div>
             <label asp-for="PlanCode"></label>
             <select asp-for="PlanCode" autofocus>

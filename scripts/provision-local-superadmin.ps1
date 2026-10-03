@@ -1,11 +1,11 @@
 [CmdletBinding()]
 param(
     [string]$AdminEmail = 'admin@odca.local',
-    [string]$AdminPassword = 'V7!qM2#rL9@xT4$p',
+    [string]$AdminPassword = '',
     [string]$OperatorEmail = 'operador@odca.local',
-    [string]$OperatorPassword = 'OdcaOperador#2026Local',
+    [string]$OperatorPassword = '',
     [string]$ClientEmail = 'cliente.teste@odca.local',
-    [string]$ClientPassword = 'K8@wR3!nF6#zP2$m',
+    [string]$ClientPassword = '',
     [switch]$ApplyMigrations,
     [switch]$RequireInitialPasswordChange
 )
@@ -64,16 +64,16 @@ try {
         'run', '--project', $bootstrapProject, '--',
         'provision-test-access',
         '--environment', 'Development',
-        '--allow-postgres-development',
-        '--administrator-password', $AdminPassword,
-        '--operator-password', $OperatorPassword,
-        '--client-password', $ClientPassword
+        '--allow-postgres-development'
     )
+    if ($AdminPassword) { $arguments += @('--administrator-password', $AdminPassword) }
+    if ($OperatorPassword) { $arguments += @('--operator-password', $OperatorPassword) }
+    if ($ClientPassword) { $arguments += @('--client-password', $ClientPassword) }
     if (-not $RequireInitialPasswordChange) { $arguments += '--allow-immediate-login' }
 
-    $env:ODCA_DEV_ADMIN_PASSWORD = $AdminPassword
-    $env:ODCA_DEV_OPERATOR_PASSWORD = $OperatorPassword
-    $env:ODCA_DEV_CLIENT_PASSWORD = $ClientPassword
+    if ($AdminPassword) { $env:ODCA_DEV_ADMIN_PASSWORD = $AdminPassword }
+    if ($OperatorPassword) { $env:ODCA_DEV_OPERATOR_PASSWORD = $OperatorPassword }
+    if ($ClientPassword) { $env:ODCA_DEV_CLIENT_PASSWORD = $ClientPassword }
     & dotnet @arguments
     if ($LASTEXITCODE -ne 0) { throw 'Falha no provisionamento; o hash nao foi confirmado no banco.' }
 

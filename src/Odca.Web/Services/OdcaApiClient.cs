@@ -16,6 +16,7 @@ using Odca.Contracts.Consumption;
 using Odca.Contracts.DocumentImports;
 using Odca.Contracts.Reviews;
 using Odca.Contracts.Patients;
+using Odca.Contracts.Administration;
 
 namespace Odca.Web.Services;
 
@@ -35,6 +36,10 @@ public sealed partial class OdcaApiClient(HttpClient client)
         SendAsync<bool>(CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/patients/{patientId}/{(active ? "restore" : "inactivate")}?expectedVersion={version}", token), false, ct, true);
     public async Task<ApiCallResult<bool>> ChangeOrganizationStatusAsync(string token, Guid tenantId, bool restore, ChangeOrganizationStatusRequest body, CancellationToken ct)
     { using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/platform/customers/{tenantId}/{(restore ? "restore" : "suspend")}", token); message.Content = JsonContent.Create(body); return await SendAsync<bool>(message, false, ct, true); }
+    public Task<ApiCallResult<OrganizationFeatureCatalogResponse>> GetOrganizationFeaturesAsync(string token, Guid tenantId, CancellationToken ct) =>
+        SendAsync<OrganizationFeatureCatalogResponse>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/features", token), false, ct);
+    public async Task<ApiCallResult<OrganizationFeatureStatus>> SetOrganizationFeatureAsync(string token, Guid tenantId, string featureCode, SetOrganizationFeatureRequest body, CancellationToken ct)
+    { using var message = CreateAuthorized(HttpMethod.Put, $"api/v1/organizations/{tenantId}/features/{Uri.EscapeDataString(featureCode)}", token); message.Content = JsonContent.Create(body); return await SendAsync<OrganizationFeatureStatus>(message, false, ct); }
     public Task<ApiCallResult<ReviewQueuePage>> GetReviewsAsync(string token, Guid tenantId, string? status,
         string scope, Guid? assigneeId, Guid? contractId, DateOnly? from, DateOnly? to, string? search, int page, CancellationToken ct)
     {
@@ -129,6 +134,19 @@ public sealed partial class OdcaApiClient(HttpClient client)
     public Task<ApiCallResult<PlatformCustomerDetail>> GetCustomerAsync(string token,Guid tenantId,CancellationToken ct)=>SendAsync<PlatformCustomerDetail>(CreateAuthorized(HttpMethod.Get,$"api/v1/platform/customers/{tenantId}",token),false,ct);
     public async Task<ApiCallResult<bool>> DecideStorageAsync(string token,Guid tenantId,Guid requestId,DecideStorageRequest body,CancellationToken ct){using var m=CreateAuthorized(HttpMethod.Post,$"api/v1/platform/customers/{tenantId}/storage-requests/{requestId}/decision",token);m.Content=JsonContent.Create(body);return await SendAsync<bool>(m,false,ct,true);}
     public async Task<ApiCallResult<bool>> GrantStorageAsync(string token,Guid tenantId,ManualStorageGrant body,CancellationToken ct){using var m=CreateAuthorized(HttpMethod.Post,$"api/v1/platform/customers/{tenantId}/storage-grants",token);m.Content=JsonContent.Create(body);return await SendAsync<bool>(m,false,ct,true);}
+    public Task<ApiCallResult<PlatformAuditPageResponse>> GetPlatformAuditEventsAsync(string token,string? search,Guid? tenantId,int page,int pageSize,CancellationToken ct)
+    {
+        var query = new Dictionary<string, string?>
+        {
+            ["search"] = search,
+            ["tenantId"] = tenantId?.ToString(),
+            ["page"] = page.ToString(CultureInfo.InvariantCulture),
+            ["pageSize"] = pageSize.ToString(CultureInfo.InvariantCulture)
+        };
+        var encoded = string.Join('&', query.Where(item => !string.IsNullOrWhiteSpace(item.Value))
+            .Select(item => $"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(item.Value!)}"));
+        return SendAsync<PlatformAuditPageResponse>(CreateAuthorized(HttpMethod.Get, $"api/v1/platform/audit/events?{encoded}", token), false, ct);
+    }
     public Task<ApiCallResult<RenewalPage>> GetRenewalsAsync(string token,Guid tenantId,DateOnly? from,DateOnly? to,Guid? ownerId,string? contractType,string? counterparty,string? status,bool mine,bool withoutOwner,int page,int pageSize,CancellationToken cancellationToken)
     {
         var query=new Dictionary<string,string?> { ["from"]=from?.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture),["to"]=to?.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture),["ownerId"]=ownerId?.ToString(),["contractType"]=contractType,["counterparty"]=counterparty,["status"]=status,["mine"]=mine?"true":null,["withoutOwner"]=withoutOwner?"true":null,["page"]=page.ToString(CultureInfo.InvariantCulture),["pageSize"]=pageSize.ToString(CultureInfo.InvariantCulture)};
@@ -560,11 +578,11 @@ public sealed partial class OdcaApiClient(HttpClient client)
         return await SendAsync<TemplateMutationResponse>(message, false, ct);
     }
 
-    public async Task<ApiCallResult<object>> UpdateStudioTemplateAsync(string token, Guid tenantId, Guid templateId, UpdateTemplateRequest request, CancellationToken ct)
+    public async Task<ApiCallResult<TemplateMutationResponse>> UpdateStudioTemplateAsync(string token, Guid tenantId, Guid templateId, UpdateTemplateRequest request, CancellationToken ct)
     {
         using var message = CreateAuthorized(HttpMethod.Put, $"api/v1/organizations/{tenantId}/studio/templates/{templateId}", token);
         message.Content = JsonContent.Create(request);
-        return await SendAsync<object>(message, false, ct);
+        return await SendAsync<TemplateMutationResponse>(message, false, ct);
     }
 
     public async Task<ApiCallResult<TemplateMutationResponse>> PublishStudioTemplateAsync(string token, Guid tenantId, Guid templateId, long expectedVersion, CancellationToken ct)

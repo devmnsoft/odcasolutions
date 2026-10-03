@@ -363,7 +363,7 @@ else if (Model.ErrorMessage is null)
             }
             @if (Model.CanManagePatients)
             {
-                <a class="button" asp-controller="Patients" asp-action="New" asp-route-tenantId="@tenantId">
+                <a class="button" asp-controller="Patients" asp-action="Create" asp-route-tenantId="@tenantId">
                     Cadastrar paciente
                 </a>
             }

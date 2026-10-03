@@ -324,4 +324,40 @@ public sealed class MigrationChecksumTests
         for (var version = 1; version <= 29; version++)
             Assert.Equal(MigrationBlock(snapshot, version), MigrationBlock(canonical, version));
     }
+
+    [Fact]
+    public void ReleaseV031PreservesItsHistoricalMigrations()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v031.sql")).Replace("\r\n", "\n");
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        DatabaseMigrator.ValidateChecksums(canonical);
+        for (var version = 1; version <= 31; version++)
+            Assert.Equal(MigrationBlock(snapshot, version), MigrationBlock(canonical, version));
+    }
+
+    [Fact]
+    public void ReleaseV032PreservesItsHistoricalMigrations()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v032.sql")).Replace("\r\n", "\n");
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        DatabaseMigrator.ValidateChecksums(canonical);
+        for (var version = 1; version <= 32; version++)
+            Assert.Equal(MigrationBlock(snapshot, version), MigrationBlock(canonical, version));
+    }
+
+    [Fact]
+    public void ReleaseV033AddsPlatformAuditPageAndMatchesCanonicalSql()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v033.sql")).Replace("\r\n", "\n");
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        DatabaseMigrator.ValidateChecksums(canonical);
+        for (var version = 1; version <= 33; version++)
+            Assert.Equal(MigrationBlock(snapshot, version), MigrationBlock(canonical, version));
+        Assert.Contains("CREATE OR REPLACE FUNCTION odca.platform_audit_page(", snapshot, StringComparison.Ordinal);
+        Assert.Contains("CREATE OR REPLACE FUNCTION odca.platform_audit_count(", snapshot, StringComparison.Ordinal);
+        Assert.Contains("GRANT EXECUTE ON FUNCTION odca.platform_audit_page(uuid, integer, integer, text, uuid) TO odca_app;", snapshot, StringComparison.Ordinal);
+    }
 }

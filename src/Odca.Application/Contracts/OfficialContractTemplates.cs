@@ -10,7 +10,7 @@ public static class OfficialContractTemplates
 {
     public static readonly IReadOnlySet<string> ContractTypes = new HashSet<string>(StringComparer.Ordinal)
     {
-        "nda", "services", "amendment", "supply", "lease"
+        "nda", "services", "amendment", "supply", "lease", "care", "consent"
     };
 
     public static readonly IReadOnlySet<string> Scopes = new HashSet<string>(StringComparer.Ordinal)
@@ -26,7 +26,8 @@ public static class OfficialContractTemplates
         ContractAmendment(),
         SupplyAgreement(),
         LeaseAgreement(),
-        MultipleTherapiesAgreement()
+        MultipleTherapiesAgreement(),
+        InformedConsent()
     ];
 
     public static string? NormalizeType(string? value) =>
@@ -45,6 +46,18 @@ public static class OfficialContractTemplates
 
     public static string SerializeFields(IReadOnlyList<ContractFieldDefinition> fields) =>
         JsonSerializer.Serialize(fields);
+
+    public static string? PurposeFor(OfficialContractTemplate template) => template.Key switch
+    {
+        "nda-unilateral" or "nda-mutual" => "confidentiality",
+        "services-agreement" => "service_agreement",
+        "multiple-therapies" => "care_agreement",
+        "informed-consent" => "consent",
+        "contract-amendment" => "amendment",
+        "supply-agreement" => "supply",
+        "lease-agreement" => "lease",
+        _ => template.Purpose
+    };
 
     private static OfficialContractTemplate NdaUnilateral() => new(
         "nda-unilateral",
@@ -317,12 +330,16 @@ public static class OfficialContractTemplates
                 Text(", e-mail "), Field("contractor_email"),
                 Text(", telefone "), Field("contractor_phone"), Text(".")),
             Paragraph(
-                Text("RESPONSÁVEL LEGAL (se houver): "), Field("legal_representative_info"),
+                Text("Há representante legal distinto do paciente? "), Field("has_representative"),
+                Text(". Responsável legal, quando houver: "), Field("legal_representative_info"),
                 Text(". Identificação do Paciente: "), Field("patient_identification"), Text(".")),
             Paragraph(
-                Text("CLÁUSULA 1ª — DO OBJETO: Prestação de serviços terapêuticos continuados nas áreas selecionadas: "),
-                Field("selected_therapies"),
-                Text(". Os trabalhos desenvolvidos configuram-se como obrigação de meio e não de resultado, com duração média de 60 minutos por sessão.")),
+                Text("CLÁUSULA 1ª — DO OBJETO: Prestação de serviços terapêuticos continuados, com seleção independente. Neuropsicologia: "),
+                Field("therapy_neuropsychology"),
+                Text(". Psicologia: "), Field("therapy_psychology"),
+                Text(". Terapia ocupacional: "), Field("therapy_occupational"),
+                Text(". Fonoaudiologia: "), Field("therapy_speech"),
+                Text(". Os trabalhos desenvolvidos configuram-se como obrigação de meio e não de resultado, com duração média de 60 minutos por sessão. Este texto é um ponto de partida operacional e não reproduz integralmente o instrumento original.")),
             Paragraph(
                 Text("CLÁUSULA 2ª — DO INVESTIMENTO: O(A) CONTRATANTE pagará os seguintes valores individuais por sessão realizada:"),
                 Text(" Neuropsicologia: R$ "), Field("fee_neuropsychology"),
@@ -342,31 +359,65 @@ public static class OfficialContractTemplates
                 Field("signing_date"), Text(", com os participantes e testemunhas identificados: "),
                 Field("witnesses_identification"), Text("."))),
         [
-            new("contracted_name", "Nome / Razão Social da Clínica", ContractFieldType.ShortText, true),
-            new("contracted_cnpj", "CNPJ da Clínica", ContractFieldType.BrazilianDocument, true),
-            new("contracted_address", "Endereço da Clínica", ContractFieldType.ShortText, true),
-            new("contracted_cep", "CEP da Clínica", ContractFieldType.ShortText, true),
-            new("contracted_email", "E-mail da Clínica", ContractFieldType.ShortText, true),
-            new("contractor_name", "Nome do Contratante", ContractFieldType.ShortText, true),
-            new("contractor_document", "CPF/CNPJ do Contratante", ContractFieldType.BrazilianDocument, true),
-            new("contractor_address", "Endereço do Contratante", ContractFieldType.ShortText, true),
-            new("contractor_cep", "CEP do Contratante", ContractFieldType.ShortText, true),
-            new("contractor_email", "E-mail do Contratante", ContractFieldType.ShortText, true),
-            new("contractor_phone", "Telefone do Contratante", ContractFieldType.ShortText, true),
-            new("legal_representative_info", "Responsável Legal (Nome, CPF e Relação)", ContractFieldType.ShortText, true),
-            new("patient_identification", "Identificação do Paciente (Nome e Documento)", ContractFieldType.ShortText, true),
-            new("selected_therapies", "Terapias Selecionadas", ContractFieldType.Choice, true, ["Neuropsicologia, Psicologia, Terapia Ocupacional e Fonoaudiologia", "Neuropsicologia e Psicologia", "Terapia Ocupacional e Fonoaudiologia", "Psicologia e Fonoaudiologia", "Psicologia"]),
-            new("fee_neuropsychology", "Valor por Sessão — Neuropsicologia", ContractFieldType.Currency, true),
-            new("fee_psychology", "Valor por Sessão — Psicologia", ContractFieldType.Currency, true),
-            new("fee_occupational_therapy", "Valor por Sessão — Terapia Ocupacional", ContractFieldType.Currency, true),
-            new("fee_speech_therapy", "Valor por Sessão — Fonoaudiologia", ContractFieldType.Currency, true),
+            new("contracted_name", "Nome / Razão Social da Clínica", ContractFieldType.ShortText, true, null, "organization"),
+            new("contracted_cnpj", "CNPJ da Clínica", ContractFieldType.BrazilianDocument, true, null, "organization"),
+            new("contracted_address", "Endereço da Clínica", ContractFieldType.ShortText, true, null, "organization"),
+            new("contracted_cep", "CEP da Clínica", ContractFieldType.ShortText, true, null, "organization"),
+            new("contracted_email", "E-mail da Clínica", ContractFieldType.ShortText, true, null, "organization"),
+            new("contractor_name", "Nome do Contratante", ContractFieldType.ShortText, true, null, "contractor"),
+            new("contractor_document", "CPF/CNPJ do Contratante", ContractFieldType.BrazilianDocument, true, null, "contractor"),
+            new("contractor_address", "Endereço do Contratante", ContractFieldType.ShortText, true, null, "contractor"),
+            new("contractor_cep", "CEP do Contratante", ContractFieldType.ShortText, true, null, "contractor"),
+            new("contractor_email", "E-mail do Contratante", ContractFieldType.ShortText, true, null, "contractor"),
+            new("contractor_phone", "Telefone do Contratante", ContractFieldType.ShortText, true, null, "contractor"),
+            new("has_representative", "Há representante legal?", ContractFieldType.Choice, true, ["Sim", "Não"], "manual"),
+            new("legal_representative_info", "Responsável Legal (Nome, CPF e Relação)", ContractFieldType.ShortText, true, null, "representative", "has_representative", ["Sim"]),
+            new("patient_identification", "Identificação do Paciente (Nome e Documento)", ContractFieldType.ShortText, true, null, "patient"),
+            new("therapy_neuropsychology", "Neuropsicologia", ContractFieldType.Choice, true, ["Sim", "Não"], "manual"),
+            new("therapy_psychology", "Psicologia", ContractFieldType.Choice, true, ["Sim", "Não"], "manual"),
+            new("therapy_occupational", "Terapia Ocupacional", ContractFieldType.Choice, true, ["Sim", "Não"], "manual"),
+            new("therapy_speech", "Fonoaudiologia", ContractFieldType.Choice, true, ["Sim", "Não"], "manual"),
+            new("fee_neuropsychology", "Valor por Sessão — Neuropsicologia", ContractFieldType.Currency, true, null, "manual", "therapy_neuropsychology", ["Sim"]),
+            new("fee_psychology", "Valor por Sessão — Psicologia", ContractFieldType.Currency, true, null, "manual", "therapy_psychology", ["Sim"]),
+            new("fee_occupational_therapy", "Valor por Sessão — Terapia Ocupacional", ContractFieldType.Currency, true, null, "manual", "therapy_occupational", ["Sim"]),
+            new("fee_speech_therapy", "Valor por Sessão — Fonoaudiologia", ContractFieldType.Currency, true, null, "manual", "therapy_speech", ["Sim"]),
             new("payment_due_day", "Vencimento da Mensalidade", ContractFieldType.Choice, true, ["Todo dia 05 do mês", "Todo dia 10 do mês", "Todo dia 15 do mês"]),
             new("payment_banking_details", "Dados de Pagamento (PIX / Agência / Conta)", ContractFieldType.ShortText, true),
             new("image_consent_option", "Autorização de Imagem", ContractFieldType.Choice, true, ["Não autorizo uso de imagem", "Autorizo exclusivamente para fins de estudo de caso com anonimato"]),
             new("jurisdiction_city", "Cidade do Foro", ContractFieldType.Choice, true, ["Belém/PA", "São Paulo/SP", "Rio de Janeiro/RJ", "Brasília/DF"]),
             new("signing_date", "Data de Assinatura", ContractFieldType.Date, true),
-            new("witnesses_identification", "Testemunhas", ContractFieldType.ShortText, true)
-        ]);
+            new("witnesses_identification", "Testemunhas", ContractFieldType.ShortText, true, null, "manual")
+        ],
+        "care_agreement");
+
+    private static OfficialContractTemplate InformedConsent() => new(
+        "informed-consent",
+        "Termo de Consentimento para Atendimento",
+        "Ponto de partida operacional para registrar o consentimento do paciente ou de seu representante. Não substitui revisão jurídica nem autoriza imagem automaticamente.",
+        "consent",
+        Document(
+            Heading("Termo de Consentimento para Atendimento"),
+            Paragraph(
+                Text("A organização "), Field("organization_name"),
+                Text(" registra que o paciente "), Field("patient_name"),
+                Text(", documento "), Field("patient_document"),
+                Text(", recebe informação sobre a finalidade "), Field("purpose"),
+                Text(". Há representante? "), Field("has_representative"),
+                Text(". Representante, quando houver: "), Field("representative_name"),
+                Text(". Data: "), Field("consent_date"),
+                Text(". Autorização de imagem: "), Field("image_consent_option"),
+                Text(". Este modelo não envia o termo para assinatura."))),
+        [
+            new("organization_name", "Organização", ContractFieldType.ShortText, true, null, "organization"),
+            new("patient_name", "Paciente", ContractFieldType.ShortText, true, null, "patient"),
+            new("patient_document", "Documento do paciente", ContractFieldType.BrazilianDocument, true, null, "patient"),
+            new("purpose", "Finalidade informada", ContractFieldType.ShortText, true, null, "manual"),
+            new("has_representative", "Há representante?", ContractFieldType.Choice, true, ["Sim", "Não"], "manual"),
+            new("representative_name", "Representante", ContractFieldType.ShortText, true, null, "representative", "has_representative", ["Sim"]),
+            new("consent_date", "Data", ContractFieldType.Date, true, null, "manual"),
+            new("image_consent_option", "Autorização de Imagem", ContractFieldType.Choice, true, ["Não autorizo uso de imagem", "Autorizo exclusivamente para fins de estudo de caso com anonimato"], "manual")
+        ],
+        "consent");
 
     private static string Document(params string[] blocks) =>
         "{\"type\":\"document\",\"content\":[" + string.Join(',', blocks) + "]}";
@@ -390,4 +441,5 @@ public sealed record OfficialContractTemplate(
     string Description,
     string ContractType,
     string Content,
-    IReadOnlyList<ContractFieldDefinition> Fields);
+    IReadOnlyList<ContractFieldDefinition> Fields,
+    string? Purpose = null);

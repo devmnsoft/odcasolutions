@@ -33,7 +33,7 @@
                 <article><span>Paciente</span><strong>@(conference.PatientName??"Não vinculado")</strong></article>
                 <article><span>Representante</span><strong>@(conference.RepresentativeName??"Não aplicável")</strong></article>
                 <article><span>Organização</span><strong>@conference.Organization</strong></article>
-                <article><span>Modelo / versão</span><strong>@conference.Template · v@conference.TemplateVersion</strong></article>
+                <article><span>Modelo / versão</span><strong>@conference.Template · v@(conference.TemplateVersion)</strong></article>
                 <article><span>Tipo documental</span><strong>@conference.DocumentType</strong></article>
                 <article><span>Revisão</span><strong>@conference.ReviewStatus</strong></article>
             </div>
@@ -45,7 +45,7 @@
                 <h3>Reconfirmação cadastral</h3>
                 @if(conference.PatientChanges.Count==0){<p>O cadastro recebeu uma nova versão, mas os dados exibidos no documento continuam iguais. Confirme explicitamente a versão atual para prosseguir.</p>}
                 else {<p>O conteúdo manual da minuta não será sobrescrito. Confirme explicitamente apenas depois de conferir as diferenças.</p><div class="responsive-table"><table><thead><tr><th>Campo</th><th>Na seleção</th><th>Cadastro atual</th></tr></thead><tbody>@foreach(var change in conference.PatientChanges){<tr><td>@change.Field</td><td>@(change.Before??"Não informado")</td><td>@(change.After??"Não informado")</td></tr>}</tbody></table></div>}
-                @if(conference.CanEdit && conference.CurrentPatientVersion is long currentVersion){<form method="post" asp-action="ConfirmPatient" asp-route-tenantId="@tenantId" asp-route-draftId="@Model.Id" onsubmit="return confirm('Confirmar o uso da versão cadastral atual sem substituir os valores manuais da minuta?')"><input type="hidden" name="expectedDraftVersion" value="@conference.DraftVersion"/><input type="hidden" name="expectedPatientVersion" value="@currentVersion"/><button class="button button-primary" type="submit">Confirmar dados atualizados</button></form>}
+                @if(conference.CanEdit && conference.CurrentPatientVersion is long currentVersion){<form method="post" asp-action="ConfirmPatient" asp-route-tenantId="@tenantId" asp-route-draftId="@Model.Id" onsubmit="return confirm('Confirmar o uso da versão cadastral atual sem substituir os valores manuais da minuta?')">@Html.AntiForgeryToken()<input type="hidden" name="expectedDraftVersion" value="@conference.DraftVersion"/><input type="hidden" name="expectedPatientVersion" value="@currentVersion"/><button class="button button-primary" type="submit">Confirmar dados atualizados</button></form>}
             }
             <details class="help"><summary>Como usar</summary><p>Resolva as pendências nos locais indicados. Se o paciente mudou, compare os dados e confirme a versão atual. Uma nova alteração antes da geração será recusada pelo servidor.</p></details>
         </section>
@@ -66,7 +66,7 @@
         </aside>
     </div>
     <dialog data-compare-dialog class="studio-dialog"><form method="dialog"><button class="dialog-close" aria-label="Fechar">×</button></form><h2>Comparar versões</h2><div class="compare-controls"><label>Anterior<select data-before></select></label><label>Posterior<select data-after></select></label><button class="button button-link" type="button" data-run-compare>Comparar</button></div><div class="diff-filters" data-diff-filters></div><div data-comparison class="comparison"></div></dialog>
-    <form method="post" asp-action="Generate" asp-route-tenantId="@tenantId" asp-route-draftId="@Model.Id" data-generate-form hidden><input type="hidden" name="expectedVersion" value="@Model.Version"/><input type="hidden" name="idempotencyKey" value="@Guid.NewGuid()"/></form>
+    <form method="post" asp-action="Generate" asp-route-tenantId="@tenantId" asp-route-draftId="@Model.Id" data-generate-form hidden>@Html.AntiForgeryToken()<input type="hidden" name="expectedVersion" value="@Model.Version"/><input type="hidden" name="idempotencyKey" value="@Guid.NewGuid()"/></form>
     <script type="application/json" id="studio-content">@Html.Raw(Model.Content.GetRawText().Replace("</", "<\\/", StringComparison.Ordinal))</script>
     <script type="application/json" id="studio-fields">@Html.Raw(Model.Fields.GetRawText().Replace("</", "<\\/", StringComparison.Ordinal))</script>
     <script type="application/json" id="studio-values">@Html.Raw(Model.Values.GetRawText().Replace("</", "<\\/", StringComparison.Ordinal))</script>

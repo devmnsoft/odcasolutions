@@ -6,7 +6,7 @@ namespace Odca.Application.Patients;
 
 public static partial class PatientRules
 {
-    private static readonly HashSet<string> IdentifierTypes = new(StringComparer.Ordinal) { "cpf", "passport", "other" };
+    private static readonly HashSet<string> IdentifierTypes = new(StringComparer.Ordinal) { "cpf", "cnpj", "passport", "other" };
 
     public static IReadOnlyDictionary<string, string[]> Validate(SavePatientRequest request, DateOnly today)
     {
@@ -60,9 +60,12 @@ public static partial class PatientRules
     public static string? NormalizeIdentifier(string? type, string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return null;
-        return type?.Trim().ToLowerInvariant() == "cpf"
-            ? NonDigits().Replace(value.Trim(), string.Empty)
-            : value.Trim().ToUpperInvariant();
+        var normalizedType = type?.Trim().ToLowerInvariant();
+        if (normalizedType == "cpf")
+            return NonDigits().Replace(value.Trim(), string.Empty);
+        if (normalizedType == "cnpj")
+            return new string(value.Trim().Where(char.IsLetterOrDigit).Select(char.ToUpperInvariant).ToArray());
+        return value.Trim().ToUpperInvariant();
     }
 
     private static PatientIdentifierInput? NormalizeIdentifierInput(PatientIdentifierInput? identifier) => identifier is null ? null :
@@ -79,11 +82,10 @@ public static partial class PatientRules
         if (!IdentifierTypes.Contains(normalizedType)) { errors[key] = ["O identificador informado não é suportado."]; return; }
         var trimmed = value!.Trim();
         if (trimmed.Length > 80) { errors[key] = ["O identificador deve ter no máximo 80 caracteres."]; return; }
-        if (normalizedType == "cpf")
-        {
-            if (!CpfInputPattern().IsMatch(trimmed) || BrazilianDocument.NormalizeAndValidate(trimmed).Type != "cpf")
-                errors[key] = ["Informe um CPF válido."];
-        }
+        if (normalizedType == "cpf" && BrazilianDocument.NormalizeAndValidate(trimmed).Type != "cpf")
+            errors[key] = ["Informe um CPF válido."];
+        else if (normalizedType == "cnpj" && BrazilianDocument.NormalizeAndValidate(trimmed).Type != "cnpj")
+            errors[key] = ["Informe um CNPJ válido."];
         else if (trimmed.Length < 2)
             errors[key] = ["O identificador deve ter ao menos 2 caracteres."];
     }
@@ -100,8 +102,6 @@ public static partial class PatientRules
 
     [GeneratedRegex(@"^[^\s@]+@[^\s@]+\.[^\s@]+$", RegexOptions.CultureInvariant)]
     private static partial Regex EmailPattern();
-    [GeneratedRegex(@"^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$", RegexOptions.CultureInvariant)]
-    private static partial Regex CpfInputPattern();
     [GeneratedRegex(@"\D", RegexOptions.CultureInvariant)]
     private static partial Regex NonDigits();
 }

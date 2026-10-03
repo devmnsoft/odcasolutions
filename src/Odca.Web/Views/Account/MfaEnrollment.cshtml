@@ -14,6 +14,7 @@
             <dd><code>@Model.OtpAuthUri</code></dd>
         </dl>
         <form method="post" novalidate>
+            @Html.AntiForgeryToken()
             <input asp-for="ManualKey" type="hidden" />
             <input asp-for="OtpAuthUri" type="hidden" />
             <div asp-validation-summary="ModelOnly" class="validation" role="alert"></div>

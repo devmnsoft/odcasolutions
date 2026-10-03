@@ -1,0 +1,19 @@
+title = "ODCA"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Senhas iniciais de Development e checksums SHA-256 de migração. O scan continua ativo para qualquer outro segredo."
+paths = [
+  '''database/development/seed-test-access\.sql''',
+  '''src/Odca.Bootstrap/TestAccessProvisioner\.cs''',
+  '''tests/Odca.Domain.Tests/PasswordPolicyTests\.cs''',
+  '''tests/Odca.IntegrationTests/DevelopmentAccessProvisioningTests\.cs''',
+]
+regexTarget = "line"
+regexes = [
+  '''INSERT INTO odca\.schema_migrations\(version,name,checksum\)''',
+  '''VALUES\(\d+,'[^']*','[a-f0-9]{64}'\)''',
+  '''-- ODCA-MIGRATION \d{3} CHECKSUM [a-f0-9]{64}''',
+]

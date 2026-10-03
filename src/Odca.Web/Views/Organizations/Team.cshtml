@@ -167,6 +167,7 @@ else if (Model.OverviewLoadFailed)
                                               asp-route-userId="@member.UserId"
                                               asp-route-actionName="@action"
                                               method="post">
+                                            @Html.AntiForgeryToken()
                                             <input type="hidden" name="UserId" value="@member.UserId" />
                                             <input type="hidden" name="search" value="@Model.Search" />
                                             <input type="hidden" name="status" value="@Model.Status" />
@@ -250,7 +251,7 @@ else if (Model.Tab == "convites")
                                 @if (Model.CanManageTeam && invite.Status is "pending" or "sent" or "failed")
                                 {
                                     <div class="toolbar">
-                                        <form asp-action="ResendInvitation" asp-route-tenantId="@org.Id" asp-route-invitationId="@invite.Id" method="post" data-processing>
+                                        <form asp-action="ResendInvitation" asp-route-tenantId="@org.Id" asp-route-invitationId="@invite.Id" method="post" data-processing>@Html.AntiForgeryToken()
                                             <button class="button button-small" type="submit" data-processing-label="Enfileirando…">Reenviar</button>
                                         </form>
                                         <button class="button button-small" type="button"
@@ -260,7 +261,7 @@ else if (Model.Tab == "convites")
                                                 data-confirm-action="Cancelar convite"
                                                 data-confirm-form="cancel-invite-@invite.Id">Cancelar</button>
                                         <form id="cancel-invite-@invite.Id" class="sr-form"
-                                              asp-action="CancelInvitation" asp-route-tenantId="@org.Id" asp-route-invitationId="@invite.Id" method="post"></form>
+                                              asp-action="CancelInvitation" asp-route-tenantId="@org.Id" asp-route-invitationId="@invite.Id" method="post">@Html.AntiForgeryToken()</form>
                                     </div>
                                 }
                                 else
@@ -342,6 +343,7 @@ else
         <button type="button" class="icon-button" data-close-panel aria-label="Fechar"><span aria-hidden="true">×</span></button>
     </div>
     <form asp-action="Invite" asp-route-tenantId="@org.Id" method="post" data-processing>
+        @Html.AntiForgeryToken()
         <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
         <input type="hidden" name="TenantId" value="@org.Id" />
         <input type="hidden" name="IdempotencyKey" value="@Model.Invite.IdempotencyKey" />
@@ -381,6 +383,7 @@ else
               asp-route-roleId="@Model.RoleForm.RoleId"
               method="post"
               data-processing>
+            @Html.AntiForgeryToken()
             <label>Nome
                 <input name="Name" required maxlength="100" value="@Model.RoleForm.Name" @(Model.RoleForm.RoleId is null ? null : "readonly") />
             </label>
@@ -418,6 +421,7 @@ else
         <button type="button" class="icon-button" data-close-panel aria-label="Fechar"><span aria-hidden="true">×</span></button>
     </div>
     <form asp-action="UpdateMemberRoles" asp-route-tenantId="@org.Id" asp-route-userId="@Model.MemberRoles.UserId" method="post" data-processing>
+        @Html.AntiForgeryToken()
         <input type="hidden" name="UserId" value="@Model.MemberRoles.UserId" />
         <input type="hidden" name="MemberName" value="@Model.MemberRoles.MemberName" />
         <input type="hidden" name="search" value="@Model.Search" />

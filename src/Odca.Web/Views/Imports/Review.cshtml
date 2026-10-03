@@ -23,6 +23,7 @@
     </section>
     <section class="suggestion-pane" data-review-panel="data" data-import-review data-save-url="@(extractionId.HasValue ? Url.Action("SaveReview",new{tenantId,importId,contractId,extractionId}) : null)" data-contract-version="@contractVersion"><h2>Conferência dos dados</h2>
         <form asp-action="SaveManualData" asp-route-tenantId="@tenantId" asp-route-importId="@importId" method="post" class="import-manual-form" data-prevent-double-submit>
+            @Html.AntiForgeryToken()
             <input type="hidden" name="ReviewVersion" value="@root.GetProperty("review_version").GetInt64()" />
             <label>Título do contrato<input name="Title" value="@root.GetProperty("title").GetString()" maxlength="160" required /></label>
             <label>Identificação contratual<input name="Reference" value="@(root.GetProperty("reference").ValueKind == System.Text.Json.JsonValueKind.Null ? null : root.GetProperty("reference").GetString())" maxlength="160" /></label>
@@ -44,6 +45,7 @@
         <p data-review-message role="status"></p>@if(extractionId.HasValue){<button class="button button-primary" type="button" data-save-review>Salvar decisões das sugestões</button>}else{<p>A extração automática não foi solicitada. Confira e salve os dados manualmente acima.</p>}
         <div class="actions-row" style="display:flex;gap:1rem;margin-top:1rem;align-items:center;flex-wrap:wrap;">
             <form asp-action="Confirm" asp-route-tenantId="@tenantId" asp-route-importId="@importId" method="post" data-prevent-double-submit onsubmit="return confirm('Confirmar a importação com os dados conferidos?');">
+                @Html.AntiForgeryToken()
                 <input type="hidden" name="reviewVersion" value="@root.GetProperty("review_version").GetInt64()" />
                 <button class="button button-primary" type="submit">Confirmar importação</button>
             </form>
@@ -53,6 +55,7 @@
             @if (importStatus != "confirmed" && importStatus != "cancelled")
             {
                 <form asp-action="Cancel" asp-route-tenantId="@tenantId" asp-route-importId="@importId" method="post" data-prevent-double-submit onsubmit="return confirm('Tem certeza de que deseja cancelar esta importação? Esta ação não pode ser desfeita.');">
+                    @Html.AntiForgeryToken()
                     <button class="button button-danger" type="submit">Cancelar importação</button>
                 </form>
             }

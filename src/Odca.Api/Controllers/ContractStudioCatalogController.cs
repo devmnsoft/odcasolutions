@@ -69,33 +69,19 @@ public sealed class ContractStudioCatalogController(NpgsqlDataSource dataSource)
                    v.fields::text AS Fields, v.content::text AS Content
               FROM odca.contract_templates t
               JOIN odca.contract_template_versions v ON v.template_id = t.id AND v.version_number = t.current_version
-             WHERE t.status = 'published'
-               AND t.contract_type = @contractType
-               AND (t.scope = 'global' OR (t.scope = 'private' AND t.owner_tenant_id = @tenantId))
+             WHERE t.official_key = @key
+               AND t.status = 'published'
+               AND (t.scope = 'global' OR (t.scope = 'private' AND t.owner_tenant_id = @tenantId) OR EXISTS (
+                    SELECT 1 FROM odca.contract_template_access a
+                     WHERE a.template_id = t.id AND a.tenant_id = @tenantId AND a.revoked_at IS NULL))
+             ORDER BY CASE WHEN t.owner_tenant_id = @tenantId THEN 0 ELSE 1 END,
+                      t.published_at DESC NULLS LAST, t.created_at DESC
+             LIMIT 1
             """;
-
-        if (string.Equals(officialDef.Key, "nda-unilateral", StringComparison.OrdinalIgnoreCase))
-        {
-            sql += " AND v.fields::text LIKE '%discloser_name%'";
-        }
-        else if (string.Equals(officialDef.Key, "nda-mutual", StringComparison.OrdinalIgnoreCase))
-        {
-            sql += " AND v.fields::text LIKE '%party_a_name%'";
-        }
-        else if (string.Equals(officialDef.Key, "multiple-therapies", StringComparison.OrdinalIgnoreCase))
-        {
-            sql += " AND (v.fields::text LIKE '%selected_therapies%' OR t.name ILIKE '%múltiplas terapias%')";
-        }
-        else if (string.Equals(officialDef.Key, "services-agreement", StringComparison.OrdinalIgnoreCase))
-        {
-            sql += " AND v.fields::text NOT LIKE '%selected_therapies%' AND t.name NOT ILIKE '%múltiplas terapias%'";
-        }
-
-        sql += " ORDER BY t.published_at DESC NULLS LAST, t.created_at DESC LIMIT 1";
 
         var row = await connection.QuerySingleOrDefaultAsync<TemplatePreviewRow>(new CommandDefinition(
             sql,
-            new { tenantId, contractType = officialDef.ContractType },
+            new { tenantId, key = officialDef.Key },
             cancellationToken: ct));
 
         if (row is null) return NotFound();
@@ -122,37 +108,14 @@ public sealed class ContractStudioCatalogController(NpgsqlDataSource dataSource)
         var names = new List<string>();
         foreach (var template in OfficialContractTemplates.All)
         {
-            var existsSql = """
+            var exists = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
+                """
                 SELECT EXISTS(
                     SELECT 1 FROM odca.contract_templates t
-                    JOIN odca.contract_template_versions v ON v.template_id = t.id AND v.version_number = t.current_version
-                     WHERE t.contract_type = @contractType AND t.status <> 'archived'
-                       AND (t.scope = 'global' OR (t.scope = 'private' AND t.owner_tenant_id = @tenantId))
-                """;
-            if (string.Equals(template.Key, "nda-unilateral", StringComparison.OrdinalIgnoreCase))
-            {
-                existsSql += " AND v.fields::text LIKE '%discloser_name%')";
-            }
-            else if (string.Equals(template.Key, "nda-mutual", StringComparison.OrdinalIgnoreCase))
-            {
-                existsSql += " AND v.fields::text LIKE '%party_a_name%')";
-            }
-            else if (string.Equals(template.Key, "multiple-therapies", StringComparison.OrdinalIgnoreCase))
-            {
-                existsSql += " AND (v.fields::text LIKE '%selected_therapies%' OR t.name ILIKE '%múltiplas terapias%'))";
-            }
-            else if (string.Equals(template.Key, "services-agreement", StringComparison.OrdinalIgnoreCase))
-            {
-                existsSql += " AND v.fields::text NOT LIKE '%selected_therapies%' AND t.name NOT ILIKE '%múltiplas terapias%')";
-            }
-            else
-            {
-                existsSql += " AND t.name = @templateName)";
-            }
-
-            var exists = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
-                existsSql,
-                new { contractType = template.ContractType, tenantId, templateName = template.Name },
+                     WHERE t.official_key = @key AND t.status <> 'archived'
+                       AND (t.scope = 'global' OR (t.scope = 'private' AND t.owner_tenant_id = @tenantId)))
+                """,
+                new { key = template.Key, tenantId },
                 tx,
                 cancellationToken: ct));
 
@@ -161,13 +124,13 @@ public sealed class ContractStudioCatalogController(NpgsqlDataSource dataSource)
             var versionId = Guid.NewGuid();
             var fields = OfficialContractTemplates.SerializeFields(template.Fields);
             await connection.ExecuteAsync(new CommandDefinition("""
-                INSERT INTO odca.contract_templates(id,owner_tenant_id,name,description,contract_type,scope,status,author_id,published_at)
-                VALUES(@id,@tenantId,@name,@description,@contractType,'private','published',@actor,now());
+                INSERT INTO odca.contract_templates(id,owner_tenant_id,name,description,contract_type,scope,status,author_id,published_at,official_key,official_revision,document_purpose)
+                VALUES(@id,@tenantId,@name,@description,@contractType,'private','published',@actor,now(),@key,1,@purpose);
                 INSERT INTO odca.contract_template_versions(id,template_id,version_number,content,fields,created_by,published_at)
                 VALUES(@versionId,@id,1,@content::jsonb,@fields::jsonb,@actor,now());
                 INSERT INTO odca.audit_events(scope_type,tenant_id,actor_user_id,action,entity_type,entity_id,result,metadata)
                 VALUES('tenant',@tenantId,@actor,'template.official_installed','contract_template',@id,'success',jsonb_build_object('key',@key));
-                """, new { id, tenantId, name = template.Name, template.Description, template.ContractType, actor = actor.Value, versionId, content = template.Content, fields, key = template.Key }, tx, cancellationToken: ct));
+                """, new { id, tenantId, name = template.Name, template.Description, template.ContractType, actor = actor.Value, versionId, content = template.Content, fields, key = template.Key, purpose = OfficialContractTemplates.PurposeFor(template) }, tx, cancellationToken: ct));
             installed++;
             names.Add(template.Name);
         }

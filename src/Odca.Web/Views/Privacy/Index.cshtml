@@ -20,6 +20,7 @@
         else
         {
             <form method="post" novalidate>
+                @Html.AntiForgeryToken()
                 <div asp-validation-summary="ModelOnly" class="validation" role="alert"></div>
                 <label asp-for="Email"></label>
                 <input asp-for="Email" autocomplete="email" />

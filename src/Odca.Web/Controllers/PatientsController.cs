@@ -92,6 +92,12 @@ public sealed class PatientsController(OdcaApiClient api) : Controller
 
     private void AddPatientErrors(ApiCallResult<PatientDetails> result, string fallback)
     {
+        if (result.ErrorCode == "patient.identifier.duplicate")
+        {
+            ModelState.AddModelError(nameof(PatientFormViewModel.IdentifierValue), result.UserMessage(fallback));
+            return;
+        }
+
         if (result.ValidationErrors is null || result.ValidationErrors.Count == 0)
         {
             ModelState.AddModelError(string.Empty, result.UserMessage(fallback));

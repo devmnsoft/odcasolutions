@@ -11,9 +11,24 @@ public sealed class PatientRulesTests
 
     [Theory]
     [InlineData("cpf", "123.456.789-00", "12345678900")]
+    [InlineData("cnpj", "12.345.678/0001-95", "12345678000195")]
+    [InlineData("cnpj", "12.abc.345/01de-35", "12ABC34501DE35")]
     [InlineData("passport", " br 123 ", "BR 123")]
     public void IdentifierIsNormalizedForTenantUniqueness(string type, string value, string expected)
         => Assert.Equal(expected, PatientRules.NormalizeIdentifier(type, value));
+
+    [Theory]
+    [InlineData("12.345.678/0001-95", true)]
+    [InlineData("12345678000195", true)]
+    [InlineData("12.ABC.345/01DE-35", true)]
+    [InlineData("12.345.678/0001-91", false)]
+    [InlineData("12abc34501de36", false)]
+    [InlineData("abc", false)]
+    public void CnpjUsesCheckDigitsAndAcceptsAlphanumericBase(string cnpj, bool valid)
+    {
+        var request = Request(identifier: new("CNPJ", cnpj));
+        Assert.Equal(valid, !PatientRules.Validate(request, new DateOnly(2026, 9, 24)).ContainsKey("identifier"));
+    }
 
     [Fact]
     public void IdentifierTypeAndValueAreAtomic()
