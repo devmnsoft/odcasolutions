@@ -23,6 +23,17 @@ public interface IIdentityRepository
         DateTimeOffset now,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Session exists and the user is not locked. Does not require an active organization,
+    /// so an authenticated member can read the situation of a suspended organization.
+    /// </summary>
+    Task<bool> IsEstablishedSessionAsync(
+        Guid userId,
+        Guid sessionId,
+        int securityVersion,
+        DateTimeOffset now,
+        CancellationToken cancellationToken);
+
     Task RevokeSessionAsync(Guid userId, Guid sessionId, DateTimeOffset revokedAt, CancellationToken cancellationToken);
 
     Task<PasswordChangeResult> ChangePasswordAsync(

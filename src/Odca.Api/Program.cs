@@ -88,12 +88,23 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
                 }
 
                 var repository = context.HttpContext.RequestServices.GetRequiredService<IIdentityRepository>();
-                var valid = await repository.IsSessionValidAsync(
-                    userId,
-                    sessionId,
-                    securityVersion,
-                    DateTimeOffset.UtcNow,
-                    context.HttpContext.RequestAborted);
+                var path = context.HttpContext.Request.Path.Value ?? string.Empty;
+                var situationOnly = HttpMethods.IsGet(context.HttpContext.Request.Method)
+                    && path.Contains("/organizations/", StringComparison.OrdinalIgnoreCase)
+                    && path.TrimEnd('/').EndsWith("/features", StringComparison.OrdinalIgnoreCase);
+                var valid = situationOnly
+                    ? await repository.IsEstablishedSessionAsync(
+                        userId,
+                        sessionId,
+                        securityVersion,
+                        DateTimeOffset.UtcNow,
+                        context.HttpContext.RequestAborted)
+                    : await repository.IsSessionValidAsync(
+                        userId,
+                        sessionId,
+                        securityVersion,
+                        DateTimeOffset.UtcNow,
+                        context.HttpContext.RequestAborted);
                 if (!valid)
                 {
                     context.Fail("Sessão revogada ou expirada.");

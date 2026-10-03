@@ -14,5 +14,8 @@ public sealed class TemplateEditViewModel
     public string ContentJson { get; set; } = string.Empty;
     public string FieldsJson { get; set; } = string.Empty;
     public string? ErrorMessage { get; set; }
+    public string? ServerName { get; set; }
+    public string? ServerDescription { get; set; }
+    public long ServerRowVersion { get; set; }
     public bool IsNew => !TemplateId.HasValue || TemplateId == Guid.Empty;
 }

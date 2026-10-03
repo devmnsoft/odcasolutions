@@ -1,4 +1,5 @@
 using Odca.Application.Contracts;
+using Odca.Contracts.Studio;
 
 namespace Odca.Domain.Tests;
 
@@ -13,6 +14,8 @@ public sealed class CanonicalDecimalTests
     [InlineData("0,00", "0.00")]
     [InlineData("R$ 150,00", "150.00")]
     [InlineData("1250", "1250.00")]
+    [InlineData("1.250,00", "1250.00")]
+    [InlineData("1250.00", "1250.00")]
     public void CurrencyInputBecomesCanonicalDecimal(string input, string expected)
     {
         var parsed = CanonicalDecimal.Parse(input, currency: true);
@@ -120,6 +123,74 @@ public sealed class CanonicalDecimalTests
     {
         Assert.Equal("1.250,50", AssertFormatted("1250.50"));
         Assert.False(CanonicalDecimal.TryFormatPtBr("150,00", out _));
+    }
+
+    [Fact]
+    public void MappingAcceptsOfficialTemplatesAndRejectsExpressionsCyclesAndSelfReference()
+    {
+        foreach (var template in OfficialContractTemplates.All)
+            FieldMapping.Validate(template.Fields);
+
+        var custom = new ContractFieldDefinition("valor_sessao", "Valor", ContractFieldType.Currency, true, null, "patient", null, null, "fullName");
+        Assert.Throws<InvalidDataException>(() => FieldMapping.Validate([custom]));
+
+        var expression = new ContractFieldDefinition("nome", "Nome", ContractFieldType.ShortText, true, null, "patient", null, null, "fullName; select 1");
+        Assert.Throws<InvalidDataException>(() => FieldMapping.Validate([expression]));
+
+        var self = new ContractFieldDefinition("opcao", "Opção", ContractFieldType.Choice, true, ["Sim", "Não"], "manual", "opcao", ["Sim"]);
+        Assert.Throws<InvalidDataException>(() => FieldMapping.Validate([self]));
+
+        var missing = new ContractFieldDefinition("dependente", "Dependente", ContractFieldType.ShortText, true, null, "manual", "ausente", ["Sim"]);
+        Assert.Throws<InvalidDataException>(() => FieldMapping.Validate([missing]));
+
+        var first = new ContractFieldDefinition("a", "A", ContractFieldType.Choice, true, ["Sim"], "manual", "b", ["Sim"]);
+        var second = new ContractFieldDefinition("b", "B", ContractFieldType.Choice, true, ["Sim"], "manual", "a", ["Sim"]);
+        Assert.Throws<InvalidDataException>(() => FieldMapping.Validate([first, second]));
+    }
+
+    [Fact]
+    public void SourcePropertyFillsPatientWithoutALegacyIdentifier()
+    {
+        var fields = new[]
+        {
+            new ContractFieldDefinition("nome_do_paciente", "Nome do paciente", ContractFieldType.ShortText, true, null, "patient", null, null, "fullName"),
+            new ContractFieldDefinition("patient_name", "Paciente", ContractFieldType.ShortText, true, null, "patient")
+        };
+
+        var values = DocumentFieldAutofill.Apply(fields, """{"fullName":"Ana Lima"}""", "Clínica Viva", "12345678000195");
+
+        Assert.Equal("Ana Lima", values.Single(item => item.FieldId == "nome_do_paciente").Value);
+        Assert.Equal("Ana Lima", values.Single(item => item.FieldId == "patient_name").Value);
+    }
+
+    [Fact]
+    public void RegistrationSelectionPreservesManualValuesAndClearsConfirmation()
+    {
+        var fields = new[]
+        {
+            new ContractFieldDefinition("patient_name", "Paciente", ContractFieldType.ShortText, true, null, "patient"),
+            new ContractFieldDefinition("observacao", "Observação", ContractFieldType.ShortText, false, null, "manual")
+        };
+        var current = new[]
+        {
+            new ContractFieldValue("patient_name", "Ana", true, "patient"),
+            new ContractFieldValue("observacao", "Texto manual", true, "manual")
+        };
+
+        var updated = DocumentFieldAutofill.ApplyRegistrationSelection(fields, current, """{"fullName":"Ana Lima"}""", ["fullName"]);
+
+        var patient = Assert.Single(updated, item => item.FieldId == "patient_name");
+        Assert.Equal("Ana Lima", patient.Value);
+        Assert.False(patient.Confirmed);
+        Assert.Equal("patient", patient.Source);
+        Assert.Equal("Texto manual", Assert.Single(updated, item => item.FieldId == "observacao").Value);
+    }
+
+    [Fact]
+    public void DescriptionDifferenceIsADistinctTemplatePayload()
+    {
+        Assert.False(TemplatePayloadComparison.Same("Modelo", "Antes", "services", "{}", "[]", "Modelo", "Depois", "services", "{}", "[]"));
+        Assert.True(TemplatePayloadComparison.Same("Modelo", " Igual ", "services", "{\"type\":\"document\"}", "[]", "Modelo", "Igual", "services", "{\"type\":\"document\"}", "[]"));
     }
 
     private static string AssertFormatted(string stored)

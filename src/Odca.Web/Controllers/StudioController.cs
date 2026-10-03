@@ -106,6 +106,40 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         return RedirectToAction(nameof(EditTemplate), new { tenantId, templateId = r.Value!.Id });
     }
 
+    [HttpPost("modelos/copiar-edicao")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CopyEditableTemplate(Guid tenantId, TemplateEditViewModel model, CancellationToken ct)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
+        var name = string.IsNullOrWhiteSpace(model.Name) ? "Modelo" : model.Name.Trim();
+        if (!name.EndsWith("— cópia editável", StringComparison.Ordinal))
+            name = $"{name} — cópia editável";
+        JsonElement contentEl;
+        JsonElement fieldsEl;
+        try
+        {
+            contentEl = JsonDocument.Parse(string.IsNullOrWhiteSpace(model.ContentJson) ? "{\"type\":\"document\",\"content\":[]}" : model.ContentJson).RootElement;
+            fieldsEl = JsonDocument.Parse(string.IsNullOrWhiteSpace(model.FieldsJson) ? "[]" : model.FieldsJson).RootElement;
+        }
+        catch (JsonException)
+        {
+            model.TenantId = tenantId;
+            model.ErrorMessage = "A cópia não foi criada porque o conteúdo enviado é inválido. O modelo original não foi alterado.";
+            return View("TemplateEdit", model);
+        }
+
+        var created = await api.CreateStudioTemplateAsync(token, tenantId, new CreateTemplateRequest(name, model.Description?.Trim(), model.ContractType, "private", contentEl, fieldsEl), ct);
+        if (!created.Succeeded)
+        {
+            model.TenantId = tenantId;
+            model.ErrorMessage = "A cópia não foi criada e o modelo original permanece como estava. " + (created.ErrorDetail ?? created.ErrorTitle ?? "Tente novamente.");
+            return View("TemplateEdit", model);
+        }
+
+        TempData["StudioSuccess"] = "Cópia editável criada. O modelo original não foi alterado e continua recuperável.";
+        return RedirectToAction(nameof(EditTemplate), new { tenantId, templateId = created.Value!.Id });
+    }
+
     [HttpGet("modelos/{templateId:guid}/editar")]
     public async Task<IActionResult> EditTemplate(Guid tenantId, Guid templateId, CancellationToken ct)
     {
@@ -178,7 +212,19 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         {
             model.TenantId = tenantId;
             model.TemplateId = templateId;
-            model.ErrorMessage = r.ErrorDetail ?? r.ErrorTitle ?? "Não foi possível salvar o modelo.";
+            if (r.Status == ApiCallStatus.Conflict)
+            {
+                var current = await api.GetStudioTemplateAsync(token, tenantId, templateId, ct);
+                if (current.Succeeded && current.Value is not null)
+                {
+                    model.ServerName = current.Value.Name;
+                    model.ServerDescription = current.Value.Description;
+                    model.ServerRowVersion = current.Value.RowVersion;
+                }
+            }
+            model.ErrorMessage = r.Status == ApiCallStatus.Conflict
+                ? "O modelo mudou em outra sessão. A edição local foi mantida e a versão do servidor está abaixo para comparação. A revisão deste formulário não foi substituída."
+                : r.ErrorDetail ?? r.ErrorTitle ?? "Não foi possível salvar o modelo.";
             return View("TemplateEdit", model);
         }
 
@@ -249,8 +295,13 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
                 {
                     model.TenantId = tenantId;
                     model.TemplateId = templateId;
-                    model.RowVersion = current.Succeeded ? current.Value!.RowVersion : model.RowVersion;
-                    model.ErrorMessage = "A etapa de salvamento não foi concluída: o modelo mudou em outra sessão. A publicação não foi realizada. Recarregue e confira a revisão antes de tentar de novo.";
+                    if (current.Succeeded && current.Value is not null)
+                    {
+                        model.ServerName = current.Value.Name;
+                        model.ServerDescription = current.Value.Description;
+                        model.ServerRowVersion = current.Value.RowVersion;
+                    }
+                    model.ErrorMessage = "O modelo mudou em outra sessão e a publicação não foi realizada. A edição local foi mantida, inclusive a versão usada para gravar. A versão do servidor está disponível só para comparação.";
                     return View("TemplateEdit", model);
                 }
             }
@@ -290,27 +341,18 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         return View("TemplateEdit", model);
     }
 
-    private static bool SameTemplatePayload(TemplatePreview current, TemplateEditViewModel model)
-    {
-        if (!string.Equals(current.Name?.Trim(), model.Name?.Trim(), StringComparison.Ordinal) ||
-            !string.Equals(current.ContractType?.Trim(), model.ContractType?.Trim(), StringComparison.Ordinal))
-            return false;
-        return SameJson(current.Content?.GetRawText(), model.ContentJson) && SameJson(current.Fields.GetRawText(), model.FieldsJson);
-    }
-
-    private static bool SameJson(string? left, string? right)
-    {
-        try
-        {
-            using var a = JsonDocument.Parse(string.IsNullOrWhiteSpace(left) ? "null" : left);
-            using var b = JsonDocument.Parse(string.IsNullOrWhiteSpace(right) ? "null" : right);
-            return JsonElement.DeepEquals(a.RootElement, b.RootElement);
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
-    }
+    private static bool SameTemplatePayload(TemplatePreview current, TemplateEditViewModel model) =>
+        TemplatePayloadComparison.Same(
+            current.Name,
+            current.Description,
+            current.ContractType,
+            current.Content?.GetRawText(),
+            current.Fields.GetRawText(),
+            model.Name,
+            model.Description,
+            model.ContractType,
+            model.ContentJson,
+            model.FieldsJson);
 
     [HttpPost("modelos/{templateId:guid}/arquivar")]
     [ValidateAntiForgeryToken]
@@ -372,12 +414,12 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         return View(result.Value);
     }
     [HttpPost("minutas/{draftId:guid}/confirmar-paciente")]
-    public async Task<IActionResult> ConfirmPatient(Guid tenantId,Guid draftId,long expectedDraftVersion,long expectedPatientVersion,CancellationToken ct)
+    public async Task<IActionResult> ConfirmPatient(Guid tenantId,Guid draftId,long expectedDraftVersion,long expectedPatientVersion,string[]? acceptedKeys,bool acknowledgeRemaining,CancellationToken ct)
     {
         var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
-        var result=await api.ConfirmDraftPatientAsync(token,tenantId,draftId,new(expectedDraftVersion,expectedPatientVersion),ct);
+        var result=await api.ConfirmDraftPatientAsync(token,tenantId,draftId,new(expectedDraftVersion,expectedPatientVersion,acceptedKeys??[],acknowledgeRemaining),ct);
         TempData[result.Succeeded?"StudioSuccess":"StudioError"]=result.Succeeded
-            ?"Dados cadastrais reconferidos. A minuta foi preservada e as pendências foram recalculadas."
+            ?"Atualização cadastral registrada. Valores manuais foram preservados e as confirmações dos campos atualizados foram invalidadas. Versões já emitidas não foram alteradas."
             :result.UserMessage("O cadastro ou a minuta mudou novamente. Refaça a conferência.");
         return RedirectToAction(nameof(Edit),new{tenantId,draftId});
     }

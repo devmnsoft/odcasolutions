@@ -1,3 +1,5 @@
+import { formatCurrency, isPartialDecimal, parseDecimal } from "./studio-decimal.js";
+
 const studio = document.querySelector("[data-studio]");
 if (studio) {
   const content = JSON.parse(document.querySelector("#studio-content").textContent);
@@ -28,62 +30,6 @@ if (studio) {
     manual: "Entrada manual"
   };
   const fieldOrigin = definition => String(definition?.origin ?? definition?.Origin ?? "manual").toLowerCase();
-  const isStoredCurrency = value => /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(value);
-  const formatCurrency = value => {
-    if (!isStoredCurrency(value)) return value;
-    const negative = value.startsWith("-");
-    const [integer, fraction = ""] = value.replace("-", "").split(".");
-    const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-    return `${negative ? "-" : ""}${grouped},${(fraction + "00").slice(0, 2)}`;
-  };
-  const parseDecimal = (raw, currency) => {
-    let text = String(raw ?? "").trim().replace(/\u00A0/g, "");
-    if (/^r\$/i.test(text)) text = text.slice(2).trim();
-    if (!text || /[a-zA-Z\s]/.test(text)) return { ok: false, error: "Informe apenas o valor numérico." };
-    let negative = false;
-    if (text.startsWith("+")) text = text.slice(1);
-    else if (text.startsWith("-")) { negative = true; text = text.slice(1); }
-    if (negative && currency) return { ok: false, error: "Valor monetário negativo não é permitido." };
-    if (!/^[\d.,]+$/.test(text)) return { ok: false, error: "O valor numérico é inválido." };
-    const comma = text.lastIndexOf(",");
-    const dot = text.lastIndexOf(".");
-    let integer = "";
-    let fraction = "";
-    const groups = (value, separator) => {
-      const parts = value.split(separator);
-      if (parts.length < 2 || parts.some(part => !/^\d+$/.test(part))) return null;
-      if (parts[0].length < 1 || parts[0].length > 3 || (parts[0].length > 1 && parts[0].startsWith("0"))) return null;
-      if (parts.slice(1).some(part => part.length !== 3)) return null;
-      return parts.join("");
-    };
-    if (comma >= 0 && dot >= 0) {
-      const decimalSeparator = comma > dot ? "," : ".";
-      const groupSeparator = decimalSeparator === "," ? "." : ",";
-      const split = text.lastIndexOf(decimalSeparator);
-      fraction = text.slice(split + 1);
-      integer = groups(text.slice(0, split), groupSeparator);
-      if (integer === null || fraction.length === 0 || text.indexOf(decimalSeparator) !== split) return { ok: false, error: "Separe milhar e decimal de forma explícita." };
-    } else if (comma < 0 && dot < 0) {
-      if (text.length > 1 && text.startsWith("0")) return { ok: false, error: "O valor numérico é inválido." };
-      integer = text;
-    } else {
-      const separator = comma >= 0 ? "," : ".";
-      const pieces = text.split(separator);
-      const tail = pieces.at(-1);
-      if (pieces.length === 2 && tail.length === 3) return { ok: false, error: "Valor ambíguo. Use 1.250,00 ou 1250.00." };
-      if (pieces.length === 2) {
-        integer = pieces[0];
-        fraction = tail;
-        if (!/^\d+$/.test(integer) || !/^\d+$/.test(fraction) || integer.length === 0) return { ok: false, error: "O valor numérico é inválido." };
-      } else {
-        integer = groups(text, separator);
-        if (integer === null) return { ok: false, error: "O separador de milhar está inconsistente." };
-      }
-    }
-    if (currency && fraction.length > 2) return { ok: false, error: "A moeda aceita no máximo duas casas decimais." };
-    const canonical = `${negative ? "-" : ""}${integer}${fraction ? "." + fraction : ""}`;
-    return { ok: true, canonical: currency ? `${integer}.${(fraction + "00").slice(0, 2)}` : canonical };
-  };
   const values = new Map(
     initialValues
       .filter(val => Boolean(val.fieldId ?? val.FieldId))
@@ -127,14 +73,38 @@ if (studio) {
     if (node.alignment) element.style.textAlign = node.alignment; for (const child of node.content || []) renderNode(child, element); parent.append(element);
   };
   const refresh = () => { paper.replaceChildren(); renderNode(content, paper); renderFields(); };
+  const requirementActive = definition => {
+    const required = Boolean(definition.required ?? definition.Required);
+    if (!required) return false;
+    const controller = definition.requiredWhenFieldId ?? definition.RequiredWhenFieldId;
+    if (!controller) return true;
+    const anyOf = definition.requiredWhenAnyOf ?? definition.RequiredWhenAnyOf ?? [];
+    const current = String(values.get(controller)?.value ?? "").trim();
+    return anyOf.map(item => String(item)).includes(current);
+  };
+  const assignValue = (value, next) => {
+    const previous = value.value ?? "";
+    const previousSource = value.source;
+    if (previousSource && previousSource !== "manual" && next !== previous) {
+      value.source = "manual";
+      value.confirmed = false;
+    }
+    value.value = next;
+    value.draft = null;
+  };
+  const numericDrafts = () => [...panel.querySelectorAll("[data-numeric='true']")].map(input => {
+    const id = input.dataset.fieldEditor;
+    const definition = fields.find(item => defId(item) === id);
+    return { input, id, definition, label: definition?.label ?? definition?.Label ?? id, currency: input.dataset.currency === "true" };
+  });
   const renderFields = () => {
     panel.replaceChildren(); let pending = 0;
     for (const definition of fields) {
       const id = defId(definition);
       if (!id) continue;
-      const value = values.get(id) || { fieldId: id, value: "", confirmed: false, source: "manual" };
+      const value = values.get(id) || { fieldId: id, value: "", confirmed: false, source: fieldOrigin(definition) };
       values.set(id, value);
-      const isRequired = Boolean(definition.required ?? definition.Required);
+      const isRequired = requirementActive(definition);
       if (!value.confirmed && isRequired) pending++;
 
       const box = document.createElement("div"); box.className = "field-editor";
@@ -145,7 +115,7 @@ if (studio) {
       const fieldType = normalizeFieldType(definition.type ?? definition.Type);
       let input;
       if (fieldType === "LongText") {
-        input = document.createElement("textarea"); input.rows = 3; input.value = value.value || "";
+        input = document.createElement("textarea"); input.rows = 3; input.value = value.draft ?? value.value ?? "";
       } else if (fieldType === "Choice") {
         input = document.createElement("select");
         const defaultOption = document.createElement("option"); defaultOption.value = ""; defaultOption.textContent = "— Selecione uma opção —"; input.append(defaultOption);
@@ -157,75 +127,153 @@ if (studio) {
         }
         if (!input.value && value.value) input.value = value.value;
       } else {
-        input = document.createElement("input"); input.value = value.value || "";
-        if (fieldType === "Date") input.type = "date";
-        else if (fieldType === "Number") { input.type = "number"; input.step = "any"; }
-        else if (fieldType === "Currency") { input.type = "text"; input.inputMode = "decimal"; input.placeholder = "0,00"; input.value = formatCurrency(value.value || ""); input.autocomplete = "off"; }
-        else if (fieldType === "BrazilianDocument") { input.type = "text"; input.maxLength = 18; input.placeholder = "000.000.000-00 ou 00.000.000/0000-00"; }
-        else input.type = "text";
+        input = document.createElement("input");
+        if (fieldType === "Date") { input.type = "date"; input.value = value.value || ""; }
+        else if (fieldType === "Number" || fieldType === "Currency") {
+          input.type = "text"; input.inputMode = "decimal"; input.autocomplete = "off"; input.dataset.numeric = "true";
+          input.dataset.currency = fieldType === "Currency" ? "true" : "false";
+          input.placeholder = fieldType === "Currency" ? "0,00" : "0";
+          input.value = value.draft ?? (fieldType === "Currency" && value.value ? formatCurrency(value.value) : (value.value || ""));
+        } else if (fieldType === "BrazilianDocument") { input.type = "text"; input.maxLength = 18; input.placeholder = "000.000.000-00 ou 00.000.000/0000-00"; input.value = value.value || ""; }
+        else { input.type = "text"; input.value = value.value || ""; }
       }
-      input.dataset.fieldEditor = id; input.className = "field-input";
+      input.dataset.fieldEditor = id; input.className = "field-input"; input.id = `field-${id}`;
+      label.htmlFor = input.id;
       const configuredOrigin = fieldOrigin(definition);
-      const source = document.createElement("small"); source.textContent = `Origem: ${originLabels[configuredOrigin] || configuredOrigin}`;
-      const fieldError = document.createElement("small"); fieldError.className = "field-error"; fieldError.hidden = true;
+      const source = document.createElement("small");
+      source.textContent = `Origem no modelo: ${originLabels[configuredOrigin] || configuredOrigin}. Origem do valor: ${originLabels[value.source] || value.source || "manual"}.`;
+      const fieldError = document.createElement("small"); fieldError.className = "field-error"; fieldError.hidden = !value.error; fieldError.textContent = value.error || "";
       const confirm = document.createElement("button"); confirm.type = "button"; confirm.className = "button button-small button-link"; confirm.textContent = value.confirmed ? "Confirmado" : "Confirmar valor";
-      let normalizing = false;
-      const commitInput = confirmValue => {
-        if (normalizing) return true;
-        normalizing = true;
-        let next = input.value;
-        if (fieldType === "Currency" || fieldType === "Number") {
-          if (!String(next).trim()) { value.value = ""; fieldError.hidden = true; }
-          else {
-            const parsed = parseDecimal(next, fieldType === "Currency");
-            if (!parsed.ok) { fieldError.hidden = false; fieldError.textContent = parsed.error; value.confirmed = false; normalizing = false; return false; }
-            value.value = parsed.canonical;
-            input.value = fieldType === "Currency" ? formatCurrency(parsed.canonical) : parsed.canonical;
-            fieldError.hidden = true;
-          }
-        } else value.value = next;
-        value.fieldId = id;
+      const commitText = confirmValue => {
+        const previous = value.value ?? "";
+        const next = input.value;
+        assignValue(value, next);
+        if (next !== previous && !confirmValue) value.confirmed = false;
         value.confirmed = confirmValue && Boolean(String(value.value).trim());
         if (!confirmValue) value.confirmed = false;
-        if (value.source && value.source !== "manual" && value.value !== (values.get(id)?.value ?? value.value)) value.source = "manual";
+        value.error = null;
         values.set(id, value);
         markDirty();
-        normalizing = false;
         return true;
       };
-      const update = () => { commitInput(false); };
-      input.addEventListener("input", update);
-      if (input.tagName === "SELECT") input.addEventListener("change", update);
-      confirm.addEventListener("click", () => { if (commitInput(true)) refresh(); });
+      const commitNumeric = confirmValue => {
+        const typed = input.value;
+        const currency = fieldType === "Currency";
+        if (!String(typed).trim()) {
+          assignValue(value, "");
+          value.confirmed = false;
+          value.error = null;
+          values.set(id, value);
+          markDirty();
+          return true;
+        }
+        if (isPartialDecimal(typed)) {
+          value.draft = typed;
+          value.confirmed = false;
+          value.error = "Valor incompleto. Complete ou apague o campo. O valor anterior não foi gravado.";
+          fieldError.hidden = false; fieldError.textContent = value.error;
+          if (localRevision === acknowledgedRevision) localRevision += 1;
+          state.textContent = `${fieldLabelText}: ${value.error}`; state.dataset.state = "failed";
+          return false;
+        }
+        const parsed = parseDecimal(typed, currency);
+        if (!parsed.ok) {
+          value.draft = typed;
+          value.confirmed = false;
+          value.error = parsed.error;
+          fieldError.hidden = false; fieldError.textContent = value.error;
+          if (localRevision === acknowledgedRevision) localRevision += 1;
+          state.textContent = `${fieldLabelText}: ${value.error}`; state.dataset.state = "failed";
+          return false;
+        }
+        assignValue(value, currency ? parsed.canonical : parsed.canonical);
+        value.confirmed = confirmValue && Boolean(value.value);
+        if (!confirmValue) value.confirmed = false;
+        value.error = null;
+        values.set(id, value);
+        markDirty();
+        return true;
+      };
+      if (fieldType === "Currency" || fieldType === "Number") {
+        input.addEventListener("input", () => {
+          value.draft = input.value;
+          value.error = null;
+          fieldError.hidden = true;
+          state.textContent = "Digitação numérica em andamento"; state.dataset.state = "dirty";
+          if (localRevision === acknowledgedRevision) localRevision += 1;
+          clearTimeout(timer);
+        });
+        input.addEventListener("blur", () => { if (commitNumeric(false)) refresh(); });
+      } else if (input.tagName === "SELECT") {
+        input.addEventListener("change", () => { if (commitText(false)) refresh(); });
+      } else {
+        input.addEventListener("input", () => commitText(false));
+      }
+      confirm.addEventListener("click", () => {
+        const ok = fieldType === "Currency" || fieldType === "Number" ? commitNumeric(true) : commitText(true);
+        if (ok) refresh();
+      });
       label.append(input); box.append(label, source, fieldError, confirm); panel.append(box);
     }
     studio.querySelector("[data-pending-count]").textContent = String(pending);
   };
-  const save = async () => {
-    if (conflict || activeRequest || localRevision === acknowledgedRevision) return; const sentRevision = localRevision; state.textContent = "Salvando…"; state.dataset.state = "saving";
-    const requestId = crypto.randomUUID(); const token = studio.querySelector('input[name="__RequestVerificationToken"]')?.value;
-    for (const definition of fields) {
-      const id = defId(definition);
-      const fieldType = normalizeFieldType(definition.type ?? definition.Type);
-      const current = values.get(id);
-      if (!current || !String(current.value ?? "").trim() || (fieldType !== "Currency" && fieldType !== "Number")) continue;
-      const parsed = parseDecimal(current.value, fieldType === "Currency");
-      if (!parsed.ok && !isStoredCurrency(current.value) && fieldType === "Currency") {
-        state.textContent = parsed.error; state.dataset.state = "failed"; return;
-      }
-      if (parsed.ok) current.value = parsed.canonical;
+  const rejectNumericDrafts = () => {
+    for (const item of numericDrafts()) {
+      const typed = item.input.value;
+      const current = values.get(item.id);
+      const fieldError = item.input.closest(".field-editor")?.querySelector(".field-error");
+      const show = message => {
+        if (current) { current.draft = typed; current.error = message; current.confirmed = false; }
+        if (fieldError) { fieldError.hidden = false; fieldError.textContent = message; }
+        return `${item.label}: ${message}`;
+      };
+      if (!String(typed).trim()) continue;
+      if (isPartialDecimal(typed)) return show("Valor incompleto. Complete ou apague o campo. O valor anterior não foi gravado.");
+      const parsed = parseDecimal(typed, item.currency);
+      if (!parsed.ok) return show(`${parsed.error} O valor anterior não foi gravado.`);
     }
-    const cleanValues = [...values.values()].filter(v => Boolean(v.fieldId));
+    return null;
+  };
+  const save = async force => {
+    if (conflict || activeRequest) return;
+    if (!force && numericDrafts().some(item => item.input === document.activeElement)) {
+      state.textContent = "Digitação numérica em andamento"; state.dataset.state = "dirty"; return;
+    }
+    const blocked = rejectNumericDrafts();
+    if (blocked) {
+      state.textContent = blocked; state.dataset.state = "failed";
+      if (localRevision === acknowledgedRevision) localRevision += 1;
+      return;
+    }
+    for (const item of numericDrafts()) {
+      const current = values.get(item.id);
+      if (!current) continue;
+      const typed = item.input.value;
+      if (!String(typed).trim()) assignValue(current, "");
+      else {
+        const parsed = parseDecimal(typed, item.currency);
+        if (!parsed.ok) { state.textContent = `${item.label}: ${parsed.error}`; state.dataset.state = "failed"; return; }
+        assignValue(current, parsed.canonical);
+      }
+      current.error = null;
+    }
+    if (localRevision === acknowledgedRevision) return;
+    const sentRevision = localRevision; state.textContent = "Salvando…"; state.dataset.state = "saving";
+    const requestId = crypto.randomUUID(); const token = studio.querySelector('input[name="__RequestVerificationToken"]')?.value;
+    const cleanValues = [...values.values()].filter(v => Boolean(v.fieldId)).map(v => ({ fieldId: v.fieldId, value: v.value ?? "", confirmed: Boolean(v.confirmed), source: v.source || "manual" }));
     activeRequest = fetch(studio.dataset.saveUrl, { method: "PUT", headers: { "Content-Type": "application/json", ...(token ? { "RequestVerificationToken": token } : {}) }, body: JSON.stringify({ content, fields, values: cleanValues, expectedVersion: version, clientRevision: requestId }) });
     try {
       const response = await activeRequest;
       if (response.status === 409) { conflict = true; state.textContent = "Conflito"; state.dataset.state = "conflict"; studio.querySelector("[data-conflict]").hidden = false; return; }
-      if (!response.ok) throw new Error();
+      if (!response.ok) {
+        const problem = await response.json().catch(() => ({}));
+        state.textContent = problem.detail || problem.title || "Falha ao salvar"; state.dataset.state = "failed"; return;
+      }
       const result = await response.json(); version = result.version; studio.dataset.version = String(version); acknowledgedRevision = Math.max(acknowledgedRevision, sentRevision);
-      if (localRevision === sentRevision) { state.textContent = "Salvo"; state.dataset.state = "saved"; savedAt.textContent = ` ${new Date(result.savedAt).toLocaleString()}`; }
-      else { state.textContent = "Alterações não salvas"; state.dataset.state = "dirty"; timer = setTimeout(save, 150); }
+      if (localRevision === sentRevision) { state.textContent = "Salvo"; state.dataset.state = "saved"; savedAt.textContent = ` ${new Date(result.savedAt).toLocaleString()}`; refresh(); }
+      else { state.textContent = "Alterações não salvas"; state.dataset.state = "dirty"; timer = setTimeout(() => save(false), 150); }
     }
-    catch { state.textContent = "Falha"; state.dataset.state = "failed"; }
+    catch { state.textContent = "Falha de comunicação. Nada foi confirmado como salvo."; state.dataset.state = "failed"; }
     finally { activeRequest = null; }
   };
   for (const button of studio.querySelectorAll("[data-add]")) button.addEventListener("click", () => {
@@ -234,7 +282,7 @@ if (studio) {
   for (const button of studio.querySelectorAll("[data-command]")) button.addEventListener("click", () => {
     if(!selectedText)return; const mark=button.dataset.command; selectedText.node.marks=selectedText.node.marks||[]; const index=selectedText.node.marks.indexOf(mark); if(index>=0)selectedText.node.marks.splice(index,1);else selectedText.node.marks.push(mark); markDirty(); refresh();
   });
-  studio.querySelector("[data-save]").addEventListener("click",save);
+  studio.querySelector("[data-save]").addEventListener("click",()=>save(true));
   studio.querySelector("[data-retry]").addEventListener("click",()=>{conflict=false;save();});
   studio.querySelector("[data-zoom]").addEventListener("change",event=>paper.style.zoom=`${event.target.value}%`);
   studio.querySelector("[data-reading]").addEventListener("click",event=>{const reading=studio.classList.toggle("reading-mode");event.currentTarget.setAttribute("aria-pressed",String(reading));});

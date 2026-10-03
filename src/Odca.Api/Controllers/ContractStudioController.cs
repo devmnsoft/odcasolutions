@@ -568,7 +568,10 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         await using var tx = await c.BeginTransactionAsync(ct); await SetTenant(c, tenantId, actor.Value, tx, ct);
         var current = await c.QuerySingleOrDefaultAsync<PatientConfirmationRow>(new CommandDefinition("""
             SELECT d.contract_id AS ContractId,d.row_version AS DraftVersion,d.patient_row_version AS SelectedPatientVersion,
-              p.row_version AS CurrentPatientVersion,p.inactive_at AS PatientInactiveAt
+              p.row_version AS CurrentPatientVersion,p.inactive_at AS PatientInactiveAt,
+              d.fields::text AS Fields,d.values::text AS Values,
+              d.patient_selection_snapshot::text AS SelectedSnapshot,
+              odca.patient_document_snapshot(@tenantId,d.patient_id)::text AS CurrentSnapshot
             FROM odca.contract_drafts d JOIN odca.patients p ON (p.tenant_id,p.id)=(d.tenant_id,d.patient_id)
             WHERE d.tenant_id=@tenantId AND d.id=@draftId FOR UPDATE OF d,p
             """, new { tenantId, draftId }, tx, cancellationToken: ct));
@@ -579,15 +582,43 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         if (current.SelectedPatientVersion == current.CurrentPatientVersion) { await tx.CommitAsync(ct); return NoContent(); }
         if (current.DraftVersion != request.ExpectedDraftVersion)
             return Conflict(new { title="A minuta mudou durante a conferência. Recarregue sem perder os dados salvos.", code="draft.version.conflict", currentVersion=current.DraftVersion });
+        var differences = PatientChanges(current.SelectedSnapshot, current.CurrentSnapshot);
+        var accepted = new HashSet<string>((request.AcceptedKeys ?? []).Where(key => !string.IsNullOrWhiteSpace(key)).Select(key => key.Trim()), StringComparer.Ordinal);
+        var declined = differences.Select(change => change.Field).Where(key => !accepted.Contains(key)).ToArray();
+        if (declined.Length > 0 && !request.AcknowledgeRemaining)
+            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
+            {
+                ["acceptedKeys"] = ["Selecione os valores que devem entrar na minuta ou confirme que os demais permanecem como estão. Nada foi gravado."]
+            }));
+        var definitions = JsonSerializer.Deserialize<ContractFieldDefinition[]>(current.Fields, JsonOptions) ?? [];
+        var existingValues = JsonSerializer.Deserialize<ContractFieldValue[]>(current.Values, JsonOptions) ?? [];
+        var selectedValues = DocumentFieldAutofill.ApplyRegistrationSelection(definitions, existingValues, current.CurrentSnapshot, accepted.ToArray());
+        var valuesJson = JsonSerializer.Serialize(selectedValues, CamelCaseJsonOptions);
+        try
+        {
+            FieldMapping.Validate(definitions);
+            StructuredContractDocument.ValidateValues(definitions, selectedValues, ContractValidationMode.Structural);
+        }
+        catch (InvalidDataException exception) { return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]> { ["values"] = [exception.Message] })); }
+        var updatedFields = selectedValues
+            .Where(value => existingValues.All(currentValue => currentValue.FieldId != value.FieldId || !string.Equals(currentValue.Value, value.Value, StringComparison.Ordinal) || currentValue.Confirmed != value.Confirmed))
+            .Select(value => value.FieldId)
+            .ToArray();
         var changed = await c.ExecuteAsync(new CommandDefinition("""
             UPDATE odca.contract_drafts SET patient_row_version=@patientVersion,
-              patient_selection_snapshot=odca.patient_document_snapshot(@tenantId,patient_id),row_version=row_version+1,
+              patient_selection_snapshot=odca.patient_document_snapshot(@tenantId,patient_id),
+              values=@values::jsonb,row_version=row_version+1,
               updated_by=@actor,updated_at=now()
             WHERE tenant_id=@tenantId AND id=@draftId AND row_version=@draftVersion;
             INSERT INTO odca.contract_events(tenant_id,contract_id,actor_id,event_type,details)
-            VALUES(@tenantId,@contractId,@actor,'patient.reconfirmed',jsonb_build_object('previousVersion',@previousVersion,'acceptedVersion',@patientVersion));
+            VALUES(@tenantId,@contractId,@actor,'patient.reconfirmed',jsonb_build_object(
+              'previousVersion',@previousVersion,'acceptedVersion',@patientVersion,'draftVersion',@draftVersion,
+              'acceptedKeys',@acceptedKeys::jsonb,'declinedKeys',@declinedKeys::jsonb,'updatedFields',@updatedFields::jsonb));
             """, new { tenantId, draftId, actor, draftVersion=current.DraftVersion, patientVersion=current.CurrentPatientVersion,
-                previousVersion=current.SelectedPatientVersion, current.ContractId }, tx, cancellationToken: ct));
+                previousVersion=current.SelectedPatientVersion, current.ContractId, values=valuesJson,
+                acceptedKeys=JsonSerializer.Serialize(accepted.OrderBy(key => key, StringComparer.Ordinal).ToArray()),
+                declinedKeys=JsonSerializer.Serialize(declined),
+                updatedFields=JsonSerializer.Serialize(updatedFields) }, tx, cancellationToken: ct));
         if (changed != 2) return Conflict(new { title="A conferência não pôde ser registrada.", code="draft.version.conflict" });
         await tx.CommitAsync(ct); return NoContent();
     }
@@ -1098,6 +1129,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive=true, Converters={new JsonStringEnumConverter()} };
+    private static readonly JsonSerializerOptions CamelCaseJsonOptions = new(JsonOptions) { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
     private static async Task<string> InitialDraftValuesAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, Guid tenantId, Guid? patientId, string fieldsJson, string? contractorSource, CancellationToken ct)
     {
         string? snapshot = null;
@@ -1108,7 +1140,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         return JsonSerializer.Serialize(DocumentFieldAutofill.Apply(definitions, snapshot, organization.Name, organization.Code, contractorSource), JsonOptions);
     }
 
-    private static void Validate(string content,string fields,string values,ContractValidationMode mode){var definitions=JsonSerializer.Deserialize<ContractFieldDefinition[]>(fields,JsonOptions)??[];var parsed=StructuredContractDocument.Parse(content,definitions);var fieldValues=JsonSerializer.Deserialize<ContractFieldValue[]>(values,JsonOptions)??[];StructuredContractDocument.ValidateValues(definitions,fieldValues,mode);if(definitions.Any(x=>!parsed.FieldOccurrences.ContainsKey(x.Id)))throw new InvalidDataException("Todo campo definido precisa ter ao menos uma ocorrência no documento.");}
+    private static void Validate(string content,string fields,string values,ContractValidationMode mode){var definitions=JsonSerializer.Deserialize<ContractFieldDefinition[]>(fields,JsonOptions)??[];FieldMapping.Validate(definitions);var parsed=StructuredContractDocument.Parse(content,definitions);var fieldValues=JsonSerializer.Deserialize<ContractFieldValue[]>(values,JsonOptions)??[];StructuredContractDocument.ValidateValues(definitions,fieldValues,mode);if(definitions.Any(x=>!parsed.FieldOccurrences.ContainsKey(x.Id)))throw new InvalidDataException("Todo campo definido precisa ter ao menos uma ocorrência no documento.");}
     private static DraftResponse ToResponse(DraftRow r)=>new(r.Id,r.ContractId,r.Title,r.SourceTemplateId,r.SourceTemplateVersionId,JsonSerializer.Deserialize<JsonElement>(r.Content),JsonSerializer.Deserialize<JsonElement>(r.Fields),JsonSerializer.Deserialize<JsonElement>(r.Values),r.Version,r.LastClientRevision,ToUtcOffset(r.UpdatedAt));
     private Guid? Actor()=>Guid.TryParse(User.FindFirstValue("sub"),out var id)?id:null;
     private static Task<bool> Allowed(NpgsqlConnection c,Guid actor,Guid tenant,string permission,CancellationToken ct)=>c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT odca.tenant_actor_has_permission(@actor,@tenant,@permission)",new{actor,tenant,permission},cancellationToken:ct));
@@ -1217,6 +1249,10 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         public long SelectedPatientVersion { get; set; }
         public long CurrentPatientVersion { get; set; }
         public DateTime? PatientInactiveAt { get; set; }
+        public string Fields { get; set; } = "[]";
+        public string Values { get; set; } = "[]";
+        public string? SelectedSnapshot { get; set; }
+        public string? CurrentSnapshot { get; set; }
     }
     private sealed class GeneratedDetailRow
     {

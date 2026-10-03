@@ -109,6 +109,13 @@ public sealed class AuthenticationServiceTests
             DateTimeOffset now,
             CancellationToken cancellationToken) => Task.FromResult(true);
 
+        public Task<bool> IsEstablishedSessionAsync(
+            Guid userId,
+            Guid sessionId,
+            int securityVersion,
+            DateTimeOffset now,
+            CancellationToken cancellationToken) => Task.FromResult(true);
+
         public Task RevokeSessionAsync(
             Guid userId,
             Guid sessionId,

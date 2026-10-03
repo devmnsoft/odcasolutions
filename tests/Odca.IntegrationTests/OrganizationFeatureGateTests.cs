@@ -5,6 +5,7 @@ using System.Text.Json;
 using Dapper;
 using Npgsql;
 using Odca.Application.Onboarding;
+using Odca.Contracts.Administration;
 using Odca.Contracts.Identity;
 using Odca.Contracts.Onboarding;
 using Odca.Contracts.Patients;
@@ -130,6 +131,10 @@ public sealed class OrganizationFeatureGateTests(DatabaseFixture database) : ICl
 
         using var suspended = await client.SendAsync(Authorized(HttpMethod.Get, $"/api/v1/organizations/{home.TenantId}/patients", login.AccessToken));
         Assert.Equal(HttpStatusCode.Unauthorized, suspended.StatusCode);
+        using var situation = await client.SendAsync(Authorized(HttpMethod.Get, $"/api/v1/organizations/{home.TenantId}/features", login.AccessToken));
+        Assert.Equal(HttpStatusCode.OK, situation.StatusCode);
+        var suspendedCatalog = await situation.Content.ReadFromJsonAsync<OrganizationFeatureCatalogResponse>();
+        Assert.Equal("suspended", suspendedCatalog?.TenantStatus);
 
         await using (var admin = new NpgsqlConnection(database.AdminConnectionString))
         {

@@ -30,7 +30,44 @@ public sealed record DraftResponse(Guid Id, Guid ContractId, string Title, Guid 
 public sealed record SaveDraftRequest(JsonElement Content, JsonElement Fields, JsonElement Values, long ExpectedVersion, Guid ClientRevision);
 public sealed record SaveDraftResponse(long Version, Guid ClientRevision, DateTimeOffset SavedAt);
 public sealed record GenerateVersionRequest(Guid IdempotencyKey, long ExpectedVersion = 0);
-public sealed record ConfirmPatientVersionRequest(long ExpectedDraftVersion, long ExpectedPatientVersion);
+public sealed record ConfirmPatientVersionRequest(long ExpectedDraftVersion, long ExpectedPatientVersion, IReadOnlyList<string>? AcceptedKeys = null, bool AcknowledgeRemaining = false);
+
+public static class TemplatePayloadComparison
+{
+    public static bool Same(
+        string? leftName,
+        string? leftDescription,
+        string? leftType,
+        string? leftContent,
+        string? leftFields,
+        string? rightName,
+        string? rightDescription,
+        string? rightType,
+        string? rightContent,
+        string? rightFields)
+    {
+        if (!EqualText(leftName, rightName) || !EqualText(leftDescription, rightDescription) || !EqualText(leftType, rightType))
+            return false;
+        return SameJson(leftContent, rightContent) && SameJson(leftFields, rightFields);
+    }
+
+    private static bool EqualText(string? left, string? right) =>
+        string.Equals((left ?? string.Empty).Trim(), (right ?? string.Empty).Trim(), StringComparison.Ordinal);
+
+    private static bool SameJson(string? left, string? right)
+    {
+        try
+        {
+            using var a = JsonDocument.Parse(string.IsNullOrWhiteSpace(left) ? "null" : left);
+            using var b = JsonDocument.Parse(string.IsNullOrWhiteSpace(right) ? "null" : right);
+            return JsonElement.DeepEquals(a.RootElement, b.RootElement);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+}
 public sealed record PatientDataChange(string Field, string? Before, string? After);
 public sealed record DocumentPendingItem(string Code, string Message, string Reason, string CorrectionTarget, bool CanCorrect);
 public sealed record DocumentConferenceResponse(Guid DraftId, long DraftVersion, string Organization, string Template,

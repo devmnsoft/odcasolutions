@@ -15,12 +15,16 @@ Funcionalidades administráveis: pacientes, minutas, modelos, documentos e PDF, 
 
 A varredura e a extração de importações não retiram trabalho de uma organização enquanto a funcionalidade de importação estiver bloqueada ou fora do plano. O trabalho permanece na fila e volta a ser processado depois da liberação.
 
-## Apresentação sob suspensão — limitação documentada
+## Apresentação
 
-Homologação de 02/10/2026 (navegador real + banco real): suspensão e restauração da organização demonstração foram exercidas pela tela `administracao/clientes/{id}/situacao` e pela API, com verificação no banco (`tenants.status`) e na sessão do membro. O contrato de API está correto, mas a apresentação para o membro da organização suspensa tem uma limitação conhecida:
+O rótulo “ORGANIZAÇÃO ATIVA” só aparece depois que o catálogo autenticado de funcionalidades confirma `tenant_status=active`. Não há endpoint público de situação.
 
-- **Membro com sessão aberta:** a validação de sessão rejeita qualquer chamada com escopo de organização quando a única organização do usuário está suspensa (`odca.user_has_active_access` exige `tenants.status='active'`, sem exceção para a consulta de funcionalidades). Como o banner dedicado do layout (`_Layout.cshtml`) depende de um `GET .../features` bem-sucedido para ler `tenant_status`, ele não é exibido; o membro vê o alerta genérico “Falha ao consultar funcionalidades … Esta mensagem indica falha de consulta, não ausência de bloqueios” e o rótolo estático “ORGANIZAÇÃO ATIVA” no topo. Ou seja: sob suspensão, a tela não distingue “suspensa” de “falha de consulta”.
-- **Novo login:** o login de membro da organização suspensa responde com o erro genérico de credenciais (a busca por login retorna nula para usuário sem acesso ativo, sem incrementar tentativas falhas). Não há mensagem “organização suspensa” neste caminho.
-- **Contrato preservado:** quem tem outra organização ativa continua recebendo `organization_suspended` na organização suspensa e usa a outra normalmente (regra da tabela acima). A restauração pelo superadministrador volta a ser efetiva imediatamente (sessão do membro aceita novamente no mesmo instante; homologado nos dois sentidos).
+| O que o membro vê | Quando |
+| --- | --- |
+| ORGANIZAÇÃO SUSPENSA | O catálogo autenticado informa suspensão, ou a operação devolve `organization_suspended`. |
+| SESSÃO NÃO ACEITA | A API recusa a sessão (401). Pode ser usuário bloqueado ou sessão encerrada. O login novo continua com o erro genérico de credenciais, sem dizer se a conta existe. |
+| ACESSO NÃO CONFIRMADO | A consulta da organização volta 403. Pode ser vínculo bloqueado ou permissão insuficiente. Outra organização do mesmo usuário não entra nessa recusa. |
+| SITUAÇÃO NÃO CONFIRMADA | Falha de comunicação, tempo esgotado ou resposta sem situação. A tela não trata a organização como ativa. |
+| Módulo bloqueado ou fora do plano | O catálogo distingue `administratively_blocked` e `plan_restricted`. Liberar o módulo não remove plano nem suspensão. |
 
-Decisão deste ciclo: **limitação documentada, não correção de código**. O estado canônico (`tenants.status` + validação de sessão + portão de funcionalidades) funciona; o aprimoramento seria permitir à camada de apresentação distinguir suspensão de falha de autenticação genérica (por exemplo, endpoint de status público para o layout ou erro estruturado específico no login), sem mudar as regras acima.
+A única exceção de sessão é `GET /api/v1/organizations/{id}/features`: uma sessão ainda válida, de usuário não bloqueado, pode ler a situação da organização em que o vínculo está ativo mesmo quando essa é a única organização e ela está suspensa. As demais rotas continuam exigindo acesso ativo. Quem não tem vínculo ativo recebe 403, sem lista de organizações ou usuários.

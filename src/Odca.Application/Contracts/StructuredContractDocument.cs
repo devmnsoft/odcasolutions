@@ -26,7 +26,8 @@ public sealed record ContractFieldDefinition(
     IReadOnlyList<string>? Choices = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Origin = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? RequiredWhenFieldId = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string>? RequiredWhenAnyOf = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string>? RequiredWhenAnyOf = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? SourceProperty = null);
 
 public sealed record ContractFieldValue(string FieldId, string? Value, bool Confirmed, string? Source = null);
 

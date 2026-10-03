@@ -1,4 +1,5 @@
 @using Microsoft.AspNetCore.Authentication
+@using Odca.Web.Services
 @inject Odca.Web.Services.IUserTenantContext TenantContext
 @inject Odca.Web.Services.OdcaApiClient ApiClient
 @{
@@ -43,6 +44,9 @@
     var canReadDocuments = canReadStudio || activeAccess?.HasAnyPermission("tenant.documents.download", "tenant.documents.manage", "tenant.patients.documents.read") == true || isPlatform;
     var featureStates = new Dictionary<string, string>(StringComparer.Ordinal);
     string? featureLoadError = null;
+    string? featureErrorCode = null;
+    string? organizationStatus = null;
+    ApiCallStatus featureCallStatus = ApiCallStatus.Success;
     var organizationSuspended = false;
     if (showApplication && Guid.TryParse(tenantIdForLinks, out var featureTenantId))
     {
@@ -50,28 +54,50 @@
         if (!string.IsNullOrWhiteSpace(accessToken))
         {
             var featureCatalog = await ApiClient.GetOrganizationFeaturesAsync(accessToken, featureTenantId, Context.RequestAborted);
+            featureCallStatus = featureCatalog.Status;
+            featureErrorCode = featureCatalog.ErrorCode;
             if (!featureCatalog.Succeeded || featureCatalog.Value is null || featureCatalog.Value.Features.Count == 0)
             {
                 featureLoadError = featureCatalog.UserMessage("Não foi possível consultar as funcionalidades da organização.");
             }
             else
             {
-                organizationSuspended = featureCatalog.Value.TenantStatus == "suspended";
+                organizationStatus = featureCatalog.Value.TenantStatus;
+                organizationSuspended = organizationStatus == "suspended";
                 foreach (var feature in featureCatalog.Value.Features)
                 {
                     featureStates[feature.FeatureCode] = feature.State;
                 }
             }
         }
+        else
+        {
+            featureLoadError = "A sessão local não possui credencial para consultar a organização.";
+            featureCallStatus = ApiCallStatus.Unauthorized;
+        }
+    }
+    var situationUnconfirmed = featureLoadError is not null || (showApplication && !string.IsNullOrWhiteSpace(tenantIdForLinks) && organizationStatus is null);
+    string ContextLabel()
+    {
+        if (isPlatform && string.IsNullOrWhiteSpace(activeTenantId)) return "PLATAFORMA";
+        if (organizationSuspended || featureErrorCode == "organization_suspended") return "ORGANIZAÇÃO SUSPENSA";
+        if (string.IsNullOrWhiteSpace(activeTenantId)) return "SEM ORGANIZAÇÃO";
+        if (featureCallStatus is ApiCallStatus.Unavailable or ApiCallStatus.Timeout) return "SITUAÇÃO NÃO CONFIRMADA";
+        if (featureCallStatus == ApiCallStatus.Unauthorized) return "SESSÃO NÃO ACEITA";
+        if (featureCallStatus == ApiCallStatus.Forbidden) return "ACESSO NÃO CONFIRMADO";
+        if (situationUnconfirmed) return "SITUAÇÃO NÃO CONFIRMADA";
+        if (organizationStatus == "active") return "ORGANIZAÇÃO ATIVA";
+        return "ORGANIZAÇÃO";
     }
     string MenuFeature(string code, string label)
     {
+        if (situationUnconfirmed)
+            return $"{label} (situação não confirmada)";
         if (!featureStates.TryGetValue(code, out var state) || state == "allowed")
-        {
             return label;
-        }
-
-        return state == "plan_restricted" ? $"{label} (fora do plano)" : $"{label} (bloqueada)";
+        if (state == "plan_restricted") return $"{label} (fora do plano)";
+        if (state == "administratively_blocked") return $"{label} (bloqueada)";
+        return label;
     }
 }
 <!DOCTYPE html>
@@ -94,7 +120,7 @@
                     <button class="icon-button sidebar-collapse" type="button" data-sidebar-collapse aria-label="Recolher menu" aria-expanded="true"><span aria-hidden="true">‹</span></button>
                 </div>
                 <div class="context-card">
-                    <span class="context-label">@(isPlatform && string.IsNullOrWhiteSpace(activeTenantId) ? "PLATAFORMA" : "ORGANIZAÇÃO ATIVA")</span>
+                    <span class="context-label">@ContextLabel()</span>
                     <strong>@(isPlatform && string.IsNullOrWhiteSpace(activeTenantId) ? "Administração ODCA" : organizationName ?? "Escolha uma organização")</strong>
                 </div>
                 <nav class="side-nav">
@@ -245,13 +271,33 @@
                     </details>
                 </header>
                 <main class="page-shell" id="main-content" tabindex="-1">
-                    @if (organizationSuspended)
+                    @if (organizationSuspended || featureErrorCode == "organization_suspended")
                     {
-                        <div class="alert alert-error" role="status">Esta organização está suspensa. Cadastros e documentos permanecem armazenados. As operações ficam indisponíveis até o superadministrador restaurar o acesso.</div>
+                        <div class="alert alert-error" role="status">Esta organização está suspensa. Cadastros e documentos permanecem armazenados. As operações desta organização ficam indisponíveis até o superadministrador restaurar o acesso. Outra organização ativa do mesmo usuário não é afetada. Isto não é falha de comunicação, bloqueio de módulo nem restrição de plano.</div>
+                    }
+                    else if (featureCallStatus is ApiCallStatus.Unavailable or ApiCallStatus.Timeout)
+                    {
+                        <div class="alert alert-error" role="alert"><strong>Falha de comunicação.</strong> Não foi possível consultar a situação da organização. Ela não foi confirmada como ativa e nenhum bloqueio foi descartado.</div>
+                    }
+                    else if (featureCallStatus == ApiCallStatus.Unauthorized)
+                    {
+                        <div class="alert alert-error" role="alert"><strong>Sessão não aceita.</strong> A consulta não identificou uma sessão operacional válida. Isso pode ocorrer com usuário bloqueado ou sessão encerrada. Não é falha de comunicação e não confirma a organização como ativa.</div>
+                    }
+                    else if (featureCallStatus == ApiCallStatus.Forbidden)
+                    {
+                        <div class="alert alert-error" role="alert"><strong>Acesso não confirmado.</strong> O vínculo com esta organização pode estar bloqueado ou a permissão é insuficiente. Outra organização do mesmo usuário permanece independente. Liberar um módulo não remove suspensão nem restrição de plano.</div>
                     }
                     else if (!string.IsNullOrWhiteSpace(featureLoadError))
                     {
-                        <div class="alert alert-error" role="alert"><strong>Falha ao consultar funcionalidades.</strong> @featureLoadError Esta mensagem indica falha de consulta, não ausência de bloqueios.</div>
+                        <div class="alert alert-error" role="alert"><strong>Situação não confirmada.</strong> @featureLoadError A organização não foi marcada como ativa.</div>
+                    }
+                    else if (featureStates.Values.Any(state => state == "administratively_blocked"))
+                    {
+                        <div class="alert" role="status">Há módulo bloqueado pela administração. Os dados permanecem. Liberar o módulo não remove suspensão nem restrição de plano.</div>
+                    }
+                    else if (featureStates.Values.Any(state => state == "plan_restricted"))
+                    {
+                        <div class="alert" role="status">Há funcionalidade fora do plano atual. Isso é diferente de bloqueio administrativo e de falta de permissão.</div>
                     }
                     @RenderBody()
                 </main>

@@ -4,15 +4,13 @@ title = "ODCA"
 useDefault = true
 
 [allowlist]
-description = "Senhas iniciais de Development e checksums SHA-256 de migração. O scan continua ativo para qualquer outro segredo."
-paths = [
-  '''database/development/seed-test-access\.sql''',
-  '''src/Odca.Bootstrap/TestAccessProvisioner\.cs''',
-  '''tests/Odca.Domain.Tests/PasswordPolicyTests\.cs''',
-  '''tests/Odca.IntegrationTests/DevelopmentAccessProvisioningTests\.cs''',
-]
+description = "Somente as linhas das senhas iniciais de Development, dos hashes de teste e dos checksums de migração. Qualquer outro segredo continua detectável, inclusive nestes arquivos."
 regexTarget = "line"
 regexes = [
+  '''public const string (Administrator|Operator|Client)InitialPassword = ''',
+  '''\[InlineData\("Odca(Admin|Cliente)#2026Local"\)\]''',
+  '''PasswordPolicy\.Validate\("UmaSenha!Forte2026"\)''',
+  '''v_(administrator|operator|client)_hash constant text := 'AQAAAA''',
   '''INSERT INTO odca\.schema_migrations\(version,name,checksum\)''',
   '''VALUES\(\d+,'[^']*','[a-f0-9]{64}'\)''',
   '''-- ODCA-MIGRATION \d{3} CHECKSUM [a-f0-9]{64}''',

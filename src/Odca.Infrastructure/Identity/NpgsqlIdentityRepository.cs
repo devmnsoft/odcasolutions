@@ -106,14 +106,34 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
         return new SessionRecord(sessionId, userId, securityVersion, expiresAt, "password", null);
     }
 
-    public async Task<bool> IsSessionValidAsync(
+    public Task<bool> IsSessionValidAsync(
         Guid userId,
         Guid sessionId,
         int securityVersion,
         DateTimeOffset now,
+        CancellationToken cancellationToken) =>
+        SessionExistsAsync(userId, sessionId, securityVersion, now, requireActiveAccess: true, cancellationToken);
+
+    public Task<bool> IsEstablishedSessionAsync(
+        Guid userId,
+        Guid sessionId,
+        int securityVersion,
+        DateTimeOffset now,
+        CancellationToken cancellationToken) =>
+        SessionExistsAsync(userId, sessionId, securityVersion, now, requireActiveAccess: false, cancellationToken);
+
+    private async Task<bool> SessionExistsAsync(
+        Guid userId,
+        Guid sessionId,
+        int securityVersion,
+        DateTimeOffset now,
+        bool requireActiveAccess,
         CancellationToken cancellationToken)
     {
-        const string sql = """
+        var accessClause = requireActiveAccess
+            ? "AND (u.is_platform_administrator OR odca.user_has_active_access(u.id))"
+            : string.Empty;
+        var sql = $"""
             SELECT EXISTS (
                 SELECT 1
                   FROM odca.sessions s
@@ -127,7 +147,7 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
                    AND u.security_version = @securityVersion
                    AND NOT u.is_deleted
                    AND (u.locked_until IS NULL OR u.locked_until <= @now)
-                   AND (u.is_platform_administrator OR odca.user_has_active_access(u.id))
+                   {accessClause}
             );
             """;
 

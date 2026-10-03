@@ -5,6 +5,14 @@
     var conference = ViewData["Conference"] as Odca.Contracts.Studio.DocumentConferenceResponse;
     ViewData["OrganizationName"] = "Organização selecionada";
 }
+<ol class="journey" aria-label="Etapas do documento">
+    <li class="is-done"><span>1</span> Modelo</li>
+    <li class="is-done"><span>2</span> Partes</li>
+    <li class="@(conference?.PatientReconfirmationRequired == true ? null : "is-current")"><span>3</span> Campos</li>
+    <li class="@(conference?.PatientReconfirmationRequired == true ? "is-current" : null)"><span>4</span> Conferência</li>
+    <li><span>5</span> Revisão e emissão</li>
+</ol>
+<p class="next-step">Próximo passo: @(conference?.CanGenerate == true ? "gerar a versão e encaminhar à revisão." : conference?.PatientReconfirmationRequired == true ? "comparar o cadastro e escolher quais valores atualizar." : "preencher e confirmar os campos pendentes. O estado do salvamento aparece ao lado.")</p>
 <div class="studio" data-studio data-save-url="@Url.Action("Save",new{tenantId,draftId=Model.Id})"
      data-draft-url="@Url.Action("Edit",new{tenantId,draftId=Model.Id})"
      data-versions-url="@Url.Action("Versions",new{tenantId,draftId=Model.Id})"
@@ -44,8 +52,12 @@
             {
                 <h3>Reconfirmação cadastral</h3>
                 @if(conference.PatientChanges.Count==0){<p>O cadastro recebeu uma nova versão, mas os dados exibidos no documento continuam iguais. Confirme explicitamente a versão atual para prosseguir.</p>}
-                else {<p>O conteúdo manual da minuta não será sobrescrito. Confirme explicitamente apenas depois de conferir as diferenças.</p><div class="responsive-table"><table><thead><tr><th>Campo</th><th>Na seleção</th><th>Cadastro atual</th></tr></thead><tbody>@foreach(var change in conference.PatientChanges){<tr><td>@change.Field</td><td>@(change.Before??"Não informado")</td><td>@(change.After??"Não informado")</td></tr>}</tbody></table></div>}
-                @if(conference.CanEdit && conference.CurrentPatientVersion is long currentVersion){<form method="post" asp-action="ConfirmPatient" asp-route-tenantId="@tenantId" asp-route-draftId="@Model.Id" onsubmit="return confirm('Confirmar o uso da versão cadastral atual sem substituir os valores manuais da minuta?')">@Html.AntiForgeryToken()<input type="hidden" name="expectedDraftVersion" value="@conference.DraftVersion"/><input type="hidden" name="expectedPatientVersion" value="@currentVersion"/><button class="button button-primary" type="submit">Confirmar dados atualizados</button></form>}
+                else {
+                    var changeLabels = new Dictionary<string, string>(StringComparer.Ordinal) { ["fullName"] = "Nome", ["preferredName"] = "Nome social", ["birthDate"] = "Nascimento", ["email"] = "E-mail", ["phone"] = "Telefone", ["address"] = "Endereço", ["identifierType"] = "Tipo de documento", ["identifierValue"] = "Documento", ["representative"] = "Representante" };
+                    <p>Marque somente os valores que devem substituir o preenchimento automático. Valores manuais permanecem. A confirmação dos campos atualizados será invalidada. Versões já emitidas não mudam.</p>
+                    <div class="responsive-table"><table><thead><tr><th>Atualizar</th><th>Dado</th><th>Na minuta</th><th>Cadastro atual</th></tr></thead><tbody>@foreach(var change in conference.PatientChanges){<tr><td><input type="checkbox" name="acceptedKeys" value="@change.Field" form="patient-refresh" aria-label="Atualizar @(changeLabels.GetValueOrDefault(change.Field, change.Field))" /></td><td>@(changeLabels.GetValueOrDefault(change.Field, change.Field))</td><td>@(change.Before??"Não informado")</td><td>@(change.After??"Não informado")</td></tr>}</tbody></table></div>
+                }
+                @if(conference.CanEdit && conference.CurrentPatientVersion is long currentVersion){<form id="patient-refresh" method="post" asp-action="ConfirmPatient" asp-route-tenantId="@tenantId" asp-route-draftId="@Model.Id">@Html.AntiForgeryToken()<input type="hidden" name="expectedDraftVersion" value="@conference.DraftVersion"/><input type="hidden" name="expectedPatientVersion" value="@currentVersion"/>@if(conference.PatientChanges.Count>0){<label class="check-line"><input type="checkbox" name="acknowledgeRemaining" value="true" required /> Confirmo que os itens não marcados permanecem como estão na minuta.</label>}<button class="button button-primary" type="submit">Atualizar dados selecionados</button></form>}
             }
             <details class="help"><summary>Como usar</summary><p>Resolva as pendências nos locais indicados. Se o paciente mudou, compare os dados e confirme a versão atual. Uma nova alteração antes da geração será recusada pelo servidor.</p></details>
         </section>
@@ -71,4 +83,4 @@
     <script type="application/json" id="studio-fields">@Html.Raw(Model.Fields.GetRawText().Replace("</", "<\\/", StringComparison.Ordinal))</script>
     <script type="application/json" id="studio-values">@Html.Raw(Model.Values.GetRawText().Replace("</", "<\\/", StringComparison.Ordinal))</script>
 </div>
-@section Scripts { <script src="~/js/studio.js" asp-append-version="true"></script> }
+@section Scripts { <script type="module" src="~/js/studio.js" asp-append-version="true"></script> }
