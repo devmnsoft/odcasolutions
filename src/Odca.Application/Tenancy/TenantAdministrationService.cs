@@ -132,4 +132,12 @@ public sealed class TenantAdministrationService
         IReadOnlyCollection<string> permissions,
         CancellationToken cancellationToken)
         => _repository.UpdateRoleAsync(actorId, tenantId, roleId, name, permissions, cancellationToken);
+
+    public Task<string> TransferPrincipalAdministrationAsync(
+        Guid actorId,
+        Guid tenantId,
+        Guid targetUserId,
+        string justification,
+        CancellationToken cancellationToken)
+        => _repository.TransferPrincipalAdministrationAsync(actorId, tenantId, targetUserId, justification, cancellationToken);
 }

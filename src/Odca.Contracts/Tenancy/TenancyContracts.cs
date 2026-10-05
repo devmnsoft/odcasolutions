@@ -67,3 +67,24 @@ public sealed record AcceptInvitationRequest(Guid InvitationId, string Token);
 public sealed record MemberStatusChangeRequest(string? Reason);
 
 public sealed record UpdateMemberRolesRequest(Guid[] RoleIds);
+
+public sealed record TransferAdministrationRequest(Guid TargetUserId, string Justification);
+
+public sealed record PlanChangeRequest(Guid TenantId, string PlanCode, string? Justification);
+
+public sealed record PlanChangePreviewResponse(
+    string CurrentCode,
+    int CurrentVersion,
+    Guid CurrentPlanVersionId,
+    string TargetCode,
+    int TargetVersion,
+    Guid TargetPlanVersionId,
+    int ActiveMembers,
+    int ReservedInvitations,
+    long CurrentSeatLimit,
+    long TargetSeatLimit,
+    bool SeatsOverLimit,
+    long PatientCount,
+    long DocumentCount,
+    string Policy,
+    string BillingLimitation);

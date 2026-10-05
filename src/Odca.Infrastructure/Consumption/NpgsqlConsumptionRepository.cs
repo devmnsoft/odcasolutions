@@ -109,15 +109,25 @@ public sealed class NpgsqlConsumptionRepository(NpgsqlDataSource dataSource, IPa
             return null;
         }
 
-        var planVersion = await c.QuerySingleOrDefaultAsync<PlanVersionRow>(new CommandDefinition(
+        var planVersions = (await c.QueryAsync<PlanVersionRow>(new CommandDefinition(
             """
             SELECT id AS Id, code AS Code
             FROM odca.plan_versions
-            WHERE code = @planCode AND status = 'published'
-            ORDER BY version DESC LIMIT 1
+            WHERE code = @planCode
+              AND status = 'published'
+              AND effective_from <= now()
+              AND (effective_until IS NULL OR effective_until > now())
+            ORDER BY version DESC
+            LIMIT 2
             """,
-            new { planCode = request.PlanCode.Trim() }, tx, cancellationToken: cancellationToken));
+            new { planCode = request.PlanCode.Trim() }, tx, cancellationToken: cancellationToken))).AsList();
+        if (planVersions.Count > 1)
+        {
+            await tx.RollbackAsync(cancellationToken);
+            throw new InvalidDataException($"O catálogo contém mais de uma versão vigente para o plano '{request.PlanCode}'.");
+        }
 
+        var planVersion = planVersions.SingleOrDefault();
         if (planVersion is null)
         {
             await tx.RollbackAsync(cancellationToken);
@@ -174,6 +184,8 @@ public sealed class NpgsqlConsumptionRepository(NpgsqlDataSource dataSource, IPa
                 SELECT @tenantId, @userId, r.id, @actorId FROM odca.roles r
                 WHERE r.tenant_id = @tenantId AND r.code = 'tenant-administrator'
                 ON CONFLICT DO NOTHING;
+
+                SELECT odca.ensure_tenant_standard_roles(@tenantId);
 
                 INSERT INTO odca.subscriptions(id, tenant_id, plan_version_id, commercial_state, status, created_by)
                 VALUES (gen_random_uuid(), @tenantId, @planVersionId, @commercialState, @subscriptionStatus, @actorId);

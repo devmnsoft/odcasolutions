@@ -9,4 +9,5 @@ public sealed record PlanCatalogItem(
     long UserStorageBytes,
     long FileBytes,
     int OcrPagesMonthly,
-    int SignatureEnvelopesMonthly);
+    int SignatureEnvelopesMonthly,
+    string[]? EnabledModules = null);

@@ -258,6 +258,8 @@ public sealed class NpgsqlCustomerOnboardingRepository(NpgsqlDataSource dataSour
              WHERE r.tenant_id=@TenantId AND r.code='tenant-administrator'
             ON CONFLICT DO NOTHING;
 
+            SELECT odca.ensure_tenant_standard_roles(@TenantId);
+
             UPDATE odca.subscriptions
                SET commercial_state = 'commercial_pending',
                    updated_at = @confirmedAt

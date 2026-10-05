@@ -20,6 +20,7 @@ public interface ITenantAdministrationRepository
     Task<InvitationPreview?> GetInvitationPreviewAsync(Guid invitationId, string tokenHash, CancellationToken cancellationToken);
     Task<bool> AcceptInvitationAsync(Guid actorId, Guid invitationId, string tokenHash, CancellationToken cancellationToken);
     Task<UpdateRolePermissionsResult> UpdateRoleAsync(Guid actorId, Guid tenantId, Guid roleId, string name, IReadOnlyCollection<string> permissions, CancellationToken cancellationToken);
+    Task<string> TransferPrincipalAdministrationAsync(Guid actorId, Guid tenantId, Guid targetUserId, string justification, CancellationToken cancellationToken);
 }
 
 public sealed record OrganizationAccess(Guid Id, string Name, string Status, long Version, string[] Permissions);
@@ -62,6 +63,6 @@ public enum UpdateOrganizationResult { Updated, NotFound, Forbidden, Conflict }
 public enum CreateInvitationResultStatus { Created, Existing, Conflict, QuotaExceeded, Forbidden, InvalidRole }
 public sealed record CreateInvitationResult(CreateInvitationResultStatus Status, InvitationRecord? Invitation);
 public enum InvitationMutationResult { Succeeded, Forbidden, NotFound, Conflict }
-public enum MemberActionResult { Succeeded, Forbidden, NotFound, Conflict, LastAdminProtected }
-public enum UpdateRolePermissionsStatus { Updated, Forbidden, NotFound, InvalidPermissions }
+public enum MemberActionResult { Succeeded, Forbidden, NotFound, Conflict, LastAdminProtected, ElevationDenied }
+public enum UpdateRolePermissionsStatus { Updated, Forbidden, NotFound, InvalidPermissions, Protected }
 public sealed record UpdateRolePermissionsResult(UpdateRolePermissionsStatus Status, TenantRole? Role, int AffectedMemberCount);

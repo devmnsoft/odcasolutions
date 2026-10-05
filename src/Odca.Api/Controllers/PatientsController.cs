@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Odca.Application.Administration;
 using Odca.Application.Common;
 using Odca.Application.Patients;
 using Odca.Contracts.Patients;
@@ -9,9 +10,11 @@ namespace Odca.Api.Controllers;
 
 [ApiController, Authorize(Policy = "PasswordChanged")]
 [Route("api/v1/organizations/{tenantId:guid}/patients")]
+[TenantOperation(Feature = OrganizationFeatureCatalog.Patients)]
 public sealed class PatientsController(IPatientRepository repository, IClock clock) : ControllerBase
 {
     [HttpGet]
+    [TenantOperation(Permission = "tenant.patients.read")]
     public async Task<IActionResult> List(Guid tenantId, [FromQuery] string? search, [FromQuery] bool includeInactive = false,
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
@@ -22,10 +25,12 @@ public sealed class PatientsController(IPatientRepository repository, IClock clo
     }
 
     [HttpGet("{patientId:guid}")]
+    [TenantOperation(Permission = "tenant.patients.read")]
     public async Task<IActionResult> Get(Guid tenantId, Guid patientId, CancellationToken ct)
     { if (!Actor(out var actor)) return Unauthorized(); var row = await repository.GetAsync(actor, tenantId, patientId, ct); return row is null ? NotFound() : Ok(row); }
 
     [HttpPost]
+    [TenantOperation(Permission = "tenant.patients.manage")]
     public async Task<IActionResult> Create(Guid tenantId, [FromBody] SavePatientRequest request, CancellationToken ct)
     {
         if (!Actor(out var actor)) return Unauthorized();
@@ -40,6 +45,7 @@ public sealed class PatientsController(IPatientRepository repository, IClock clo
     }
 
     [HttpPut("{patientId:guid}")]
+    [TenantOperation(Permission = "tenant.patients.manage")]
     public async Task<IActionResult> Update(Guid tenantId, Guid patientId, [FromBody] SavePatientRequest request, CancellationToken ct)
     {
         if (!Actor(out var actor)) return Unauthorized();
@@ -48,12 +54,15 @@ public sealed class PatientsController(IPatientRepository repository, IClock clo
     }
 
     [HttpPost("{patientId:guid}/inactivate")]
+    [TenantOperation(Permission = "tenant.patients.manage")]
     public Task<IActionResult> Inactivate(Guid tenantId, Guid patientId, [FromQuery] long expectedVersion, CancellationToken ct) => SetActive(tenantId, patientId, false, expectedVersion, ct);
     [HttpPost("{patientId:guid}/restore")]
+    [TenantOperation(Permission = "tenant.patients.manage")]
     public Task<IActionResult> Restore(Guid tenantId, Guid patientId, [FromQuery] long expectedVersion, CancellationToken ct) => SetActive(tenantId, patientId, true, expectedVersion, ct);
 
     [HttpGet("{patientId:guid}/documents")]
     [HttpGet("{patientId:guid}/archive")]
+    [TenantOperation(Permission = "tenant.patients.documents.read")]
     public async Task<IActionResult> Archive(Guid tenantId, Guid patientId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     { if (!Actor(out var actor)) return Unauthorized(); page = Math.Max(1, page); pageSize = Math.Clamp(pageSize, 1, 50); var result = await repository.ArchiveAsync(actor, tenantId, patientId, page, pageSize, ct); return result is null ? Forbid() : Ok(result); }
 

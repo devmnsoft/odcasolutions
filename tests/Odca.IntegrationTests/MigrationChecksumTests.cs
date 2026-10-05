@@ -360,4 +360,19 @@ public sealed class MigrationChecksumTests
         Assert.Contains("CREATE OR REPLACE FUNCTION odca.platform_audit_count(", snapshot, StringComparison.Ordinal);
         Assert.Contains("GRANT EXECUTE ON FUNCTION odca.platform_audit_page(uuid, integer, integer, text, uuid) TO odca_app;", snapshot, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ReleaseV034AddsHierarchyAndPlanModulesWithoutRewritingEarlierMigrations()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var previous = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v033.sql")).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v034.sql")).Replace("\r\n", "\n");
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        DatabaseMigrator.ValidateChecksums(canonical);
+        for (var version = 1; version <= 33; version++)
+            Assert.Equal(MigrationBlock(previous, version), MigrationBlock(canonical, version));
+        Assert.Contains("CREATE OR REPLACE FUNCTION odca.ensure_tenant_standard_roles(target_tenant uuid)", snapshot, StringComparison.Ordinal);
+        Assert.Contains("CREATE OR REPLACE FUNCTION odca.preview_organization_plan_change(actor uuid, requested_tenant uuid, requested_plan text)", snapshot, StringComparison.Ordinal);
+        Assert.Contains("module.patients", snapshot, StringComparison.Ordinal);
+    }
 }

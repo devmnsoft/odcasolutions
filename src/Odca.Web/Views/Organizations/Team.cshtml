@@ -6,7 +6,6 @@
     var invitations = Model.Invitations;
     var totalPages = members is null ? 1 : Math.Max(1, (int)Math.Ceiling(members.TotalCount / (double)members.PageSize));
     var invitePages = invitations is null ? 1 : Math.Max(1, (int)Math.Ceiling(invitations.TotalCount / (double)invitations.PageSize));
-    var permissionGroups = TenancyDisplay.PermissionCatalog.GroupBy(x => x.Group);
 }
 <section class="page-heading">
     <div>
@@ -199,6 +198,33 @@ else if (Model.OverviewLoadFailed)
                    asp-route-search="@Model.Search" asp-route-status="@Model.Status" asp-route-page="@(Model.Page + 1)">Próxima</a>
             </nav>
         }
+        @if (Model.CanManageOrganization && members is not null && members.Items.Count > 0)
+        {
+            <form asp-action="TransferAdministration" asp-route-tenantId="@org.Id" method="post" class="form-stack" id="transfer-administration">
+                @Html.AntiForgeryToken()
+                <h2>Transferir a administração principal</h2>
+                <p class="muted">A pessoa escolhida passa a ser a administradora principal e o seu perfil principal é retirado. A sessão das duas pessoas é encerrada. O último administrador principal ativo não pode ser removido por este fluxo.</p>
+                <label>Pessoa ativa desta página
+                    <select name="targetUserId" required>
+                        <option value="">Selecione pelo nome</option>
+                        @foreach (var member in members.Items.Where(item => item.Status == "active"))
+                        {
+                            <option value="@member.UserId">@member.Name</option>
+                        }
+                    </select>
+                </label>
+                <label>Justificativa
+                    <input name="justification" minlength="5" maxlength="500" required />
+                    <small>Informe o motivo, entre 5 e 500 caracteres.</small>
+                </label>
+                <button class="button button-danger" type="button"
+                        data-confirm-open
+                        data-confirm-form="transfer-administration"
+                        data-confirm-title="Transferir a administração principal?"
+                        data-confirm-body="Esta ação altera quem responde pela organização. Ela não concede acesso à plataforma MNSOFT."
+                        data-confirm-action="Transferir">Transferir</button>
+            </form>
+        }
     </section>
 }
 else if (Model.Tab == "convites")
@@ -307,7 +333,7 @@ else
                     foreach (var role in Model.Roles)
                     {
                         <tr>
-                            <td>@role.Name</td>
+                            <td title="@role.Name">@TenancyDisplay.RolePresentation(role.Name)</td>
                             <td>@(role.IsSystem ? "Sistema" : "Personalizado")</td>
                             <td>@string.Join(", ", role.Permissions.Select(TenancyDisplay.PermissionLabel))</td>
                             <td>
@@ -355,7 +381,7 @@ else
                 <option value="">Selecione</option>
                 @foreach (var role in Model.Roles.Where(r => !r.IsSystem || r.Permissions.Length > 0))
                 {
-                    <option value="@role.Id" selected="@(Model.Invite.RoleId == role.Id ? "selected" : null)">@role.Name</option>
+                    <option value="@role.Id" selected="@(Model.Invite.RoleId == role.Id ? "selected" : null)">@TenancyDisplay.RolePresentation(role.Name)</option>
                 }
             </select>
         </label>
@@ -378,7 +404,8 @@ else
         {
             <p class="warning" role="status">Esta alteração afeta @Model.RoleForm.AffectedMemberCount membro(s) com o perfil.</p>
         }
-        <form asp-action="@(Model.RoleForm.RoleId is null ? "CreateRole" : "UpdateRole")"
+        <form id="role-permission-form"
+              asp-action="@(Model.RoleForm.RoleId is null ? "CreateRole" : "UpdateRole")"
               asp-route-tenantId="@org.Id"
               asp-route-roleId="@Model.RoleForm.RoleId"
               method="post"
@@ -391,24 +418,84 @@ else
             {
                 <p class="muted">A edição altera apenas as permissões delegáveis do perfil.</p>
             }
-            <fieldset>
-                <legend>Permissões</legend>
-                @foreach (var group in permissionGroups)
-                {
-                    <div class="permission-group">
-                        <strong>@group.Key</strong>
-                        @foreach (var permission in group)
-                        {
-                            <label class="checkbox-line">
-                                <input type="checkbox" name="Permissions" value="@permission.Code"
-                                       checked="@(Model.RoleForm.Permissions.Contains(permission.Code) ? "checked" : null)" />
-                                <span>@permission.Label</span>
-                            </label>
-                        }
-                    </div>
-                }
-            </fieldset>
-            <button class="button button-primary" type="submit" data-processing-label="Salvando…">
+            <p class="muted">A marcação grava a permissão no perfil. Ela não contrata o módulo, não remove um bloqueio e não amplia a franquia. Permissões já gravadas de um módulo não contratado permanecem armazenadas, sem efeito até a contratação.</p>
+            <div class="permission-matrix">
+                <table>
+                    <thead>
+                        <tr><th>Módulo</th><th>Ação</th><th>Situação</th><th>Incluir</th></tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var permission in TenancyDisplay.PermissionCatalog)
+                    {
+                        var selected = Model.RoleForm.Permissions.Contains(permission.Code);
+                        var state = permission.Module is null
+                            ? "administrative"
+                            : Model.FeatureStates.TryGetValue(permission.Module, out var featureState) ? featureState : "unknown";
+                        var inert = state == "plan_restricted";
+                        <tr>
+                            <td data-label="Módulo">@permission.Group</td>
+                            <td data-label="Ação">@permission.Label</td>
+                            <td data-label="Situação">
+                                @if (state == "plan_restricted")
+                                {
+                                    <span class="access-state unavailable">Não contratado</span>
+                                }
+                                else if (state == "administratively_blocked")
+                                {
+                                    <span class="access-state blocked">Bloqueado administrativamente</span>
+                                }
+                                else if (state == "quota_exhausted")
+                                {
+                                    <span class="access-state limit">Limite atingido</span>
+                                }
+                                else if (state == "allowed" && selected)
+                                {
+                                    <span class="access-state ready">Disponível</span>
+                                }
+                                else if (state == "allowed")
+                                {
+                                    <span class="access-state partial">Contratado, sem esta permissão</span>
+                                }
+                                else if (state == "unknown")
+                                {
+                                    <span class="access-state unavailable">Situação do plano não confirmada</span>
+                                }
+                                else
+                                {
+                                    <span class="access-state partial">Ação administrativa</span>
+                                }
+                            </td>
+                            <td data-label="Incluir">
+                                @if (inert && selected)
+                                {
+                                    <input type="hidden" name="Permissions" value="@permission.Code" />
+                                    <span>Gravada, sem efeito até a contratação</span>
+                                }
+                                else if (inert)
+                                {
+                                    <span>Não pode ser concedida enquanto o módulo estiver fora do plano</span>
+                                }
+                                else
+                                {
+                                    <label class="checkbox-line">
+                                        <input type="checkbox" name="Permissions" value="@permission.Code"
+                                               checked="@(selected ? "checked" : null)"
+                                               aria-label="@permission.Group — @permission.Label" />
+                                        <span>@(selected ? "Incluída" : "Não incluída")</span>
+                                    </label>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+            <button class="button button-primary" type="button"
+                    data-confirm-open
+                    data-confirm-form="role-permission-form"
+                    data-confirm-title="Confirmar perfil"
+                    data-confirm-body="As permissões serão gravadas neste perfil. Quem já o possui terá a sessão encerrada. Isso não altera o plano contratado."
+                    data-confirm-action="Salvar perfil">
                 @(Model.RoleForm.RoleId is null ? "Criar perfil" : "Salvar perfil")
             </button>
         </form>
@@ -434,11 +521,20 @@ else
                 <label class="checkbox-line">
                     <input type="checkbox" name="RoleIds" value="@role.Id"
                            checked="@(Model.MemberRoles.RoleIds.Contains(role.Id) ? "checked" : null)" />
-                    <span>@role.Name @(role.IsSystem ? "(sistema)" : "")</span>
+                    <span title="@role.Name">@TenancyDisplay.RolePresentation(role.Name) @(role.IsSystem ? "(sistema)" : "")</span>
                 </label>
             }
         </fieldset>
+        <p class="muted">A troca de perfil encerra a sessão atual da pessoa. O acesso seguinte usa os perfis gravados e continua limitado ao plano, aos bloqueios e às franquias.</p>
         <button class="button button-primary" type="submit" data-processing-label="Salvando…">Salvar perfis</button>
     </form>
 </aside>
+<details class="help-card"><summary>Como usar</summary>
+    <ol>
+        <li>Busque a pessoa pelo nome e use a paginação quando a lista passar de uma página.</li>
+        <li>Convide escolhendo o perfil pelo nome. A vaga fica reservada até o aceite, o cancelamento ou o vencimento.</li>
+        <li>Na matriz, “Não contratado” não pode ser marcado. Uma permissão já gravada permanece armazenada até a contratação.</li>
+        <li>Bloquear um vínculo vale só nesta organização. A mesma pessoa pode continuar ativa em outra.</li>
+    </ol>
+</details>
 

@@ -478,6 +478,51 @@ public sealed class NpgsqlTenantAdministrationRepository(
             }
         }
 
+        var actorIsPrincipal = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
+            "SELECT odca.member_has_tenant_administrator_role(@tenantId, @actorId);",
+            new { tenantId, actorId },
+            transaction,
+            cancellationToken: cancellationToken));
+        if (!actorIsPrincipal && willRemainAdmin && !currentlyAdmin)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return MemberActionResult.ElevationDenied;
+        }
+
+        if (!actorIsPrincipal && distinctRoleIds.Length > 0)
+        {
+            var exceedsAuthority = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
+                """
+                SELECT EXISTS(
+                  SELECT 1
+                    FROM odca.role_permissions rp
+                    JOIN odca.roles r ON r.id = rp.role_id
+                    JOIN odca.permissions p ON p.code = rp.permission_code
+                   WHERE r.tenant_id = @tenantId
+                     AND r.id = ANY(@roleIds)
+                     AND (
+                       NOT p.delegable
+                       OR p.code LIKE 'platform.%'
+                       OR p.code LIKE 'superadmin.%'
+                       OR NOT EXISTS (
+                         SELECT 1
+                           FROM odca.member_roles mr
+                           JOIN odca.roles ar ON ar.id = mr.role_id
+                           LEFT JOIN odca.role_permissions arp ON arp.role_id = ar.id
+                          WHERE mr.tenant_id = @tenantId
+                            AND mr.user_id = @actorId
+                            AND arp.permission_code = p.code)));
+                """,
+                new { tenantId, actorId, roleIds = distinctRoleIds },
+                transaction,
+                cancellationToken: cancellationToken));
+            if (exceedsAuthority)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return MemberActionResult.ElevationDenied;
+            }
+        }
+
         await connection.ExecuteAsync(new CommandDefinition(
             "DELETE FROM odca.member_roles WHERE tenant_id = @tenantId AND user_id = @userId;",
             new { tenantId, userId },
@@ -598,7 +643,7 @@ public sealed class NpgsqlTenantAdministrationRepository(
 
         var role = await connection.QuerySingleOrDefaultAsync<RoleRow>(new CommandDefinition(
             """
-            SELECT id AS "Id", display_name AS "Name", is_system AS "IsSystem"
+            SELECT id AS "Id", display_name AS "Name", is_system AS "IsSystem", code AS "Code"
               FROM odca.roles
              WHERE tenant_id = @tenantId
                AND id = @roleId
@@ -613,6 +658,12 @@ public sealed class NpgsqlTenantAdministrationRepository(
             return new UpdateRolePermissionsResult(UpdateRolePermissionsStatus.NotFound, null, 0);
         }
 
+        if (role.IsSystem)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return new UpdateRolePermissionsResult(UpdateRolePermissionsStatus.Protected, null, 0);
+        }
+
         var allowed = await ResolveAssignablePermissionsAsync(connection, transaction, actorId, tenantId, permissions, cancellationToken);
         if (allowed is null)
         {
@@ -625,8 +676,25 @@ public sealed class NpgsqlTenantAdministrationRepository(
             DELETE FROM odca.role_permissions WHERE role_id = @roleId;
             INSERT INTO odca.role_permissions(role_id, permission_code)
             SELECT @roleId, unnest(@allowed);
+            UPDATE odca.users AS account
+               SET security_version = security_version + 1
+             WHERE account.id IN (
+                SELECT member_role.user_id FROM odca.member_roles AS member_role
+                 WHERE member_role.tenant_id = @tenantId AND member_role.role_id = @roleId);
+            UPDATE odca.memberships
+               SET security_version = security_version + 1, updated_at = now()
+             WHERE tenant_id = @tenantId
+               AND user_id IN (
+                SELECT member_role.user_id FROM odca.member_roles AS member_role
+                 WHERE member_role.tenant_id = @tenantId AND member_role.role_id = @roleId);
+            UPDATE odca.sessions
+               SET revoked_at = now()
+             WHERE revoked_at IS NULL
+               AND user_id IN (
+                SELECT member_role.user_id FROM odca.member_roles AS member_role
+                 WHERE member_role.tenant_id = @tenantId AND member_role.role_id = @roleId);
             """,
-            new { roleId, allowed },
+            new { roleId, allowed, tenantId },
             transaction,
             cancellationToken: cancellationToken));
 
@@ -1079,7 +1147,7 @@ public sealed class NpgsqlTenantAdministrationRepository(
 
         var role = await connection.QuerySingleOrDefaultAsync<RoleRow>(new CommandDefinition(
             """
-            SELECT id AS "Id", display_name AS "Name", is_system AS "IsSystem"
+            SELECT id AS "Id", display_name AS "Name", is_system AS "IsSystem", code AS "Code"
               FROM odca.roles
              WHERE tenant_id = @tenantId
                AND id = @roleId
@@ -1092,6 +1160,12 @@ public sealed class NpgsqlTenantAdministrationRepository(
         {
             await transaction.RollbackAsync(cancellationToken);
             return new UpdateRolePermissionsResult(UpdateRolePermissionsStatus.NotFound, null, 0);
+        }
+
+        if (role.IsSystem)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return new UpdateRolePermissionsResult(UpdateRolePermissionsStatus.Protected, null, 0);
         }
 
         var allowed = await ResolveAssignablePermissionsAsync(connection, transaction, actorId, tenantId, permissions, cancellationToken);
@@ -1120,8 +1194,19 @@ public sealed class NpgsqlTenantAdministrationRepository(
                 DELETE FROM odca.role_permissions WHERE role_id = @roleId;
                 INSERT INTO odca.role_permissions(role_id, permission_code)
                 SELECT @roleId, unnest(@allowed);
+                UPDATE odca.users AS account
+                   SET security_version = security_version + 1
+                 WHERE account.id IN (
+                    SELECT member_role.user_id FROM odca.member_roles AS member_role
+                     WHERE member_role.tenant_id = @tenantId AND member_role.role_id = @roleId);
+                UPDATE odca.sessions
+                   SET revoked_at = now()
+                 WHERE revoked_at IS NULL
+                   AND user_id IN (
+                    SELECT member_role.user_id FROM odca.member_roles AS member_role
+                     WHERE member_role.tenant_id = @tenantId AND member_role.role_id = @roleId);
                 """,
-                new { roleId, allowed },
+                new { roleId, allowed, tenantId },
                 transaction,
                 cancellationToken: cancellationToken));
         }
@@ -1153,7 +1238,38 @@ public sealed class NpgsqlTenantAdministrationRepository(
             affected);
     }
 
-    private sealed record RoleRow(Guid Id, string Name, bool IsSystem);
+    public async Task<string> TransferPrincipalAdministrationAsync(
+        Guid actorId,
+        Guid tenantId,
+        Guid targetUserId,
+        string justification,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await connection.ExecuteAsync(new CommandDefinition(
+            "SELECT set_config('odca.user_id', @actorId, true);",
+            new { actorId = actorId.ToString() },
+            transaction,
+            cancellationToken: cancellationToken));
+        var result = await connection.ExecuteScalarAsync<string>(new CommandDefinition(
+            "SELECT odca.transfer_principal_administration(@actorId, @tenantId, @targetUserId, @justification);",
+            new { actorId, tenantId, targetUserId, justification },
+            transaction,
+            cancellationToken: cancellationToken));
+        if (result == "transferred")
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
+        else
+        {
+            await transaction.RollbackAsync(cancellationToken);
+        }
+
+        return result ?? "invalid";
+    }
+
+    private sealed record RoleRow(Guid Id, string Name, bool IsSystem, string Code);
 
     private sealed class OrganizationAccessRow
     {

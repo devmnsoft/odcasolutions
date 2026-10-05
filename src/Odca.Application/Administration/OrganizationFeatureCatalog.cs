@@ -36,6 +36,49 @@ public static class OrganizationFeatureCatalog
     public static bool IsKnown(string? code) =>
         code is not null && Codes.Contains(code);
 
+    public static string? ModuleForPermission(string? permission)
+    {
+        if (string.IsNullOrWhiteSpace(permission))
+        {
+            return null;
+        }
+
+        if (permission.StartsWith("tenant.patients.", StringComparison.Ordinal))
+        {
+            return Patients;
+        }
+
+        if (permission.StartsWith("tenant.templates.", StringComparison.Ordinal))
+        {
+            return Templates;
+        }
+
+        if (permission.StartsWith("tenant.contract_drafts.", StringComparison.Ordinal) ||
+            permission.StartsWith("tenant.contract_copies.", StringComparison.Ordinal))
+        {
+            return ContractDrafts;
+        }
+
+        if (permission.StartsWith("tenant.documents.", StringComparison.Ordinal) ||
+            permission.StartsWith("tenant.extractions.", StringComparison.Ordinal) ||
+            permission is "tenant.contracts.read" or "tenant.contracts.history")
+        {
+            return Documents;
+        }
+
+        if (permission.StartsWith("tenant.reviews.", StringComparison.Ordinal))
+        {
+            return Reviews;
+        }
+
+        if (permission.StartsWith("tenant.imports.", StringComparison.Ordinal))
+        {
+            return Imports;
+        }
+
+        return null;
+    }
+
     public static string? ResolveApiPath(string? path)
     {
         if (string.IsNullOrWhiteSpace(path))

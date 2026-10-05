@@ -2,12 +2,58 @@ namespace Odca.Web.Models;
 
 public static class TenancyDisplay
 {
-    public static readonly (string Code, string Label, string Group)[] PermissionCatalog =
+    public static readonly (string Code, string Label, string Group, string? Module)[] PermissionCatalog =
     [
-        ("tenant.organization.read", "Consultar organização", "Organização"),
-        ("tenant.organization.manage", "Editar organização", "Organização"),
-        ("tenant.team.read", "Consultar equipe e perfis", "Equipe"),
-        ("tenant.team.manage", "Gerenciar equipe, perfis e convites", "Equipe")
+        ("tenant.organization.read", "Consultar organização", "Organização", null),
+        ("tenant.organization.manage", "Editar organização", "Organização", null),
+        ("tenant.team.read", "Consultar equipe", "Equipe", null),
+        ("tenant.team.manage", "Administrar equipe e convites", "Equipe", null),
+        ("tenant.patients.read", "Consultar pacientes", "Pacientes", "patients"),
+        ("tenant.patients.manage", "Cadastrar e editar pacientes", "Pacientes", "patients"),
+        ("tenant.patients.documents.read", "Consultar acervo do paciente", "Pacientes", "patients"),
+        ("tenant.templates.read", "Consultar modelos", "Modelos", "templates"),
+        ("tenant.templates.manage", "Editar e publicar modelos", "Modelos", "templates"),
+        ("tenant.contract_drafts.read", "Consultar minutas", "Minutas", "contract_drafts"),
+        ("tenant.contract_drafts.manage", "Editar minutas e gerar documento", "Minutas", "contract_drafts"),
+        ("tenant.contract_copies.issue", "Emitir cópia rastreável", "Minutas", "contract_drafts"),
+        ("tenant.documents.download", "Baixar documento e PDF", "Documentos", "documents"),
+        ("tenant.documents.manage", "Editar documentos", "Documentos", "documents"),
+        ("tenant.contracts.read", "Consultar contratos", "Documentos", "documents"),
+        ("tenant.contracts.history", "Consultar histórico contratual", "Documentos", "documents"),
+        ("tenant.extractions.request", "Solicitar extração", "Documentos", "documents"),
+        ("tenant.extractions.review", "Revisar extração", "Documentos", "documents"),
+        ("tenant.extractions.apply", "Aplicar extração", "Documentos", "documents"),
+        ("tenant.reviews.read", "Consultar revisão", "Revisões", "reviews"),
+        ("tenant.reviews.request", "Solicitar revisão", "Revisões", "reviews"),
+        ("tenant.reviews.decide", "Revisar e aprovar", "Revisões", "reviews"),
+        ("tenant.reviews.reassign", "Atribuir responsável da revisão", "Revisões", "reviews"),
+        ("tenant.reviews.cancel", "Cancelar revisão", "Revisões", "reviews"),
+        ("tenant.reviews.history", "Consultar histórico da revisão", "Revisões", "reviews"),
+        ("tenant.imports.read", "Consultar importações", "Importações", "imports"),
+        ("tenant.imports.manage", "Cadastrar e reprocessar importações", "Importações", "imports"),
+        ("tenant.imports.confirm", "Confirmar importação", "Importações", "imports"),
+        ("tenant.billing.read", "Consultar plano, consumo e auditoria", "Plano e auditoria", null),
+        ("tenant.billing.manage", "Solicitar mudanças comerciais", "Plano e auditoria", null),
+        ("tenant.obligations.read", "Consultar obrigações próprias", "Obrigações", null),
+        ("tenant.obligations.read_all", "Consultar obrigações da organização", "Obrigações", null),
+        ("tenant.obligations.manage", "Cadastrar e editar obrigações", "Obrigações", null),
+        ("tenant.obligations.assign", "Atribuir responsável", "Obrigações", null),
+        ("tenant.obligations.fulfill", "Registrar cumprimento", "Obrigações", null),
+        ("tenant.obligations.reopen", "Reabrir obrigação", "Obrigações", null),
+        ("tenant.obligations.cancel", "Cancelar obrigação", "Obrigações", null),
+        ("tenant.obligations.recurrence", "Gerenciar recorrência", "Obrigações", null),
+        ("tenant.renewals.read", "Consultar renovações", "Renovações", null),
+        ("tenant.renewals.prepare", "Preparar renovação", "Renovações", null),
+        ("tenant.renewals.submit", "Encaminhar renovação", "Renovações", null),
+        ("tenant.renewals.decide", "Decidir renovação", "Renovações", null),
+        ("tenant.renewals.register", "Registrar renovação", "Renovações", null),
+        ("tenant.renewals.formalize", "Formalizar renovação", "Renovações", null),
+        ("tenant.renewals.apply", "Aplicar renovação", "Renovações", null),
+        ("tenant.renewals.cancel", "Cancelar renovação", "Renovações", null),
+        ("tenant.saved_views.manage", "Gerenciar filtros salvos", "Trabalho", null),
+        ("tenant.privacy.requests.triage", "Triar solicitações de privacidade", "Privacidade", null),
+        ("tenant.privacy.requests.respond", "Responder solicitações de privacidade", "Privacidade", null),
+        ("tenant.privacy.legal_holds.manage", "Gerenciar bloqueios legais", "Privacidade", null)
     ];
 
     public static string MemberStatus(string? code) => code switch
@@ -73,6 +119,11 @@ public static class TenancyDisplay
         "inactive" => "Inativa",
         _ => string.IsNullOrWhiteSpace(code) ? "Desconhecido" : code
     };
+
+    public static string RolePresentation(string? name) =>
+        string.Equals(name, "Administrador da organização", StringComparison.Ordinal)
+            ? "Superadministrador da organização"
+            : string.IsNullOrWhiteSpace(name) ? "Perfil" : name;
 
     public static string PermissionLabel(string code)
     {

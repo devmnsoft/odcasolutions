@@ -97,6 +97,7 @@
             return label;
         if (state == "plan_restricted") return $"{label} (fora do plano)";
         if (state == "administratively_blocked") return $"{label} (bloqueada)";
+        if (state == "quota_exhausted") return $"{label} (limite atingido)";
         return label;
     }
 }
@@ -126,11 +127,12 @@
                 <nav class="side-nav">
                     @if (isPlatform)
                     {
+                        <span class="menu-caption">Plataforma MNSOFT</span>
                         <a class="nav-item @(controller == "Home" ? "active" : null)" aria-label="Visão global" aria-current="@(controller == "Home" ? "page" : null)" asp-controller="Home" asp-action="Index"><span aria-hidden="true">⌂</span><span>Visão global</span></a>
                         <a class="nav-item @(controller == "Customers" ? "active" : null)" asp-controller="Customers" asp-action="Index"><span aria-hidden="true">▣</span><span>Clientes</span></a>
                         <a class="nav-item @(controller == "Organizations" && string.IsNullOrWhiteSpace(activeTenantId) ? "active" : null)" asp-controller="Organizations" asp-action="Index"><span aria-hidden="true">◎</span><span>Organizações</span></a>
                         <a class="nav-item @(controller == "Plans" ? "active" : null)" aria-label="Catálogo de planos" aria-current="@(controller == "Plans" ? "page" : null)" asp-controller="Plans" asp-action="Index"><span aria-hidden="true">▦</span><span>Catálogo de planos</span></a>
-                        <a class="nav-item @(controller == "PlatformAudit" ? "active" : null)" aria-label="Auditoria da plataforma" aria-current="@(controller == "PlatformAudit" ? "page" : null)" asp-controller="PlatformAudit" asp-action="Index"><span aria-hidden="true">☰</span><span>Auditoria</span></a>
+                        <a class="nav-item @(controller == "PlatformAudit" ? "active" : null)" aria-label="Auditoria global" aria-current="@(controller == "PlatformAudit" ? "page" : null)" asp-controller="PlatformAudit" asp-action="Index"><span aria-hidden="true">☰</span><span>Auditoria global</span></a>
                         @if (!string.IsNullOrWhiteSpace(tenantIdForLinks) && (hasActiveMembership || isPlatform))
                         {
                             @if (canAccessWorkspace)
@@ -181,6 +183,7 @@
                                 <a class="nav-item @(controller == "Organizations" && ViewContext.RouteData.Values["action"]?.ToString() == "Team" ? "active" : null)" aria-label="Equipe e perfis" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">◎</span><span>Equipe e perfis</span></a>
                                 <a class="nav-item @(controller == "Organizations" && ViewContext.RouteData.Values["action"]?.ToString() == "Edit" ? "active" : null)" aria-label="Configurações da organização" asp-controller="Organizations" asp-action="Edit" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">⚙</span><span>Configurações</span></a>
                                 <a class="nav-item @(controller == "Consumption" ? "active" : null)" asp-controller="Consumption" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">◫</span><span>Plano e consumo</span></a>
+                                <a class="nav-item" asp-controller="Consumption" asp-action="Index" asp-route-tenantId="@tenantIdForLinks" asp-fragment="historico"><span aria-hidden="true">☰</span><span>Auditoria</span></a>
                             }
                         }
                     }
@@ -248,9 +251,10 @@
                             @if (canReadOrganization)
                             {
                                 <span class="menu-caption" style="margin-top: .75rem; text-transform: uppercase;">Organização</span>
+                                <a class="nav-item @(controller == "Organizations" && ViewContext.RouteData.Values["action"]?.ToString() == "Edit" ? "active" : null)" aria-label="Configurações da organização" asp-controller="Organizations" asp-action="Edit" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">⚙</span><span>Organização</span></a>
                                 <a class="nav-item @(controller == "Organizations" && ViewContext.RouteData.Values["action"]?.ToString() == "Team" ? "active" : null)" aria-label="Equipe e perfis" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">◎</span><span>Equipe e perfis</span></a>
-                                <a class="nav-item @(controller == "Organizations" && ViewContext.RouteData.Values["action"]?.ToString() == "Edit" ? "active" : null)" aria-label="Configurações da organização" asp-controller="Organizations" asp-action="Edit" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">⚙</span><span>Configurações</span></a>
                                 <a class="nav-item @(controller == "Consumption" ? "active" : null)" asp-controller="Consumption" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">◫</span><span>Plano e consumo</span></a>
+                                <a class="nav-item" asp-controller="Consumption" asp-action="Index" asp-route-tenantId="@tenantIdForLinks" asp-fragment="historico"><span aria-hidden="true">☰</span><span>Auditoria</span></a>
                             }
                         }
                         <span class="menu-caption" style="margin-top: .75rem; text-transform: uppercase;">Suporte</span>

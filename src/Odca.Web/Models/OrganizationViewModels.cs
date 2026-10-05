@@ -26,6 +26,8 @@ public sealed class TeamPageViewModel
     public MemberRolesViewModel MemberRoles { get; set; } = new();
     public bool CanManageTeam { get; set; }
     public bool CanManageOrganization { get; set; }
+    public IReadOnlyDictionary<string, string> FeatureStates { get; set; } =
+        new Dictionary<string, string>(StringComparer.Ordinal);
 }
 
 public sealed class InviteViewModel

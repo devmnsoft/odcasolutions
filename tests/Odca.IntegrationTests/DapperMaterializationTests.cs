@@ -248,11 +248,11 @@ public sealed class DapperMaterializationTests(DatabaseFixture database) : IClas
             ON CONFLICT (id) DO NOTHING;
 
             INSERT INTO odca.role_permissions(role_id, permission_code)
-            SELECT '74000000-0000-0000-0000-000000000011', code FROM odca.permissions
+            SELECT '74000000-0000-0000-0000-000000000011', code FROM odca.permissions WHERE code LIKE 'tenant.%'
             ON CONFLICT DO NOTHING;
 
             INSERT INTO odca.role_permissions(role_id, permission_code)
-            SELECT '74000000-0000-0000-0000-000000000012', code FROM odca.permissions
+            SELECT '74000000-0000-0000-0000-000000000012', code FROM odca.permissions WHERE code LIKE 'tenant.%'
             ON CONFLICT DO NOTHING;
 
             INSERT INTO odca.member_roles(tenant_id, user_id, role_id, assigned_by)

@@ -23,6 +23,7 @@ public sealed class CatalogController(IPlanCatalogRepository repository) : Contr
             plan.UserStorageBytes,
             plan.FileBytes,
             plan.OcrPagesMonthly,
-            plan.SignatureEnvelopesMonthly)));
+            plan.SignatureEnvelopesMonthly,
+            plan.EnabledModules)));
     }
 }

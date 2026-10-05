@@ -295,6 +295,26 @@ public sealed partial class OdcaApiClient(HttpClient client)
         return await SendAsync<PlanCatalogResponse[]>(message, invalidCredentialsOnUnauthorized: false, cancellationToken);
     }
 
+    public async Task<ApiCallResult<PlanChangePreviewResponse>> PreviewOrganizationPlanChangeAsync(
+        string accessToken,
+        PlanChangeRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, "api/v1/platform/plans/changes/preview", accessToken);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<PlanChangePreviewResponse>(message, invalidCredentialsOnUnauthorized: false, cancellationToken);
+    }
+
+    public async Task<ApiCallResult<bool>> ApplyOrganizationPlanChangeAsync(
+        string accessToken,
+        PlanChangeRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, "api/v1/platform/plans/changes", accessToken);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<bool>(message, false, cancellationToken, emptyBodyIsSuccess: true);
+    }
+
     public async Task<ApiCallResult<PlanCatalogResponse[]>> GetPublicPlansAsync(CancellationToken cancellationToken)
     {
         using var message = new HttpRequestMessage(HttpMethod.Get, "api/v1/catalog/plans");
@@ -432,6 +452,20 @@ public sealed partial class OdcaApiClient(HttpClient client)
         using var message = CreateAuthorized(
             HttpMethod.Put,
             $"api/v1/organizations/{tenantId}/members/{userId}/roles",
+            token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<bool>(message, false, cancellationToken, emptyBodyIsSuccess: true);
+    }
+
+    public async Task<ApiCallResult<bool>> TransferAdministrationAsync(
+        string token,
+        Guid tenantId,
+        TransferAdministrationRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(
+            HttpMethod.Post,
+            $"api/v1/organizations/{tenantId}/administration/transfer",
             token);
         message.Content = JsonContent.Create(request);
         return await SendAsync<bool>(message, false, cancellationToken, emptyBodyIsSuccess: true);

@@ -195,6 +195,14 @@ public sealed class OrganizationsController(OdcaApiClient api) : Controller
             Invite = RestoreInvite(tenantId),
             RoleForm = RestoreRoleForm(editRoleId, rolesResult.Value!)
         };
+        var features = await api.GetOrganizationFeaturesAsync(token, tenantId, cancellationToken);
+        if (features.Succeeded && features.Value is not null)
+        {
+            model.FeatureStates = features.Value.Features.ToDictionary(
+                item => item.FeatureCode,
+                item => item.State,
+                StringComparer.Ordinal);
+        }
 
         if (normalizedTab == "pessoas")
         {
@@ -500,6 +508,39 @@ public sealed class OrganizationsController(OdcaApiClient api) : Controller
                 ? "Perfis do membro atualizados."
                 : UserFacingError(result, "Não foi possível atualizar os perfis do membro.");
         return RedirectToTeam(tenantId, "pessoas", search, status, page: page);
+    }
+
+    [HttpPost("organizacoes/{tenantId:guid}/administracao/transferir")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> TransferAdministration(
+        Guid tenantId,
+        Guid targetUserId,
+        string? justification,
+        CancellationToken cancellationToken)
+    {
+        var token = await AccessTokenAsync();
+        if (token is null)
+        {
+            return Challenge();
+        }
+
+        var reason = justification?.Trim() ?? string.Empty;
+        if (targetUserId == Guid.Empty || reason.Length is < 5 or > 500)
+        {
+            TempData["Error"] = "Escolha uma pessoa ativa e informe uma justificativa entre 5 e 500 caracteres.";
+            return RedirectToTeam(tenantId, "pessoas");
+        }
+
+        var result = await api.TransferAdministrationAsync(
+            token,
+            tenantId,
+            new TransferAdministrationRequest(targetUserId, reason),
+            cancellationToken);
+        TempData[result.Status == ApiCallStatus.Success ? "Success" : "Error"] =
+            result.Status == ApiCallStatus.Success
+                ? "Administração principal transferida. As sessões das duas pessoas foram encerradas."
+                : UserFacingError(result, "A administração principal não foi transferida.");
+        return RedirectToTeam(tenantId, "pessoas");
     }
 
     [AllowAnonymous]

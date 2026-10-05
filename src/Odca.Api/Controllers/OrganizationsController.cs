@@ -208,7 +208,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
             return Unauthorized();
         }
 
-        if (request.RoleIds is null || request.RoleIds.Length > 20)
+        if (request.RoleIds is null || request.RoleIds.Length > 64)
         {
             return ValidationProblem();
         }
@@ -247,7 +247,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
 
         if (string.IsNullOrWhiteSpace(request.Name) ||
             request.Name.Length > 100 ||
-            request.Permissions.Length is 0 or > 20)
+            request.Permissions.Length is 0 or > 64)
         {
             return ValidationProblem();
         }
@@ -273,7 +273,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
         if (string.IsNullOrWhiteSpace(request.Name) ||
             request.Name.Length > 100 ||
             request.Permissions is null ||
-            request.Permissions.Length is 0 or > 20)
+            request.Permissions.Length is 0 or > 64)
         {
             return ValidationProblem();
         }
@@ -292,6 +292,12 @@ public sealed class OrganizationsController(TenantAdministrationService service)
                 {
                     ["permissions"] = ["Uma ou mais permissões não podem ser atribuídas pelo ator atual."]
                 })),
+            UpdateRolePermissionsStatus.Protected => Conflict(new ProblemDetails
+            {
+                Title = "Perfil protegido",
+                Detail = "Perfis de sistema não podem ser alterados por esta operação.",
+                Extensions = { ["code"] = "protected_role" }
+            }),
             _ => Forbid()
         };
     }
@@ -308,7 +314,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
             return Unauthorized();
         }
 
-        if (request.Permissions is null || request.Permissions.Length is 0 or > 20)
+        if (request.Permissions is null || request.Permissions.Length is 0 or > 64)
         {
             return ValidationProblem();
         }
@@ -326,7 +332,49 @@ public sealed class OrganizationsController(TenantAdministrationService service)
                 {
                     ["permissions"] = ["Uma ou mais permissões não podem ser atribuídas pelo ator atual."]
                 })),
+            UpdateRolePermissionsStatus.Protected => Conflict(new ProblemDetails
+            {
+                Title = "Perfil protegido",
+                Detail = "Perfis de sistema não podem ser alterados por esta operação.",
+                Extensions = { ["code"] = "protected_role" }
+            }),
             _ => Forbid()
+        };
+    }
+
+    [HttpPost("{tenantId:guid}/administration/transfer")]
+    public async Task<IActionResult> TransferAdministration(
+        Guid tenantId,
+        [FromBody] TransferAdministrationRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!Actor(out var actor))
+        {
+            return Unauthorized();
+        }
+
+        if (request.TargetUserId == Guid.Empty || string.IsNullOrWhiteSpace(request.Justification))
+        {
+            return ValidationProblem();
+        }
+
+        var result = await service.TransferPrincipalAdministrationAsync(
+            actor, tenantId, request.TargetUserId, request.Justification.Trim(), cancellationToken);
+        return result switch
+        {
+            "transferred" => NoContent(),
+            "not_found" => NotFound(),
+            "forbidden" => Forbid(),
+            "invalid" => ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
+            {
+                ["justification"] = ["Informe uma justificativa entre 5 e 500 caracteres e escolha outra pessoa ativa."]
+            })),
+            _ => Conflict(new ProblemDetails
+            {
+                Title = "Transferência não concluída",
+                Detail = "A administração principal não foi transferida.",
+                Extensions = { ["code"] = result }
+            })
         };
     }
 
@@ -545,8 +593,14 @@ public sealed class OrganizationsController(TenantAdministrationService service)
             MemberActionResult.LastAdminProtected => Conflict(new ProblemDetails
             {
                 Title = "Último administrador protegido",
-                Detail = "A operação deixaria a organização sem administrador ativo.",
+                Detail = "A operação deixaria a organização sem administrador principal ativo.",
                 Extensions = { ["code"] = "last_admin_protected" }
+            }),
+            MemberActionResult.ElevationDenied => Conflict(new ProblemDetails
+            {
+                Title = "Elevação recusada",
+                Detail = "Um administrador só pode delegar permissões que já possui. A administração principal não pode ser concedida por um perfil delegado.",
+                Extensions = { ["code"] = "elevation_denied" }
             }),
             _ => Forbid()
         };

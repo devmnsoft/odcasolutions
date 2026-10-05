@@ -62,7 +62,15 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
                 "SELECT business_code FROM odca.tenants;",
                 transaction: tenantATransaction));
             Assert.Equal(1, await connection.ExecuteScalarAsync<int>(
-                "SELECT count(*)::integer FROM odca.role_permissions;",
+                "SELECT count(*)::integer FROM odca.role_permissions WHERE permission_code = 'tenant.test.read';",
+                transaction: tenantATransaction));
+            Assert.Equal(0, await connection.ExecuteScalarAsync<int>(
+                """
+                SELECT count(*)::integer
+                  FROM odca.role_permissions AS permission
+                  JOIN odca.roles AS role ON role.id = permission.role_id
+                 WHERE role.tenant_id <> '50000000-0000-0000-0000-000000000001'::uuid;
+                """,
                 transaction: tenantATransaction));
             Assert.Equal(1, await connection.ExecuteScalarAsync<int>(
                 "SELECT count(*)::integer FROM odca.audit_events WHERE action = 'test.isolation';",
@@ -189,7 +197,7 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
         homeResponse.EnsureSuccessStatusCode();
         var data = await homeResponse.Content.ReadFromJsonAsync<CustomerHomeResponse>();
         Assert.NotNull(data);
-        Assert.Equal(("basic", 1, "commercial_pending"), (data.PlanCode, data.PlanVersion, data.CommercialState));
+        Assert.Equal(("basic", 2, "commercial_pending"), (data.PlanCode, data.PlanVersion, data.CommercialState));
     }
 
     [Fact]
@@ -273,6 +281,11 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
             basic => Assert.Equal(("basic", 3, 10_000_000_000), (basic.Code, basic.ActiveSeats, basic.StorageBytes)),
             intermediate => Assert.Equal(("intermediate", 10, 100_000_000_000), (intermediate.Code, intermediate.ActiveSeats, intermediate.StorageBytes)),
             enterprise => Assert.Equal(("enterprise", 30, 500_000_000_000), (enterprise.Code, enterprise.ActiveSeats, enterprise.StorageBytes)));
+        Assert.All(catalog, plan =>
+        {
+            Assert.Equal(2, plan.Version);
+            Assert.Equal(7, plan.EnabledModules?.Length);
+        });
     }
 
     [Fact]
