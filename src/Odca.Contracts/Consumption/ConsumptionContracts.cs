@@ -16,7 +16,11 @@ public sealed record CreateStorageRequest(Guid PackageId, int Quantity, Guid Ide
 public sealed record DecideStorageRequest(string Decision, string? Reason);
 public sealed record ManualStorageGrant(long QuantityBytes, string Reason, Guid IdempotencyKey, DateTimeOffset? ValidUntil);
 public sealed record ChangeOrganizationStatusRequest(string Reason);
-public sealed record PlatformCustomer(Guid TenantId, string Name, string MaskedDocument, string PlanName, string TenantStatus, string SubscriptionStatus, int ActiveUsers, long UsedBytes, long LimitBytes, int PendingRequests, DateTimeOffset? LastActivity);
+public sealed record PlatformCustomer(
+    Guid TenantId, string Name, string MaskedDocument, string PlanName, string TenantStatus, string SubscriptionStatus,
+    int ActiveUsers, long UsedBytes, long LimitBytes, int PendingRequests, DateTimeOffset? LastActivity,
+    long OcrContracted = 0, long OcrConsumed = 0, long OcrReserved = 0, long OcrAvailable = 0,
+    long SignatureContracted = 0, long SignatureConsumed = 0, long SignatureReserved = 0, long SignatureAvailable = 0);
 public sealed record PlatformCustomerDetail(ConsumptionSummary Summary, IReadOnlyList<AdditionalStorageRequest> Requests);
 public sealed record CreatePlatformCustomerRequest(string OrganizationName, string Document, string PlanCode, string AdminName, string AdminEmail, string InitialPassword, bool ActivateDirectly = true);
 public sealed record CreatePlatformCustomerResponse(Guid TenantId, Guid UserId, string OrganizationName, string AdminEmail, string PlanCode, string Status, string CommercialState);

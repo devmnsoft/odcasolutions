@@ -12,9 +12,13 @@
         <p class="muted">Inicie a criação de um documento a partir de um modelo oficial ou rascunho de sua organização.</p>
     </div>
     <div class="button-row">
-        <a class="button button-quiet" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantId">
+        <a class="button button-quiet" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-patientId="@Model.PatientId">
             ← Voltar para Central de Documentos
         </a>
+        @if (Model.PatientId is Guid patientId)
+        {
+            <a class="button button-quiet" asp-controller="Patients" asp-action="Details" asp-route-tenantId="@tenantId" asp-route-patientId="@patientId">Voltar à ficha do paciente</a>
+        }
     </div>
 </section>
 

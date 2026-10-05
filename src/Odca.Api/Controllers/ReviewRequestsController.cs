@@ -285,6 +285,65 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
         await tx.CommitAsync(ct); return Ok(new { status, version=request.ExpectedVersion+1, replayed=false });
     }
 
+    [HttpPost("{reviewId:guid}/cancellation")]
+    public async Task<IActionResult> Cancel(Guid tenantId, Guid reviewId, CancelReviewRequest request, CancellationToken ct)
+    {
+        var actor = Actor(); if (actor is null) return Unauthorized();
+        if (string.IsNullOrWhiteSpace(request.Justification) || request.IdempotencyKey == Guid.Empty)
+            return ValidationProblem("Informe a justificativa do cancelamento.");
+        await using var connection = await dataSource.OpenConnectionAsync(ct);
+        if (!await Allowed(connection, actor.Value, tenantId, "tenant.reviews.cancel", ct)) return Forbid();
+        await using var tx = await connection.BeginTransactionAsync(ct); await SetTenant(connection, tenantId, actor.Value, tx, ct);
+        var review = await connection.QuerySingleOrDefaultAsync<DecisionRow>(new CommandDefinition("""
+            SELECT r.row_version AS Version,r.status AS Status,r.generated_version_id AS GeneratedVersionId,
+              s.id AS StepId,s.reviewer_id AS ReviewerId
+            FROM odca.contract_review_requests r LEFT JOIN odca.contract_review_steps s
+              ON s.tenant_id=r.tenant_id AND s.review_id=r.id AND s.status='current'
+            WHERE r.tenant_id=@tenantId AND r.id=@reviewId FOR UPDATE OF r
+            """, new { tenantId, reviewId }, tx, cancellationToken: ct));
+        if (review is null) return NotFound();
+        var prior = await connection.QuerySingleOrDefaultAsync<long?>(new CommandDefinition("""
+            SELECT (details->>'expectedVersion')::bigint
+              FROM odca.contract_review_events
+             WHERE tenant_id=@tenantId AND review_id=@reviewId AND event_type='review.cancelled'
+               AND details->>'idempotencyKey'=@key LIMIT 1
+            """, new { tenantId, reviewId, key = request.IdempotencyKey.ToString() }, tx, cancellationToken: ct));
+        if (prior is not null)
+        {
+            if (prior != request.ExpectedVersion) return Conflict(new { title = "A chave de repetição já foi usada para outro cancelamento." });
+            await tx.CommitAsync(ct);
+            return Ok(new { status = "cancelled", version = request.ExpectedVersion + 1, replayed = true });
+        }
+        if (review.Status is not ("in_review" or "changes_requested"))
+            return Conflict(new { title = "A revisão não pode ser cancelada neste estado." });
+        if (review.Version != request.ExpectedVersion)
+            return Conflict(new { title = "A revisão foi alterada em outra sessão.", currentVersion = review.Version });
+        var updated = await connection.ExecuteScalarAsync<int>(new CommandDefinition("""
+            WITH cancelled AS (
+              UPDATE odca.contract_review_requests
+                 SET status='cancelled', completed_at=now(), row_version=row_version+1, updated_at=now()
+               WHERE tenant_id=@tenantId AND id=@reviewId AND status=@status AND row_version=@expected
+               RETURNING 1
+            ), closed_step AS (
+              UPDATE odca.contract_review_steps
+                 SET status='reassigned', decided_by=@actor, decided_at=now(), justification=@reason
+               WHERE tenant_id=@tenantId AND review_id=@reviewId AND status='current'
+                 AND EXISTS(SELECT 1 FROM cancelled)
+               RETURNING 1
+            ), recorded AS (
+              INSERT INTO odca.contract_review_events(tenant_id,review_id,actor_id,event_type,details)
+              SELECT @tenantId,@reviewId,@actor,'review.cancelled',
+                     jsonb_build_object('status','cancelled','expectedVersion',@expected,'justification',@reason,'idempotencyKey',@key)
+               WHERE EXISTS(SELECT 1 FROM cancelled)
+               RETURNING 1
+            )
+            SELECT count(*)::int FROM cancelled
+            """, new { tenantId, reviewId, actor, status = review.Status, expected = request.ExpectedVersion, reason = request.Justification.Trim(), key = request.IdempotencyKey.ToString() }, tx, cancellationToken: ct));
+        if (updated != 1) return Conflict(new { title = "A revisão foi alterada em outra sessão.", currentVersion = review.Version });
+        await tx.CommitAsync(ct);
+        return Ok(new { status = "cancelled", version = request.ExpectedVersion + 1, replayed = false });
+    }
+
     private Guid? Actor()=>Guid.TryParse(User.FindFirstValue("sub"),out var id)?id:null;
     private static Task<bool> Allowed(NpgsqlConnection c,Guid actor,Guid tenant,string permission,CancellationToken ct)=>c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT odca.tenant_actor_has_permission(@actor,@tenant,@permission)",new{actor,tenant,permission},cancellationToken:ct));
     private static Task<int> SetTenant(NpgsqlConnection c,Guid tenant,Guid actor,NpgsqlTransaction tx,CancellationToken ct)=>c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenant::text,true),set_config('odca.user_id',@actor::text,true)",new{tenant,actor},tx,cancellationToken:ct));

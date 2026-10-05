@@ -57,6 +57,30 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
             var suggestions = DocumentContent.Suggest(extracted.Text, extracted.Method);
             await using var tx = await connection.BeginTransactionAsync(ct);
             await connection.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenant,true)", new { tenant = job.TenantId.ToString() }, tx, cancellationToken: ct));
+            var availability = await connection.ExecuteScalarAsync<string>(new CommandDefinition("""
+                SELECT CASE WHEN tenant.is_deleted OR tenant.status = 'suspended' THEN 'suspended'
+                            ELSE odca.organization_feature_state(tenant.id, 'imports') END
+                  FROM odca.tenants AS tenant WHERE tenant.id = @tenant
+                """, new { tenant = job.TenantId }, tx, cancellationToken: ct));
+            if (availability is "suspended" or "administratively_blocked" or "plan_restricted")
+            {
+                await tx.RollbackAsync(ct);
+                await PauseJob(connection, job, "organization-unavailable", ct);
+                return;
+            }
+            if (extracted.Method == "ocr")
+            {
+                var outcome = await connection.ExecuteScalarAsync<string>(new CommandDefinition(
+                    "SELECT odca.consume_monthly_franchise(@tenant,'ocr_credit',@pages,@key,'extraction_job',@jobId,'document-worker')",
+                    new { tenant = job.TenantId, pages = CountOcrPages(extracted.Text), key = "ocr-job:" + job.Id.ToString("N"), jobId = job.Id }, tx, cancellationToken: ct));
+                if (outcome is not ("consumed" or "duplicate"))
+                {
+                    await tx.RollbackAsync(ct);
+                    if (outcome is "exhausted" or "not_contracted") await FailJob(connection, job, "quota-exhausted", ct);
+                    else await FailJob(connection, job, "franchise-meter-rejected", ct);
+                    return;
+                }
+            }
             var resultId = Guid.NewGuid();
             var inserted = await connection.ExecuteAsync(new CommandDefinition("""
                 INSERT INTO odca.extraction_results(id,tenant_id,job_id,version_id,method,raw_text)
@@ -95,6 +119,30 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
             return new ExtractedText(text, item.DetectedType == "pdf" ? "pdf-native" : "ocr");
         }
         finally { File.Delete(output); File.Delete(output[..^4] + ".txt"); }
+    }
+
+    internal static int CountOcrPages(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return 1;
+        var separators = 0;
+        foreach (var character in text)
+        {
+            if (character == '\f') separators++;
+        }
+        if (separators == 0) return 1;
+        return text[^1] == '\f' ? separators : separators + 1;
+    }
+
+    private static async Task PauseJob(NpgsqlConnection connection, JobItem job, string code, CancellationToken ct)
+    {
+        await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.extraction_jobs SET status='queued',attempt_count=GREATEST(attempt_count-1,0),available_at=now()+interval '1 minute',failure_code=@code,lease_token=NULL,lease_expires_at=NULL WHERE id=@id AND lease_token=@lease", new { id = job.Id, lease = job.LeaseToken, code }, cancellationToken: ct));
+        await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.contract_imports SET status='queued',current_step='document',safe_diagnostic_code=@code,updated_at=now() WHERE tenant_id=@tenant AND extraction_job_id=@id AND status NOT IN('confirmed','cancelled')", new { id = job.Id, tenant = job.TenantId, code }, cancellationToken: ct));
+    }
+
+    private static async Task FailJob(NpgsqlConnection connection, JobItem job, string code, CancellationToken ct)
+    {
+        await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.extraction_jobs SET status='failed',completed_at=now(),failure_code=@code,lease_token=NULL,lease_expires_at=NULL WHERE id=@id AND lease_token=@lease", new { id = job.Id, lease = job.LeaseToken, code }, cancellationToken: ct));
+        await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.contract_imports SET status='failed',current_step='document',safe_diagnostic_code=@code,updated_at=now() WHERE tenant_id=@tenant AND extraction_job_id=@id AND status NOT IN('confirmed','cancelled')", new { id = job.Id, tenant = job.TenantId, code }, cancellationToken: ct));
     }
 
     private string StoragePath(string key) => Path.Combine(Path.GetFullPath(configuration["Documents:StoragePath"] ?? "./private-documents"), key.Replace('/', Path.DirectorySeparatorChar));

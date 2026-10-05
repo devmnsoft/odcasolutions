@@ -16,6 +16,10 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
     public async Task<IActionResult> Index(
         Guid tenantId,
         [FromQuery] string? search = null,
+        [FromQuery] string? reference = null,
+        [FromQuery] string? responsible = null,
+        [FromQuery] DateOnly? updatedFrom = null,
+        [FromQuery] DateOnly? updatedTo = null,
         [FromQuery] string? type = null,
         [FromQuery] string? stage = null,
         [FromQuery] Guid? patientId = null,
@@ -82,7 +86,7 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
         }
 
         // Query studio documents
-        var result = await api.GetStudioDocumentsAsync(token, tenantId, search?.Trim(), type?.Trim(), stage?.Trim(), patientId, Math.Max(1, page), 15, ct);
+        var result = await api.GetStudioDocumentsAsync(token, tenantId, search?.Trim(), type?.Trim(), stage?.Trim(), patientId, Math.Max(1, page), 15, reference?.Trim(), responsible?.Trim(), updatedFrom, updatedTo, ct);
         if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
 
@@ -103,6 +107,10 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
             TenantId = tenantId,
             Documents = documentsPage,
             Search = search,
+            Reference = reference,
+            Responsible = responsible,
+            UpdatedFrom = updatedFrom,
+            UpdatedTo = updatedTo,
             Type = type,
             Stage = stage,
             PatientId = patientId,

@@ -1,8 +1,8 @@
 @model Odca.Contracts.Reviews.ReviewDetail
-@{var tenantId=(Guid)ViewData["TenantId"]!;var assignees=ViewData["Assignees"] as Odca.Contracts.Reviews.ReviewAssignee[] ?? [];}
+@{var tenantId=(Guid)ViewData["TenantId"]!;var assignees=ViewData["Assignees"] as Odca.Contracts.Reviews.ReviewAssignee[] ?? [];var canDecide=ViewData["CanDecide"] as bool?==true;var canCancel=ViewData["CanCancel"] as bool?==true;}
 <nav class="breadcrumb"><a asp-action="Index" asp-route-tenantId="@tenantId">Solicitações</a><span>/</span><span>@Model.Contract</span></nav>
 <header class="page-heading"><div><p class="eyebrow">Atendimento contratual</p><h1>@Model.Contract</h1><p>Solicitada por @Model.Requester em @Model.OpenedAt.ToString("dd/MM/yyyy").</p></div><span class="status-badge status-@Model.Status">@Model.Status</span></header>
-<section class="summary-grid" aria-label="Resumo da revisão"><article><span>Responsável</span><strong>@(Model.Assignee??"Aguardando atribuição")</strong></article><article><span>Próxima ação</span><strong>@(Model.Status=="changes_requested"?"Cliente deve responder e reenviar uma versão":Model.Status=="in_review"?"Consultoria deve analisar esta versão":"Consultar histórico")</strong></article><article><span>Versão do documento em revisão</span><strong class="version-id">@((Model.GeneratedVersionId??Model.DocumentVersionId)?.ToString() ?? "Indisponível")</strong><small>Controle de concorrência: @Model.Version</small></article></section>
+<section class="summary-grid" aria-label="Resumo da revisão"><article><span>Responsável</span><strong>@(Model.Assignee??"Aguardando atribuição")</strong></article><article><span>Próxima ação</span><strong>@(Model.Status=="changes_requested"?"Corrigir a minuta e gerar uma nova versão":Model.Status=="in_review"?"Analisar esta versão":Model.Status=="cancelled"?"Consultar o histórico; a versão não foi reaberta":"Consultar histórico")</strong></article><article><span>Versão em revisão</span><strong>@(Model.DocumentVersionNumber is int number ? $"Versão {number}" : "Versão vinculada")</strong><small>A decisão vale somente para essa versão.</small></article></section>
 @if(Model.GeneratedVersionId is Guid generatedVersionId){<div class="form-actions-row"><a class="button button-quiet" asp-controller="Studio" asp-action="Version" asp-route-tenantId="@tenantId" asp-route-versionId="@generatedVersionId">Visualizar versão analisada</a>@if(Model.Status=="changes_requested"){<a class="button button-primary" asp-controller="Studio" asp-action="Version" asp-route-tenantId="@tenantId" asp-route-versionId="@generatedVersionId">Continuar correção no Studio</a>}</div>}
 @if(TempData["ReviewNotice"] is string notice){<div class="alert alert-success" role="status">@notice</div>}@if(TempData["ReviewError"] is string error){<div class="alert alert-error" role="alert">@error</div>}
 @if(Model.Status=="internally_approved")
@@ -19,7 +19,7 @@
 <div class="workspace-grid"><section><h2>Mensagens e notas</h2>@if(Model.Messages.Count==0){<div class="empty-state"><p>Ainda não há mensagens visíveis.</p></div>}else{@foreach(var message in Model.Messages){<article class="comment-card @(message.Visibility=="internal"?"internal-note":null)"><header><strong>@message.Author</strong><span>@(message.Visibility=="internal"?"Nota interna — invisível ao cliente":"Mensagem ao cliente")</span></header><p>@message.Body</p><small>@message.CreatedAt.ToString("dd/MM/yyyy HH:mm")</small></article>}}
 <form method="post" asp-action="AddMessage" asp-route-tenantId="@tenantId" asp-route-reviewId="@Model.Id" data-prevent-double-submit>@Html.AntiForgeryToken()<label for="body">Mensagem <span aria-hidden="true">*</span></label><textarea id="body" name="body" required maxlength="4000">@TempData["ReviewBody"]</textarea><fieldset><legend>Visibilidade <span aria-hidden="true">*</span></legend><label><input type="radio" name="visibility" value="client" checked="@(TempData["ReviewVisibility"] as string != "internal")"/> Visível ao cliente</label><label><input type="radio" name="visibility" value="internal" checked="@(TempData["ReviewVisibility"] as string == "internal")"/> Nota interna — nunca é exibida ao cliente</label></fieldset><button class="button button-primary" type="submit">Enviar mensagem</button></form></section>
 <aside><h2>Histórico</h2><ol class="timeline">@foreach(var item in Model.History){<li><strong>@item.Type</strong><span>@item.Actor · @item.OccurredAt.ToString("dd/MM/yyyy HH:mm")</span></li>}</ol><h2>Como usar</h2><p>Mensagens ao cliente são compartilhadas. Notas internas ficam disponíveis somente a usuários autorizados da consultoria.</p></aside></div>
-@if(Model.Status=="in_review" && assignees.Length>0)
+@if(canDecide && Model.Status=="in_review" && assignees.Length>0)
 {
 <section class="help-card" aria-labelledby="review-assignment-title">
  <h2 id="review-assignment-title">Responsável pela análise</h2>
@@ -36,11 +36,11 @@
  </form>
 </section>
 }
-@if(Model.Status=="in_review")
+@if(canDecide && Model.Status=="in_review")
 {
 <section class="help-card" aria-labelledby="review-decision-title">
  <h2 id="review-decision-title">Decisão da versão em análise</h2>
- <p>Esta decisão afeta somente a versão <strong class="version-id">@((Model.GeneratedVersionId??Model.DocumentVersionId)?.ToString())</strong>. A aprovação é interna e não comprova assinatura. Para aditivos, a formalização documental continuará pendente.</p>
+ <p>A decisão vale para a versão indicada no resumo. A aprovação é interna e não comprova assinatura. Uma nova alteração exige outra versão; a aprovação anterior não é herdada.</p>
  @if(TempData["ReviewConflict"] as bool? == true){<div class="alert alert-error" role="alert">Outra sessão alterou a revisão. <a asp-action="Detail" asp-route-tenantId="@tenantId" asp-route-reviewId="@Model.Id">Recarregue os dados antes de decidir</a>.</div>}
  <form method="post" asp-action="Decide" asp-route-tenantId="@tenantId" asp-route-reviewId="@Model.Id" data-prevent-double-submit>
   @Html.AntiForgeryToken()
@@ -51,6 +51,20 @@
    <button class="button button-quiet" type="submit" name="action" value="request_changes">Solicitar ajustes</button>
    <button class="button button-primary" type="submit" name="action" value="approve">Aprovar versão</button>
   </div>
+ </form>
+</section>
+}
+@if(canCancel && Model.Status is "in_review" or "changes_requested")
+{
+<section class="help-card" aria-labelledby="review-cancel-title">
+ <h2 id="review-cancel-title">Cancelar revisão</h2>
+ <p>O cancelamento preserva mensagens e decisões. A versão encaminhada não volta a ser tratada como nunca enviada e não fica aprovada.</p>
+ <form method="post" asp-action="Cancel" asp-route-tenantId="@tenantId" asp-route-reviewId="@Model.Id" data-prevent-double-submit>
+  @Html.AntiForgeryToken()
+  <input type="hidden" name="expectedVersion" value="@Model.Version" />
+  <label for="cancelJustification">Justificativa <span aria-hidden="true">*</span></label>
+  <textarea id="cancelJustification" name="justification" required maxlength="2000"></textarea>
+  <button class="button button-danger" type="submit">Cancelar revisão</button>
  </form>
 </section>
 }

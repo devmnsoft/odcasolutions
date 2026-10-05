@@ -8,6 +8,10 @@ public sealed class DocumentsIndexViewModel
     public Guid TenantId { get; init; }
     public StudioDocumentPage Documents { get; init; } = new([], 1, 15, 0);
     public string? Search { get; init; }
+    public string? Reference { get; init; }
+    public string? Responsible { get; init; }
+    public DateOnly? UpdatedFrom { get; init; }
+    public DateOnly? UpdatedTo { get; init; }
     public string? Type { get; init; }
     public string? Stage { get; init; }
     public Guid? PatientId { get; init; }

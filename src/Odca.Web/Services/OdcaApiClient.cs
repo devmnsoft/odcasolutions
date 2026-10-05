@@ -71,6 +71,12 @@ public sealed partial class OdcaApiClient(HttpClient client)
         message.Content = JsonContent.Create(body);
         return await SendAsync<JsonElement>(message, false, ct);
     }
+    public async Task<ApiCallResult<JsonElement>> CancelReviewAsync(string token, Guid tenantId, Guid reviewId, CancelReviewRequest body, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/reviews/{reviewId}/cancellation", token);
+        message.Content = JsonContent.Create(body);
+        return await SendAsync<JsonElement>(message, false, ct);
+    }
     public async Task<ApiCallResult<JsonElement>> ReassignReviewAsync(string token, Guid tenantId, Guid reviewId, ReassignReviewRequest body, CancellationToken ct)
     {
         using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/reviews/{reviewId}/assignment", token);
@@ -632,13 +638,17 @@ public sealed partial class OdcaApiClient(HttpClient client)
     }
 
     public Task<ApiCallResult<StudioDocumentPage>> GetStudioDocumentsAsync(
-        string token, Guid tenantId, string? search = null, string? type = null, string? stage = null, Guid? patientId = null, int page = 1, int pageSize = 20, CancellationToken ct = default)
+        string token, Guid tenantId, string? search = null, string? type = null, string? stage = null, Guid? patientId = null, int page = 1, int pageSize = 20, string? reference = null, string? responsible = null, DateOnly? updatedFrom = null, DateOnly? updatedTo = null, CancellationToken ct = default)
     {
         var query = new List<string> { $"page={page}", $"pageSize={pageSize}" };
         if (!string.IsNullOrWhiteSpace(search)) query.Add($"search={Uri.EscapeDataString(search.Trim())}");
         if (!string.IsNullOrWhiteSpace(type)) query.Add($"type={Uri.EscapeDataString(type.Trim())}");
         if (!string.IsNullOrWhiteSpace(stage)) query.Add($"stage={Uri.EscapeDataString(stage.Trim())}");
         if (patientId.HasValue) query.Add($"patientId={patientId.Value}");
+        if (!string.IsNullOrWhiteSpace(reference)) query.Add($"reference={Uri.EscapeDataString(reference.Trim())}");
+        if (!string.IsNullOrWhiteSpace(responsible)) query.Add($"responsible={Uri.EscapeDataString(responsible.Trim())}");
+        if (updatedFrom is not null) query.Add($"updatedFrom={updatedFrom.Value:yyyy-MM-dd}");
+        if (updatedTo is not null) query.Add($"updatedTo={updatedTo.Value:yyyy-MM-dd}");
         var qs = string.Join("&", query);
         return SendAsync<StudioDocumentPage>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/studio/documents?{qs}", token), false, ct);
     }

@@ -30,7 +30,7 @@
 <details class="help">
     <summary>Como usar a Central de Documentos</summary>
     <p>
-        Esta central reúne todos os documentos contratuais e termos da sua organização. Cada documento evolui pelas seguintes etapas:
+        A assinatura eletrônica externa não está integrada: confirmar a composição não envia envelope nem consome a franquia de assinatura. Esta central reúne os documentos da organização. Cada documento evolui pelas seguintes etapas:
         <strong>1. Minuta:</strong> escolha um modelo publicado e preencha os dados do paciente ou contrato;
         <strong>2. Conferência:</strong> valide as pendências cadastrais e o checklist obrigatório;
         <strong>3. Versão & PDF:</strong> gere uma versão imutável com identificador criptográfico SHA-256 e gere o PDF para download;
@@ -56,7 +56,23 @@
 <form method="get" class="studio-filter" role="search" aria-label="Filtro de documentos">
     <label>
         Pesquisar
-        <input name="search" value="@Model.Search" placeholder="Título, referência ou paciente" />
+        <input name="search" value="@Model.Search" placeholder="Título ou paciente" />
+    </label>
+    <label>
+        Referência
+        <input name="reference" value="@Model.Reference" placeholder="Referência legível" />
+    </label>
+    <label>
+        Responsável
+        <input name="responsible" value="@Model.Responsible" placeholder="Nome de quem atualizou" />
+    </label>
+    <label>
+        De
+        <input type="date" name="updatedFrom" value="@Model.UpdatedFrom?.ToString("yyyy-MM-dd")" />
+    </label>
+    <label>
+        Até
+        <input type="date" name="updatedTo" value="@Model.UpdatedTo?.ToString("yyyy-MM-dd")" />
     </label>
     <label>
         Tipo
@@ -100,11 +116,11 @@
                 <span>Pacientes (pág. @Model.PatientPage de @Math.Ceiling((double)Model.PatientTotal / Model.PatientPageSize)):</span>
                 @if (Model.PatientPage > 1)
                 {
-                    <a class="button button-small button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-search="@Model.Search" asp-route-type="@Model.Type" asp-route-stage="@Model.Stage" asp-route-patientSearch="@Model.PatientSearch" asp-route-patientId="@Model.PatientId" asp-route-patientPage="@(Model.PatientPage - 1)">← Anteriores</a>
+                    <a class="button button-small button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-search="@Model.Search" asp-route-type="@Model.Type" asp-route-stage="@Model.Stage" asp-route-reference="@Model.Reference" asp-route-responsible="@Model.Responsible" asp-route-updatedFrom="@Model.UpdatedFrom?.ToString("yyyy-MM-dd")" asp-route-updatedTo="@Model.UpdatedTo?.ToString("yyyy-MM-dd")" asp-route-patientSearch="@Model.PatientSearch" asp-route-patientId="@Model.PatientId" asp-route-patientPage="@(Model.PatientPage - 1)">← Anteriores</a>
                 }
                 @if (Model.PatientPage * Model.PatientPageSize < Model.PatientTotal)
                 {
-                    <a class="button button-small button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-search="@Model.Search" asp-route-type="@Model.Type" asp-route-stage="@Model.Stage" asp-route-patientSearch="@Model.PatientSearch" asp-route-patientId="@Model.PatientId" asp-route-patientPage="@(Model.PatientPage + 1)">Próximos →</a>
+                    <a class="button button-small button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-search="@Model.Search" asp-route-type="@Model.Type" asp-route-stage="@Model.Stage" asp-route-reference="@Model.Reference" asp-route-responsible="@Model.Responsible" asp-route-updatedFrom="@Model.UpdatedFrom?.ToString("yyyy-MM-dd")" asp-route-updatedTo="@Model.UpdatedTo?.ToString("yyyy-MM-dd")" asp-route-patientSearch="@Model.PatientSearch" asp-route-patientId="@Model.PatientId" asp-route-patientPage="@(Model.PatientPage + 1)">Próximos →</a>
                 }
             </div>
         }
@@ -115,6 +131,7 @@
             <option value="">Todas as etapas</option>
             <option value="draft" selected="@(Model.Stage == "draft")">Minutas em edição</option>
             <option value="in_review" selected="@(Model.Stage == "in_review")">Em revisão interna</option>
+            <option value="changes_requested" selected="@(Model.Stage == "changes_requested")">Ajustes solicitados</option>
             <option value="approved" selected="@(Model.Stage == "approved")">Aprovados internamente</option>
             <option value="ready_for_signature" selected="@(Model.Stage == "ready_for_signature")">Prontos para assinatura</option>
             <option value="completed" selected="@(Model.Stage == "completed")">Assinados / Concluídos</option>
@@ -146,7 +163,7 @@
            asp-route-tenantId="@tenantId"
            asp-route-search="@Model.Search"
            asp-route-type="@Model.Type"
-           asp-route-stage="@Model.Stage">
+           asp-route-stage="@Model.Stage" asp-route-reference="@Model.Reference" asp-route-responsible="@Model.Responsible" asp-route-updatedFrom="@Model.UpdatedFrom?.ToString("yyyy-MM-dd")" asp-route-updatedTo="@Model.UpdatedTo?.ToString("yyyy-MM-dd")">
             Remover filtro de paciente ✕
         </a>
     </div>
@@ -168,6 +185,7 @@
                     <th>Documento</th>
                     <th>Tipo</th>
                     <th>Paciente</th>
+                    <th>Responsável</th>
                     <th>Situação do fluxo</th>
                     <th>Próxima ação</th>
                     <th>Atualização</th>
@@ -184,7 +202,7 @@
                             {
                                 <br /><small class="muted">Ref: @doc.Reference</small>
                             }
-                            <br /><small class="muted">Modelo: @doc.TemplateName</small>
+                            <br /><small class="muted">Modelo: @doc.TemplateName@(doc.TemplateVersion is int templateVersion ? $" · revisão {templateVersion}" : "")</small>
                         </td>
                         <td>
                             <span class="badge badge-muted">
@@ -209,6 +227,7 @@
                                 <span class="muted">Não vinculado</span>
                             }
                         </td>
+                        <td>@(string.IsNullOrWhiteSpace(doc.ResponsibleName) ? "Não identificado" : doc.ResponsibleName)</td>
                         <td>
                             <div style="display:flex; flex-direction:column; gap:4px;">
                                 <small>
@@ -261,12 +280,15 @@
                             })">
                                 @(doc.NextAction switch {
                                     "edit_draft" => "Continuar minuta",
-                                    "submit_review" => "Solicitar revisão",
-                                    "in_review" => "Aguardando revisão",
+                                    "correct_draft" => "Corrigir e gerar nova versão",
+                                    "generate_pdf" => "Gerar PDF",
+                                    "request_review" => "Solicitar revisão",
+                                    "open_review" => "Abrir revisão",
+                                    "view_version" => "Consultar versão",
+                                    "view_sheet" => "Abrir ficha",
                                     "download_pdf" => "Baixar PDF",
                                     "prepare_signature" => "Preparar assinatura",
-                                    "completed" => "Concluído",
-                                    _ => doc.NextAction
+                                    _ => "Consultar"
                                 })
                             </span>
                         </td>
@@ -277,14 +299,14 @@
                         </td>
                         <td>
                             <div class="button-row">
-                                @if (doc.DraftId.HasValue && doc.CanEdit)
+                                @if (doc.DraftId.HasValue && doc.CanEdit && doc.NextAction is "edit_draft" or "correct_draft")
                                 {
                                     <a class="button button-small button-primary"
                                        asp-controller="Studio"
                                        asp-action="Edit"
                                        asp-route-tenantId="@tenantId"
                                        asp-route-draftId="@doc.DraftId.Value">
-                                        Continuar
+                                        @(doc.NextAction == "correct_draft" ? "Corrigir" : "Continuar")
                                     </a>
                                 }
                                 @if (doc.LatestVersionId.HasValue && doc.CanDownloadPdf)
@@ -329,7 +351,7 @@
                    asp-route-tenantId="@tenantId"
                    asp-route-search="@Model.Search"
                    asp-route-type="@Model.Type"
-                   asp-route-stage="@Model.Stage"
+                   asp-route-stage="@Model.Stage" asp-route-reference="@Model.Reference" asp-route-responsible="@Model.Responsible" asp-route-updatedFrom="@Model.UpdatedFrom?.ToString("yyyy-MM-dd")" asp-route-updatedTo="@Model.UpdatedTo?.ToString("yyyy-MM-dd")"
                    asp-route-patientId="@Model.PatientId"
                    asp-route-patientSearch="@Model.PatientSearch"
                    asp-route-page="@(docs.Page - 1)">Anterior</a>
@@ -341,7 +363,7 @@
                    asp-route-tenantId="@tenantId"
                    asp-route-search="@Model.Search"
                    asp-route-type="@Model.Type"
-                   asp-route-stage="@Model.Stage"
+                   asp-route-stage="@Model.Stage" asp-route-reference="@Model.Reference" asp-route-responsible="@Model.Responsible" asp-route-updatedFrom="@Model.UpdatedFrom?.ToString("yyyy-MM-dd")" asp-route-updatedTo="@Model.UpdatedTo?.ToString("yyyy-MM-dd")"
                    asp-route-patientId="@Model.PatientId"
                    asp-route-patientSearch="@Model.PatientSearch"
                    asp-route-page="@(docs.Page + 1)">Próxima</a>

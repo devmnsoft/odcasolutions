@@ -375,4 +375,18 @@ public sealed class MigrationChecksumTests
         Assert.Contains("CREATE OR REPLACE FUNCTION odca.preview_organization_plan_change(actor uuid, requested_tenant uuid, requested_plan text)", snapshot, StringComparison.Ordinal);
         Assert.Contains("module.patients", snapshot, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ReleaseV035MetersMonthlyFranchisesWithoutRewritingEarlierMigrations()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var previous = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v034.sql")).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v035.sql")).Replace("\r\n", "\n");
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        DatabaseMigrator.ValidateChecksums(canonical);
+        for (var version = 1; version <= 34; version++)
+            Assert.Equal(MigrationBlock(previous, version), MigrationBlock(canonical, version));
+        Assert.Contains("CREATE OR REPLACE FUNCTION odca.consume_monthly_franchise(", snapshot, StringComparison.Ordinal);
+        Assert.Contains("tenant.status <> 'suspended'", snapshot, StringComparison.Ordinal);
+    }
 }

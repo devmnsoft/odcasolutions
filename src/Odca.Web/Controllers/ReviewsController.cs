@@ -8,7 +8,7 @@ namespace Odca.Web.Controllers;
 
 [Authorize]
 [Route("organizacoes/{tenantId:guid}/solicitacoes")]
-public sealed class ReviewsController(OdcaApiClient api) : Controller
+public sealed class ReviewsController(OdcaApiClient api, IUserTenantContext tenants) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(Guid tenantId, string? status, string scope = "requested", Guid? assigneeId = null,
@@ -34,7 +34,10 @@ public sealed class ReviewsController(OdcaApiClient api) : Controller
         var result=await api.GetReviewAsync(token,tenantId,reviewId,ct);
         if(result.Status==ApiCallStatus.Forbidden)return Forbid();if(result.Status==ApiCallStatus.NotFound)return NotFound();
         var assignees=await api.GetReviewAssigneesAsync(token,tenantId,ct);
+        var access=await tenants.GetAccessAsync(tenantId,ct);
         ViewData["Assignees"]=assignees.Succeeded && assignees.Value is not null ? assignees.Value : Array.Empty<ReviewAssignee>();
+        ViewData["CanDecide"]=access?.HasPermission("tenant.reviews.decide")==true;
+        ViewData["CanCancel"]=access?.HasPermission("tenant.reviews.cancel")==true;
         return result.Succeeded?View(result.Value):RedirectToAction(nameof(Index),new{tenantId});
     }
 
@@ -61,6 +64,19 @@ public sealed class ReviewsController(OdcaApiClient api) : Controller
             ? action=="approve"?"Versão aprovada internamente. A formalização ainda deve ser registrada.":"Ajustes solicitados; uma nova versão deverá ser enviada."
             : result.UserMessage("Não foi possível registrar a decisão. Atualize a página e tente novamente.");
         return RedirectToAction(nameof(Detail),new{tenantId,reviewId});
+    }
+
+    [HttpPost("{reviewId:guid}/cancelamento")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Cancel(Guid tenantId, Guid reviewId, string justification, long expectedVersion, CancellationToken ct = default)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
+        var result = await api.CancelReviewAsync(token, tenantId, reviewId, new CancelReviewRequest(justification, expectedVersion, Guid.NewGuid()), ct);
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        TempData[result.Succeeded ? "ReviewNotice" : "ReviewError"] = result.Succeeded
+            ? "Revisão cancelada. A versão já encaminhada não volta a estar aprovada nem é reaberta; uma nova versão é necessária para solicitar outra revisão."
+            : result.UserMessage("Não foi possível cancelar a revisão.");
+        return RedirectToAction(nameof(Detail), new { tenantId, reviewId });
     }
 
     [HttpPost("{reviewId:guid}/atribuicao")]

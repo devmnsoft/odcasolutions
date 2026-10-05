@@ -23,7 +23,10 @@ public sealed record StudioDocumentItem(
     string SignatureStatus,
     string NextAction,
     bool CanEdit,
-    bool CanDownloadPdf);
+    bool CanDownloadPdf,
+    string? ResponsibleName = null,
+    int? TemplateVersion = null,
+    bool PatientActive = true);
 public sealed record StudioDocumentPage(IReadOnlyList<StudioDocumentItem> Items, int Page, int PageSize, int Total);
 public sealed record DraftCreatedResponse(Guid Id, Guid ContractId);
 public sealed record DraftResponse(Guid Id, Guid ContractId, string Title, Guid SourceTemplateId, Guid SourceTemplateVersionId, JsonElement Content, JsonElement Fields, JsonElement Values, long Version, Guid? LastClientRevision, DateTimeOffset UpdatedAt);

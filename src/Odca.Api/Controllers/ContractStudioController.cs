@@ -327,6 +327,10 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         [FromQuery] string? type,
         [FromQuery] string? stage,
         [FromQuery] Guid? patientId,
+        [FromQuery] string? reference = null,
+        [FromQuery] string? responsible = null,
+        [FromQuery] DateOnly? updatedFrom = null,
+        [FromQuery] DateOnly? updatedTo = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
@@ -338,8 +342,11 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         var canDownloadDocs = await Allowed(c, actor.Value, tenantId, "tenant.documents.download", ct);
         var canManageDrafts = await Allowed(c, actor.Value, tenantId, "tenant.contract_drafts.manage", ct);
         var canRequestReview = await Allowed(c, actor.Value, tenantId, "tenant.reviews.request", ct);
+        var canReadReviews = await Allowed(c, actor.Value, tenantId, "tenant.reviews.read", ct);
 
         if (!canReadDrafts && !canReadPatientDocs && !canDownloadDocs) return Forbid();
+        if (updatedFrom is not null && updatedTo is not null && updatedFrom > updatedTo)
+            return ValidationProblem("O período informado começa depois do término.");
 
         page = Math.Max(page, 1);
         pageSize = Math.Clamp(pageSize, 1, 50);
@@ -373,6 +380,30 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             filters.Add("p.id = @patientId");
         }
 
+        if (!string.IsNullOrWhiteSpace(reference))
+        {
+            queryParams.Add("reference", $"%{reference.Trim()}%");
+            filters.Add("c.reference ILIKE @reference");
+        }
+
+        if (!string.IsNullOrWhiteSpace(responsible))
+        {
+            queryParams.Add("responsible", $"%{responsible.Trim()}%");
+            filters.Add("responsible.display_name ILIKE @responsible");
+        }
+
+        if (updatedFrom is not null)
+        {
+            queryParams.Add("updatedFrom", updatedFrom.Value);
+            filters.Add("(COALESCE(d.updated_at, v.created_at, c.updated_at) AT TIME ZONE 'America/Sao_Paulo')::date >= @updatedFrom");
+        }
+
+        if (updatedTo is not null)
+        {
+            queryParams.Add("updatedTo", updatedTo.Value);
+            filters.Add("(COALESCE(d.updated_at, v.created_at, c.updated_at) AT TIME ZONE 'America/Sao_Paulo')::date <= @updatedTo");
+        }
+
         if (!string.IsNullOrWhiteSpace(stage))
         {
             switch (stage.Trim().ToLowerInvariant())
@@ -382,6 +413,9 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
                     break;
                 case "in_review":
                     filters.Add("v.review_status IN ('submitted', 'in_review')");
+                    break;
+                case "changes_requested":
+                    filters.Add("EXISTS (SELECT 1 FROM odca.contract_review_requests rr WHERE rr.tenant_id = c.tenant_id AND rr.generated_version_id = v.id AND rr.status = 'changes_requested')");
                     break;
                 case "approved":
                     filters.Add("v.review_status = 'internally_approved'");
@@ -402,13 +436,14 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             FROM odca.contracts c
             LEFT JOIN odca.contract_drafts d ON (d.tenant_id, d.contract_id) = (c.tenant_id, c.id)
             LEFT JOIN LATERAL (
-                SELECT v1.id, v1.source_template_id, v1.patient_id, v1.review_status
+                SELECT v1.id, v1.source_template_id, v1.patient_id, v1.review_status, v1.created_at, v1.created_by
                 FROM odca.generated_contract_versions v1
                 WHERE (v1.tenant_id, v1.contract_id) = (c.tenant_id, c.id)
                 ORDER BY v1.version_number DESC LIMIT 1
             ) v ON true
             LEFT JOIN odca.contract_templates t ON t.id = COALESCE(d.source_template_id, v.source_template_id)
             LEFT JOIN odca.patients p ON (p.tenant_id, p.id) = (c.tenant_id, COALESCE(d.patient_id, v.patient_id))
+            LEFT JOIN odca.users responsible ON responsible.id = COALESCE(d.updated_by, v.created_by)
             LEFT JOIN LATERAL (
                 SELECT sp1.confirmed_revision
                 FROM odca.signature_preparations sp1
@@ -433,21 +468,36 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
                    p.full_name AS PatientName,
                    COALESCE(d.updated_at, v.created_at, c.updated_at) AS UpdatedAt,
                    CASE WHEN d.id IS NOT NULL THEN 'draft' ELSE 'none' END AS DraftStatus,
-                   COALESCE(v.review_status, 'none') AS ReviewStatus,
+                   CASE
+                       WHEN review_request.status = 'changes_requested' THEN 'changes_requested'
+                       ELSE COALESCE(v.review_status, 'none')
+                   END AS ReviewStatus,
                    COALESCE(v.pdf_status, 'not_generated') AS PdfStatus,
                    CASE WHEN sp.id IS NOT NULL THEN (CASE WHEN sp.confirmed_revision IS NOT NULL THEN 'confirmed' ELSE 'preparing' END) ELSE 'not_started' END AS SignatureStatus,
                    v.pdf_byte_size AS PdfByteSize,
-                   v.pdf_storage_key AS PdfStorageKey
+                   v.pdf_storage_key AS PdfStorageKey,
+                   responsible.display_name AS ResponsibleName,
+                   COALESCE(tv.version_number, t.current_version) AS TemplateVersion,
+                   COALESCE(p.inactive_at IS NULL, true) AS PatientActive
             FROM odca.contracts c
             LEFT JOIN odca.contract_drafts d ON (d.tenant_id, d.contract_id) = (c.tenant_id, c.id)
             LEFT JOIN LATERAL (
-                SELECT v1.id, v1.version_number, v1.created_at, v1.review_status, v1.pdf_status, v1.pdf_byte_size, v1.pdf_storage_key, v1.source_template_id, v1.patient_id
+                SELECT v1.id, v1.version_number, v1.created_at, v1.created_by, v1.review_status, v1.pdf_status, v1.pdf_byte_size, v1.pdf_storage_key, v1.source_template_id, v1.source_template_version_id, v1.patient_id
                 FROM odca.generated_contract_versions v1
                 WHERE (v1.tenant_id, v1.contract_id) = (c.tenant_id, c.id)
                 ORDER BY v1.version_number DESC LIMIT 1
             ) v ON true
             LEFT JOIN odca.contract_templates t ON t.id = COALESCE(d.source_template_id, v.source_template_id)
+            LEFT JOIN odca.contract_template_versions tv ON tv.id = COALESCE(d.source_template_version_id, v.source_template_version_id)
             LEFT JOIN odca.patients p ON (p.tenant_id, p.id) = (c.tenant_id, COALESCE(d.patient_id, v.patient_id))
+            LEFT JOIN odca.users responsible ON responsible.id = COALESCE(d.updated_by, v.created_by)
+            LEFT JOIN LATERAL (
+                SELECT r.status
+                  FROM odca.contract_review_requests r
+                 WHERE r.tenant_id = c.tenant_id AND r.generated_version_id = v.id
+                 ORDER BY r.updated_at DESC
+                 LIMIT 1
+            ) review_request ON true
             LEFT JOIN LATERAL (
                 SELECT sp1.id, sp1.status, sp1.confirmed_revision
                 FROM odca.signature_preparations sp1
@@ -460,18 +510,24 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             """;
 
         var rows = (await c.QueryAsync<DocumentRow>(new CommandDefinition(selectSql, queryParams, tx, cancellationToken: ct))).AsList();
+        var signaturesAllowed = await c.ExecuteScalarAsync<string>(new CommandDefinition(
+            "SELECT odca.organization_feature_state(@tenantId, 'signatures')", queryParams, tx, cancellationToken: ct)) == "allowed";
         await tx.CommitAsync(ct);
 
         var items = rows.Select(r =>
         {
             var nextAction = "view_sheet";
-            if (r.LatestVersionId is null && r.DraftId is not null)
+            if (r.ReviewStatus == "changes_requested")
             {
-                nextAction = "edit_draft";
+                nextAction = canManageDrafts && r.DraftId is not null ? "correct_draft" : "view_sheet";
+            }
+            else if (r.LatestVersionId is null && r.DraftId is not null)
+            {
+                nextAction = canManageDrafts ? "edit_draft" : "view_sheet";
             }
             else if (r.LatestVersionId is not null && r.PdfStatus != "completed")
             {
-                nextAction = "generate_pdf";
+                nextAction = canManageDrafts ? "generate_pdf" : "view_version";
             }
             else if (r.LatestVersionId is not null && r.ReviewStatus == "generated")
             {
@@ -479,11 +535,11 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             }
             else if (r.LatestVersionId is not null && (r.ReviewStatus == "submitted" || r.ReviewStatus == "in_review"))
             {
-                nextAction = "open_review";
+                nextAction = canReadReviews ? "open_review" : "view_version";
             }
             else if (r.LatestVersionId is not null && r.ReviewStatus == "internally_approved" && r.SignatureStatus != "confirmed")
             {
-                nextAction = "prepare_signature";
+                nextAction = signaturesAllowed && canManageDrafts ? "prepare_signature" : "view_version";
             }
             else if (r.PdfStatus == "completed")
             {
@@ -508,8 +564,11 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
                 r.PdfStatus,
                 r.SignatureStatus,
                 nextAction,
-                canManageDrafts,
-                canDownloadPdf);
+                canManageDrafts && r.DraftId is not null && nextAction is "edit_draft" or "correct_draft",
+                canDownloadPdf,
+                r.ResponsibleName,
+                r.TemplateVersion,
+                r.PatientActive);
         }).ToList();
 
         return Ok(new StudioDocumentPage(items, page, pageSize, total));
@@ -1336,5 +1395,8 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         public string SignatureStatus { get; init; } = "";
         public long? PdfByteSize { get; init; }
         public string? PdfStorageKey { get; init; }
+        public string? ResponsibleName { get; init; }
+        public int? TemplateVersion { get; init; }
+        public bool PatientActive { get; init; }
     }
 }

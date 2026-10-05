@@ -121,7 +121,7 @@ public sealed class OnboardingController(OdcaApiClient apiClient, IUserTenantCon
         string? documentsError = null;
         if (access?.HasAnyPermission("tenant.contract_drafts.read", "tenant.patients.documents.read") == true)
         {
-            var docsRes = await apiClient.GetStudioDocumentsAsync(token, tenantId, null, null, null, null, 1, 5, cancellationToken);
+            var docsRes = await apiClient.GetStudioDocumentsAsync(token, tenantId, null, null, null, null, 1, 5, ct: cancellationToken);
             if (docsRes.Succeeded && docsRes.Value is not null)
             {
                 recentDocuments = docsRes.Value.Items;

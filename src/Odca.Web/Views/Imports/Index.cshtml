@@ -1,4 +1,15 @@
 @model Odca.Contracts.DocumentImports.ContractImportPage
+@functions {
+    static string ImportDiagnostic(string code) => code switch
+    {
+        "quota-exhausted" => "A franquia mensal de OCR foi atingida. O texto extraído não foi aplicado.",
+        "organization-unavailable" => "A organização está suspensa ou a importação não está disponível. O trabalho pode ser retomado depois, sem duplicar o resultado.",
+        "invalid-document" => "O arquivo não pôde ser lido. O original permanece armazenado.",
+        "extractor-unavailable" => "O extrator falhou. Uma nova tentativa usa o mesmo trabalho.",
+        "scanner-not-configured" => "O analisador de segurança não está configurado.",
+        _ => "Diagnóstico: " + code.Replace('_', ' ').Replace('-', ' ')
+    };
+}
 @{
     var tenantId = (Guid)ViewData["TenantId"]!;
     var status = ViewData["Status"] as string;
@@ -35,7 +46,7 @@ else
     {
         <article class="import-row">
             <div><span class="status-label">@item.Status.Replace('_',' ')</span><h2>@item.DocumentName</h2><p>Solicitada por @item.Requester em @item.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p></div>
-            <div><small>Etapa atual</small><strong>@item.CurrentStep.Replace('_',' ')</strong>@if(item.DiagnosticCode is not null){<span class="field-error">Diagnóstico: @item.DiagnosticCode</span>}</div>
+            <div><small>Etapa atual</small><strong>@item.CurrentStep.Replace('_',' ')</strong>@if(item.DiagnosticCode is not null){<span class="field-error">@ImportDiagnostic(item.DiagnosticCode)</span><small>@(item.Status=="failed" && item.DiagnosticCode is "quota-exhausted" or "invalid-document" ? "Não há nova tentativa automática." : item.Status is "queued" or "failed" ? "A retomada reutiliza o mesmo trabalho e não duplica uma confirmação." : "A confirmação continua manual.")</small>}</div>
             <div class="row-actions"><a class="button button-quiet" asp-action="Review" asp-route-tenantId="@tenantId" asp-route-importId="@item.Id">@(item.Status=="awaiting_review"?"Continuar revisão":"Abrir")</a></div>
         </article>
     }
