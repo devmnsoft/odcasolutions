@@ -148,7 +148,8 @@
                             }
                             @if (canReadDocuments)
                             {
-                                <a class="nav-item @(controller == "Documents" && ViewContext.RouteData.Values["action"]?.ToString() != "NewDocument" && Context.Request.Query["stage"] != "draft" ? "active" : null)" aria-label="Acervo de documentos" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">🗂</span><span>@MenuFeature("documents", "Acervo")</span></a>
+                                <a class="nav-item @(controller == "Documents" && ViewContext.RouteData.Values["action"]?.ToString() != "NewDocument" && Context.Request.Query["stage"] != "draft" && Context.Request.Query["stage"] != "ready_for_signature" ? "active" : null)" aria-label="Acervo de documentos" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">🗂</span><span>@MenuFeature("documents", "Acervo")</span></a>
+                                <a class="nav-item @(controller == "Documents" && Context.Request.Query["stage"] == "ready_for_signature" ? "active" : null)" aria-label="Assinaturas pendentes" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantIdForLinks" asp-route-stage="ready_for_signature"><span aria-hidden="true">✒</span><span>@MenuFeature("signatures", "Assinaturas")</span></a>
                             }
                             @if (canReadStudio)
                             {
@@ -200,7 +201,8 @@
                                 <span class="menu-caption" style="margin-top: .75rem; text-transform: uppercase;">Documentos</span>
                                 @if (canReadDocuments)
                                 {
-                                    <a class="nav-item @(controller == "Documents" && ViewContext.RouteData.Values["action"]?.ToString() != "NewDocument" && Context.Request.Query["stage"] != "draft" ? "active" : null)" aria-label="Central de documentos" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">🗂</span><span>@MenuFeature("documents", "Acervo de documentos")</span></a>
+                                    <a class="nav-item @(controller == "Documents" && ViewContext.RouteData.Values["action"]?.ToString() != "NewDocument" && Context.Request.Query["stage"] != "draft" && Context.Request.Query["stage"] != "ready_for_signature" ? "active" : null)" aria-label="Central de documentos" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">🗂</span><span>@MenuFeature("documents", "Acervo de documentos")</span></a>
+                                    <a class="nav-item @(controller == "Documents" && Context.Request.Query["stage"] == "ready_for_signature" ? "active" : null)" aria-label="Assinaturas pendentes" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@tenantIdForLinks" asp-route-stage="ready_for_signature"><span aria-hidden="true">✒</span><span>@MenuFeature("signatures", "Assinaturas")</span></a>
                                 }
                                 @if (canReadStudio)
                                 {

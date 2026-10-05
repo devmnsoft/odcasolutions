@@ -3,6 +3,7 @@
     var isNew = Model.IsNew;
     var tenantId = Model.TenantId;
     var isPublished = string.Equals(Model.Status, "published", StringComparison.OrdinalIgnoreCase);
+    var isArchived = string.Equals(Model.Status, "archived", StringComparison.OrdinalIgnoreCase);
 }
 
 <ol class="journey" aria-label="Etapas do documento">
@@ -65,8 +66,8 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
             <h2 style="margin: 0;">Identificação do Modelo</h2>
             <div>
-                <span class="badge @(isPublished ? "badge-success" : "badge-muted")">
-                    Status: @(isPublished ? "Publicado" : "Rascunho")
+                <span class="badge @(isPublished ? "badge-success" : (isArchived ? "badge-warning" : "badge-muted"))">
+                    Status: @(isPublished ? "Publicado" : (isArchived ? "Arquivado" : "Rascunho"))
                 </span>
                 <span class="badge">Versão: @Model.Version</span>
             </div>
@@ -141,6 +142,10 @@
                         <input type="text" id="newFieldChoices" placeholder="Opção 1, Opção 2" style="width: 100%; font-size: 0.85rem;" />
                     </div>
                 </div>
+                <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 0.5rem;">
+                    Ajuda contextual exibida ao preencher (opcional, máx. 200 caracteres):
+                    <input type="text" id="newFieldHelp" maxlength="200" placeholder="Ex.: use o nome completo que consta no documento de identidade" style="width: 100%; font-size: 0.85rem; font-weight: 400; margin-top: 0.25rem;" />
+                </label>
                 <div class="template-field-options">
                     <label>Origem do preenchimento
                         <select id="newFieldOrigin">
@@ -169,7 +174,7 @@
                     <label style="font-size: 0.85rem;">
                         <input type="checkbox" id="newFieldRequired" checked /> Campo Obrigatório
                     </label>
-                    <button type="button" class="button button-quiet" style="font-size: 0.85rem;" onclick="addNewField()">
+                    <button type="button" id="addFieldBtn" class="button button-quiet" style="font-size: 0.85rem;">
                         + Incluir Campo
                     </button>
                 </div>
@@ -211,7 +216,7 @@
 
         <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
             <button type="submit" class="button button-quiet" id="copyEditable" formaction="@Url.Action("CopyEditableTemplate", "Studio", new { tenantId })">Criar cópia editável</button>
-            @if (!isNew && !isPublished)
+            @if (!isNew && !isPublished && !isArchived)
             {
                 <button type="submit" class="button button-primary">
                     💾 Salvar Rascunho
@@ -224,7 +229,7 @@
                 </button>
             }
 
-            @if (!isNew && !isPublished)
+            @if (!isNew && !isPublished && !isArchived)
             {
                 <button type="submit" formaction="@Url.Action("PublishTemplate", "Studio", new { tenantId, templateId = Model.TemplateId })" class="button" style="background: #059669; color: #fff;" onclick="return confirm('Deseja publicar este modelo? Modelos publicados ficam imediatamente disponíveis para a equipe gerar documentos.');">
                     ✓ Publicar Modelo
@@ -235,6 +240,10 @@
                 <button type="submit" formaction="@Url.Action("ArchiveTemplate", "Studio", new { tenantId, templateId = Model.TemplateId })" class="button button-quiet" style="color: #dc2626;" onclick="return confirm('Deseja arquivar este modelo?');">
                     Arquivar Modelo
                 </button>
+            }
+            @if (!isNew && isArchived)
+            {
+                <span class="muted" style="font-size: 0.85rem;">Modelo arquivado: somente leitura. Use “Criar cópia editável” para voltar a editar.</span>
             }
         </div>
     </div>
@@ -286,7 +295,8 @@
             const controller = f.requiredWhenFieldId || f.RequiredWhenFieldId;
             const whenValues = f.requiredWhenAnyOf || f.RequiredWhenAnyOf || [];
             const condition = controller ? `; obrigatório quando ${controller} = ${whenValues.join(" ou ")}` : "";
-            span.textContent = `[${f.type}${f.required ? ", Obrigatório" : ""}, ${originLabel[origin] || origin}${property ? " · " + property : ""}${condition}]`;
+            const help = f.help || f.Help || "";
+            span.textContent = `[${f.type}${f.required ? ", Obrigatório" : ""}, ${originLabel[origin] || origin}${property ? " · " + property : ""}${condition}${help ? " · ajuda: " + help : ""}]`;
             infoDiv.appendChild(span);
 
             item.appendChild(infoDiv);
@@ -366,6 +376,9 @@
     originInput.addEventListener("change", refreshPropertyChoices);
     refreshPropertyChoices();
 
+    const addFieldBtn = document.getElementById('addFieldBtn');
+    if (addFieldBtn) addFieldBtn.addEventListener('click', addNewField);
+
     function addNewField() {
         const typeInput = document.getElementById('newFieldType');
         const choicesInput = document.getElementById('newFieldChoices');
@@ -406,6 +419,8 @@
             alert('Informe ao menos um valor que torna o campo obrigatório.');
             return;
         }
+        const helpInput = document.getElementById('newFieldHelp');
+        const help = (helpInput.value || '').trim();
         const newF = {
             id: id,
             label: label,
@@ -421,12 +436,14 @@
         if (type === 'Choice' && rawChoices.length > 0) {
             newF.choices = rawChoices;
         }
+        if (help) newF.help = help;
 
         fieldsData.push(newF);
         fieldsDirty = true;
         idInput.value = '';
         labelInput.value = '';
         choicesInput.value = '';
+        helpInput.value = '';
         idManuallyEdited = false;
         renderFieldsList();
     }

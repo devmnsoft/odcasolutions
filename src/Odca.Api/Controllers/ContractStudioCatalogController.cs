@@ -35,7 +35,7 @@ public sealed class ContractStudioCatalogController(NpgsqlDataSource dataSource)
               FROM odca.contract_templates t
               JOIN odca.contract_template_versions v ON v.template_id = t.id AND v.version_number = t.current_version
              WHERE t.id = @templateId
-               AND (t.status = 'published' OR (t.status = 'draft' AND t.owner_tenant_id = @tenantId))
+               AND (t.status = 'published' OR ((t.status = 'draft' OR t.status = 'archived') AND t.owner_tenant_id = @tenantId))
                AND (t.scope = 'global' OR t.owner_tenant_id = @tenantId OR EXISTS (
                     SELECT 1 FROM odca.contract_template_access a
                      WHERE a.template_id = t.id AND a.tenant_id = @tenantId AND a.revoked_at IS NULL))

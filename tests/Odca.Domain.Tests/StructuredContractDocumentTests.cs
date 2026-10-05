@@ -274,4 +274,72 @@ public sealed class StructuredContractDocumentTests
         Assert.Contains("250,00", pdfStr);
         Assert.Contains("2026-10-01", pdfStr);
     }
+
+    [Fact]
+    public void FieldHelpDeserializesFromCamelCaseAndNullWhenAbsent()
+    {
+        var options = new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+        };
+        options.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+
+        var withHelp = System.Text.Json.JsonSerializer.Deserialize<ContractFieldDefinition>(
+            """{"id":"a","label":"A","type":"ShortText","required":false,"help":"dica"}""", options)!;
+        var withoutHelp = System.Text.Json.JsonSerializer.Deserialize<ContractFieldDefinition>(
+            """{"id":"b","label":"B","type":"ShortText","required":false}""", options)!;
+
+        Assert.Equal("dica", withHelp.Help);
+        Assert.Null(withoutHelp.Help);
+    }
+
+    [Fact]
+    public void FieldHelpIsLimitedToTwoHundredCharacters()
+    {
+        FieldMapping.Validate([new ContractFieldDefinition("a", "A", ContractFieldType.ShortText, false, Help: "ok")]);
+        var ex = Assert.Throws<InvalidDataException>(() =>
+            FieldMapping.Validate([new ContractFieldDefinition("b", "B", ContractFieldType.ShortText, false, Help: new string('x', 201))]));
+        Assert.Contains("200", ex.Message);
+    }
+
+    [Fact]
+    public void ProtectAutomaticOriginsKeepsUnchangedRegistrationValues()
+    {
+        const string fields = """[{"id":"patient_name","label":"Paciente","type":"ShortText","required":true,"origin":"patient","sourceProperty":"fullName"}]""";
+        const string previous = """[{"fieldId":"patient_name","value":"Maria","confirmed":true,"source":"patient"}]""";
+        const string submitted = """[{"fieldId":"patient_name","value":"Maria","confirmed":true,"source":"patient"}]""";
+
+        var result = StructuredContractDocument.ProtectAutomaticOrigins(fields, previous, submitted);
+
+        Assert.Equal(submitted, result);
+    }
+
+    [Fact]
+    public void ProtectAutomaticOriginsMarksEditedValueAsManualAndUnconfirmed()
+    {
+        const string fields = """[{"id":"patient_name","label":"Paciente","type":"ShortText","required":true,"origin":"patient","sourceProperty":"fullName"}]""";
+        const string previous = """[{"fieldId":"patient_name","value":"Maria","confirmed":true,"source":"patient"}]""";
+        const string submitted = """[{"fieldId":"patient_name","value":"Maria Aparecida","confirmed":true,"source":"patient"}]""";
+
+        var result = StructuredContractDocument.ProtectAutomaticOrigins(fields, previous, submitted);
+
+        Assert.DoesNotContain("\"source\":\"patient\"", result);
+        Assert.Contains("\"source\":\"manual\"", result);
+        Assert.Contains("\"confirmed\":false", result);
+    }
+
+    [Fact]
+    public void ProtectAutomaticOriginsForcesManualWhenValueIsEmptiedOrOriginDoesNotMatchConfiguration()
+    {
+        const string fields = """[{"id":"org_name","label":"Organização","type":"ShortText","required":false,"origin":"organization","sourceProperty":"displayName"},{"id":"note","label":"Obs","type":"ShortText","required":false}]""";
+        const string previous = """[{"fieldId":"org_name","value":"Clínica X","confirmed":true,"source":"organization"},{"fieldId":"note","value":"texto","confirmed":false}]""";
+        const string submitted = """[{"fieldId":"org_name","value":"","confirmed":true,"source":"organization"},{"fieldId":"note","value":"texto","confirmed":true,"source":"patient"}]""";
+
+        var result = StructuredContractDocument.ProtectAutomaticOrigins(fields, previous, submitted);
+
+        Assert.DoesNotContain("\"source\":\"organization\"", result);
+        Assert.DoesNotContain("\"source\":\"patient\"", result);
+        Assert.Equal(2, result.Split("\"source\":\"manual\"", StringSplitOptions.None).Length - 1);
+    }
 }

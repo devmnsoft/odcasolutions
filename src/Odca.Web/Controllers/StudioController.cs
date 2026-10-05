@@ -374,7 +374,7 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         {
             TempData["StudioError"] = r.ErrorDetail ?? r.ErrorTitle ?? "Não foi possível arquivar o modelo.";
         }
-        return RedirectToAction(nameof(Index), new { tenantId });
+        return RedirectToAction(nameof(EditTemplate), new { tenantId, templateId });
     }
     [HttpPost("biblioteca-oficial")]
     public async Task<IActionResult> InstallOfficial(Guid tenantId,string? search,string? type,string? scope,CancellationToken ct)

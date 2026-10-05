@@ -86,6 +86,8 @@ public static class FieldMapping
 
     private static void ValidateField(ContractFieldDefinition field)
     {
+        if (!string.IsNullOrEmpty(field.Help) && field.Help.Trim().Length > 200)
+            throw new InvalidDataException($"A ajuda de '{field.Label}' deve ter no máximo 200 caracteres.");
         var origin = NormalizeOrigin(field.Origin);
         if (origin is not ("manual" or "patient" or "organization" or "representative" or "contractor"))
             throw new InvalidDataException($"A origem de '{field.Label}' não é permitida.");

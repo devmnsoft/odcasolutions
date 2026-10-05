@@ -27,7 +27,8 @@ public sealed record ContractFieldDefinition(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Origin = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? RequiredWhenFieldId = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string>? RequiredWhenAnyOf = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? SourceProperty = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? SourceProperty = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Help = null);
 
 public sealed record ContractFieldValue(string FieldId, string? Value, bool Confirmed, string? Source = null);
 
@@ -132,6 +133,48 @@ public sealed class StructuredContractDocument
             return value with { Value = parsed.Canonical };
         }).ToArray();
         return JsonSerializer.Serialize(normalized, options);
+    }
+
+    /// <summary>
+    /// Values claiming an automatic origin (patient, organization, representative or contractor)
+    /// are only accepted when they match the configured origin and the previously stored value.
+    /// Anything else is recorded as manual and unconfirmed so registrations cannot masquerade as
+    /// automatic values after a human edit.
+    /// </summary>
+    public static string ProtectAutomaticOrigins(string fieldsJson, string? previousValuesJson, string submittedValuesJson)
+    {
+        if (string.IsNullOrWhiteSpace(previousValuesJson))
+            return submittedValuesJson;
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+        options.Converters.Add(new JsonStringEnumConverter());
+        var definitions = (JsonSerializer.Deserialize<ContractFieldDefinition[]>(fieldsJson, options) ?? [])
+            .ToDictionary(item => item.Id, StringComparer.Ordinal);
+        var previous = (JsonSerializer.Deserialize<ContractFieldValue[]>(previousValuesJson, options) ?? [])
+            .ToDictionary(item => item.FieldId, StringComparer.Ordinal);
+        var submitted = JsonSerializer.Deserialize<ContractFieldValue[]>(submittedValuesJson, options) ?? [];
+        var result = new List<ContractFieldValue>(submitted.Length);
+        var coerced = false;
+        foreach (var value in submitted)
+        {
+            var source = FieldMapping.NormalizeOrigin(value.Source);
+            if (source == "manual")
+            {
+                result.Add(value);
+                continue;
+            }
+            definitions.TryGetValue(value.FieldId, out var definition);
+            previous.TryGetValue(value.FieldId, out var stored);
+            var configured = definition is null ? null : FieldMapping.NormalizeOrigin(definition.Origin);
+            var unchanged = string.Equals(stored?.Value ?? string.Empty, value.Value ?? string.Empty, StringComparison.Ordinal);
+            if (source == configured && unchanged)
+            {
+                result.Add(value);
+                continue;
+            }
+            result.Add(value with { Source = "manual", Confirmed = false });
+            coerced = true;
+        }
+        return coerced ? JsonSerializer.Serialize(result, options) : submittedValuesJson;
     }
 
     private static bool IsRequirementActive(ContractFieldDefinition definition, Dictionary<string, ContractFieldValue> values)

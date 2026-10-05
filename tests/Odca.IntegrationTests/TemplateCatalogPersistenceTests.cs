@@ -11,7 +11,7 @@ public sealed class TemplateCatalogPersistenceTests(DatabaseFixture database) : 
     private static readonly Guid DraftId = Guid.Parse("71000000-0000-0000-0000-000000000003");
 
     [Fact]
-    public async Task CatalogMaterializesPostgresTimestampsAndNullableFieldsWhileHidingDrafts()
+    public async Task CatalogMaterializesPostgresTimestampsAndNullableFieldsWhileScopingDraftsToOwner()
     {
         await SeedAsync();
         await using var dataSource = NpgsqlDataSource.Create(database.AppConnectionString);
@@ -19,14 +19,20 @@ public sealed class TemplateCatalogPersistenceTests(DatabaseFixture database) : 
 
         var page = await repository.ListAsync(TenantId, "integração catálogo", null, null, 1, 12, CancellationToken.None);
 
-        var item = Assert.Single(page.Items);
-        Assert.Equal(PublishedId, item.Id);
+        var item = Assert.Single(page.Items, x => x.Id == PublishedId);
         Assert.Null(item.Description);
         Assert.Equal("published", item.Status);
         Assert.Equal(7, item.Version);
         Assert.Equal(TimeSpan.Zero, item.CreatedAt.Offset);
         Assert.Equal(new DateTimeOffset(2026, 9, 16, 12, 30, 0, TimeSpan.Zero), item.PublishedAt);
-        Assert.DoesNotContain(page.Items, candidate => candidate.Id == DraftId);
+        var draft = Assert.Single(page.Items, x => x.Id == DraftId);
+        Assert.Equal("draft", draft.Status);
+        Assert.Equal(2, page.Total);
+
+        // Rascunhos só são visíveis ao tenant proprietário: outro tenant vê apenas o publicado global.
+        var other = await repository.ListAsync(Guid.NewGuid(), "integração catálogo", null, null, 1, 12, CancellationToken.None);
+        var otherItem = Assert.Single(other.Items);
+        Assert.Equal(PublishedId, otherItem.Id);
     }
 
     [Fact]

@@ -7,14 +7,17 @@ namespace Odca.Infrastructure.Contracts;
 
 public sealed class NpgsqlTemplateCatalogRepository(NpgsqlDataSource dataSource) : ITemplateCatalogRepository
 {
+    // Publicados visíveis para o tenant (globais, próprios ou compartilhados).
+    // Rascunhos e arquivados aparecem apenas para o tenant proprietário, para que
+    // o estado continue acessível (edição de rascunho e leitura de arquivados).
     private const string VisibleFilter = """
-        t.status = 'published'
-        AND (t.scope = 'global' OR t.owner_tenant_id = @tenantId OR EXISTS (
+        ((t.status = 'published' AND (t.scope = 'global' OR t.owner_tenant_id = @tenantId OR EXISTS (
             SELECT 1
               FROM odca.contract_template_access a
              WHERE a.template_id = t.id
                AND a.tenant_id = @tenantId
-               AND a.revoked_at IS NULL))
+               AND a.revoked_at IS NULL)))
+         OR (t.status IN ('draft','archived') AND t.owner_tenant_id = @tenantId))
         AND (@search IS NULL OR t.name ILIKE @search OR t.description ILIKE @search)
         AND (@contractType IS NULL OR t.contract_type = @contractType)
         AND (@scope IS NULL OR t.scope = @scope)
