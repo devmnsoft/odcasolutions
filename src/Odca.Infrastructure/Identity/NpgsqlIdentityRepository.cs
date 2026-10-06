@@ -237,6 +237,7 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
                SET mfa_secret_protected = @protectedSecret,
                    mfa_confirmed_at = NULL,
                    mfa_last_accepted_time_step = NULL,
+                   mfa_pending_since = @now,
                    updated_at = @now
              WHERE id = @userId
                AND security_version = @securityVersion
@@ -274,6 +275,89 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
         return affected == 2;
     }
 
+    public async Task<bool> SavePendingMfaSecretIfAbsentAsync(
+        Guid userId,
+        Guid sessionId,
+        int securityVersion,
+        string protectedSecret,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            UPDATE odca.users
+               SET mfa_secret_protected = @protectedSecret,
+                   mfa_confirmed_at = NULL,
+                   mfa_last_accepted_time_step = NULL,
+                   mfa_pending_since = @now,
+                   updated_at = @now
+             WHERE id = @userId
+               AND security_version = @securityVersion
+               AND is_platform_administrator
+               AND NOT must_change_password
+               AND mfa_confirmed_at IS NULL
+               AND mfa_secret_protected IS NULL
+               AND NOT is_deleted
+               AND EXISTS
+               (
+                   SELECT 1 FROM odca.sessions s
+                    WHERE s.id = @sessionId
+                      AND s.user_id = @userId
+                      AND s.security_version = @securityVersion
+                      AND s.revoked_at IS NULL
+                      AND s.expires_at > @now
+               );
+
+            INSERT INTO odca.audit_events
+                (scope_type, actor_user_id, action, entity_type, entity_id, occurred_at, result)
+            SELECT 'platform', @userId, 'identity.mfa.enrollment.started', 'user', @userId, @now, 'success'
+             WHERE EXISTS
+             (
+                 SELECT 1 FROM odca.users
+                  WHERE id = @userId
+                    AND mfa_secret_protected = @protectedSecret
+                    AND mfa_confirmed_at IS NULL
+             );
+            """;
+
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var affected = await connection.ExecuteAsync(new CommandDefinition(
+            sql,
+            new { userId, sessionId, securityVersion, protectedSecret, now },
+            cancellationToken: cancellationToken));
+        return affected == 2;
+    }
+
+    public async Task<MfaPendingSecret?> GetPendingMfaSecretAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT mfa_secret_protected AS "ProtectedSecret",
+                   mfa_pending_since AS "PendingSince"
+              FROM odca.users
+             WHERE id = @userId
+               AND mfa_secret_protected IS NOT NULL
+               AND mfa_confirmed_at IS NULL
+               AND NOT is_deleted;
+            """;
+
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var row = await connection.QuerySingleOrDefaultAsync<MfaPendingSecretRow>(new CommandDefinition(
+            sql,
+            new { userId },
+            cancellationToken: cancellationToken));
+        if (row is null || row.PendingSince is null)
+        {
+            return null;
+        }
+
+        var pendingSince = AsUtc(row.PendingSince);
+        if (pendingSince is null)
+        {
+            return null;
+        }
+
+        return new MfaPendingSecret(row.ProtectedSecret, pendingSince.Value);
+    }
+
     public async Task<string?> GetProtectedMfaSecretAsync(Guid userId, CancellationToken cancellationToken)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
@@ -298,6 +382,7 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
             UPDATE odca.users
                SET mfa_confirmed_at = @verifiedAt,
                    mfa_last_accepted_time_step = @acceptedTimeStep,
+                   mfa_pending_since = NULL,
                    updated_at = @verifiedAt
              WHERE id = @userId
                AND security_version = @securityVersion
@@ -511,6 +596,13 @@ public sealed class NpgsqlIdentityRepository(NpgsqlDataSource dataSource) : IIde
         public long? LastAcceptedTimeStep { get; init; }
 
         public int FailedAttempts { get; init; }
+    }
+
+    private sealed class MfaPendingSecretRow
+    {
+        public string ProtectedSecret { get; init; } = string.Empty;
+
+        public DateTime? PendingSince { get; init; }
     }
 
     public async Task RecordFailedMfaChallengeAsync(

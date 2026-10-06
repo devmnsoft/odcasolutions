@@ -89,6 +89,24 @@ public sealed class AuthController(
         return Ok(new MfaEnrollmentResponse(enrollment.ManualKey, enrollment.OtpAuthUri));
     }
 
+    [HttpPost("mfa/enrollment/regenerate")]
+    [Authorize]
+    public async Task<ActionResult<MfaEnrollmentResponse>> RegenerateMfaEnrollment(CancellationToken cancellationToken)
+    {
+        if (!TryGetIdentity(out var userId, out var sessionId, out var securityVersion))
+        {
+            return Unauthorized();
+        }
+
+        var enrollment = await mfa.RegenerateEnrollmentAsync(userId, sessionId, securityVersion, cancellationToken);
+        if (enrollment is null)
+        {
+            return Forbid();
+        }
+
+        return Ok(new MfaEnrollmentResponse(enrollment.ManualKey, enrollment.OtpAuthUri));
+    }
+
     [HttpPost("mfa/enrollment/confirm")]
     [Authorize]
     public async Task<ActionResult<MfaVerificationResponse>> ConfirmMfaEnrollment(

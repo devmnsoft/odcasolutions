@@ -17,6 +17,7 @@ public sealed class PatientsController(OdcaApiClient api) : Controller
         var token = await Token(); if (token is null) return Challenge();
         ViewData["Title"] = "Pacientes"; ViewData["TenantId"] = tenantId; ViewData["Search"] = search; ViewData["IncludeInactive"] = includeInactive;
         var result = await api.GetPatientsAsync(token, tenantId, search, includeInactive, Math.Max(1, page), ct);
+        if (result.Status == ApiCallStatus.Forbidden) { ViewData["Denied"] = true; return View(new PatientPage([], page, 20, 0)); }
         if (!result.Succeeded) { ViewData["LoadError"] = result.UserMessage("Não foi possível carregar os pacientes."); return View(new PatientPage([], page, 20, 0)); }
         return View(result.Value!);
     }

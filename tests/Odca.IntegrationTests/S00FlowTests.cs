@@ -22,7 +22,10 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
         await database.ResetAuthenticationScenarioAsync();
         await using var factory = database.CreateApi();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var authenticated = await ChangeInitialPasswordAsync(client);
+        // Com a exigência de MFA para superadministradores (Bloco A), a sessão
+        // autenticada para este teste completa o segundo fator antes de validar
+        // o contrato de entrada; sessões sem MFA recebem 403 nesta rota.
+        var authenticated = await EnrollMfaAsync(client);
         using var request = Authorized(HttpMethod.Get,
             $"/api/v1/organizations/{Guid.NewGuid()}/contract-imports?from=2026-09-17&to=2026-09-16",
             authenticated.AccessToken);

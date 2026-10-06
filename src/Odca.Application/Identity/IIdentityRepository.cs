@@ -50,6 +50,23 @@ public interface IIdentityRepository
         DateTimeOffset now,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Saves the pending MFA secret only if the user does not already have one,
+    /// so refreshing the enrollment page does not rotate the key.
+    /// </summary>
+    Task<bool> SavePendingMfaSecretIfAbsentAsync(
+        Guid userId,
+        Guid sessionId,
+        int securityVersion,
+        string protectedSecret,
+        DateTimeOffset now,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Returns the user's pending (unconfirmed) MFA secret and when it was stored, if any.
+    /// </summary>
+    Task<MfaPendingSecret?> GetPendingMfaSecretAsync(Guid userId, CancellationToken cancellationToken);
+
     Task<string?> GetProtectedMfaSecretAsync(Guid userId, CancellationToken cancellationToken);
 
     Task<bool> ConfirmMfaAsync(
@@ -92,3 +109,7 @@ public sealed record MfaChallengeState(
     DateTimeOffset? ConfirmedAt,
     long? LastAcceptedTimeStep,
     int FailedAttempts);
+
+public sealed record MfaPendingSecret(
+    string ProtectedSecret,
+    DateTimeOffset PendingSince);

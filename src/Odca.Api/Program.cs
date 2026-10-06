@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Options;
@@ -108,15 +109,23 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
                 if (!valid)
                 {
                     context.Fail("Sessão revogada ou expirada.");
+                    return;
                 }
+
+                // O requisito de MFA para superadministradores é aplicado na camada de
+                // autorização (políticas PasswordChanged/PlatformAdministrator), de modo
+                // que uma sessão autenticada sem MFA recebe 403 Forbidden nas operações
+                // administrativas, sem invalidar o próprio token.
             }
         };
     });
+builder.Services.AddSingleton<IAuthorizationHandler, MfaVerifiedForSuperAdministratorHandler>();
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("PasswordChanged", policy => policy
         .RequireAuthenticatedUser()
-        .RequireClaim("must_change_password", "false"));
+        .RequireClaim("must_change_password", "false")
+        .Requirements.Add(new MfaVerifiedForSuperAdministratorRequirement()));
     options.AddPolicy("PlatformAdministrator", policy => policy
         .RequireAuthenticatedUser()
         .RequireRole("SuperAdministrator")

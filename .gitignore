@@ -6,6 +6,7 @@ obj/
 TestResults/
 artifacts/
 .env.local
+.local/
 *.user
 *.suo
 *.pfx

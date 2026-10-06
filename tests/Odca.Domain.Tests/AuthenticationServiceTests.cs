@@ -136,6 +136,17 @@ public sealed class AuthenticationServiceTests
             DateTimeOffset now,
             CancellationToken cancellationToken) => Task.FromResult(true);
 
+        public Task<bool> SavePendingMfaSecretIfAbsentAsync(
+            Guid userId,
+            Guid sessionId,
+            int securityVersion,
+            string protectedSecret,
+            DateTimeOffset now,
+            CancellationToken cancellationToken) => Task.FromResult(true);
+
+        public Task<MfaPendingSecret?> GetPendingMfaSecretAsync(Guid userId, CancellationToken cancellationToken) =>
+            Task.FromResult<MfaPendingSecret?>(null);
+
         public Task<string?> GetProtectedMfaSecretAsync(Guid userId, CancellationToken cancellationToken) =>
             Task.FromResult<string?>(null);
 

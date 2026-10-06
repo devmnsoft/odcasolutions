@@ -76,6 +76,11 @@ input:focus, select:focus, textarea:focus { border-color: var(--action-600); out
 .button-primary { background: var(--action-600); color: #fff; }.button-primary:hover { background: var(--action-700); }
 .button-block { margin-top: 1.5rem; width: 100%; }.button-quiet { background: rgba(255,255,255,.12); color: #fff; }
 .button-small { min-height: 2.25rem; padding: .375rem .75rem; font-size: .875rem; }
+.button-secondary { background: var(--surface); border: 1px solid var(--border); color: var(--navy-900); }.button-secondary:hover { background: #eef1f4; }
+.qr-code { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); max-width: 15rem; padding: .5rem; }
+.notice { background: #eef6ff; border: 1px solid #b6d7fe; border-radius: var(--radius-sm); color: var(--navy-900); margin-bottom: 1rem; padding: .625rem .875rem; }
+.help-text { font-size: .875rem; margin-top: 1.25rem; }
+.card form.form-alt { margin-top: .75rem; text-align: right; }
 .button.disabled, a.disabled { opacity: .45; pointer-events: none; }
 .validation { color: var(--danger); display: block; margin-top: .3rem; }.validation:empty { display: none; }
 .validation-summary { background: #fff1f0; border: 1px solid #f0aaa4; border-radius: var(--radius-sm); color: var(--danger); margin-bottom: 1rem; padding: .75rem 1rem; }

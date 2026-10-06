@@ -85,6 +85,7 @@ app.UseHttpsRedirection();
 app.UseRouting();
 app.UseRateLimiter();
 app.UseAuthentication();
+app.UseMiddleware<SecurityStageMiddleware>();
 app.UseAuthorization();
 app.MapStaticAssets();
 app.MapControllerRoute("default", "{controller=Home}/{action=Index}/{id?}").WithStaticAssets();

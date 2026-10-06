@@ -57,11 +57,14 @@ public static class BootstrapProgram
                     await ResetPasswordAsync(paths, args);
                     Console.WriteLine("Senha inicial redefinida. Execute show-login para recuperá-la localmente.");
                     return 0;
+                case "reset-mfa":
+                    await ResetMfaAsync(paths, args);
+                    return 0;
                 case "provision-test-access":
                     await ProvisionTestAccessAsync(paths, args);
                     return 0;
                 default:
-                    Console.WriteLine("Uso: dotnet run --project src/Odca.Bootstrap -- <init [--postgres-development]|diagnose [--connection]|repair [--replace-invalid-signing-key]|configure-native|migrate|show-login|reset-password|provision-test-access>");
+                    Console.WriteLine("Uso: dotnet run --project src/Odca.Bootstrap -- <init [--postgres-development]|diagnose [--connection]|repair [--replace-invalid-signing-key]|configure-native|migrate|show-login|reset-password|reset-mfa --account &lt;email&gt;|provision-test-access>");
                     return command == "help" ? 0 : 2;
             }
         }
@@ -585,6 +588,66 @@ public static class BootstrapProgram
     private static DateTimeOffset? ToUtc(DateTime? value) => value is null
         ? null
         : new DateTimeOffset(DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
+
+    private static async Task ResetMfaAsync(LocalPaths paths, string[] args)
+    {
+        var accountIndex = Array.FindIndex(args, value => value.Equals("--account", StringComparison.OrdinalIgnoreCase));
+        var account = accountIndex >= 0 && accountIndex + 1 < args.Length ? args[accountIndex + 1].Trim().ToUpperInvariant() : null;
+        if (string.IsNullOrWhiteSpace(account))
+        {
+            throw new InvalidOperationException("Informe --account com o e-mail do superadministrador.");
+        }
+
+        EnsureInitialized(paths);
+        var runtime = ReadJson<DevelopmentRuntime>(paths.RuntimeFile);
+        if (!runtime.Security.AllowDevelopmentBootstrap)
+        {
+            throw new InvalidOperationException("Security:AllowDevelopmentBootstrap está desabilitado.");
+        }
+
+        const string findSql = "SELECT id FROM odca.users WHERE email_normalized = @emailNormalized AND NOT is_deleted;";
+        const string clearSql = """
+            UPDATE odca.users
+               SET mfa_secret_protected = NULL,
+                   mfa_confirmed_at = NULL,
+                   mfa_last_accepted_time_step = NULL,
+                   mfa_pending_since = NULL,
+                   updated_at = @occurredAt
+             WHERE id = @userId;
+            """;
+        const string revokeSql = "UPDATE odca.sessions SET revoked_at = COALESCE(revoked_at, @occurredAt) WHERE user_id = @userId AND revoked_at IS NULL;";
+        const string removeCodesSql = "DELETE FROM odca.mfa_recovery_codes WHERE user_id = @userId;";
+        const string auditSql = """
+            INSERT INTO odca.audit_events
+                (scope_type, actor_user_id, action, entity_type, entity_id, occurred_at, result)
+            VALUES ('platform', @userId, 'identity.mfa.reset', 'user', @userId, @occurredAt, 'success');
+            """;
+
+        await using var connection = new NpgsqlConnection(runtime.ConnectionStrings.DatabaseAdmin);
+        await connection.OpenAsync();
+        await using var transaction = await connection.BeginTransactionAsync();
+        var ids = (await connection.QueryAsync<Guid>(
+            new CommandDefinition(findSql, new { emailNormalized = account }, transaction))).ToList();
+        if (ids.Count == 0)
+        {
+            await transaction.RollbackAsync();
+            Console.WriteLine($"Conta {account} não encontrada; nenhuma alteração foi feita.");
+            return;
+        }
+
+        var occurredAt = DateTimeOffset.UtcNow;
+        var revokedSessions = 0;
+        var removedCodes = 0;
+        foreach (var userId in ids)
+        {
+            await connection.ExecuteAsync(new CommandDefinition(clearSql, new { userId, occurredAt }, transaction));
+            revokedSessions += await connection.ExecuteAsync(new CommandDefinition(revokeSql, new { userId, occurredAt }, transaction));
+            removedCodes += await connection.ExecuteAsync(new CommandDefinition(removeCodesSql, new { userId }, transaction));
+            await connection.ExecuteAsync(new CommandDefinition(auditSql, new { userId, occurredAt }, transaction));
+        }
+        await transaction.CommitAsync();
+        Console.WriteLine($"MFA redefinido para {account} (sessões revogadas: {revokedSessions}; códigos de recuperação removidos: {removedCodes}). A conta voltará ao fluxo de inscrição MFA no próximo acesso.");
+    }
 
     private static async Task ResetPasswordAsync(LocalPaths paths, string[] args)
     {

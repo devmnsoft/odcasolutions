@@ -265,6 +265,14 @@ public sealed partial class OdcaApiClient(HttpClient client)
         return await SendAsync<MfaEnrollmentResponse>(message, invalidCredentialsOnUnauthorized: false, cancellationToken);
     }
 
+    public async Task<ApiCallResult<MfaEnrollmentResponse>> RegenerateMfaEnrollmentAsync(
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, "api/v1/auth/mfa/enrollment/regenerate", accessToken);
+        return await SendAsync<MfaEnrollmentResponse>(message, invalidCredentialsOnUnauthorized: false, cancellationToken);
+    }
+
     public async Task<ApiCallResult<MfaVerificationResponse>> ConfirmMfaEnrollmentAsync(
         string accessToken,
         ConfirmMfaEnrollmentRequest request,

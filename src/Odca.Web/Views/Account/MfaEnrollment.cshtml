@@ -6,8 +6,17 @@
     <div class="card">
         <p class="eyebrow">Segundo fator</p>
         <h1>Ative o autenticador</h1>
-        <p class="muted">Cadastre a chave no seu aplicativo autenticador e confirme com o código de 6 dígitos.</p>
+        <p class="muted">Cadastre a chave no seu aplicativo autenticador e confirme com o código de 6 dígitos. Atualizar esta página mantém a mesma chave.</p>
+        @if (Model.Regenerated)
+        {
+            <div class="notice" role="status">Nova chave gerada. A chave anterior deixou de ser válida.</div>
+        }
         <dl class="secret-list">
+            @if (!string.IsNullOrWhiteSpace(Model.QrDataUri))
+            {
+                <dt>QR Code</dt>
+                <dd><img class="qr-code" src="@Model.QrDataUri" alt="QR Code para escanear no aplicativo autenticador" /></dd>
+            }
             <dt>Chave manual</dt>
             <dd><code>@Model.ManualKey</code></dd>
             <dt>URI TOTP</dt>
@@ -23,6 +32,11 @@
             <span asp-validation-for="Code" class="validation"></span>
             <button class="button button-primary" type="submit">Confirmar MFA</button>
         </form>
+        <form method="post" action="/mfa/inscricao/regenerar" class="form-alt">
+            @Html.AntiForgeryToken()
+            <button class="button button-secondary button-small" type="submit">Gerar nova chave</button>
+        </form>
+        <p class="muted help-text">Como usar: escaneie o QR Code (ou digite a chave manual) no aplicativo autenticador e informe o código de 6 dígitos. Se precisar refazer o cadastro, use “Gerar nova chave”.</p>
     </div>
 </section>
 

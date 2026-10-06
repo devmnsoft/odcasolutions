@@ -5,7 +5,7 @@
 <header class="page-heading"><div><p class="eyebrow">Central do cliente</p><h1>Plano e consumo</h1><p>Acompanhe os limites aplicados pelo servidor e solicite capacidade sem cobrança simulada.</p></div><a class="button button-primary" href="#solicitar">Solicitar adicional</a></header>
 @if(TempData["Success"] is string success){<div class="alert alert-success" role="status">✓ @success</div>}@if(TempData["Error"] is string error){<div class="alert alert-error" role="alert">! @error</div>}
 <section class="metric-grid" aria-label="Resumo do plano">
-<article class="metric-card"><span>Plano atual</span><strong>@s.PlanName</strong><small>Versão @s.PlanVersion · <span class="status-badge">@s.SubscriptionStatus</span></small></article>
+<article class="metric-card"><span>Plano atual</span><strong>@s.PlanName</strong><small>Versão @s.PlanVersion · <span class="status-badge">@StatusLabels.Status(s.SubscriptionStatus)</span></small></article>
 <article class="metric-card"><span>Usuários</span><strong>@s.ActiveUsers de @s.ContractedSeats</strong><small>@s.ReservedInvitations convite(s) reservam vaga · @s.AvailableSeats disponível(is)</small></article>
 <article class="metric-card"><span>Armazenamento disponível</span><strong>@Bytes(s.AvailableStorageBytes)</strong><small>Máximo por arquivo: @Bytes(s.MaximumFileBytes)</small></article>
 <article class="metric-card"><span>Período vigente</span><strong>@(s.PeriodStart?.ToString("dd/MM/yyyy")??"Não definido")</strong><small>até @(s.PeriodEnd?.ToString("dd/MM/yyyy")??"vigência sem término cadastrado")</small></article>

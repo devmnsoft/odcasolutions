@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Odca.Contracts.Identity;
 using Odca.Web.Models;
 using Odca.Web.Services;
+using QRCoder;
 
 namespace Odca.Web.Controllers;
 
@@ -111,7 +113,8 @@ public sealed class AccountController(OdcaApiClient apiClient) : Controller
         return View(new MfaEnrollmentViewModel
         {
             ManualKey = result.Value!.ManualKey,
-            OtpAuthUri = result.Value.OtpAuthUri
+            OtpAuthUri = result.Value.OtpAuthUri,
+            QrDataUri = BuildQrDataUri(result.Value.OtpAuthUri)
         });
     }
 
@@ -136,18 +139,56 @@ public sealed class AccountController(OdcaApiClient apiClient) : Controller
             cancellationToken);
         if (!result.Succeeded)
         {
-            ModelState.AddModelError(string.Empty, result.Status switch
+            ModelState.AddModelError(string.Empty, FieldMessage(result, () => result.Status switch
             {
                 ApiCallStatus.Unauthorized => "Sua sessão expirou. Entre novamente.",
                 ApiCallStatus.RateLimited => "Muitas tentativas. Aguarde e tente novamente.",
                 ApiCallStatus.Timeout or ApiCallStatus.Unavailable => "O serviço está temporariamente indisponível.",
                 _ => "Código inválido ou expirado."
-            });
+            }));
             return View(model);
         }
 
         await SignInAsync(result.Value!);
         return View("RecoveryCodes", new MfaRecoveryCodesViewModel { Codes = result.Value!.RecoveryCodes ?? [] });
+    }
+
+    [Authorize]
+    [HttpPost("mfa/inscricao/regenerar")]
+    public async Task<IActionResult> MfaEnrollmentRegenerate(CancellationToken cancellationToken)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null)
+        {
+            return RedirectToAction(nameof(Login));
+        }
+
+        var result = await apiClient.RegenerateMfaEnrollmentAsync(token, cancellationToken);
+        if (!result.Succeeded || result.Value is null)
+        {
+            var fallback = await apiClient.StartMfaEnrollmentAsync(token, cancellationToken);
+            if (fallback.Succeeded && fallback.Value is not null)
+            {
+                var model = new MfaEnrollmentViewModel
+                {
+                    ManualKey = fallback.Value.ManualKey,
+                    OtpAuthUri = fallback.Value.OtpAuthUri,
+                    QrDataUri = BuildQrDataUri(fallback.Value.OtpAuthUri)
+                };
+                ModelState.AddModelError(string.Empty, "Não foi possível gerar uma nova chave agora. A chave exibida continua válida.");
+                return View("MfaEnrollment", model);
+            }
+
+            return RedirectToAction(nameof(MfaChallenge));
+        }
+
+        return View(new MfaEnrollmentViewModel
+        {
+            ManualKey = result.Value.ManualKey,
+            OtpAuthUri = result.Value.OtpAuthUri,
+            QrDataUri = BuildQrDataUri(result.Value.OtpAuthUri),
+            Regenerated = true
+        });
     }
 
     [Authorize]
@@ -175,13 +216,13 @@ public sealed class AccountController(OdcaApiClient apiClient) : Controller
             cancellationToken);
         if (!result.Succeeded)
         {
-            ModelState.AddModelError(string.Empty, result.Status switch
+            ModelState.AddModelError(string.Empty, FieldMessage(result, () => result.Status switch
             {
                 ApiCallStatus.Unauthorized => "Sua sessão expirou. Entre novamente.",
                 ApiCallStatus.RateLimited => "Muitas tentativas. Aguarde e tente novamente.",
                 ApiCallStatus.Timeout or ApiCallStatus.Unavailable => "O serviço está temporariamente indisponível.",
                 _ => "Código inválido, expirado ou já utilizado."
-            });
+            }));
             return View(model);
         }
 
@@ -294,5 +335,20 @@ public sealed class AccountController(OdcaApiClient apiClient) : Controller
             CookieAuthenticationDefaults.AuthenticationScheme,
             new ClaimsPrincipal(identity),
             properties);
+    }
+
+    private static string FieldMessage(ApiCallResult<MfaVerificationResponse> result, Func<string> fallback) =>
+        result.ValidationErrors is not null
+        && result.ValidationErrors.TryGetValue("code", out var messages)
+        && messages.Length > 0
+            ? messages[0]
+            : fallback();
+
+    private static string BuildQrDataUri(string otpAuthUri)
+    {
+        var qrCodeData = new QRCodeGenerator().CreateQrCode(
+            otpAuthUri, QRCodeGenerator.ECCLevel.M, false, false, QRCodeGenerator.EciMode.Default, -1);
+        var svg = new SvgQRCode(qrCodeData).GetGraphic(4);
+        return $"data:image/svg+xml;base64,{Convert.ToBase64String(Encoding.UTF8.GetBytes(svg))}";
     }
 }

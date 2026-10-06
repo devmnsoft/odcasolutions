@@ -34,7 +34,7 @@ public sealed class DatabaseMigrator(string sqlPath)
             var history = historyExists
                 ? await LoadHistoryAsync(connection, cancellationToken)
                 : [];
-            await RepairKnownDefectivePackageAsync(connection, migrations, history, cancellationToken);
+            await RepairKnownDefectivePackagesAsync(connection, migrations, history, cancellationToken);
             ValidateHistory(migrations, history);
 
             foreach (var migration in migrations)
@@ -92,52 +92,160 @@ public sealed class DatabaseMigrator(string sqlPath)
         }
     }
 
-    // v009 was distributed with a PostgreSQL 42P13 error: the input and an OUT
-    // column of preview_tenant_invitation were both named invitation_id.  This
-    // is the only accepted checksum transition; arbitrary divergence still
-    // fails in ValidateHistory.  The immutable release snapshot remains the
-    // record of the defective package, while the canonical installer contains
-    // the corrected parameter name.
-    private static async Task RepairKnownDefectivePackageAsync(
+    // A known defective package is a migration that reached a real database
+    // before its released definition.  Each entry below is the only accepted
+    // checksum transition for its version; arbitrary divergence still fails in
+    // ValidateHistory.  The immutable release snapshot remains the record of
+    // the defective package, while the canonical installer contains the
+    // corrected definition.
+
+    // v009 was distributed with a PostgreSQL 42P13 error: the input and an
+    // OUT column of preview_tenant_invitation were both named invitation_id.
+    private static readonly KnownDefectivePackage V009PreviewInvitation = new(
+        9,
+        "8ea94f7cafca871d9a1923a8383eaf89a7535f2749efa550e6930bfcf7a7982b",
+        "f2d7bc3a2ed44f1e0601b29d911cd4af4fba774a4d47a2020962519d094209f2",
+        """
+        BEGIN;
+        DROP FUNCTION IF EXISTS odca.preview_tenant_invitation(uuid,text);
+        CREATE OR REPLACE FUNCTION odca.preview_tenant_invitation(p_invitation_id uuid, presented_hash text)
+        RETURNS TABLE(invitation_id uuid, organization_name text, role_name text, recipient_email text, expires_at timestamptz, status text)
+        LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, odca AS $function$
+        DECLARE locked_tenant_id uuid;
+        BEGIN
+          SELECT i.tenant_id INTO locked_tenant_id FROM odca.tenant_invitations i WHERE i.id = p_invitation_id;
+          IF FOUND THEN PERFORM odca.expire_tenant_invitations(locked_tenant_id); END IF;
+          RETURN QUERY SELECT i.id, t.display_name, r.display_name, i.recipient_email, i.expires_at, i.status
+            FROM odca.tenant_invitations i JOIN odca.tenants t ON t.id = i.tenant_id
+            JOIN odca.roles r ON r.id = i.role_id AND r.tenant_id = i.tenant_id
+           WHERE i.id = p_invitation_id AND i.token_hash = presented_hash
+             AND i.status IN ('pending','sent') AND i.expires_at > now();
+        END; $function$;
+        REVOKE ALL ON FUNCTION odca.preview_tenant_invitation(uuid,text) FROM PUBLIC;
+        GRANT EXECUTE ON FUNCTION odca.preview_tenant_invitation(uuid,text) TO odca_app;
+        UPDATE odca.schema_migrations SET checksum = 'f2d7bc3a2ed44f1e0601b29d911cd4af4fba774a4d47a2020962519d094209f2'
+         WHERE version = 9 AND checksum = '8ea94f7cafca871d9a1923a8383eaf89a7535f2749efa550e6930bfcf7a7982b';
+        COMMIT;
+        """);
+
+    // v035 was applied to early development databases before the input
+    // parameters of consume_monthly_franchise were renamed to the requested_*
+    // convention of the released package; the argument types and positional
+    // behavior are identical.
+    private static readonly KnownDefectivePackage V035ConsumeMonthlyFranchise = new(
+        35,
+        "4f0db0a1a6d35529677816e5df0a28d3655027eff9302b379599fa9661d7240c",
+        "35164be04924df0aa9f98c1d3f4c032e18621331893d6e0d4115c0193888ac03",
+        """
+        BEGIN;
+        DROP FUNCTION IF EXISTS odca.consume_monthly_franchise(uuid, text, bigint, text, text, uuid, text);
+        CREATE OR REPLACE FUNCTION odca.consume_monthly_franchise(
+            requested_tenant uuid,
+            requested_resource text,
+            requested_quantity bigint,
+            requested_key text,
+            requested_source_type text,
+            requested_source_id uuid,
+            requested_actor text)
+        RETURNS text
+        LANGUAGE plpgsql
+        SECURITY DEFINER
+        SET search_path = pg_catalog, odca
+        AS $$
+        DECLARE
+            unit_name text;
+            entitlement_name text;
+            contracted bigint;
+            used bigint;
+        BEGIN
+            IF requested_quantity IS NULL OR requested_quantity <= 0
+               OR requested_key IS NULL OR btrim(requested_key) = ''
+               OR requested_source_type IS NULL OR btrim(requested_source_type) = ''
+               OR requested_actor IS NULL OR btrim(requested_actor) = '' THEN
+                 RETURN 'invalid';
+            END IF;
+            IF requested_resource = 'ocr_credit' THEN
+                unit_name := 'pages';
+                entitlement_name := 'ocr_pages_monthly';
+            ELSIF requested_resource = 'signature_credit' THEN
+                unit_name := 'envelopes';
+                entitlement_name := 'signature_envelopes_monthly';
+            ELSE
+                RETURN 'invalid';
+            END IF;
+
+            PERFORM pg_advisory_xact_lock(hashtextextended(requested_tenant::text || ':' || requested_resource, 0));
+            IF EXISTS (
+                SELECT 1 FROM odca.resource_movements AS movement
+                 WHERE movement.tenant_id = requested_tenant
+                   AND movement.idempotency_key = requested_key) THEN
+                RETURN 'duplicate';
+            END IF;
+
+            SELECT entitlement.limit_value INTO contracted
+              FROM odca.subscriptions AS subscription
+              JOIN odca.plan_entitlements AS entitlement
+                ON entitlement.plan_version_id = subscription.plan_version_id
+             WHERE subscription.tenant_id = requested_tenant
+               AND subscription.status = 'active'
+               AND entitlement.entitlement_code = entitlement_name
+               AND entitlement.enabled
+             LIMIT 1;
+            IF contracted IS NULL OR contracted <= 0 THEN
+                RETURN 'not_contracted';
+            END IF;
+            used := odca.monthly_franchise_used(requested_tenant, requested_resource);
+            IF used + requested_quantity > contracted THEN
+                RETURN 'exhausted';
+            END IF;
+
+            INSERT INTO odca.resource_movements(
+                tenant_id, resource_type, movement_type, quantity, unit, source_type, source_id,
+                idempotency_key, actor_process, reason)
+            VALUES (
+                requested_tenant, requested_resource, 'consume', requested_quantity, unit_name, btrim(requested_source_type), requested_source_id,
+                requested_key, btrim(requested_actor),
+                CASE requested_resource
+                    WHEN 'ocr_credit' THEN 'Páginas de OCR processadas'
+                    ELSE 'Envelope de assinatura aceito pelo provedor'
+                END);
+            RETURN 'consumed';
+        END;
+        $$;
+        REVOKE ALL ON FUNCTION odca.consume_monthly_franchise(uuid, text, bigint, text, text, uuid, text) FROM PUBLIC;
+        GRANT EXECUTE ON FUNCTION odca.consume_monthly_franchise(uuid, text, bigint, text, text, uuid, text) TO odca_app;
+        UPDATE odca.schema_migrations SET checksum = '35164be04924df0aa9f98c1d3f4c032e18621331893d6e0d4115c0193888ac03'
+         WHERE version = 35 AND checksum = '4f0db0a1a6d35529677816e5df0a28d3655027eff9302b379599fa9661d7240c';
+        COMMIT;
+        """);
+
+    private static readonly KnownDefectivePackage[] KnownDefectivePackages =
+    [
+        V009PreviewInvitation,
+        V035ConsumeMonthlyFranchise,
+    ];
+
+    private static async Task RepairKnownDefectivePackagesAsync(
         NpgsqlConnection connection,
         IReadOnlyList<MigrationBlock> migrations,
         Dictionary<int, string> history,
         CancellationToken cancellationToken)
     {
-        const int version = 9;
-        const string defective = "8ea94f7cafca871d9a1923a8383eaf89a7535f2749efa550e6930bfcf7a7982b";
-        const string repaired = "f2d7bc3a2ed44f1e0601b29d911cd4af4fba774a4d47a2020962519d094209f2";
-        if (!history.TryGetValue(version, out var stored) ||
-            !string.Equals(stored.Trim(), defective, StringComparison.Ordinal) ||
-            !migrations.Any(x => x.Version == version && x.Checksum == repaired))
+        foreach (var package in KnownDefectivePackages)
         {
-            return;
-        }
+            if (!history.TryGetValue(package.Version, out var stored) ||
+                !string.Equals(stored.Trim(), package.Defective, StringComparison.Ordinal) ||
+                !migrations.Any(x => x.Version == package.Version && x.Checksum == package.Repaired))
+            {
+                continue;
+            }
 
-        await ExecuteAsync(connection, $"""
-            BEGIN;
-            DROP FUNCTION IF EXISTS odca.preview_tenant_invitation(uuid,text);
-            CREATE OR REPLACE FUNCTION odca.preview_tenant_invitation(p_invitation_id uuid, presented_hash text)
-            RETURNS TABLE(invitation_id uuid, organization_name text, role_name text, recipient_email text, expires_at timestamptz, status text)
-            LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, odca AS $function$
-            DECLARE locked_tenant_id uuid;
-            BEGIN
-              SELECT i.tenant_id INTO locked_tenant_id FROM odca.tenant_invitations i WHERE i.id = p_invitation_id;
-              IF FOUND THEN PERFORM odca.expire_tenant_invitations(locked_tenant_id); END IF;
-              RETURN QUERY SELECT i.id, t.display_name, r.display_name, i.recipient_email, i.expires_at, i.status
-                FROM odca.tenant_invitations i JOIN odca.tenants t ON t.id = i.tenant_id
-                JOIN odca.roles r ON r.id = i.role_id AND r.tenant_id = i.tenant_id
-               WHERE i.id = p_invitation_id AND i.token_hash = presented_hash
-                 AND i.status IN ('pending','sent') AND i.expires_at > now();
-            END; $function$;
-            REVOKE ALL ON FUNCTION odca.preview_tenant_invitation(uuid,text) FROM PUBLIC;
-            GRANT EXECUTE ON FUNCTION odca.preview_tenant_invitation(uuid,text) TO odca_app;
-            UPDATE odca.schema_migrations SET checksum = '{repaired}'
-             WHERE version = {version} AND checksum = '{defective}';
-            COMMIT;
-            """, cancellationToken);
-        history[version] = repaired;
+            await ExecuteAsync(connection, package.Script, cancellationToken);
+            history[package.Version] = package.Repaired;
+        }
     }
+
+    private sealed record KnownDefectivePackage(int Version, string Defective, string Repaired, string Script);
 
     public static void ValidateChecksums(string sql)
         => _ = ParseAndValidate(sql);

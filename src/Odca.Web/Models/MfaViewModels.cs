@@ -8,6 +8,10 @@ public sealed class MfaEnrollmentViewModel
 
     public string OtpAuthUri { get; set; } = string.Empty;
 
+    public string? QrDataUri { get; set; }
+
+    public bool Regenerated { get; set; }
+
     [Required(ErrorMessage = "Informe o código do aplicativo autenticador.")]
     [StringLength(16, MinimumLength = 6, ErrorMessage = "Informe o código com 6 dígitos.")]
     [Display(Name = "Código do autenticador")]

@@ -310,10 +310,12 @@ public sealed class DevelopmentAccessProvisioningTests(DatabaseFixture database)
                                           OR tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
             DELETE FROM odca.sessions WHERE user_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));
             DELETE FROM odca.member_roles WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'))
-                                           OR user_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));
+                                           OR user_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'))
+                                           OR assigned_by IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));
             DELETE FROM odca.memberships WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'))
                                            OR user_id IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));
-            DELETE FROM odca.subscriptions WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
+            DELETE FROM odca.subscriptions WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'))
+                                              OR created_by IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));
             DELETE FROM odca.role_permissions WHERE role_id IN (SELECT id FROM odca.roles WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL')));
             DELETE FROM odca.roles WHERE tenant_id IN (SELECT id FROM odca.tenants WHERE business_code IN ('12345678000195', 'ODCA-DEMO-LOCAL'));
             DELETE FROM odca.storage_package_versions WHERE created_by IN (SELECT id FROM odca.users WHERE email_normalized IN ('ADMIN@ODCA.LOCAL', 'OPERADOR@ODCA.LOCAL', 'CLIENTE.TESTE@ODCA.LOCAL'));

@@ -174,7 +174,8 @@ public sealed class DatabaseFixture : IAsyncLifetime
             UPDATE odca.users
                SET mfa_secret_protected = NULL,
                    mfa_confirmed_at = NULL,
-                   mfa_last_accepted_time_step = NULL
+                   mfa_last_accepted_time_step = NULL,
+                   mfa_pending_since = NULL
              WHERE id = @Id;
             """;
 

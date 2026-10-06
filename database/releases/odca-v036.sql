@@ -4352,14 +4352,3 @@ VALUES (36, 'MFA pending enrollment timestamp', 'dee99c2bd58a4ab786e306bdb11f4c0
 ON CONFLICT (version) DO NOTHING;
 COMMIT;
 -- ODCA-END 036
--- ODCA-MIGRATION 037 CHECKSUM c4ad0048ab5d93f6d831ecb500a32cdfa7eebb8607591c19c6316804ccf54a84
-BEGIN;
-SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
-
-CREATE UNIQUE INDEX IF NOT EXISTS contract_change_one_active_uq ON odca.contract_change_requests(tenant_id,contract_id) WHERE status NOT IN('cancelled','formalized','conflict') OR (status='formalized' AND application_status IN('not_applied','scheduled','failed'));
-
-INSERT INTO odca.schema_migrations(version, name, checksum)
-VALUES (37, 'Single active change request per contract', 'c4ad0048ab5d93f6d831ecb500a32cdfa7eebb8607591c19c6316804ccf54a84')
-ON CONFLICT (version) DO NOTHING;
-COMMIT;
--- ODCA-END 037

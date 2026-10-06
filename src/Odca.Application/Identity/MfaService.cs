@@ -20,12 +20,79 @@ public sealed class MfaService(
         CancellationToken cancellationToken)
     {
         var now = clock.UtcNow;
+        if (!await IsEnrollmentAvailableAsync(userId, sessionId, securityVersion, now, cancellationToken))
+        {
+            return null;
+        }
+
         var user = await repository.FindByIdAsync(userId, cancellationToken);
-        if (user is null ||
-            !user.IsPlatformAdministrator ||
-            user.MustChangePassword ||
-            user.MfaConfirmedAt is not null ||
-            !await repository.IsSessionValidAsync(userId, sessionId, securityVersion, now, cancellationToken))
+        if (user is null)
+        {
+            return null;
+        }
+
+        var pending = await repository.GetPendingMfaSecretAsync(userId, cancellationToken);
+        if (pending is not null && IsPendingFresh(pending.PendingSince, now))
+        {
+            try
+            {
+                return BuildEnrollment(user, secretProtector.Unprotect(pending.ProtectedSecret));
+            }
+            catch (CryptographicException)
+            {
+                // Chave pendente ilegível (ex.: anel Data Protection indisponível): regenera abaixo.
+            }
+        }
+
+        var secret = TotpService.GenerateSecret();
+        var saved = await repository.SavePendingMfaSecretIfAbsentAsync(
+            userId,
+            sessionId,
+            securityVersion,
+            secretProtector.Protect(secret),
+            now,
+            cancellationToken);
+        if (!saved)
+        {
+            var concurrent = await repository.GetPendingMfaSecretAsync(userId, cancellationToken);
+            if (concurrent is not null && IsPendingFresh(concurrent.PendingSince, now))
+            {
+                try
+                {
+                    return BuildEnrollment(user, secretProtector.Unprotect(concurrent.ProtectedSecret));
+                }
+                catch (CryptographicException)
+                {
+                    // Chave concorrente ilegível: sobrescreve com a nova chave abaixo.
+                }
+            }
+
+            saved = await repository.SavePendingMfaSecretAsync(
+                userId,
+                sessionId,
+                securityVersion,
+                secretProtector.Protect(secret),
+                now,
+                cancellationToken);
+        }
+
+        return saved ? BuildEnrollment(user, secret) : null;
+    }
+
+    public async Task<MfaEnrollment?> RegenerateEnrollmentAsync(
+        Guid userId,
+        Guid sessionId,
+        int securityVersion,
+        CancellationToken cancellationToken)
+    {
+        var now = clock.UtcNow;
+        if (!await IsEnrollmentAvailableAsync(userId, sessionId, securityVersion, now, cancellationToken))
+        {
+            return null;
+        }
+
+        var user = await repository.FindByIdAsync(userId, cancellationToken);
+        if (user is null)
         {
             return null;
         }
@@ -38,10 +105,29 @@ public sealed class MfaService(
             secretProtector.Protect(secret),
             now,
             cancellationToken);
-        return saved
-            ? new MfaEnrollment(secret, TotpService.BuildOtpAuthUri("ODCA Solutions", user.Email, secret))
-            : null;
+        return saved ? BuildEnrollment(user, secret) : null;
     }
+
+    private async Task<bool> IsEnrollmentAvailableAsync(
+        Guid userId,
+        Guid sessionId,
+        int securityVersion,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var user = await repository.FindByIdAsync(userId, cancellationToken);
+        return user is not null
+            && user.IsPlatformAdministrator
+            && !user.MustChangePassword
+            && user.MfaConfirmedAt is null
+            && await repository.IsSessionValidAsync(userId, sessionId, securityVersion, now, cancellationToken);
+    }
+
+    private bool IsPendingFresh(DateTimeOffset pendingSince, DateTimeOffset now) =>
+        pendingSince >= now.Add(-policy.PendingEnrollmentLifetime);
+
+    private static MfaEnrollment BuildEnrollment(UserCredential user, string secret) =>
+        new(secret, TotpService.BuildOtpAuthUri("ODCA Solutions", user.Email, secret));
 
     public async Task<MfaVerificationOutcome> ConfirmEnrollmentAsync(
         Guid userId,
@@ -62,7 +148,16 @@ public sealed class MfaService(
             return Failed("Inscrição MFA indisponível para esta sessão.");
         }
 
-        var secret = secretProtector.Unprotect(protectedSecret);
+        string secret;
+        try
+        {
+            secret = secretProtector.Unprotect(protectedSecret);
+        }
+        catch (CryptographicException)
+        {
+            return Failed("Não foi possível validar o autenticador. A chave de segurança registrada está inacessível neste ambiente. Contate o suporte técnico.");
+        }
+
         var verification = totp.Verify(secret, code);
         if (verification is null)
         {
@@ -127,7 +222,16 @@ public sealed class MfaService(
             return Failed("Muitas tentativas de MFA. Faça login novamente.");
         }
 
-        var secret = secretProtector.Unprotect(state.ProtectedSecret);
+        string secret;
+        try
+        {
+            secret = secretProtector.Unprotect(state.ProtectedSecret);
+        }
+        catch (CryptographicException)
+        {
+            return Failed("Não foi possível validar sua chave de segurança. Contate o suporte técnico.");
+        }
+
         var verification = totp.Verify(secret, code);
         string? recoveryCodeHash = null;
         if (verification is null)
