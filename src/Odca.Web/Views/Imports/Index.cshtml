@@ -21,6 +21,7 @@
     <div><span class="eyebrow">CONTRATOS</span><h1>Central de importações</h1><p>Acompanhe a análise, retome revisões e confirme somente dados conferidos.</p></div>
     <details class="help-panel"><summary>Como usar</summary><p>Envie o documento na biblioteca do contrato, solicite a extração e registre a versão nesta central. Nenhuma sugestão é confirmada automaticamente.</p></details>
 </header>
+<p class="muted"><strong>Disponível em breve:</strong> a Central de importações será habilitada em uma próxima versão. Os documentos e dados já enviados permanecem armazenados e rastreáveis.</p>
 <form method="get" class="filter-bar" aria-label="Filtros de importações">
     <label>Estado<select name="status"><option value="">Todos</option>@foreach(var item in new[]{"security_review","queued","processing","awaiting_review","confirmed","failed","cancelled"}){<option value="@item" selected="@(status==item)">@item.Replace('_',' ')</option>}</select></label>
     <label class="check-label"><input type="checkbox" name="mine" value="true" checked="@((bool)ViewData["Mine"]!)" /> Minhas importações</label>

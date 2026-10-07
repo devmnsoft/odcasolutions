@@ -933,6 +933,74 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         if(!rows.Any(x=>x.Revision==beforeRevision)||!rows.Any(x=>x.Revision==afterRevision))return NotFound();var changes=CompareCompositions(rows.Where(x=>x.Revision==beforeRevision),rows.Where(x=>x.Revision==afterRevision));await tx.CommitAsync(ct);return Ok(new SignatureCompositionComparison(beforeRevision,afterRevision,changes));
     }
 
+    [HttpPost("versions/{versionId:guid}/signature-preparations/{preparationId:guid}/participants/{participantClientId:guid}/sign")]
+    public async Task<IActionResult> SignParticipant(Guid tenantId,Guid versionId,Guid preparationId,Guid participantClientId,CancellationToken ct)
+    {
+        if(Actor() is not Guid actor)return Unauthorized();
+        await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor,tenantId,"tenant.contract_drafts.manage",ct))return Forbid();
+        await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor,tx,ct);
+        var version=await c.QuerySingleOrDefaultAsync<SignVersionRow>(new CommandDefinition("SELECT id AS Id,contract_id AS ContractId,review_status AS ReviewStatus FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND id=@versionId FOR UPDATE",new{tenantId,versionId},tx,cancellationToken:ct));
+        if(version is null)return NotFound();
+        var preparation=await c.QuerySingleOrDefaultAsync<PreparationStateRow>(new CommandDefinition("SELECT id AS Id,status AS Status,row_version AS Version,composition_revision AS CompositionRevision,confirmed_revision AS ConfirmedRevision,confirmed_pdf_sha256 AS ConfirmedPdfSha256,confirmed_at AS ConfirmedAt,confirmation_operation_id AS ConfirmationOperationId FROM odca.signature_preparations WHERE tenant_id=@tenantId AND id=@preparationId AND generated_version_id=@versionId FOR UPDATE",new{tenantId,preparationId,versionId},tx,cancellationToken:ct));
+        if(preparation is null)return NotFound();
+        if(preparation.Status!="confirmed")return Conflict(new{title="Só uma composição confirmada aceita assinaturas. Envie a preparação para assinatura primeiro.",code="preparation.not_confirmed"});
+        var participant=await c.QuerySingleOrDefaultAsync<SignatureParticipantStateRow>(new CommandDefinition("SELECT client_id AS ClientId,name AS Name,signed_at AS SignedAt,signed_by AS SignedBy FROM odca.signature_participants WHERE tenant_id=@tenantId AND preparation_id=@preparationId AND composition_revision=@revision AND client_id=@clientId FOR UPDATE",new{tenantId,preparationId,revision=preparation.ConfirmedRevision,clientId=participantClientId},tx,cancellationToken:ct));
+        if(participant is null)return Conflict(new{title="Este participante não integra a composição confirmada. Reabra a preparação para ajustá-la.",code="participant.gone"});
+        if(participant.SignedAt is not null)
+        {
+            if(participant.SignedBy==actor){await tx.CommitAsync(ct);return Ok(new{signedAt=ToUtcOffset(participant.SignedAt.Value),signedBy=actor,remaining=0,allSigned=true,replayed=true});}
+            return Conflict(new{title="Este participante já assinou o documento em outra sessão.",code="participant.already_signed"});
+        }
+        var marked=await c.ExecuteAsync(new CommandDefinition("UPDATE odca.signature_participants SET signed_at=now(),signed_by=@actor WHERE tenant_id=@tenantId AND preparation_id=@preparationId AND composition_revision=@revision AND client_id=@clientId AND signed_at IS NULL",new{tenantId,preparationId,revision=preparation.ConfirmedRevision,clientId=participantClientId,actor},tx,cancellationToken:ct));
+        if(marked==0)
+        {
+            var retried=await c.QuerySingleOrDefaultAsync<SignatureParticipantStateRow>(new CommandDefinition("SELECT client_id AS ClientId,name AS Name,signed_at AS SignedAt,signed_by AS SignedBy FROM odca.signature_participants WHERE tenant_id=@tenantId AND preparation_id=@preparationId AND composition_revision=@revision AND client_id=@clientId",new{tenantId,preparationId,revision=preparation.ConfirmedRevision,clientId=participantClientId},tx,cancellationToken:ct));
+            if(retried is null||retried.SignedAt is null)return Conflict(new{title="A composição mudou durante a operação. Recarregue e repita a ação.",code="participant.gone"});
+            if(retried.SignedBy!=actor)return Conflict(new{title="Este participante já assinou o documento em outra sessão.",code="participant.already_signed"});
+            await tx.CommitAsync(ct);return Ok(new{signedAt=ToUtcOffset(retried.SignedAt.Value),signedBy=actor,remaining=0,allSigned=true,replayed=true});
+        }
+        await AddPreparationEvent(c,tenantId,preparationId,preparation.ConfirmedRevision!.Value,actor,"participant_signed",new{participantId=participantClientId,name=participant.Name},tx,ct);
+        var remaining=await c.ExecuteScalarAsync<int>(new CommandDefinition("SELECT count(*)::int FROM odca.signature_participants WHERE tenant_id=@tenantId AND preparation_id=@preparationId AND composition_revision=@revision AND signed_at IS NULL",new{tenantId,preparationId,revision=preparation.ConfirmedRevision},tx,cancellationToken:ct));
+        bool completed=remaining==0&&version.ReviewStatus!="externally_signed";
+        if(completed)
+        {
+            await c.ExecuteAsync(new CommandDefinition("UPDATE odca.generated_contract_versions SET review_status='externally_signed' WHERE tenant_id=@tenantId AND id=@versionId",new{tenantId,versionId},tx,cancellationToken:ct));
+            await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.contract_events(tenant_id,contract_id,actor_id,event_type,details) VALUES(@tenantId,@contractId,@actor,'signature.completed',jsonb_build_object('versionId',@versionId))",new{tenantId,contractId=version.ContractId,actor,versionId},tx,cancellationToken:ct));
+            await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.audit_events(scope_type,tenant_id,actor_user_id,action,entity_type,entity_id,result,metadata) VALUES('tenant',@tenantId,@actor,'signature.completed','generated_contract_version',@versionId,'success',jsonb_build_object('preparationId',@preparationId))",new{tenantId,actor,versionId,preparationId},tx,cancellationToken:ct));
+        }
+        else
+        {
+            await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.audit_events(scope_type,tenant_id,actor_user_id,action,entity_type,entity_id,result,metadata) VALUES('tenant',@tenantId,@actor,'signature.participant_signed','generated_contract_version',@versionId,'success',jsonb_build_object('participantId',@clientId))",new{tenantId,actor,versionId,clientId=participantClientId},tx,cancellationToken:ct));
+        }
+        await tx.CommitAsync(ct);
+        return Ok(new{signedAt=ToUtcOffset(await c.ExecuteScalarAsync<DateTime>(new CommandDefinition("SELECT now()",null,cancellationToken:ct))),signedBy=actor,remaining,allSigned=remaining==0,replayed=false});
+    }
+
+    [HttpPost("versions/{versionId:guid}/signature-preparations/{preparationId:guid}/remind")]
+    public async Task<IActionResult> RemindPreparation(Guid tenantId,Guid versionId,Guid preparationId,CancellationToken ct)
+    {
+        if(Actor() is not Guid actor)return Unauthorized();
+        await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor,tenantId,"tenant.contract_drafts.manage",ct))return Forbid();
+        await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor,tx,ct);
+        var preparation=await c.QuerySingleOrDefaultAsync<ReminderStateRow>(new CommandDefinition("""
+            SELECT p.id AS Id,p.status AS Status,p.row_version AS Version,p.composition_revision AS CompositionRevision,p.confirmed_revision AS ConfirmedRevision,p.last_reminded_at AS LastRemindedAt,g.id AS VersionId
+            FROM odca.signature_preparations p JOIN odca.generated_contract_versions g ON g.id=p.generated_version_id
+            WHERE p.tenant_id=@tenantId AND p.id=@preparationId AND p.generated_version_id=@versionId FOR UPDATE OF p
+            """,new{tenantId,preparationId,versionId},tx,cancellationToken:ct));
+        if(preparation is null)return NotFound();
+        if(preparation.Status!="confirmed")return Conflict(new{title="Só uma composição confirmada admite lembretes de assinatura.",code="preparation.not_confirmed"});
+        var now=await c.ExecuteScalarAsync<DateTime>(new CommandDefinition("SELECT now()",null,tx,cancellationToken:ct));
+        if(preparation.LastRemindedAt is not null&&(now-preparation.LastRemindedAt.Value).TotalSeconds<60)
+            return Conflict(new{title="Um lembrete foi enviado recentemente. Aguarde antes de repetir o envio.",code="reminder.too_soon",retryAfterSeconds=Math.Max(1,60-(int)((now-preparation.LastRemindedAt.Value).TotalSeconds))});
+        long nextVersion=preparation.Version+1;
+        int unsignedCount=await c.ExecuteScalarAsync<int>(new CommandDefinition("SELECT count(*)::int FROM odca.signature_participants WHERE tenant_id=@tenantId AND preparation_id=@preparationId AND composition_revision=@revision AND signed_at IS NULL",new{tenantId,preparationId,revision=preparation.ConfirmedRevision},tx,cancellationToken:ct));
+        await c.ExecuteAsync(new CommandDefinition("UPDATE odca.signature_preparations SET last_reminded_at=now(),last_reminded_by=@actor,row_version=row_version+1,updated_by=@actor,updated_at=now() WHERE tenant_id=@tenantId AND id=@preparationId",new{tenantId,preparationId,actor},tx,cancellationToken:ct));
+        await AddPreparationEvent(c,tenantId,preparationId,preparation.ConfirmedRevision!.Value,actor,"reminded",new{unsignedCount},tx,ct);
+        await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.audit_events(scope_type,tenant_id,actor_user_id,action,entity_type,entity_id,result,metadata) VALUES('tenant',@tenantId,@actor,'signature.reminded','generated_contract_version',@versionId,'success',jsonb_build_object('preparationId',@preparationId))",new{tenantId,actor,versionId,preparationId},tx,cancellationToken:ct));
+        await tx.CommitAsync(ct);
+        return Ok(new{remindedAt=ToUtcOffset(now),version=nextVersion});
+    }
+
     [HttpGet("reviewers")]
     public async Task<IActionResult> Reviewers(Guid tenantId,CancellationToken ct)
     {
@@ -1209,7 +1277,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     private static async Task<SignaturePreparationResponse?> ReadPreparation(NpgsqlConnection c,Guid tenantId,Guid versionId,NpgsqlTransaction tx,CancellationToken ct)
     {
         var preparation=await c.QuerySingleOrDefaultAsync<PreparationRow>(new CommandDefinition("SELECT id AS Id,status AS Status,row_version AS Version,composition_revision AS CompositionRevision,confirmed_revision AS ConfirmedRevision,confirmed_pdf_sha256 AS ConfirmedPdfSha256,confirmed_at AS ConfirmedAt,confirmation_operation_id AS ConfirmationOperationId FROM odca.signature_preparations WHERE tenant_id=@tenantId AND generated_version_id=@versionId",new{tenantId,versionId},tx,cancellationToken:ct));if(preparation is null)return null;
-        var participants=await c.QueryAsync<SignatureParticipantInput>(new CommandDefinition("SELECT client_id AS Id,participant_type AS ParticipantType,source_id AS SourceId,role AS Role,name AS Name,email AS Email,phone AS Phone,position AS Position FROM odca.signature_participants WHERE tenant_id=@tenantId AND preparation_id=@id AND composition_revision=@revision ORDER BY position",new{tenantId,preparation.Id,revision=preparation.CompositionRevision},tx,cancellationToken:ct));
+        var participants=await c.QueryAsync<SignatureParticipantInput>(new CommandDefinition("SELECT client_id AS Id,participant_type AS ParticipantType,source_id AS SourceId,role AS Role,name AS Name,email AS Email,phone AS Phone,position AS Position,signed_at AS SignedAt,signed_by AS SignedBy FROM odca.signature_participants WHERE tenant_id=@tenantId AND preparation_id=@id AND composition_revision=@revision ORDER BY position",new{tenantId,preparation.Id,revision=preparation.CompositionRevision},tx,cancellationToken:ct));
         return new(preparation.Id,preparation.Status,preparation.Version,participants.AsList(),preparation.CompositionRevision,preparation.ConfirmedRevision,preparation.ConfirmedPdfSha256,ToUtcOffset(preparation.ConfirmedAt));
     }
 
@@ -1366,6 +1434,18 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     private sealed record PreparationVersionRow(Guid Id,Guid? PatientId,string? PatientSnapshot,string PdfStatus,string? PdfStorageKey,string? PdfSha256,string ReviewStatus);
     private sealed record ReadinessRow(string PdfStatus,string? PdfStorageKey,string? PdfSha256,string ReviewStatus,Guid PreparationId,string? PreparationStatus,int CompositionRevision,long ParticipantCount);
     private sealed record PreparationOperationRow(string OperationType,string CommandHash,string ResponseJson);
+    private sealed record SignVersionRow(Guid Id,Guid ContractId,string ReviewStatus);
+    private sealed record SignatureParticipantStateRow(Guid ClientId,string Name,DateTime? SignedAt,Guid? SignedBy);
+    private sealed class ReminderStateRow
+    {
+        public Guid Id { get; set; }
+        public string Status { get; set; } = "";
+        public long Version { get; set; }
+        public int CompositionRevision { get; set; }
+        public int? ConfirmedRevision { get; set; }
+        public DateTime? LastRemindedAt { get; set; }
+        public Guid VersionId { get; set; }
+    }
     private sealed record ComparisonParticipant(Guid Id,string Name,string ParticipantType,Guid? SourceId,string Role,string? Email,string? Phone,int Position,int Revision);
     private sealed class SubmittedReviewRow
     {

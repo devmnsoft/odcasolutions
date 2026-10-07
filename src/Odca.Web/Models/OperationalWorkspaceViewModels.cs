@@ -1,3 +1,4 @@
+using Odca.Contracts.Contracts;
 using Odca.Contracts.Operations;
 using Odca.Contracts.Tenancy;
 using Odca.Contracts.SavedViews;
@@ -24,6 +25,21 @@ public sealed class AgendaWorkspaceViewModel
     public string? Error { get; init; }
 }
 
+public sealed class ContractListViewModel
+{
+    public Guid TenantId { get; init; }
+    public IReadOnlyList<ContractListItem> Contracts { get; init; } = [];
+    public int Page { get; init; } = 1;
+    public int PageSize { get; init; } = 20;
+    public int Total { get; init; }
+    public string? Search { get; init; }
+    public string Status { get; init; } = "active";
+    public bool CanCreateDocument { get; init; }
+    public bool CanManageContracts { get; init; }
+    public bool CanReadHistory { get; init; }
+    public string? Error { get; init; }
+}
+
 public sealed class ContractSheetViewModel
 {
     public ContractSheetDto? Sheet { get; init; }
@@ -40,4 +56,12 @@ public sealed class ContractSheetViewModel
     public IReadOnlyList<Odca.Contracts.Studio.StudioCommentItem> Comments { get; init; } = [];
     public IReadOnlyList<Odca.Contracts.Studio.StudioVersionItem> Versions { get; init; } = [];
     public IReadOnlyList<Odca.Contracts.Studio.StudioReviewerItem> Reviewers { get; init; } = [];
+    // B.3.2c — jornada completa na ficha (assinatura, ações de ciclo de vida, histórico)
+    public IReadOnlyList<Odca.Contracts.Contracts.ContractEventItem> Events { get; init; } = [];
+    public int EventTotal { get; init; }
+    public int EventPage { get; init; } = 1;
+    public bool CanManageContracts { get; init; }
+    public bool CanReadHistory { get; init; }
+    public bool CanSignDocuments { get; init; }
+    public bool CanReadDocuments { get; init; }
 }

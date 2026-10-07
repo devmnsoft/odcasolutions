@@ -26,6 +26,8 @@ builder.Services.AddProblemDetails(options =>
 });
 builder.Services.AddControllers();
 builder.Services.AddTransient<OrganizationFeatureGate>();
+// O ReleaseFeatureGate implementa IMiddleware e é resolvido pelo container, então precisa de registro explícito.
+builder.Services.AddTransient<ReleaseFeatureGate>();
 builder.Services.AddOpenApi();
 builder.Services.AddOdcaInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<Odca.Api.StartupValidationService>();
@@ -139,6 +141,10 @@ if (!app.Environment.IsEnvironment("Testing"))
 {
     app.UseExceptionHandler();
 }
+// Gate do ciclo de liberação: recursos ainda não disponíveis nesta versão (importações,
+// upload de documentos e extração/OCR) respondem 503 antes de suspensão, plano ou permissão.
+// Registrado antes de UseStatusCodePages para preservar o corpo problem+json.
+app.UseMiddleware<ReleaseFeatureGate>();
 app.UseStatusCodePages();
 app.UseHttpsRedirection();
 app.UseRateLimiter();

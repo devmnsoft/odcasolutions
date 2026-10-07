@@ -31,10 +31,12 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
 
         var header = await connection.QuerySingleOrDefaultAsync<SheetHeader>(new CommandDefinition(
             """
-            SELECT c.id AS ContractId, c.title AS Title,
+            SELECT c.id AS ContractId, c.title AS Title, c.reference AS Reference,
                    c.start_date AS StartsOn, c.end_date AS EndsOn, c.version AS Version,
                    c.contract_type AS ContractType,
                    c.owner_id AS OwnerId, u.display_name AS OwnerName,
+                   c.archived_at AS ArchivedAt, c.archive_reason AS ArchiveReason,
+                   c.closed_at AS ClosedAt, c.closed_on AS ClosedOn, c.closure_reason AS ClosureReason,
                    c.renewal_notice_amount AS NoticeAmount,
                    c.renewal_notice_unit AS NoticeUnit
               FROM odca.contracts c
@@ -172,6 +174,48 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             transaction,
             cancellationToken: cancellationToken));
 
+        // B.3.2c — newest generated version carrying a signature preparation.
+        // Signing targets the confirmed revision, so its (immutable) participants are shown.
+        SheetSignatureRow? signatureRow = null;
+        if (canReadDocuments)
+        {
+            signatureRow = await connection.QuerySingleOrDefaultAsync<SheetSignatureRow>(new CommandDefinition(
+                """
+                SELECT g.id AS VersionId, g.version_number AS VersionNumber,
+                       g.review_status AS ReviewStatus, g.pdf_status AS PdfStatus,
+                       p.id AS PreparationId, p.status AS PreparationStatus,
+                       p.composition_revision AS CompositionRevision,
+                       p.confirmed_revision AS ConfirmedRevision,
+                       p.last_reminded_at AS LastRemindedAt
+                  FROM odca.signature_preparations p
+                  JOIN odca.generated_contract_versions g
+                    ON g.tenant_id = p.tenant_id AND g.id = p.generated_version_id
+                 WHERE p.tenant_id = @tenantId AND g.contract_id = @contractId
+                 ORDER BY g.created_at DESC, p.id DESC
+                 LIMIT 1
+                """,
+                new { tenantId, contractId },
+                transaction,
+                cancellationToken: cancellationToken));
+
+            if (signatureRow is not null)
+            {
+                var revision = signatureRow.ConfirmedRevision ?? signatureRow.CompositionRevision;
+                signatureRow.Participants = (await connection.QueryAsync<SheetSignatureParticipantRow>(new CommandDefinition(
+                    """
+                    SELECT sp.client_id AS ClientId, sp.name AS Name, sp.role AS Role,
+                           sp.participant_type AS ParticipantType, sp.signed_at AS SignedAt
+                      FROM odca.signature_participants sp
+                     WHERE sp.tenant_id = @tenantId AND sp.preparation_id = @preparationId
+                       AND sp.composition_revision = @revision
+                     ORDER BY sp.position
+                    """,
+                    new { tenantId, preparationId = signatureRow.PreparationId, revision },
+                    transaction,
+                    cancellationToken: cancellationToken))).AsList();
+            }
+        }
+
         await transaction.CommitAsync(cancellationToken);
 
         var unit = string.Equals(header.NoticeUnit, "calendar_months", StringComparison.Ordinal)
@@ -203,10 +247,31 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
 
         var canInstallOfficialLibrary = ContractWorkspacePolicy.CanInstallOfficialLibrary(canManageTemplates, publishedCount);
 
+        // Estados próprios: encerrado > arquivado > vencido > ativo.
+        var status = header.ClosedAt.HasValue ? "closed"
+            : header.ArchivedAt.HasValue ? "archived"
+            : header.EndsOn.HasValue && header.EndsOn.Value < today ? "expired"
+            : "active";
+
+        var signature = signatureRow is null ? null : new ContractSheetSignatureDto(
+            signatureRow.VersionId,
+            signatureRow.VersionNumber,
+            signatureRow.PreparationId,
+            signatureRow.PreparationStatus,
+            signatureRow.CompositionRevision,
+            signatureRow.ConfirmedRevision,
+            signatureRow.ReviewStatus,
+            signatureRow.PdfStatus,
+            signatureRow.Participants
+                .Select(row => new ContractSheetSignatureParticipantDto(
+                    row.ClientId, row.Name, row.Role, row.ParticipantType, ToUtcOffset(row.SignedAt)))
+                .ToArray(),
+            ToUtcOffset(signatureRow.LastRemindedAt));
+
         return new ContractSheetDto(
             header.ContractId,
             header.Title,
-            header.EndsOn.HasValue && header.EndsOn.Value < today ? "expired" : "active",
+            status,
             header.StartsOn,
             header.EndsOn,
             documents,
@@ -221,18 +286,32 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             hasImportAwaitingReview,
             draftId,
             Today: today,
-            ImportId: importId);
+            ImportId: importId,
+            OwnerId: header.OwnerId,
+            Reference: header.Reference,
+            ArchivedAt: ToUtcOffset(header.ArchivedAt),
+            ArchiveReason: header.ArchiveReason,
+            ClosedAt: ToUtcOffset(header.ClosedAt),
+            ClosedOn: header.ClosedOn,
+            ClosureReason: header.ClosureReason,
+            Signature: signature);
     }
 
     private sealed record SheetHeader(
         Guid ContractId,
         string Title,
+        string? Reference,
         DateOnly? StartsOn,
         DateOnly? EndsOn,
         long Version,
         string? ContractType,
         Guid? OwnerId,
         string? OwnerName,
+        DateTime? ArchivedAt,
+        string? ArchiveReason,
+        DateTime? ClosedAt,
+        DateOnly? ClosedOn,
+        string? ClosureReason,
         int? NoticeAmount,
         string? NoticeUnit);
 
@@ -252,6 +331,29 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
         public Guid? CurrentReviewerId { get; set; }
         public string? CurrentReviewerName { get; set; }
         public DateTime? DueAt { get; set; }
+    }
+
+    private sealed class SheetSignatureRow
+    {
+        public Guid VersionId { get; set; }
+        public int VersionNumber { get; set; }
+        public string ReviewStatus { get; set; } = string.Empty;
+        public string PdfStatus { get; set; } = string.Empty;
+        public Guid PreparationId { get; set; }
+        public string PreparationStatus { get; set; } = string.Empty;
+        public int CompositionRevision { get; set; }
+        public int? ConfirmedRevision { get; set; }
+        public DateTime? LastRemindedAt { get; set; }
+        public List<SheetSignatureParticipantRow> Participants { get; set; } = [];
+    }
+
+    private sealed class SheetSignatureParticipantRow
+    {
+        public Guid ClientId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+        public string ParticipantType { get; set; } = string.Empty;
+        public DateTime? SignedAt { get; set; }
     }
 
     private static DateTimeOffset ToUtcOffset(DateTime dt) =>

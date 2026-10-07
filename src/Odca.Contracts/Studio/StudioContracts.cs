@@ -85,7 +85,8 @@ public sealed record GeneratedVersionDetail(Guid Id, Guid ContractId, Guid Draft
     JsonElement? PatientSnapshot, JsonElement Content, JsonElement Fields, JsonElement Values,
     string RenderedHtml, string PdfStatus, long? PdfByteSize, DateTimeOffset? PdfCompletedAt,
     SignaturePreparationResponse? SignaturePreparation);
-public sealed record SignatureParticipantInput(Guid Id, string ParticipantType, Guid? SourceId, string Role, string Name, string? Email, string? Phone, int Position);
+public sealed record SignatureParticipantInput(Guid Id, string ParticipantType, Guid? SourceId, string Role, string Name, string? Email, string? Phone, int Position,
+    DateTime? SignedAt = null, Guid? SignedBy = null);
 public sealed record SaveSignaturePreparationRequest(long ExpectedVersion, bool Confirm, IReadOnlyList<SignatureParticipantInput>? Participants, Guid? OperationId = null);
 public sealed record ReopenSignaturePreparationRequest(long ExpectedVersion, string Justification, Guid OperationId);
 public sealed record SignatureReadinessItem(string Code, string Message, string Reason, string CorrectionAction, string? RequiredPermission);

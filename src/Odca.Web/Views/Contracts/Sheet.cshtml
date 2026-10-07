@@ -20,7 +20,64 @@
             Model.ViewId,
             Model.SelectedObligationId)
         : string.Empty;
+    var tenantIdValue = tenantId is Guid g ? g : Guid.Empty;
+    var pdfBaixarQuery = Odca.Web.Controllers.ContractsController.BuildReturnUrlQuery(
+        Model.FromSource, Model.Year, Model.Month, Model.Scope, Model.Kind, Model.Urgency, Model.ViewId, Model.SelectedObligationId);
 }
+
+@functions {
+    private static string StatusLabel(string? value) => value switch
+    {
+        "active" => "Ativo",
+        "archived" => "Arquivado",
+        "closed" => "Encerrado",
+        "expired" => "Vencido",
+        _ => value ?? "—"
+    };
+
+    private static string ReviewStatusLabel(string? value) => value switch
+    {
+        "generated" => "Gerada",
+        "submitted" => "Em revisão",
+        "internally_approved" => "Aprovada internamente",
+        "externally_signed" => "Assinada",
+        _ => value ?? "—"
+    };
+
+    private static string ParticipantTypeLabel(string? value) => value switch
+    {
+        "patient" => "Paciente",
+        "representative" => "Representante",
+        "professional" => "Profissional",
+        "organization_representative" => "Representante da organização",
+        _ => value ?? "—"
+    };
+
+    private static string EventLabel(string value) => value switch
+    {
+        "contract.updated" => "Detalhes do contrato atualizados",
+        "contract.duplicated" => "Contrato duplicado",
+        "contract.archived" => "Contrato arquivado",
+        "contract.restored" => "Contrato restaurado",
+        "contract.closed" => "Contrato encerrado",
+        "draft.created" => "Minuta criada",
+        "draft.saved" => "Minuta salva",
+        "draft.patient_associated" => "Paciente vinculado à minuta",
+        "version.generated" => "Versão numerada gerada",
+        "signature.completed" => "Assinaturas concluídas",
+        "document_uploaded" => "Documento enviado ao contrato",
+        "extraction_review_applied" => "Revisão de importação aplicada",
+        "renewal_decision" => "Decisão de renovação registrada",
+        _ => value
+    };
+
+    private static string EventPageUrl(Guid tenantId, Guid contractId, int page, string? from, int? year, int? month, string? scope, string? kind, string? urgency, Guid? viewId, Guid? obrigacao)
+    {
+        var baseUrl = Odca.Web.Controllers.ContractsController.BuildReturnUrl(tenantId, contractId, "", from, year, month, scope, kind, urgency, viewId, obrigacao);
+        return baseUrl + (baseUrl.Contains('?') ? "&" : "?") + "eventsPage=" + page.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+}
+
 @if (sheet is null)
 {
     <div class="empty-state">
@@ -48,6 +105,18 @@
         </nav>
         <div class="form-actions-row">
             <h1>@sheet.Title</h1>
+            @if (sheet.Status == "closed")
+            {
+                <span class="status-label" title="Encerrado em @(sheet.ClosedAt?.ToString("dd/MM/yyyy HH:mm"))">Encerrado</span>
+            }
+            else if (sheet.Status == "archived")
+            {
+                <span class="status-label" title="Arquivado em @(sheet.ArchivedAt?.ToString("dd/MM/yyyy HH:mm"))">Arquivado</span>
+            }
+            else if (sheet.Status == "expired")
+            {
+                <span class="status-label" title="Vigência terminou em @(sheet.EndsOn?.ToString("dd/MM/yyyy"))">Vencido</span>
+            }
             @if (sheet.HasImportAwaitingReview)
             {
                 @if (sheet.ImportId.HasValue)
@@ -67,10 +136,11 @@
             }
         </div>
         <p class="muted">
-            Situação: <strong>@sheet.Status</strong> ·
+            Situação: <strong>@StatusLabel(sheet.Status)</strong> ·
             Vigência: @(sheet.StartsOn?.ToString("dd/MM/yyyy") ?? "Início n/d") a @(sheet.EndsOn?.ToString("dd/MM/yyyy") ?? "Sem término") ·
             Tipo: @(sheet.ContractType ?? "Geral") ·
             Responsável: @(sheet.OwnerName ?? "Não atribuído") ·
+            @(string.IsNullOrWhiteSpace(sheet.Reference) ? "" : $"Referência: <strong>{sheet.Reference}</strong> · ")
             Versão otimista: @sheet.Version
         </p>
     </div>
@@ -78,11 +148,18 @@
 
 <!-- SUBNAV STICKY COM ARIA-CURRENT -->
 <nav class="sheet-subnav" aria-label="Seções da ficha">
+    <a href="#detalhes">Detalhes</a>
     <a href="#obrigacoes">Obrigações</a>
     <a href="#renovacao">Renovação</a>
     <a href="#revisao">Revisão</a>
     <a href="#minutas">Minutas</a>
+    <a href="#assinatura">Assinatura</a>
     <a href="#documentos">Documentos</a>
+    @if (Model.CanReadHistory)
+    {
+        <a href="#historico">Histórico</a>
+    }
+    <a href="#acoes">Ações</a>
     <a asp-controller="Renewals" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-counterparty="@sheet.Title">Central de renovações</a>
 </nav>
 
@@ -99,6 +176,91 @@
         @error
     </div>
 }
+
+<!-- SEÇÃO DETALHES DO CONTRATO (B.3.2c) -->
+<section id="detalhes" class="renewal-list" aria-label="Detalhes do contrato">
+    <div class="list-header">
+        <h2>Detalhes do contrato</h2>
+        @if (Model.CanManageContracts)
+        {
+            <span class="muted">Alterações ficam registradas no histórico e na auditoria.</span>
+        }
+    </div>
+
+    <div class="renewal-cards">
+        <div>
+            <strong>@(string.IsNullOrWhiteSpace(sheet.Reference) ? "—" : sheet.Reference)</strong>
+            <span>Referência interna</span>
+        </div>
+        <div>
+            <strong>@(sheet.ArchivedAt?.ToString("dd/MM/yyyy HH:mm") ?? "—")</strong>
+            <span>Arquivado em</span>
+        </div>
+        <div>
+            <strong>@(sheet.ClosedOn?.ToString("dd/MM/yyyy") ?? "—")</strong>
+            <span>Data do encerramento</span>
+        </div>
+        <div>
+            <strong>@(string.IsNullOrWhiteSpace(sheet.ClosureReason) ? "—" : "Registrado")</strong>
+            <span>Motivo do encerramento</span>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(sheet.ArchiveReason))
+    {
+        <p class="muted"><strong>Motivo do arquivamento:</strong> @sheet.ArchiveReason</p>
+    }
+    @if (!string.IsNullOrWhiteSpace(sheet.ClosureReason))
+    {
+        <p class="muted"><strong>Motivo do encerramento:</strong> @sheet.ClosureReason</p>
+    }
+
+    @if (Model.CanManageContracts && sheet.Status != "closed")
+    {
+        <details class="filter-panel">
+            <summary><strong>Editar detalhes</strong> (título, referência interna, responsável)</summary>
+            <form id="details-form" method="post" asp-action="UpdateDetails" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+                  asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+                  asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
+                  class="form-grid" data-processing data-processing-label="Salvando…">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="version" value="@sheet.Version" />
+
+                <label>Título do contrato
+                    <input type="text" name="title" maxlength="160" value="@sheet.Title" />
+                </label>
+
+                <label>Referência interna
+                    <input type="text" name="reference" maxlength="160" value="@(sheet.Reference ?? "")" placeholder="Ex.: CT-2026-014 (deixe vazio para remover)" />
+                </label>
+
+                <label>Responsável interno
+                    <select name="ownerId" data-initial="@(sheet.OwnerId?.ToString() ?? "")">
+                        <option value="">— selecionar para alterar —</option>
+                        @foreach (var m in Model.ActiveMembers)
+                        {
+                            <option value="@m.UserId" selected="@(sheet.OwnerId == m.UserId ? "selected" : null)">@m.Name (@m.Email)</option>
+                        }
+                    </select>
+                </label>
+
+                <label class="form-grid-full check-line">
+                    <input type="checkbox" name="clearOwner" value="true" />
+                    <span>Remover o responsável atual (substitui o seletor acima)</span>
+                </label>
+
+                <div class="form-grid-full form-actions-row">
+                    <button class="button button-primary" type="submit">Salvar alterações</button>
+                    <span class="muted">Título vazio não é enviado; referência vazia remove a referência anterior.</span>
+                </div>
+            </form>
+        </details>
+    }
+    else if (!Model.CanManageContracts)
+    {
+        <p class="muted">Seu perfil visualiza os detalhes, mas não edita este contrato.</p>
+    }
+</section>
 
 <!-- SEÇÃO RENOVAÇÃO -->
 <section id="renovacao" class="renewal-cards" aria-label="Indicadores de vigência e renovação">
@@ -141,6 +303,15 @@
                     <option value="renewal">Renovação de vigência</option>
                     <option value="amendment">Aditivo (alteração de escopo/valor/prazo)</option>
                 }
+            </select>
+        </label>
+
+        <label>Prioridade da proposta
+            <select name="priority">
+                <option value="low">Baixa</option>
+                <option value="normal" selected>Normal</option>
+                <option value="high">Alta</option>
+                <option value="critical">Crítica</option>
             </select>
         </label>
 
@@ -659,6 +830,142 @@
     }
 </section>
 
+<!-- SEÇÃO ASSINATURA (B.3.2c) -->
+<section id="assinatura" class="renewal-list" aria-label="Assinaturas do documento gerado">
+    <div class="list-header">
+        <h2>Assinaturas</h2>
+        @if (sheet.Signature is not null)
+        {
+            <span class="muted">Versão @sheet.Signature.VersionNumber · @ReviewStatusLabel(sheet.Signature.ReviewStatus)</span>
+        }
+    </div>
+
+    @if (sheet.Signature is null)
+    {
+        <div class="empty-state">
+            <strong>Nenhuma versão com preparação de assinatura</strong>
+            <p>Gere uma versão numerada da minuta e confirme a preparação de assinatura no Estúdio para assinar aqui.</p>
+            @if (sheet.DraftId.HasValue)
+            {
+                <a class="button button-quiet" href="/organizacoes/@tenantId/estudio/minutas/@sheet.DraftId.Value?returnUrl=@Uri.EscapeDataString(returnUrl)">Abrir minuta no Estúdio</a>
+            }
+        </div>
+    }
+    else
+    {
+        var signature = sheet.Signature;
+        var preparationConfirmed = signature.PreparationStatus == "confirmed";
+        var pdfCompleted = signature.PdfStatus == "completed";
+
+        <div class="renewal-cards">
+            <div>
+                <strong>Versão @signature.VersionNumber</strong>
+                <span>Versão gerada</span>
+            </div>
+            <div>
+                <strong>@(preparationConfirmed ? "Confirmada" : "Rascunho")</strong>
+                <span>Preparação de assinatura</span>
+            </div>
+            <div>
+                <strong>@ReviewStatusLabel(signature.ReviewStatus)</strong>
+                <span>Situação da versão</span>
+            </div>
+            <div>
+                <strong>@(signature.LastRemindedAt?.ToString("dd/MM/yyyy HH:mm") ?? "Nunca")</strong>
+                <span>Último lembrete</span>
+            </div>
+        </div>
+
+        @if (!preparationConfirmed)
+        {
+            <div class="banner-notice-warning" role="status">
+                A preparação de assinatura ainda é rascunho: o documento pode ser alterado no Estúdio. Confirme a preparação lá para habilitar a assinatura abaixo.
+            </div>
+        }
+
+        @if (signature.Participants.Count == 0)
+        {
+            <p class="muted">Nenhum participante cadastrado nesta preparação de assinatura.</p>
+        }
+
+        @foreach (var participant in signature.Participants)
+        {
+            var alreadySigned = participant.SignedAt.HasValue;
+            <article class="renewal-row">
+                <div>
+                    <span class="status-label">@ParticipantTypeLabel(participant.ParticipantType)</span>
+                    <h3>@participant.Name</h3>
+                    <p class="muted">@participant.Role</p>
+                </div>
+                <div class="next-action">
+                    @if (alreadySigned)
+                    {
+                        <span class="status-label">Assinado em @participant.SignedAt!.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                    }
+                    else
+                    {
+                        <span class="muted">Aguardando assinatura</span>
+                        @if (Model.CanSignDocuments && preparationConfirmed)
+                        {
+                            <form id="sign-form-@participant.ClientId" method="post" asp-action="SignParticipant" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+                                  asp-route-versionId="@signature.VersionId" asp-route-preparationId="@signature.PreparationId" asp-route-participantClientId="@participant.ClientId"
+                                  asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+                                  asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="participantName" value="@participant.Name" />
+                                <button class="button button-primary" type="button"
+                                        data-confirm-open data-confirm-form="sign-form-@participant.ClientId"
+                                        data-confirm-title="Registrar assinatura"
+                                        data-confirm-body="Deseja registrar a assinatura de '@participant.Name' nesta versão? O ato será registrado pelo usuário conectado (@(User.Identity?.Name ?? "sua sessão")) e permanece no histórico."
+                                        data-confirm-action="Registrar assinatura">Assinar — @participant.Name</button>
+                            </form>
+                        }
+                    }
+                </div>
+            </article>
+        }
+
+        <div class="form-actions-row form-stack">
+            @if (Model.CanSignDocuments && preparationConfirmed)
+            {
+                <form id="remind-signature-form" method="post" asp-action="RemindSignature" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+                      asp-route-versionId="@signature.VersionId" asp-route-preparationId="@signature.PreparationId"
+                      asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+                      asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId">
+                    @Html.AntiForgeryToken()
+                    <button class="button button-quiet" type="button"
+                            data-confirm-open data-confirm-form="remind-signature-form"
+                            data-confirm-title="Reenviar lembrete de assinatura"
+                            data-confirm-body="Deseja reenviar o lembrete aos participantes pendentes? Lembretes enviados há menos de 60 segundos são recusados."
+                            data-confirm-action="Reenviar lembrete">Reenviar lembrete</button>
+                </form>
+            }
+
+            @if (Model.CanReadDocuments)
+            {
+                @if (pdfCompleted)
+                {
+                    <a class="button button-quiet"
+                       href="/organizacoes/@tenantId/contratos/@sheet.ContractId/versoes/@signature.VersionId/pdf-baixar@pdfBaixarQuery">Baixar PDF</a>
+                    <a class="button button-quiet" target="_blank" rel="noopener"
+                       href="/organizacoes/@tenantId/contratos/@sheet.ContractId/versoes/@signature.VersionId/imprimir">Imprimir / ver RASCUNHO</a>
+                }
+                else if (Model.CanSignDocuments)
+                {
+                    <form id="generate-pdf-form" method="post" asp-action="GenerateVersionPdf" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+                          asp-route-versionId="@signature.VersionId"
+                          asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+                          asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId">
+                        @Html.AntiForgeryToken()
+                        <button class="button button-primary" type="submit">Gerar PDF final</button>
+                    </form>
+                }
+            }
+        </div>
+        <p class="muted">O documento em assinatura é imutável: alterações exigem nova versão gerada no Estúdio.</p>
+    }
+</section>
+
 <!-- SEÇÃO DOCUMENTOS RECENTES -->
 <section id="documentos" class="renewal-list">
     <div class="list-header">
@@ -704,6 +1011,162 @@
     }
 </section>
 
+<!-- SEÇÃO HISTÓRICO DO CONTRATO (B.3.2c) -->
+@if (Model.CanReadHistory)
+{
+    <section id="historico" class="renewal-list" aria-label="Histórico do contrato">
+        <div class="list-header">
+            <h2>Histórico do contrato</h2>
+            <span>@Model.EventTotal evento(s)</span>
+        </div>
+
+        @if (Model.Events.Count == 0)
+        {
+            <div class="empty-state">
+                <strong>Nenhum evento registrado</strong>
+                <p>Ações sobre este contrato aparecerão aqui quando ocorrerem.</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var ev in Model.Events)
+            {
+                <article class="renewal-row">
+                    <div>
+                        <span class="status-label">@EventLabel(ev.Type)</span>
+                        <p class="muted"><small>@ev.Type</small></p>
+                    </div>
+                    <dl>
+                        <div>
+                            <dt>Quando</dt>
+                            <dd>@ev.OccurredAt.ToString("dd/MM/yyyy HH:mm")</dd>
+                        </div>
+                        <div>
+                            <dt>Por</dt>
+                            <dd>@(string.IsNullOrWhiteSpace(ev.Actor) ? "Sistema" : ev.Actor)</dd>
+                        </div>
+                    </dl>
+                    <div class="next-action">
+                        @if (!string.IsNullOrWhiteSpace(ev.Details))
+                        {
+                            <small class="muted">@ev.Details</small>
+                        }
+                    </div>
+                </article>
+            }
+
+            @if (Model.EventTotal > Model.EventPage * 50)
+            {
+                <div class="form-actions-row">
+                    <a class="button button-quiet"
+                       href="@EventPageUrl(tenantIdValue, sheet.ContractId, Model.EventPage + 1, Model.FromSource, Model.Year, Model.Month, Model.Scope, Model.Kind, Model.Urgency, Model.ViewId, Model.SelectedObligationId)">Próximos eventos</a>
+                </div>
+            }
+        }
+    </section>
+}
+
+<!-- SEÇÃO AÇÕES DO CICLO DE VIDA (B.3.2c) -->
+<section id="acoes" class="renewal-list" aria-label="Ações do ciclo de vida do contrato">
+    <div class="list-header">
+        <h2>Ações do ciclo de vida</h2>
+        <span class="muted">Registro com auditoria · sem exclusão física de contratos emitidos ou assinados</span>
+    </div>
+
+    @if (!Model.CanManageContracts)
+    {
+        <p class="muted">Seu perfil visualiza a ficha, mas não realiza ações de ciclo de vida (exige permissão de gestão de contratos).</p>
+    }
+    else
+    {
+        <div class="form-actions-row form-stack">
+            @if (sheet.Status != "closed")
+            {
+                <form id="duplicate-form" method="post" asp-action="Duplicate" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+                      asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+                      asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId">
+                    @Html.AntiForgeryToken()
+                    <button class="button button-primary" type="button"
+                            data-confirm-open data-confirm-form="duplicate-form"
+                            data-confirm-title="Duplicar contrato"
+                            data-confirm-body="Deseja criar uma cópia deste contrato? A minuta original é copiada; assinaturas, versões geradas, obrigações e histórico não são copiados."
+                            data-confirm-action="Criar cópia">Duplicar contrato</button>
+                </form>
+            }
+
+            @if (sheet.Status == "active" || sheet.Status == "expired")
+            {
+                <details data-dirty-form>
+                    <summary class="button button-quiet">Arquivar</summary>
+                    <div class="details-subpanel">
+                        <form id="archive-form" method="post" asp-action="Archive" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+                              asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+                              asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
+                              class="form-stack">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="version" value="@sheet.Version" />
+                            <label>Motivo do arquivamento (opcional)
+                                <textarea name="reason" rows="2" maxlength="500" placeholder="Ex.: documento digitalizado substituiu este registro"></textarea>
+                            </label>
+                            <button class="button button-quiet" type="button"
+                                    data-confirm-open data-confirm-form="archive-form"
+                                    data-confirm-title="Arquivar contrato"
+                                    data-confirm-body="Deseja arquivar o contrato '@sheet.Title'? Ele sai da lista ativa e pode ser restaurado a qualquer momento. Arquivar não rescinde o contrato."
+                                    data-confirm-action="Arquivar">Arquivar contrato</button>
+                        </form>
+                    </div>
+                </details>
+            }
+
+            @if (sheet.Status == "archived")
+            {
+                <form id="restore-form" method="post" asp-action="Restore" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+                      asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+                      asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="version" value="@sheet.Version" />
+                    <button class="button button-primary" type="button"
+                            data-confirm-open data-confirm-form="restore-form"
+                            data-confirm-title="Restaurar contrato"
+                            data-confirm-body="Deseja restaurar o contrato '@sheet.Title' para a lista ativa?"
+                            data-confirm-action="Restaurar">Restaurar contrato</button>
+                </form>
+            }
+
+            @if (sheet.Status != "closed")
+            {
+                <details data-dirty-form>
+                    <summary class="button button-danger">Encerrar</summary>
+                    <div class="details-subpanel">
+                        <form id="close-form" method="post" asp-action="Close" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+                              asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+                              asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
+                              class="form-stack">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="version" value="@sheet.Version" />
+                            <label>Data do encerramento
+                                <input type="date" name="closedOn" required min="@todayStr" value="@todayStr" />
+                            </label>
+                            <label>Motivo do encerramento
+                                <textarea name="closureReason" rows="3" required minlength="5" maxlength="2000" placeholder="Descreva o motivo (rescisão, término natural, substituição por novo contrato…)"></textarea>
+                            </label>
+                            <button class="button button-danger" type="button"
+                                    data-confirm-open data-confirm-form="close-form"
+                                    data-confirm-title="Encerrar contrato"
+                                    data-confirm-body="Deseja encerrar o contrato '@sheet.Title'? O encerramento registra data e motivo, arquiva o contrato e o registro permanece no histórico."
+                                    data-confirm-action="Encerrar contrato">Encerrar contrato</button>
+                        </form>
+                    </div>
+                </details>
+            }
+        </div>
+
+        <p class="muted">
+            Encerrar ≠ arquivar: encerrar registra o fim da relação contratual (data + motivo) e também arquiva. Contratos encerrados não podem ser duplicados.
+        </p>
+    }
+</section>
+
 <!-- DRAWER DE HISTÓRICO DE OBRIGAÇÕES -->
 <div id="history-backdrop" class="history-drawer-backdrop" hidden></div>
 <aside id="history-drawer" class="history-drawer" aria-labelledby="history-drawer-title" aria-modal="true" role="dialog" hidden>
@@ -721,7 +1184,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Subnav sticky com aria-current
     function updateSubnavActive() {
-        const hash = window.location.hash || '#obrigacoes';
+        const hash = window.location.hash || '#detalhes';
         document.querySelectorAll('.sheet-subnav a').forEach(link => {
             const href = link.getAttribute('href');
             if (href && href.startsWith('#')) {
@@ -854,5 +1317,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    // B.3.2c — formulário de detalhes: envia o responsável apenas se mudou ou se pediu remoção explícita
+    const detailsForm = document.getElementById('details-form');
+    if (detailsForm) {
+        detailsForm.addEventListener('submit', () => {
+            const ownerSelect = detailsForm.querySelector('select[name="ownerId"]');
+            const clearOwner = detailsForm.querySelector('input[name="clearOwner"]');
+            if (!ownerSelect || !clearOwner) return;
+            if (!clearOwner.checked && ownerSelect.value === (ownerSelect.dataset.initial || '')) {
+                ownerSelect.value = '';
+            }
+        });
+    }
 });
 </script>

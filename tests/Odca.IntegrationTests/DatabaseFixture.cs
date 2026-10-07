@@ -258,7 +258,12 @@ public sealed class DatabaseFixture : IAsyncLifetime
                     ["Jwt:SigningKey"] = JwtKey,
                     ["Jwt:AccessTokenMinutes"] = "15",
                     ["Security:MfaRequiredForSuperAdmin"] = "true",
-                    ["Security:AllowDevelopmentBootstrap"] = "false"
+                    ["Security:AllowDevelopmentBootstrap"] = "false",
+                    // O gate do ciclo de liberação falha fechado; os testes exercitam os
+                    // endpoints canônicos de importação/upload/extração com eles habilitados.
+                    ["Features:ContractImports"] = "true",
+                    ["Features:DocumentUpload"] = "true",
+                    ["Features:OcrExtraction"] = "true"
                 });
             });
         }

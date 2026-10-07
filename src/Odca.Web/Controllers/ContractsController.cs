@@ -1,7 +1,9 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+using Odca.Contracts.Contracts;
 using Odca.Contracts.Obligations;
 using Odca.Contracts.Renewals;
 using Odca.Contracts.Studio;
@@ -12,8 +14,54 @@ namespace Odca.Web.Controllers;
 
 [Authorize]
 [Route("organizacoes/{tenantId:guid}/contratos/{contractId:guid}")]
-public sealed class ContractsController(OdcaApiClient api) : Controller
+public sealed class ContractsController(OdcaApiClient api, IUserTenantContext tenantContext) : Controller
 {
+    [HttpGet]
+    [Route("~/organizacoes/{tenantId:guid}/contratos")]
+    public async Task<IActionResult> List(
+        Guid tenantId,
+        [FromQuery] string? q = null,
+        [FromQuery] string? status = null,
+        [FromQuery] int page = 1,
+        CancellationToken ct = default)
+    {
+        ViewData["Title"] = "Meus contratos";
+        ViewData["TenantId"] = tenantId;
+
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+
+        var access = await tenantContext.GetAccessAsync(tenantId, ct);
+        if (access is null) return Forbid();
+
+        var normalizedStatus = status?.Trim().ToLowerInvariant() switch
+        {
+            "archived" or "arquivados" => "archived",
+            "closed" or "encerrados" => "closed",
+            "all" or "todos" => "all",
+            _ => "active"
+        };
+        page = Math.Max(1, page);
+
+        var result = await api.GetContractsAsync(token, tenantId, string.IsNullOrWhiteSpace(q) ? null : q.Trim(), normalizedStatus, page, ct);
+        if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+
+        return View("Index", new ContractListViewModel
+        {
+            TenantId = tenantId,
+            Contracts = result.Succeeded && result.Value is not null ? result.Value.Items : [],
+            Page = page,
+            PageSize = result.Value?.PageSize ?? 20,
+            Total = result.Value?.Total ?? 0,
+            Search = string.IsNullOrWhiteSpace(q) ? null : q.Trim(),
+            Status = normalizedStatus,
+            CanCreateDocument = access.HasAnyPermission("tenant.contract_drafts.manage", "tenant.documents.manage"),
+            CanManageContracts = access.HasPermission("tenant.contracts.manage"),
+            CanReadHistory = access.HasAnyPermission("tenant.contracts.history", "tenant.contracts.read"),
+            Error = result.Succeeded ? null : result.UserMessage("Não foi possível carregar os contratos.")
+        });
+    }
     [HttpGet("")]
     public async Task<IActionResult> Sheet(
         Guid tenantId,
@@ -26,6 +74,7 @@ public sealed class ContractsController(OdcaApiClient api) : Controller
         [FromQuery] string? kind = null,
         [FromQuery] string? urgency = null,
         [FromQuery] Guid? viewId = null,
+        [FromQuery] int eventsPage = 1,
         CancellationToken ct = default)
     {
         ViewData["Title"] = "Ficha do contrato";
@@ -61,6 +110,26 @@ public sealed class ContractsController(OdcaApiClient api) : Controller
             if (reviewersRes.Succeeded && reviewersRes.Value is not null) reviewers = reviewersRes.Value;
         }
 
+        var access = await tenantContext.GetAccessAsync(tenantId, ct);
+        var canManageContracts = access?.HasPermission("tenant.contracts.manage") ?? false;
+        var canReadHistory = access is not null && access.HasAnyPermission("tenant.contracts.history", "tenant.contracts.read");
+        var canSignDocuments = access?.HasPermission("tenant.contract_drafts.manage") ?? false;
+        var canReadDocuments = access is not null && access.HasAnyPermission("tenant.patients.documents.read", "tenant.contract_drafts.read");
+
+        // B.3.2c — histórico embutido na ficha (contract_events), 50 eventos por página.
+        IReadOnlyList<ContractEventItem> events = [];
+        int eventTotal = 0;
+        if (canReadHistory)
+        {
+            var eventsPageNumber = Math.Max(1, eventsPage);
+            var eventsResult = await api.GetContractEventsAsync(token, tenantId, contractId, eventsPageNumber, ct);
+            if (eventsResult.Succeeded && eventsResult.Value is not null)
+            {
+                events = eventsResult.Value.Items;
+                eventTotal = eventsResult.Value.Total;
+            }
+        }
+
         return View(new ContractSheetViewModel
         {
             Sheet = result.Value,
@@ -76,6 +145,13 @@ public sealed class ContractsController(OdcaApiClient api) : Controller
             Comments = comments,
             Versions = versions,
             Reviewers = reviewers,
+            Events = events,
+            EventTotal = eventTotal,
+            EventPage = Math.Max(1, eventsPage),
+            CanManageContracts = canManageContracts,
+            CanReadHistory = canReadHistory,
+            CanSignDocuments = canSignDocuments,
+            CanReadDocuments = canReadDocuments,
             Error = result.Succeeded ? null : result.UserMessage("Não foi possível abrir a ficha do contrato.")
         });
     }
@@ -84,6 +160,20 @@ public sealed class ContractsController(OdcaApiClient api) : Controller
         Guid tenantId,
         Guid contractId,
         string anchor,
+        string? from,
+        int? year,
+        int? month,
+        string? scope,
+        string? kind,
+        string? urgency,
+        Guid? viewId,
+        Guid? obrigacao)
+    {
+        return $"/organizacoes/{tenantId}/contratos/{contractId}{BuildReturnUrlQuery(from, year, month, scope, kind, urgency, viewId, obrigacao)}{anchor}";
+    }
+
+    /// <summary>Query string (com "?") que carrega o contexto de navegação entre ações; reutilizada em redirects e nos links da ficha.</summary>
+    public static string BuildReturnUrlQuery(
         string? from,
         int? year,
         int? month,
@@ -102,9 +192,7 @@ public sealed class ContractsController(OdcaApiClient api) : Controller
         if (!string.IsNullOrWhiteSpace(urgency)) query.Add($"urgency={Uri.EscapeDataString(urgency)}");
         if (viewId.HasValue) query.Add($"viewId={viewId.Value}");
         if (obrigacao.HasValue) query.Add($"obrigacao={obrigacao.Value}");
-
-        var queryString = query.Count > 0 ? "?" + string.Join('&', query) : "";
-        return $"/organizacoes/{tenantId}/contratos/{contractId}{queryString}{anchor}";
+        return query.Count > 0 ? "?" + string.Join('&', query) : "";
     }
 
     [HttpPost("obrigacoes")]
@@ -348,6 +436,7 @@ public sealed class ContractsController(OdcaApiClient api) : Controller
         Guid? responsibleId,
         decimal? proposedValue,
         string? currency,
+        string? priority = null,
         [FromQuery] string? from = null,
         [FromQuery] int? year = null,
         [FromQuery] int? month = null,
@@ -391,7 +480,8 @@ public sealed class ContractsController(OdcaApiClient api) : Controller
             currency?.Trim().ToUpperInvariant(),
             null,
             null,
-            contractVersion);
+            contractVersion,
+            Priority: priority);
 
         var result = await api.CreateRenewalProposalAsync(token, tenantId, contractId, request, ct);
         if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
@@ -573,5 +663,500 @@ public sealed class ContractsController(OdcaApiClient api) : Controller
         var fileName = doc.Name.Contains('.') ? doc.Name : $"{doc.Name}.bin";
         Response.Headers.ContentDisposition = $"inline; filename*=UTF-8''{Uri.EscapeDataString(fileName)}";
         return File(preview.Content, contentType);
+    }
+
+    // B.3.2c — ações completas da jornada na ficha do contrato.
+
+    [HttpPost("duplicar")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Duplicate(
+        Guid tenantId,
+        Guid contractId,
+        [FromQuery] string? from = null,
+        [FromQuery] int? year = null,
+        [FromQuery] int? month = null,
+        [FromQuery] string? scope = null,
+        [FromQuery] string? kind = null,
+        [FromQuery] string? urgency = null,
+        [FromQuery] Guid? viewId = null,
+        [FromQuery] Guid? obrigacao = null,
+        CancellationToken ct = default)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+
+        var returnUrl = BuildReturnUrl(tenantId, contractId, "#acoes", from, year, month, scope, kind, urgency, viewId, obrigacao);
+        var result = await api.DuplicateContractAsync(token, tenantId, contractId, ct);
+        if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (result.Status == ApiCallStatus.NotFound)
+        {
+            TempData["ContractSheetError"] = "Este contrato não está disponível no contexto atual.";
+            return Redirect(returnUrl);
+        }
+
+        if (result.Status == ApiCallStatus.Conflict)
+        {
+            TempData["ContractSheetError"] = result.ErrorCode switch
+            {
+                "contract.closed" => "Um contrato encerrado não pode ser duplicado.",
+                "contract.no_draft" => "Este contrato não possui minuta vinculada; crie uma minuta antes de duplicar.",
+                _ => result.UserMessage("Não foi possível duplicar o contrato.")
+            };
+            return Redirect(returnUrl);
+        }
+
+        if (!result.Succeeded || result.Value is null)
+        {
+            TempData["ContractSheetError"] = result.UserMessage("Não foi possível duplicar o contrato.");
+            return Redirect(returnUrl);
+        }
+
+        TempData["ContractSheetNotice"] = "Contrato duplicado com a minuta original. Assinaturas e versões geradas não são copiadas.";
+        return Redirect($"/organizacoes/{tenantId}/contratos/{result.Value.ContractId}");
+    }
+
+    [HttpPost("detalhes")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateDetails(
+        Guid tenantId,
+        Guid contractId,
+        long version,
+        string? title = null,
+        string? reference = null,
+        Guid? ownerId = null,
+        bool clearOwner = false,
+        [FromQuery] string? from = null,
+        [FromQuery] int? year = null,
+        [FromQuery] int? month = null,
+        [FromQuery] string? scope = null,
+        [FromQuery] string? kind = null,
+        [FromQuery] string? urgency = null,
+        [FromQuery] Guid? viewId = null,
+        [FromQuery] Guid? obrigacao = null,
+        CancellationToken ct = default)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+
+        var trimmedTitle = title?.Trim() ?? string.Empty;
+        var trimmedReference = reference?.Trim() ?? string.Empty;
+        var hasOwnerChange = clearOwner || ownerId.HasValue;
+        var returnUrl = BuildReturnUrl(tenantId, contractId, "#detalhes", from, year, month, scope, kind, urgency, viewId, obrigacao);
+
+        if (trimmedTitle.Length == 0 && trimmedReference.Length == 0 && !hasOwnerChange)
+        {
+            TempData["ContractSheetError"] = "Informe ao menos um campo para atualizar (título, referência ou responsável).";
+            return Redirect(returnUrl);
+        }
+
+        // Título vazio não é enviado (o título sempre existe); referência vazia limpa o campo no servidor.
+        var request = new ContractUpdateRequest(
+            trimmedTitle.Length == 0 ? null : trimmedTitle,
+            trimmedReference,
+            clearOwner ? null : ownerId,
+            clearOwner);
+
+        var result = await api.UpdateContractAsync(token, tenantId, contractId, version, request, ct);
+        if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (result.Status == ApiCallStatus.NotFound)
+        {
+            TempData["ContractSheetError"] = "Este contrato não está disponível no contexto atual.";
+            return Redirect(returnUrl);
+        }
+
+        if (result.Status == ApiCallStatus.Conflict)
+        {
+            TempData["ContractSheetError"] = result.ErrorCode == "contract.version.conflict"
+                ? "O contrato foi alterado em outra sessão. Recarregue a página e reaplique as alterações."
+                : result.UserMessage("Não foi possível atualizar os detalhes do contrato.");
+            return Redirect(returnUrl);
+        }
+
+        if (!result.Succeeded)
+        {
+            TempData["ContractSheetError"] = result.UserMessage("Não foi possível atualizar os detalhes do contrato.");
+            return Redirect(returnUrl);
+        }
+
+        TempData["ContractSheetNotice"] = "Detalhes do contrato atualizados.";
+        return Redirect(returnUrl);
+    }
+
+    [HttpPost("arquivar")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Archive(
+        Guid tenantId,
+        Guid contractId,
+        long version,
+        string? reason = null,
+        [FromQuery] string? from = null,
+        [FromQuery] int? year = null,
+        [FromQuery] int? month = null,
+        [FromQuery] string? scope = null,
+        [FromQuery] string? kind = null,
+        [FromQuery] string? urgency = null,
+        [FromQuery] Guid? viewId = null,
+        [FromQuery] Guid? obrigacao = null,
+        CancellationToken ct = default)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+
+        var trimmedReason = reason?.Trim() ?? string.Empty;
+        var returnUrl = BuildReturnUrl(tenantId, contractId, "#acoes", from, year, month, scope, kind, urgency, viewId, obrigacao);
+
+        if (trimmedReason.Length > 500)
+        {
+            TempData["ContractSheetError"] = "O motivo do arquivamento deve ter no máximo 500 caracteres.";
+            return Redirect(returnUrl);
+        }
+
+        var result = await api.ArchiveContractAsync(token, tenantId, contractId, version, trimmedReason.Length == 0 ? null : trimmedReason, ct);
+        if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (result.Status == ApiCallStatus.NotFound)
+        {
+            TempData["ContractSheetError"] = "Este contrato não está disponível no contexto atual.";
+            return Redirect(returnUrl);
+        }
+
+        if (result.Status == ApiCallStatus.Conflict)
+        {
+            TempData["ContractSheetError"] = result.ErrorCode == "contract.version.conflict"
+                ? "O contrato foi alterado em outra sessão. Recarregue a página e reaplique a ação."
+                : result.UserMessage("Não foi possível arquivar o contrato.");
+            return Redirect(returnUrl);
+        }
+
+        if (!result.Succeeded || result.Value is null)
+        {
+            TempData["ContractSheetError"] = result.UserMessage("Não foi possível arquivar o contrato.");
+            return Redirect(returnUrl);
+        }
+
+        TempData["ContractSheetNotice"] = result.Value.Replayed
+            ? "O contrato já estava arquivado."
+            : "Contrato arquivado. Ele não aparece na lista ativa e pode ser restaurado a qualquer momento.";
+        return Redirect(returnUrl);
+    }
+
+    [HttpPost("restaurar")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Restore(
+        Guid tenantId,
+        Guid contractId,
+        long version,
+        [FromQuery] string? from = null,
+        [FromQuery] int? year = null,
+        [FromQuery] int? month = null,
+        [FromQuery] string? scope = null,
+        [FromQuery] string? kind = null,
+        [FromQuery] string? urgency = null,
+        [FromQuery] Guid? viewId = null,
+        [FromQuery] Guid? obligacao = null,
+        CancellationToken ct = default)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+
+        var returnUrl = BuildReturnUrl(tenantId, contractId, "#acoes", from, year, month, scope, kind, urgency, viewId, obligacao);
+        var result = await api.RestoreContractAsync(token, tenantId, contractId, version, ct);
+        if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (result.Status == ApiCallStatus.NotFound)
+        {
+            TempData["ContractSheetError"] = "Este contrato não está disponível no contexto atual.";
+            return Redirect(returnUrl);
+        }
+
+        if (result.Status == ApiCallStatus.Conflict)
+        {
+            TempData["ContractSheetError"] = result.ErrorCode == "contract.version.conflict"
+                ? "O contrato foi alterado em outra sessão. Recarregue a página e reaplique a ação."
+                : result.UserMessage("Não foi possível restaurar o contrato.");
+            return Redirect(returnUrl);
+        }
+
+        if (!result.Succeeded || result.Value is null)
+        {
+            TempData["ContractSheetError"] = result.UserMessage("Não foi possível restaurar o contrato.");
+            return Redirect(returnUrl);
+        }
+
+        TempData["ContractSheetNotice"] = result.Value.Replayed
+            ? "O contrato já estava ativo."
+            : "Contrato restaurado. O encerramento anterior, se houver, permanece registrado no histórico.";
+        return Redirect(returnUrl);
+    }
+
+    [HttpPost("encerrar")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Close(
+        Guid tenantId,
+        Guid contractId,
+        long version,
+        DateOnly closedOn,
+        string? closureReason = null,
+        [FromQuery] string? from = null,
+        [FromQuery] int? year = null,
+        [FromQuery] int? month = null,
+        [FromQuery] string? scope = null,
+        [FromQuery] string? kind = null,
+        [FromQuery] string? urgency = null,
+        [FromQuery] Guid? viewId = null,
+        [FromQuery] Guid? obrigacao = null,
+        CancellationToken ct = default)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+
+        var trimmedReason = closureReason?.Trim() ?? string.Empty;
+        var returnUrl = BuildReturnUrl(tenantId, contractId, "#acoes", from, year, month, scope, kind, urgency, viewId, obrigacao);
+
+        if (trimmedReason.Length < 5 || trimmedReason.Length > 2000)
+        {
+            TempData["ContractSheetError"] = "Informe o motivo do encerramento (de 5 a 2000 caracteres).";
+            return Redirect(returnUrl);
+        }
+
+        var result = await api.CloseContractAsync(token, tenantId, contractId, version, new ContractCloseRequest(closedOn, trimmedReason), ct);
+        if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (result.Status == ApiCallStatus.NotFound)
+        {
+            TempData["ContractSheetError"] = "Este contrato não está disponível no contexto atual.";
+            return Redirect(returnUrl);
+        }
+
+        if (result.Status == ApiCallStatus.Conflict)
+        {
+            TempData["ContractSheetError"] = result.ErrorCode == "contract.version.conflict"
+                ? "O contrato foi alterado em outra sessão. Recarregue a página e reaplique a ação."
+                : result.UserMessage("Não foi possível encerrar o contrato.");
+            return Redirect(returnUrl);
+        }
+
+        if (!result.Succeeded || result.Value is null)
+        {
+            TempData["ContractSheetError"] = result.UserMessage("Não foi possível encerrar o contrato.");
+            return Redirect(returnUrl);
+        }
+
+        TempData["ContractSheetNotice"] = result.Value.Replayed
+            ? "O contrato já estava encerrado."
+            : "Contrato encerrado com registro da data e do motivo. Ele também foi arquivado e não pode mais gerar assinaturas.";
+        return Redirect(returnUrl);
+    }
+
+    [HttpPost("assinaturas/assinar")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SignParticipant(
+        Guid tenantId,
+        Guid contractId,
+        Guid versionId,
+        Guid preparationId,
+        Guid participantClientId,
+        string? participantName = null,
+        [FromQuery] string? from = null,
+        [FromQuery] int? year = null,
+        [FromQuery] int? month = null,
+        [FromQuery] string? scope = null,
+        [FromQuery] string? kind = null,
+        [FromQuery] string? urgency = null,
+        [FromQuery] Guid? viewId = null,
+        [FromQuery] Guid? obrigacao = null,
+        CancellationToken ct = default)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+
+        var name = string.IsNullOrWhiteSpace(participantName) ? "o participante" : participantName.Trim();
+        var returnUrl = BuildReturnUrl(tenantId, contractId, "#assinatura", from, year, month, scope, kind, urgency, viewId, obrigacao);
+
+        var result = await api.SignSignatureParticipantAsync(token, tenantId, versionId, preparationId, participantClientId, ct);
+        if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (result.Status == ApiCallStatus.NotFound)
+        {
+            TempData["ContractSheetError"] = "A versão ou o participante de assinatura não estão mais disponíveis.";
+            return Redirect(returnUrl);
+        }
+
+        if (result.Status == ApiCallStatus.Conflict)
+        {
+            TempData["ContractSheetError"] = result.ErrorCode switch
+            {
+                "preparation.not_confirmed" => "A preparação de assinatura ainda não foi confirmada no Estúdio do Contrato.",
+                "participant.already_signed" => $"A assinatura de {name} já havia sido registrada.",
+                _ => result.UserMessage("Não foi possível registrar a assinatura.")
+            };
+            return Redirect(returnUrl);
+        }
+
+        if (!result.Succeeded)
+        {
+            TempData["ContractSheetError"] = result.UserMessage("Não foi possível registrar a assinatura.");
+            return Redirect(returnUrl);
+        }
+
+        var replayed = result.Value.TryGetProperty("replayed", out var r) && r.ValueKind == JsonValueKind.True;
+        var allSigned = result.Value.TryGetProperty("allSigned", out var a) && a.ValueKind == JsonValueKind.True;
+        if (replayed)
+            TempData["ContractSheetNotice"] = $"A assinatura de {name} já havia sido registrada.";
+        else if (allSigned)
+            TempData["ContractSheetNotice"] = $"Assinatura de {name} registrada. Todos os participantes assinaram — a versão foi marcada como assinada.";
+        else
+            TempData["ContractSheetNotice"] = $"Assinatura de {name} registrada em nome do usuário conectado nesta sessão.";
+        return Redirect(returnUrl);
+    }
+
+    [HttpPost("assinaturas/lembrete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemindSignature(
+        Guid tenantId,
+        Guid contractId,
+        Guid versionId,
+        Guid preparationId,
+        [FromQuery] string? from = null,
+        [FromQuery] int? year = null,
+        [FromQuery] int? month = null,
+        [FromQuery] string? scope = null,
+        [FromQuery] string? kind = null,
+        [FromQuery] string? urgency = null,
+        [FromQuery] Guid? viewId = null,
+        [FromQuery] Guid? obrigacao = null,
+        CancellationToken ct = default)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+
+        var returnUrl = BuildReturnUrl(tenantId, contractId, "#assinatura", from, year, month, scope, kind, urgency, viewId, obrigacao);
+        var result = await api.RemindSignaturePreparationAsync(token, tenantId, versionId, preparationId, ct);
+        if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (result.Status == ApiCallStatus.NotFound)
+        {
+            TempData["ContractSheetError"] = "A versão ou a preparação de assinatura não estão mais disponíveis.";
+            return Redirect(returnUrl);
+        }
+
+        if (result.Status == ApiCallStatus.Conflict)
+        {
+            TempData["ContractSheetError"] = result.ErrorCode switch
+            {
+                "reminder.too_soon" => result.UserMessage("Um lembrete foi enviado há pouco tempo; aguarde antes de reenviar."),
+                "preparation.not_confirmed" => "A preparação de assinatura ainda não foi confirmada no Estúdio do Contrato.",
+                _ => result.UserMessage("Não foi possível reenviar o lembrete de assinatura.")
+            };
+            return Redirect(returnUrl);
+        }
+
+        if (!result.Succeeded)
+        {
+            TempData["ContractSheetError"] = result.UserMessage("Não foi possível reenviar o lembrete de assinatura.");
+            return Redirect(returnUrl);
+        }
+
+        TempData["ContractSheetNotice"] = "Lembrete de assinatura reenviado aos participantes pendentes.";
+        return Redirect(returnUrl);
+    }
+
+    [HttpPost("versoes/{versionId:guid}/pdf-gerar")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> GenerateVersionPdf(
+        Guid tenantId,
+        Guid contractId,
+        Guid versionId,
+        [FromQuery] string? from = null,
+        [FromQuery] int? year = null,
+        [FromQuery] int? month = null,
+        [FromQuery] string? scope = null,
+        [FromQuery] string? kind = null,
+        [FromQuery] string? urgency = null,
+        [FromQuery] Guid? viewId = null,
+        [FromQuery] Guid? obrigacao = null,
+        CancellationToken ct = default)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+
+        var returnUrl = BuildReturnUrl(tenantId, contractId, "#assinatura", from, year, month, scope, kind, urgency, viewId, obrigacao);
+        var result = await api.GenerateStudioPdfAsync(token, tenantId, versionId, ct);
+        if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (result.Status == ApiCallStatus.NotFound)
+        {
+            TempData["ContractSheetError"] = "A versão solicitada não está mais disponível.";
+            return Redirect(returnUrl);
+        }
+
+        if (result.Status == ApiCallStatus.Conflict)
+        {
+            TempData["ContractSheetError"] = result.UserMessage("O PDF já está em processamento ou a versão não aceita nova geração agora.");
+            return Redirect(returnUrl);
+        }
+
+        if (!result.Succeeded)
+        {
+            TempData["ContractSheetError"] = result.UserMessage("Não foi possível gerar o PDF da versão.");
+            return Redirect(returnUrl);
+        }
+
+        TempData["ContractSheetNotice"] = "PDF final da versão gerado e protegido no armazenamento privado.";
+        return Redirect(returnUrl);
+    }
+
+    [HttpGet("versoes/{versionId:guid}/pdf-baixar")]
+    public async Task<IActionResult> DownloadVersionPdf(
+        Guid tenantId,
+        Guid contractId,
+        Guid versionId,
+        [FromQuery] string? from = null,
+        [FromQuery] int? year = null,
+        [FromQuery] int? month = null,
+        [FromQuery] string? scope = null,
+        [FromQuery] string? kind = null,
+        [FromQuery] string? urgency = null,
+        [FromQuery] Guid? viewId = null,
+        [FromQuery] Guid? obrigacao = null,
+        CancellationToken ct = default)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+
+        using var response = await api.DownloadStudioPdfAsync(token, tenantId, versionId, ct);
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized) return Challenge();
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden) return Forbid();
+        if (!response.IsSuccessStatusCode)
+        {
+            TempData["ContractSheetError"] = response.StatusCode == System.Net.HttpStatusCode.NotFound
+                ? "O PDF desta versão ainda não foi gerado."
+                : "Não foi possível baixar o PDF da versão.";
+            return Redirect(BuildReturnUrl(tenantId, contractId, "#assinatura", from, year, month, scope, kind, urgency, viewId, obrigacao));
+        }
+
+        var bytes = await response.Content.ReadAsByteArrayAsync(ct);
+        return File(bytes, "application/pdf", response.Content.Headers.ContentDisposition?.FileNameStar ?? "contrato.pdf");
+    }
+
+    [HttpGet("versoes/{versionId:guid}/imprimir")]
+    public async Task<IActionResult> PrintVersion(
+        Guid tenantId,
+        Guid contractId,
+        Guid versionId,
+        CancellationToken ct = default)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+
+        var result = await api.GetStudioVersionAsync(token, tenantId, versionId, ct);
+        if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (result.Status == ApiCallStatus.NotFound) return NotFound();
+        if (!result.Succeeded || result.Value is null) return NotFound();
+
+        return View("Print", result.Value);
     }
 }

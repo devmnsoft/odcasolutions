@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Odca.Contracts.Contracts;
 using Odca.Contracts.Identity;
 using Odca.Contracts.Onboarding;
 using Odca.Contracts.Plans;
@@ -108,6 +109,50 @@ public sealed partial class OdcaApiClient(HttpClient client)
     public Task<ApiCallResult<JsonElement>> GetContractImportAsync(string token, Guid tenantId, Guid importId, CancellationToken ct) =>
         SendAsync<JsonElement>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contract-imports/{importId}", token), false, ct);
 
+    // Jornada documental de contratos (B.3) — espelha Odca.Api Controllers/ContractsController.
+
+    public Task<ApiCallResult<ContractPage>> GetContractsAsync(string token, Guid tenantId, string? q, string? status, int page, CancellationToken ct) =>
+        SendAsync<ContractPage>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contracts?q={Uri.EscapeDataString(q ?? string.Empty)}&status={status ?? "active"}&page={page}&pageSize=20", token), false, ct);
+
+    public Task<ApiCallResult<ContractListItem>> GetContractAsync(string token, Guid tenantId, Guid contractId, CancellationToken ct) =>
+        SendAsync<ContractListItem>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contracts/{contractId}", token), false, ct);
+
+    public Task<ApiCallResult<ContractEventPage>> GetContractEventsAsync(string token, Guid tenantId, Guid contractId, int page, CancellationToken ct) =>
+        SendAsync<ContractEventPage>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contracts/{contractId}/events?page={page}&pageSize=50", token), false, ct);
+
+    public async Task<ApiCallResult<ContractListItem>> UpdateContractAsync(string token, Guid tenantId, Guid contractId, long version, ContractUpdateRequest body, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(new HttpMethod("PATCH"), $"api/v1/organizations/{tenantId}/contracts/{contractId}?version={version}", token);
+        message.Content = JsonContent.Create(body);
+        return await SendAsync<ContractListItem>(message, false, ct);
+    }
+
+    public Task<ApiCallResult<DuplicateContractResult>> DuplicateContractAsync(string token, Guid tenantId, Guid contractId, CancellationToken ct) =>
+        SendAsync<DuplicateContractResult>(CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/contracts/{contractId}/duplicate", token), false, ct);
+
+    public async Task<ApiCallResult<ContractLifecycleResult>> ArchiveContractAsync(string token, Guid tenantId, Guid contractId, long version, string? reason, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/contracts/{contractId}/archive?version={version}", token);
+        if (!string.IsNullOrWhiteSpace(reason)) message.Content = JsonContent.Create(new ContractArchiveRequest(reason));
+        return await SendAsync<ContractLifecycleResult>(message, false, ct);
+    }
+
+    public Task<ApiCallResult<ContractLifecycleResult>> RestoreContractAsync(string token, Guid tenantId, Guid contractId, long version, CancellationToken ct) =>
+        SendAsync<ContractLifecycleResult>(CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/contracts/{contractId}/restore?version={version}", token), false, ct);
+
+    public async Task<ApiCallResult<ContractLifecycleResult>> CloseContractAsync(string token, Guid tenantId, Guid contractId, long version, ContractCloseRequest body, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/contracts/{contractId}/close?version={version}", token);
+        message.Content = JsonContent.Create(body);
+        return await SendAsync<ContractLifecycleResult>(message, false, ct);
+    }
+
+    public Task<ApiCallResult<JsonElement>> SignSignatureParticipantAsync(string token, Guid tenantId, Guid versionId, Guid preparationId, Guid participantClientId, CancellationToken ct) =>
+        SendAsync<JsonElement>(CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/versions/{versionId}/signature-preparations/{preparationId}/participants/{participantClientId}/sign", token), false, ct);
+
+    public Task<ApiCallResult<JsonElement>> RemindSignaturePreparationAsync(string token, Guid tenantId, Guid versionId, Guid preparationId, CancellationToken ct) =>
+        SendAsync<JsonElement>(CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/versions/{versionId}/signature-preparations/{preparationId}/remind", token), false, ct);
+
     public async Task<ApiCallResult<JsonElement>> SaveImportReviewAsync(string token, Guid tenantId, Guid contractId, Guid extractionId, SaveImportReview body, CancellationToken ct)
     {
         using var request = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/contracts/{contractId}/documents/extractions/{extractionId}/apply", token);
@@ -153,9 +198,9 @@ public sealed partial class OdcaApiClient(HttpClient client)
             .Select(item => $"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(item.Value!)}"));
         return SendAsync<PlatformAuditPageResponse>(CreateAuthorized(HttpMethod.Get, $"api/v1/platform/audit/events?{encoded}", token), false, ct);
     }
-    public Task<ApiCallResult<RenewalPage>> GetRenewalsAsync(string token,Guid tenantId,DateOnly? from,DateOnly? to,Guid? ownerId,string? contractType,string? counterparty,string? status,bool mine,bool withoutOwner,int page,int pageSize,CancellationToken cancellationToken)
+    public Task<ApiCallResult<RenewalPage>> GetRenewalsAsync(string token,Guid tenantId,DateOnly? from,DateOnly? to,Guid? ownerId,string? contractType,string? counterparty,string? status,string? priority,bool mine,bool withoutOwner,int page,int pageSize,CancellationToken cancellationToken)
     {
-        var query=new Dictionary<string,string?> { ["from"]=from?.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture),["to"]=to?.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture),["ownerId"]=ownerId?.ToString(),["contractType"]=contractType,["counterparty"]=counterparty,["status"]=status,["mine"]=mine?"true":null,["withoutOwner"]=withoutOwner?"true":null,["page"]=page.ToString(CultureInfo.InvariantCulture),["pageSize"]=pageSize.ToString(CultureInfo.InvariantCulture)};
+        var query=new Dictionary<string,string?> { ["from"]=from?.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture),["to"]=to?.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture),["ownerId"]=ownerId?.ToString(),["contractType"]=contractType,["counterparty"]=counterparty,["status"]=status,["priority"]=priority,["mine"]=mine?"true":null,["withoutOwner"]=withoutOwner?"true":null,["page"]=page.ToString(CultureInfo.InvariantCulture),["pageSize"]=pageSize.ToString(CultureInfo.InvariantCulture)};
         var encoded=string.Join('&',query.Where(x=>!string.IsNullOrWhiteSpace(x.Value)).Select(x=>$"{Uri.EscapeDataString(x.Key)}={Uri.EscapeDataString(x.Value!)}"));
         return SendAsync<RenewalPage>(CreateAuthorized(HttpMethod.Get,$"api/v1/organizations/{tenantId}/renewals?{encoded}",token),false,cancellationToken);
     }
@@ -165,6 +210,40 @@ public sealed partial class OdcaApiClient(HttpClient client)
         using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/renewals/{requestId}/apply", token);
         message.Content = JsonContent.Create(request);
         return await SendAsync<ApplyRenewalResponse>(message, false, ct);
+    }
+
+    public Task<ApiCallResult<RenewalRequestDetails>> GetRenewalDetailAsync(string token, Guid tenantId, Guid requestId, CancellationToken ct) =>
+        SendAsync<RenewalRequestDetails>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/renewals/{requestId}", token), false, ct);
+
+    public async Task<ApiCallResult<object>> SubmitRenewalAsync(string token, Guid tenantId, Guid requestId, SubmitRenewalRequest request, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/renewals/{requestId}/submit", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<object>(message, false, ct);
+    }
+
+    public async Task<ApiCallResult<object>> CancelRenewalAsync(string token, Guid tenantId, Guid requestId, CancelRenewalRequest request, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/renewals/{requestId}/cancel", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<object>(message, false, ct);
+    }
+
+    public async Task<ApiCallResult<object>> FormalizeRenewalAsync(string token, Guid tenantId, Guid requestId, FormalizeRenewalRequest request, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/renewals/{requestId}/formalization", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<object>(message, false, ct);
+    }
+
+    public Task<ApiCallResult<RenewalReminderConfig>> GetRenewalConfigAsync(string token, Guid tenantId, CancellationToken ct) =>
+        SendAsync<RenewalReminderConfig>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/renewals/config", token), false, ct);
+
+    public async Task<ApiCallResult<RenewalReminderConfig>> PutRenewalConfigAsync(string token, Guid tenantId, RenewalReminderConfig request, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Put, $"api/v1/organizations/{tenantId}/renewals/config", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<RenewalReminderConfig>(message, false, ct);
     }
 
     public Task<ApiCallResult<SavedViewItem[]>> GetSavedViewsAsync(string token, Guid tenantId, string listingType, CancellationToken cancellationToken) =>

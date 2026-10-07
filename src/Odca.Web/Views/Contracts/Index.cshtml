@@ -1,0 +1,198 @@
+@model ContractListViewModel
+@{
+    ViewData["Title"] = "Meus contratos";
+    var tenantId = Model.TenantId;
+    var contracts = Model.Contracts;
+}
+
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">Contratos</p>
+        <h1>Meus contratos</h1>
+        <p class="muted">Todas as vigências da organização em uma única lista: ativas, arquivadas e encerradas, com estado sempre visível.</p>
+    </div>
+    @if (Model.CanCreateDocument)
+    {
+        <div class="button-row">
+            <a class="button button-primary" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@tenantId">
+                <span aria-hidden="true">+</span> Novo contrato
+            </a>
+        </div>
+    }
+</section>
+
+@if (Model.Error is not null)
+{
+    <div class="error" role="alert" style="margin-bottom: 1rem;">
+        <strong>Falha ao carregar contratos:</strong> @Model.Error
+    </div>
+}
+
+<form method="get" class="studio-filter" role="search" aria-label="Filtro de contratos">
+    <label>
+        Pesquisar
+        <input name="q" value="@Model.Search" placeholder="Título, referência ou contraparte" />
+    </label>
+    <label>
+        Estado
+        <select name="status">
+            <option value="active" selected="@(Model.Status == "active")">Ativos</option>
+            <option value="archived" selected="@(Model.Status == "archived")">Arquivados</option>
+            <option value="closed" selected="@(Model.Status == "closed")">Encerrados</option>
+            <option value="all" selected="@(Model.Status == "all")">Todos</option>
+        </select>
+    </label>
+    <div style="display:flex; gap:.5rem; align-items:flex-end;">
+        <button class="button button-primary" type="submit">Filtrar</button>
+        <a class="button button-quiet" asp-action="List" asp-route-tenantId="@tenantId">Limpar</a>
+    </div>
+</form>
+
+@if (contracts.Count > 0)
+{
+    <div class="table-responsive">
+        <table class="table" aria-label="Lista de contratos">
+            <thead>
+                <tr>
+                    <th>Contrato</th>
+                    <th>Tipo</th>
+                    <th>Vigência</th>
+                    <th>Valor</th>
+                    <th>Responsável</th>
+                    <th>Documento</th>
+                    <th>Estado</th>
+                    <th>Atualização</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in contracts)
+                {
+                    var stateLabel = item.ClosedAt.HasValue ? "Encerrado" : item.ArchivedAt.HasValue ? "Arquivado" : "Ativo";
+                    if (item.ClosedAt.HasValue && item.ClosedOn.HasValue)
+                    {
+                        stateLabel += $" em {item.ClosedOn.Value:dd/MM/yyyy}";
+                    }
+                    var stateBadgeClass = item.ClosedAt.HasValue ? "badge-muted" : item.ArchivedAt.HasValue ? "badge-warning" : "badge-success";
+
+                    <tr>
+                        <td>
+                            <a asp-controller="Contracts" asp-action="Sheet" asp-route-tenantId="@tenantId" asp-route-contractId="@item.Id">
+                                <strong>@item.Title</strong>
+                            </a>
+                            @if (!string.IsNullOrWhiteSpace(item.Reference))
+                            {
+                                <br /><small class="muted">Ref: @item.Reference</small>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(item.Counterparty))
+                            {
+                                <br /><small class="muted">Contraparte: @item.Counterparty</small>
+                            }
+                        </td>
+                        <td>
+                            @if (string.IsNullOrWhiteSpace(item.ContractType))
+                            {
+                                <span class="muted">—</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-muted">@item.ContractType</span>
+                            }
+                        </td>
+                        <td>
+                            <small>
+                                @if (item.StartDate.HasValue)
+                                {
+                                    <span>Início: @item.StartDate.Value.ToString("dd/MM/yyyy")</span>
+                                }
+                                else
+                                {
+                                    <span class="muted">Início: não definido</span>
+                                }
+                            </small>
+                            <br />
+                            <small>
+                                @if (item.EndDate.HasValue)
+                                {
+                                    <span>Término: @item.EndDate.Value.ToString("dd/MM/yyyy")</span>
+                                }
+                                else
+                                {
+                                    <span class="muted">Prazo indeterminado</span>
+                                }
+                            </small>
+                        </td>
+                        <td>@(item.Value.HasValue ? item.Value.Value.ToString("N2") + (string.IsNullOrWhiteSpace(item.Currency) ? "" : $" {item.Currency}") : "—")</td>
+                        <td>@(string.IsNullOrWhiteSpace(item.Owner) ? "Não atribuído" : item.Owner)</td>
+                        <td>
+                            <small>
+                                <strong>Versão:</strong> @(item.LatestVersionNumber.HasValue ? item.LatestVersionNumber.ToString() : "—")
+                            </small>
+                            <br />
+                            <small>
+                                <strong>Situação:</strong>
+                                @(item.LatestReviewStatus switch
+                                {
+                                    "none" => "Não solicitada",
+                                    "draft" => "Em preparação",
+                                    "submitted" or "in_review" => "Em análise",
+                                    "changes_requested" => "Ajustes solicitados",
+                                    "internally_approved" => "Aprovada internamente",
+                                    "externally_signed" => "Assinada externamente",
+                                    _ => item.LatestReviewStatus ?? "—"
+                                })
+                            </small>
+                        </td>
+                        <td>
+                            <span class="badge @stateBadgeClass">@stateLabel</span>
+                            @if (item.ClosedAt.HasValue && !string.IsNullOrWhiteSpace(item.ClosureReason))
+                            {
+                                <br /><small class="muted">@item.ClosureReason</small>
+                            }
+                            else if (item.ArchivedAt.HasValue && !string.IsNullOrWhiteSpace(item.ArchiveReason))
+                            {
+                                <br /><small class="muted">@item.ArchiveReason</small>
+                            }
+                        </td>
+                        <td>
+                            <time datetime="@item.UpdatedAt.ToString("o")">@item.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</time>
+                        </td>
+                        <td>
+                            <div class="button-row">
+                                <a class="button button-small button-primary" asp-controller="Contracts" asp-action="Sheet" asp-route-tenantId="@tenantId" asp-route-contractId="@item.Id">Ficha</a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.Total > Model.PageSize)
+    {
+        <nav class="pagination" aria-label="Paginação de contratos">
+            @if (Model.Page > 1)
+            {
+                <a class="button button-quiet" asp-action="List" asp-route-tenantId="@tenantId" asp-route-q="@Model.Search" asp-route-status="@Model.Status" asp-route-page="@(Model.Page - 1)">Anterior</a>
+            }
+            <span>Página @Model.Page de @Math.Ceiling((double)Model.Total / Math.Max(1, Model.PageSize)) (@Model.Total contrato(s))</span>
+            @if (Model.Page * Math.Max(1, Model.PageSize) < Model.Total)
+            {
+                <a class="button button-quiet" asp-action="List" asp-route-tenantId="@tenantId" asp-route-q="@Model.Search" asp-route-status="@Model.Status" asp-route-page="@(Model.Page + 1)">Próxima</a>
+            }
+        </nav>
+    }
+}
+else if (Model.Error is null)
+{
+    <div class="card empty-state">
+        <h2>Nenhum contrato encontrado</h2>
+        <p>Não há contratos para os filtros aplicados. Inicie um novo contrato a partir de um modelo publicado.</p>
+        @if (Model.CanCreateDocument)
+        {
+            <div class="button-row" style="margin-top: 1rem;">
+                <a class="button button-primary" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@tenantId">Novo contrato</a>
+            </div>
+        }
+    </div>
+}

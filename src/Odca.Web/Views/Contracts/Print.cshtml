@@ -1,0 +1,61 @@
+@model Odca.Contracts.Studio.GeneratedVersionDetail
+@{
+    Layout = null;
+    var signed = Model.ReviewStatus == "externally_signed";
+    var watermark = signed ? "ASSINADO" : "RASCUNHO";
+}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@Model.Title — Versão @Model.Number — @watermark</title>
+    <style>
+        html, body { margin: 0; padding: 0; background: #fff; color: #18243b; }
+        body { font-family: Georgia, 'Times New Roman', serif; font-size: 14px; line-height: 1.65; padding: 2rem 1rem; }
+
+        .print-bar { max-width: 850px; margin: 0 auto 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; font-family: Arial, Helvetica, sans-serif; font-size: .9rem; }
+        .print-bar strong { color: #10294f; }
+        .print-bar .state { font-weight: 700; letter-spacing: .08em; color: #10294f; }
+        .print-bar button { border: 1px solid #aebdcc; background: #fff; border-radius: 8px; padding: .6rem 1rem; cursor: pointer; font-family: Arial, Helvetica, sans-serif; }
+        .print-bar button:hover, .print-bar button:focus-visible { outline: 3px solid #78a9ff; outline-offset: 2px; }
+
+        .legal-document { max-width: 850px; margin: 0 auto; }
+        .legal-document h1, .legal-document h2, .legal-document h3 { color: #10294f; line-height: 1.25; margin: 1.5em 0 .6em; }
+        .legal-document p { margin: .8em 0; }
+        .legal-document .align-center { text-align: center; }
+        .legal-document .align-right { text-align: right; }
+        .legal-document .align-justify { text-align: justify; }
+        .legal-document table { border-collapse: collapse; width: 100%; display: block; overflow-x: auto; }
+        .legal-document td { border: 1px solid #cad3df; padding: .6rem; min-width: 8rem; }
+        .document-field { font-weight: 600; }
+        .document-field-empty { color: #6b7280; font-style: italic; }
+        .document-page-break { border: 0; border-top: 2px dashed #9aa9bc; margin: 2rem 0; }
+        .help-card fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; border: 1px solid #dce3ec; padding: 1rem; margin: 1rem 0; }
+        .help-card fieldset label { display: grid; gap: .35rem; }
+
+        .watermark { position: fixed; inset: 0; z-index: 9999; pointer-events: none; display: flex; align-items: center; justify-content: center; }
+        .watermark span { transform: rotate(-28deg); font-family: Arial, Helvetica, sans-serif; font-weight: 800; font-size: min(30vw, 240px); letter-spacing: .18em; color: rgba(16, 41, 79, .10); }
+
+        @@media (max-width: 680px) { .help-card fieldset { grid-template-columns: 1fr; } }
+        @@media print {
+            body { padding: 0; }
+            .no-print { display: none !important; }
+            .document-page-break { break-after: page; visibility: hidden; }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-bar no-print">
+        <div>
+            <strong>@Model.Title</strong> — Versão @Model.Number · <span class="state">@watermark</span>
+        </div>
+        <button type="button" onclick="window.print()">Imprimir</button>
+    </div>
+    <div class="watermark" aria-hidden="true"><span>@watermark</span></div>
+    @Html.Raw(Model.RenderedHtml)
+    <script>
+        window.addEventListener('load', () => { setTimeout(() => window.print(), 350); });
+    </script>
+</body>
+</html>

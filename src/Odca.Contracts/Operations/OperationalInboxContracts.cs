@@ -96,7 +96,39 @@ public sealed record ContractSheetDto(
     bool HasImportAwaitingReview = false,
     Guid? DraftId = null,
     DateOnly? Today = null,
-    Guid? ImportId = null);
+    Guid? ImportId = null,
+    Guid? OwnerId = null,
+    string? Reference = null,
+    DateTimeOffset? ArchivedAt = null,
+    string? ArchiveReason = null,
+    DateTimeOffset? ClosedAt = null,
+    DateOnly? ClosedOn = null,
+    string? ClosureReason = null,
+    ContractSheetSignatureDto? Signature = null);
+
+/// <summary>Participante da preparação de assinatura projetado na ficha do contrato.</summary>
+public sealed record ContractSheetSignatureParticipantDto(
+    Guid ClientId,
+    string Name,
+    string Role,
+    string ParticipantType,
+    DateTimeOffset? SignedAt);
+
+/// <summary>
+/// Versão gerada mais recente com preparação de assinatura (B.3.2c).
+/// Em preparação confirmada os participantes refletidos são os da revisão confirmada (imutável).
+/// </summary>
+public sealed record ContractSheetSignatureDto(
+    Guid VersionId,
+    int VersionNumber,
+    Guid PreparationId,
+    string PreparationStatus,
+    int CompositionRevision,
+    int? ConfirmedRevision,
+    string ReviewStatus,
+    string PdfStatus,
+    IReadOnlyList<ContractSheetSignatureParticipantDto> Participants,
+    DateTimeOffset? LastRemindedAt = null);
 
 public sealed record StartOfficialDraftRequest(string OfficialKey, long SheetVersion);
 

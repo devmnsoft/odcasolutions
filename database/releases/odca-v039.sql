@@ -4510,28 +4510,3 @@ VALUES (39,'Operator contract-lifecycle permissions restricted per approved B.3 
 ON CONFLICT (version) DO NOTHING;
 COMMIT;
 -- ODCA-END 039
--- ODCA-MIGRATION 040 CHECKSUM 6b44ba8430ca7e38e40f54d37c25b3e08f4059e1acc89c632618bd7a474c8d9a
-BEGIN;
-SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
-
--- B.3.3 (G5): configurable renewal reminder cadence per tenant (default
--- 30/15/7). Three day offsets (1..365) used by the renewal center to surface
--- the active reminder window. Additive column; no permission changes (D4).
-ALTER TABLE odca.tenants
-  ADD COLUMN renewal_reminder_days text[] NOT NULL DEFAULT '{30,15,7}';
-
-ALTER TABLE odca.tenants
-  ADD CONSTRAINT tenants_renewal_reminder_days_ck
-  CHECK (cardinality(renewal_reminder_days) = 3
-    AND renewal_reminder_days[1] ~ '^[0-9]{1,3}$'
-    AND renewal_reminder_days[2] ~ '^[0-9]{1,3}$'
-    AND renewal_reminder_days[3] ~ '^[0-9]{1,3}$'
-    AND renewal_reminder_days[1]::int BETWEEN 1 AND 365
-    AND renewal_reminder_days[2]::int BETWEEN 1 AND 365
-    AND renewal_reminder_days[3]::int BETWEEN 1 AND 365);
-
-INSERT INTO odca.schema_migrations(version,name,checksum)
-VALUES (40,'Configurable renewal reminder cadence on tenants','6b44ba8430ca7e38e40f54d37c25b3e08f4059e1acc89c632618bd7a474c8d9a')
-ON CONFLICT (version) DO NOTHING;
-COMMIT;
--- ODCA-END 040
