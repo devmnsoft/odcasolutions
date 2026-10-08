@@ -37,6 +37,15 @@
                 <input asp-for="Timezone" maxlength="80" list="timezone-suggestions" />
                 <span asp-validation-for="Timezone" class="validation"></span>
             </label>
+            <label asp-for="ActivityProfile">
+                Perfil de atuação
+                <select asp-for="ActivityProfile">
+                    <option value="general">Geral — biblioteca padrão</option>
+                    <option value="therapy_clinic">Clínica de terapia — campos e mensalidade por sessão</option>
+                    <option value="plastic_surgery">Cirurgião plástico — modelos cirúrgicos (Enterprise)</option>
+                </select>
+                <span asp-validation-for="ActivityProfile" class="validation"></span>
+            </label>
         </div>
         <datalist id="timezone-suggestions">
             <option value="America/Sao_Paulo"></option>

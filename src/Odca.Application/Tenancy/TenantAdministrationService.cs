@@ -21,8 +21,9 @@ public sealed class TenantAdministrationService
         string name,
         string timezone,
         long version,
+        string? activityProfile,
         CancellationToken cancellationToken)
-        => _repository.UpdateOrganizationAsync(actorId, tenantId, name, timezone, version, cancellationToken);
+        => _repository.UpdateOrganizationAsync(actorId, tenantId, name, timezone, version, activityProfile, cancellationToken);
 
     public Task<OrganizationOverview?> GetOrganizationOverviewAsync(Guid actorId, Guid tenantId, CancellationToken cancellationToken)
         => _repository.GetOrganizationOverviewAsync(actorId, tenantId, cancellationToken);

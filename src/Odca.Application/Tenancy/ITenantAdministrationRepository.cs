@@ -4,7 +4,7 @@ public interface ITenantAdministrationRepository
 {
     Task<IReadOnlyList<OrganizationAccess>> ListOrganizationsAsync(Guid userId, CancellationToken cancellationToken);
     Task<OrganizationRecord?> GetOrganizationAsync(Guid actorId, Guid tenantId, CancellationToken cancellationToken);
-    Task<UpdateOrganizationResult> UpdateOrganizationAsync(Guid actorId, Guid tenantId, string name, string timezone, long version, CancellationToken cancellationToken);
+    Task<UpdateOrganizationResult> UpdateOrganizationAsync(Guid actorId, Guid tenantId, string name, string timezone, long version, string? activityProfile, CancellationToken cancellationToken);
     Task<OrganizationOverview?> GetOrganizationOverviewAsync(Guid actorId, Guid tenantId, CancellationToken cancellationToken);
     Task<QueryAccess<TenantPage<TeamMember>>> ListMembersAsync(Guid actorId, Guid tenantId, string? search, string? status, int page, int pageSize, CancellationToken cancellationToken);
     Task<QueryAccess<TeamMemberDetail?>> GetMemberAsync(Guid actorId, Guid tenantId, Guid userId, CancellationToken cancellationToken);
@@ -24,7 +24,7 @@ public interface ITenantAdministrationRepository
 }
 
 public sealed record OrganizationAccess(Guid Id, string Name, string Status, long Version, string[] Permissions);
-public sealed record OrganizationRecord(Guid Id, string Name, string Timezone, string Status, long Version);
+public sealed record OrganizationRecord(Guid Id, string Name, string Timezone, string Status, long Version, string ActivityProfile);
 public sealed record OrganizationPendencyItem(string Message, string? Tab, string? StatusFilter);
 public sealed record OrganizationOverview(
     int ActiveMembers,
@@ -59,7 +59,7 @@ public sealed record TenantPage<T>(IReadOnlyList<T> Items, int TotalCount, int P
 public enum QueryAccessStatus { Ok, Forbidden }
 public sealed record QueryAccess<T>(QueryAccessStatus Status, T? Value);
 
-public enum UpdateOrganizationResult { Updated, NotFound, Forbidden, Conflict }
+public enum UpdateOrganizationResult { Updated, NotFound, Forbidden, Conflict, ProfileNotAllowed }
 public enum CreateInvitationResultStatus { Created, Existing, Conflict, QuotaExceeded, Forbidden, InvalidRole }
 public sealed record CreateInvitationResult(CreateInvitationResultStatus Status, InvitationRecord? Invitation);
 public enum InvitationMutationResult { Succeeded, Forbidden, NotFound, Conflict }

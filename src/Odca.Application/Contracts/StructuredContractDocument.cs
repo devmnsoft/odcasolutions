@@ -8,7 +8,10 @@ using Odca.Application.Onboarding;
 
 namespace Odca.Application.Contracts;
 
-public enum ContractFieldType { ShortText, LongText, Date, Number, Currency, BrazilianDocument, Choice }
+public enum ContractFieldType { ShortText, LongText, Date, Number, Currency, BrazilianDocument, Choice, Formula }
+
+/// <summary>B.3.4: a read-only computed field — Σ(quantity × unit) over its terms.</summary>
+public sealed record ContractFormulaTerm(string QuantityFieldId, string UnitFieldId);
 
 /// <summary>
 /// Completeness level enforced over field values.
@@ -28,7 +31,8 @@ public sealed record ContractFieldDefinition(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? RequiredWhenFieldId = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string>? RequiredWhenAnyOf = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? SourceProperty = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Help = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Help = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<ContractFormulaTerm>? FormulaTerms = null);
 
 public sealed record ContractFieldValue(string FieldId, string? Value, bool Confirmed, string? Source = null);
 
@@ -106,12 +110,96 @@ public sealed class StructuredContractDocument
                 ContractFieldType.Currency => CanonicalDecimal.IsStoredCurrency(value),
                 ContractFieldType.BrazilianDocument => BrazilianDocument.NormalizeAndValidate(value).Type != "invalid",
                 ContractFieldType.Choice => definition.Choices?.Contains(value, StringComparer.Ordinal) == true,
+                ContractFieldType.Formula => CanonicalDecimal.IsStoredCurrency(value),
                 ContractFieldType.ShortText => value.Length <= 300,
                 ContractFieldType.LongText => value.Length <= 20_000,
                 _ => false
             };
             if (!valid) throw new InvalidDataException($"O valor de '{definition.Label}' é inválido.");
         }
+
+        // B.3.4: a formula value is never user-authored — it must match the explicit
+        // formula declared on the field definition in every validation mode, so stale
+        // or tampered totals are rejected on save/prepare/generate alike.
+        foreach (var definition in definitions)
+        {
+            if (definition.Type != ContractFieldType.Formula) continue;
+            byId.TryGetValue(definition.Id, out var field);
+            var value = field?.Value?.Trim();
+            if (string.IsNullOrEmpty(value)) continue;
+            if (!TryComputeFormulaTotal(definition, byId, out var expected)) continue;
+            if (!string.Equals(value, expected, StringComparison.Ordinal))
+                throw new InvalidDataException($"O valor de '{definition.Label}' não confere com a fórmula declarada (esperado: {expected}).");
+        }
+    }
+
+    /// <summary>
+    /// B.3.4: recomputes the canonical total of a Formula field from its explicit terms
+    /// (Σ quantity × unit). A term contributes only when both sides are filled; a term
+    /// with just one side filled leaves the formula pending, so partially edited drafts
+    /// are never rejected mid-entry. Zero filled terms compute "0.00".
+    /// </summary>
+    public static bool TryComputeFormulaTotal(
+        ContractFieldDefinition definition,
+        IReadOnlyDictionary<string, ContractFieldValue> values,
+        out string total)
+    {
+        total = string.Empty;
+        if (definition.Type != ContractFieldType.Formula || definition.FormulaTerms is not { Count: > 0 })
+            return false;
+        var sum = 0m;
+        var active = false;
+        foreach (var term in definition.FormulaTerms)
+        {
+            var quantity = ValueOf(values, term.QuantityFieldId);
+            var unit = ValueOf(values, term.UnitFieldId);
+            if (quantity.Length == 0 && unit.Length == 0) continue;
+            if (quantity.Length == 0 || unit.Length == 0) return false;
+            if (!CanonicalDecimal.IsStoredNumber(quantity) || !CanonicalDecimal.IsStoredCurrency(unit)) return false;
+            var quantityAmount = decimal.Parse(quantity, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture);
+            if (quantityAmount < 0) return false;
+            var unitAmount = decimal.Parse(unit, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture);
+            sum += quantityAmount * unitAmount;
+            active = true;
+        }
+        var rounded = decimal.Round(sum, 2, MidpointRounding.AwayFromZero);
+        total = active ? rounded.ToString("0.00", CultureInfo.InvariantCulture) : "0.00";
+        return CanonicalDecimal.IsStoredCurrency(total);
+    }
+
+    private static string ValueOf(IReadOnlyDictionary<string, ContractFieldValue> values, string fieldId) =>
+        values.TryGetValue(fieldId, out var entry) ? entry.Value?.Trim() ?? string.Empty : string.Empty;
+
+    private static IReadOnlyList<ContractFieldValue> FillFormulaValues(
+        IReadOnlyCollection<ContractFieldDefinition> definitions,
+        IReadOnlyList<ContractFieldValue> values)
+    {
+        var formulas = definitions.Where(x => x.Type == ContractFieldType.Formula).ToArray();
+        if (formulas.Length == 0) return values;
+        var byId = new Dictionary<string, ContractFieldValue>(StringComparer.Ordinal);
+        foreach (var value in values) byId.TryAdd(value.FieldId, value);
+        List<ContractFieldValue>? result = null;
+        foreach (var definition in formulas)
+        {
+            byId.TryGetValue(definition.Id, out var current);
+            if (current is not null && !string.IsNullOrWhiteSpace(current.Value)) continue;
+            if (!TryComputeFormulaTotal(definition, byId, out var expected)) continue;
+            var replacement = current is null
+                ? new ContractFieldValue(definition.Id, expected, false, "manual")
+                : current with { Value = expected };
+            result ??= [.. values];
+            if (current is null)
+            {
+                result.Add(replacement);
+            }
+            else
+            {
+                var index = result.FindIndex(x => string.Equals(x.FieldId, definition.Id, StringComparison.Ordinal));
+                if (index >= 0) result[index] = replacement;
+            }
+            byId[definition.Id] = replacement;
+        }
+        return result ?? values;
     }
 
     public static string NormalizeStoredValues(string fieldsJson, string valuesJson)
@@ -125,14 +213,17 @@ public sealed class StructuredContractDocument
         {
             if (string.IsNullOrWhiteSpace(value.Value) || !byId.TryGetValue(value.FieldId, out var definition))
                 return value;
-            if (definition.Type is not (ContractFieldType.Currency or ContractFieldType.Number))
+            if (definition.Type is not (ContractFieldType.Currency or ContractFieldType.Number or ContractFieldType.Formula))
                 return value;
-            var parsed = CanonicalDecimal.Parse(value.Value, definition.Type == ContractFieldType.Currency);
+            var parsed = CanonicalDecimal.Parse(value.Value, definition.Type != ContractFieldType.Number);
             if (!parsed.Succeeded)
                 throw new InvalidDataException($"O valor de '{definition.Label}' é inválido. {parsed.Error}");
             return value with { Value = parsed.Canonical };
         }).ToArray();
-        return JsonSerializer.Serialize(normalized, options);
+        // B.3.4: the server recomputes formula totals whenever their dependencies are
+        // complete and the submitted value is empty; a present-but-divergent value is
+        // left untouched so ValidateValues can reject it.
+        return JsonSerializer.Serialize(FillFormulaValues(definitions, normalized), options);
     }
 
     /// <summary>

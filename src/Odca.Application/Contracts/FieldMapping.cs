@@ -56,6 +56,32 @@ public static class FieldMapping
             if (!Walk(field.Id, byId, visiting, visited))
                 throw new InvalidDataException("As condições de obrigatoriedade formam um ciclo.");
         }
+
+        foreach (var field in fields)
+        {
+            if (field.Type != ContractFieldType.Formula)
+            {
+                if (field.FormulaTerms is not null)
+                    throw new InvalidDataException($"Somente campos calculados aceitam termos de fórmula ('{field.Label}').");
+                continue;
+            }
+            if (field.FormulaTerms is not { Count: > 0 })
+                throw new InvalidDataException($"A fórmula de '{field.Label}' precisa declarar ao menos um termo.");
+            if (!string.IsNullOrWhiteSpace(field.SourceProperty))
+                throw new InvalidDataException($"O campo calculado '{field.Label}' não aceita propriedade de cadastro.");
+            foreach (var term in field.FormulaTerms)
+            {
+                if (!byId.TryGetValue(term.QuantityFieldId, out var quantity) || !byId.TryGetValue(term.UnitFieldId, out var unit))
+                    throw new InvalidDataException($"A fórmula de '{field.Label}' aponta para um campo inexistente.");
+                if (quantity.Type != ContractFieldType.Number)
+                    throw new InvalidDataException($"A fórmula de '{field.Label}' só aceita quantidade em campos numéricos.");
+                if (unit.Type != ContractFieldType.Currency)
+                    throw new InvalidDataException($"A fórmula de '{field.Label}' só aceita valores monetários.");
+                if (string.Equals(term.QuantityFieldId, field.Id, StringComparison.Ordinal) ||
+                    string.Equals(term.UnitFieldId, field.Id, StringComparison.Ordinal))
+                    throw new InvalidDataException($"A fórmula de '{field.Label}' não pode depender do próprio campo.");
+            }
+        }
     }
 
     public static IReadOnlyList<string> RegistrationKeys(ContractFieldDefinition field)

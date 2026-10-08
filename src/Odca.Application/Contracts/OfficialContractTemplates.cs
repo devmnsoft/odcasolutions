@@ -27,8 +27,14 @@ public static class OfficialContractTemplates
         SupplyAgreement(),
         LeaseAgreement(),
         MultipleTherapiesAgreement(),
-        InformedConsent()
+        InformedConsent(),
+        SurgicalConsent()
     ];
+
+    /// <summary>B.3.4 (D3): official templates that cannot leave draft/preview state until
+    /// ODCA approves them (approval workflow lands with section C).</summary>
+    public static bool RequiresOdcaApproval(string? officialKey) =>
+        string.Equals(officialKey, "surgical-consent", StringComparison.Ordinal);
 
     public static string? NormalizeType(string? value) =>
         string.IsNullOrWhiteSpace(value) || !ContractTypes.Contains(value.Trim()) ? null : value.Trim();
@@ -53,6 +59,7 @@ public static class OfficialContractTemplates
         "services-agreement" => "service_agreement",
         "multiple-therapies" => "care_agreement",
         "informed-consent" => "consent",
+        "surgical-consent" => "consent",
         "contract-amendment" => "amendment",
         "supply-agreement" => "supply",
         "lease-agreement" => "lease",
@@ -416,6 +423,63 @@ public static class OfficialContractTemplates
             new("representative_name", "Representante", ContractFieldType.ShortText, true, null, "representative", "has_representative", ["Sim"]),
             new("consent_date", "Data", ContractFieldType.Date, true, null, "manual"),
             new("image_consent_option", "Autorização de Imagem", ContractFieldType.Choice, true, ["Não autorizo uso de imagem", "Autorizo exclusivamente para fins de estudo de caso com anonimato"], "manual")
+        ],
+        "consent");
+
+    // B.3.4 (D3): minimal official surgical starter. Creation is gated to the
+    // plastic_surgery profile (Enterprise) and the draft stays visibly pending until
+    // section C delivers the full ODCA approval workflow.
+    private static OfficialContractTemplate SurgicalConsent() => new(
+        "surgical-consent",
+        "Termo de Consentimento para Procedimento Cirúrgico — Cirurgia Plástica",
+        "Modelo cirúrgico mínimo para registrar o procedimento planejado, paciente/representante, anestesia, honorários e riscos. Exige aprovação da ODCA antes do preparativo de assinatura e não substitui revisão jurídica.",
+        "consent",
+        Document(
+            Heading("TERMO DE CONSENTIMENTO PARA PROCEDIMENTO CIRÚRGICO — CIRURGIA PLÁSTICA"),
+            Paragraph(
+                Text("PROCEDIMENTO: cirurgia plástica descrita como "), Field("procedure_description"),
+                Text(", a ser realizada em "), Field("surgery_date"),
+                Text(" na unidade "), Field("facility_name"),
+                Text(", sob "), Field("anesthesia_type"), Text(".")),
+            Paragraph(
+                Text("PACIENTE: "), Field("patient_name"),
+                Text(", documento "), Field("patient_document"),
+                Text(". Há representante legal distinto do paciente? "), Field("has_representative"),
+                Text(". Responsável legal, quando houver: "), Field("legal_representative_info"), Text(".")),
+            Paragraph(
+                Text("PROFISSIONAL E ORGANIZAÇÃO: cirurgião responsável "), Field("surgeon_name"),
+                Text(", documento "), Field("surgeon_document"),
+                Text(", atuando junto à organização "), Field("organization_name"), Text(".")),
+            Paragraph(
+                Text("HONORÁRIOS E PAGAMENTO: honorários de R$ "), Field("procedure_fee"),
+                Text(", com a condição "), Field("payment_terms"), Text(".")),
+            Paragraph(
+                Text("RISCOS: o paciente declara ciência dos riscos e benefícios do procedimento: "), Field("risks_acknowledgement"),
+                Text(". Este modelo é um ponto de partida operacional e não substitui revisão jurídica.")),
+            Paragraph(
+                Text("FORO E ASSINATURA: foro na comarca de "), Field("jurisdiction_city"),
+                Text(". Data de assinatura: "), Field("signing_date"), Text("."))),
+        [
+            new("organization_name", "Organização / centro cirúrgico", ContractFieldType.ShortText, true, null, "organization"),
+            new("surgeon_name", "Cirurgião responsável", ContractFieldType.ShortText, true, null, "manual"),
+            new("surgeon_document", "Documento do cirurgião", ContractFieldType.BrazilianDocument, true, null, "manual"),
+            new("patient_name", "Paciente", ContractFieldType.ShortText, true, null, "patient"),
+            new("patient_document", "Documento do paciente", ContractFieldType.BrazilianDocument, true, null, "patient"),
+            new("procedure_description", "Procedimento planejado", ContractFieldType.LongText, true, null, "manual"),
+            new("surgery_date", "Data do procedimento", ContractFieldType.Date, true, null, "manual"),
+            new("facility_name", "Unidade / hospital", ContractFieldType.ShortText, true, null, "manual"),
+            new("anesthesia_type", "Tipo de anestesia", ContractFieldType.Choice, true,
+                ["Anestesia geral", "Sedação intravenosa", "Anestesia local", "Anestesia local com sedação"], "manual"),
+            new("has_representative", "Há representante legal distinto?", ContractFieldType.Choice, true, ["Sim", "Não"], "manual"),
+            new("legal_representative_info", "Responsável legal", ContractFieldType.ShortText, false, null, "representative", "has_representative", ["Sim"]),
+            new("procedure_fee", "Honorários do procedimento", ContractFieldType.Currency, true, null, "manual"),
+            new("payment_terms", "Condição de pagamento", ContractFieldType.Choice, true,
+                ["À vista", "Em parcelas mensais", "Parcela única no dia do procedimento"], "manual"),
+            new("risks_acknowledgement", "Ciência dos riscos", ContractFieldType.Choice, true,
+                ["Li e compreendi os riscos descritos", "Ainda desejo esclarecimentos adicionais"], "manual"),
+            new("signing_date", "Data de assinatura", ContractFieldType.Date, true, null, "manual"),
+            new("jurisdiction_city", "Comarca (foro)", ContractFieldType.Choice, true,
+                ["Belém/PA", "São Paulo/SP", "Rio de Janeiro/RJ", "Brasília/DF"], "manual")
         ],
         "consent");
 

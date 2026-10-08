@@ -46,7 +46,7 @@ public static class ContractDocumentRenderer
     {
         var value = values.GetValueOrDefault(fieldId);
         if (string.IsNullOrWhiteSpace(value)) return "Não informado";
-        if (definitions.TryGetValue(fieldId, out var definition) && definition.Type == ContractFieldType.Currency && CanonicalDecimal.TryFormatPtBr(value, out var formatted))
+        if (definitions.TryGetValue(fieldId, out var definition) && definition.Type is ContractFieldType.Currency or ContractFieldType.Formula && CanonicalDecimal.TryFormatPtBr(value, out var formatted))
             return formatted;
         return value;
     }

@@ -9,7 +9,7 @@ if (studio) {
   const nodeFieldId = node => String(node?.fieldId ?? node?.FieldId ?? "");
   const normalizeFieldType = type => {
     if (typeof type === "number") {
-      const map = ["ShortText", "LongText", "Date", "Number", "Currency", "BrazilianDocument", "Choice"];
+      const map = ["ShortText", "LongText", "Date", "Number", "Currency", "BrazilianDocument", "Choice", "Formula"];
       return map[type] || "ShortText";
     }
     const s = String(type || "").toLowerCase();
@@ -19,6 +19,7 @@ if (studio) {
     if (s === "currency") return "Currency";
     if (s === "braziliandocument" || s === "cpf_cnpj" || s === "document") return "BrazilianDocument";
     if (s === "choice" || s === "select") return "Choice";
+    if (s === "formula" || s === "calculated") return "Formula";
     return "ShortText";
   };
 
@@ -30,6 +31,112 @@ if (studio) {
     manual: "Entrada manual"
   };
   const fieldOrigin = definition => String(definition?.origin ?? definition?.Origin ?? "manual").toLowerCase();
+  // B.3.4 — client-side CPF/CNPJ: mask on typing, check digits on commit. Mirrors
+  // Odca.Application.Onboarding.BrazilianDocument (IN RFB 2229/2024 for CNPJ).
+  const brDocumentDigits = text => String(text || "").replace(/[^\dA-Za-z]/g, "").toUpperCase();
+  const brDocumentValid = text => {
+    const value = brDocumentDigits(text);
+    if (value.length === 11 && /^\d{11}$/.test(value)) {
+      if (/^(\d)\1{10}$/.test(value)) return false;
+      const digit = (length, initialWeight) => {
+        let sum = 0, weight = initialWeight;
+        for (let index = 0; index < length; index++) {
+          sum += Number(value[index]) * weight--;
+          if (weight === 1) weight = 1;
+        }
+        const remainder = sum % 11;
+        return remainder < 2 ? 0 : 11 - remainder;
+      };
+      return digit(9, 10) === Number(value[9]) && digit(10, 11) === Number(value[10]);
+    }
+    if (value.length === 14 && /^\d{14}$/.test(value)) {
+      if (/^(\d)\1{13}$/.test(value)) return false;
+      const digit = (length, initialWeight) => {
+        let sum = 0, weight = initialWeight;
+        for (let index = 0; index < length; index++) {
+          sum += (value.charCodeAt(index) - 48) * weight--;
+          if (weight === 1) weight = 9;
+        }
+        const remainder = sum % 11;
+        return remainder < 2 ? 0 : 11 - remainder;
+      };
+      return digit(12, 5) === Number(value[12]) && digit(13, 6) === Number(value[13]);
+    }
+    return false;
+  };
+  const maskBrDocument = text => {
+    const value = String(text || "");
+    if (/[A-Za-z]/.test(value)) return value;
+    const digits = value.replace(/\D/g, "").slice(0, 14);
+    if (digits.length <= 11) {
+      if (digits.length > 6) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}${digits.length > 9 ? `-${digits.slice(9, 11)}` : ""}`;
+      if (digits.length > 3) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+      return digits;
+    }
+    const base = `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}`;
+    return digits.length > 12 ? `${base}-${digits.slice(12, 14)}` : base;
+  };
+  // B.3.4 — explicit formula: Σ(quantity × unit) with BigInt cents math, identical to
+  // StructuredContractDocument.TryComputeFormulaTotal (round half away from zero).
+  const formulaTerms = definition => definition.formulaTerms ?? definition.FormulaTerms ?? [];
+  const formulaTotal = definition => {
+    const terms = formulaTerms(definition);
+    if (!terms.length) return null;
+    let sumScaled = 0n;
+    let active = false;
+    const qtyPattern = /^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/;
+    const unitPattern = /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/;
+    for (const term of terms) {
+      const quantity = String(values.get(term.quantityFieldId ?? term.QuantityFieldId)?.value ?? "").trim();
+      const unit = String(values.get(term.unitFieldId ?? term.UnitFieldId)?.value ?? "").trim();
+      if (!quantity && !unit) continue;
+      if (!quantity || !unit) return null;
+      if (!qtyPattern.test(quantity) || !unitPattern.test(unit)) return null;
+      const [qInt, qFrac = ""] = quantity.split(".");
+      const [uInt, uFrac = ""] = unit.split(".");
+      const qtyScaled = BigInt(qInt + qFrac.padEnd(6, "0"));
+      const unitCents = BigInt(uInt + uFrac.padEnd(2, "0"));
+      sumScaled += qtyScaled * unitCents; // scale 10^8
+      active = true;
+    }
+    if (!active) return "0.00";
+    if (sumScaled < 0n) return null;
+    let cents = sumScaled / 1000000n;
+    if ((sumScaled % 1000000n) * 2n >= 1000000n) cents += 1n;
+    return `${cents / 100n}.${String(cents % 100n).padStart(2, "0")}`;
+  };
+  const formulaExpression = definition => {
+    const terms = formulaTerms(definition);
+    const total = formulaTotal(definition);
+    if (total === null) return "Cálculo pendente: informe quantidade e valor de cada terapia selecionada.";
+    const parts = terms.map(term => {
+      const quantityId = term.quantityFieldId ?? term.QuantityFieldId;
+      const unitId = term.unitFieldId ?? term.UnitFieldId;
+      const quantity = String(values.get(quantityId)?.value ?? "").trim();
+      const unit = String(values.get(unitId)?.value ?? "").trim();
+      if (!quantity && !unit) return null;
+      return `${quantity || "?"} × R$ ${unit ? formatCurrency(unit) : "?"}`;
+    }).filter(Boolean);
+    return `${parts.length ? parts.join(" + ") + " = " : ""}R$ ${formatCurrency(total)}`;
+  };
+  const recomputeFormulas = () => {
+    let changed = false;
+    for (const definition of fields) {
+      const id = defId(definition);
+      if (!id || normalizeFieldType(definition.type ?? definition.Type) !== "Formula") continue;
+      const value = values.get(id) || { fieldId: id, value: "", confirmed: false, source: "manual" };
+      values.set(id, value);
+      const total = formulaTotal(definition);
+      if (total === null) continue;
+      if (value.value !== total || !value.confirmed) {
+        value.value = total;
+        value.confirmed = true;
+        value.draft = null;
+        changed = true;
+      }
+    }
+    return changed;
+  };
   const values = new Map(
     initialValues
       .filter(val => Boolean(val.fieldId ?? val.FieldId))
@@ -65,7 +172,8 @@ if (studio) {
       button.dataset.fieldId = fId; button.setAttribute("aria-label", `${label}: ${value?.confirmed ? "confirmado" : "pendente"}`);
       const smartHelp = String(definition?.help ?? definition?.Help ?? "");
       if (smartHelp) button.title = smartHelp;
-      const shown = normalizeFieldType(definition?.type ?? definition?.Type) === "Currency" && value?.value ? formatCurrency(value.value) : value?.value;
+      const shownFieldType = normalizeFieldType(definition?.type ?? definition?.Type);
+      const shown = (shownFieldType === "Currency" || shownFieldType === "Formula") && value?.value ? formatCurrency(value.value) : value?.value;
       button.textContent = shown ? shown : `⚠ ${label}`;
       button.addEventListener("click", () => document.querySelector(`[data-field-editor="${CSS.escape(fId)}"]`)?.focus());
       parent.append(button); return;
@@ -74,7 +182,7 @@ if (studio) {
     const element = document.createElement(tags[node.type] || "div"); if (node.type === "pageBreak") element.className = "page-break";
     if (node.alignment) element.style.textAlign = node.alignment; for (const child of node.content || []) renderNode(child, element); parent.append(element);
   };
-  const refresh = () => { paper.replaceChildren(); renderNode(content, paper); renderFields(); };
+  const refresh = () => { recomputeFormulas(); paper.replaceChildren(); renderNode(content, paper); renderFields(); };
   const requirementActive = definition => {
     const required = Boolean(definition.required ?? definition.Required);
     if (!required) return false;
@@ -116,6 +224,7 @@ if (studio) {
 
       const fieldType = normalizeFieldType(definition.type ?? definition.Type);
       let input;
+      let formulaHint = null;
       if (fieldType === "LongText") {
         input = document.createElement("textarea"); input.rows = 3; input.value = value.draft ?? value.value ?? "";
       } else if (fieldType === "Choice") {
@@ -128,6 +237,13 @@ if (studio) {
           input.append(opt);
         }
         if (!input.value && value.value) input.value = value.value;
+      } else if (fieldType === "Formula") {
+        input = document.createElement("input");
+        input.type = "text"; input.readOnly = true; input.dataset.formula = "true";
+        input.placeholder = "Calculado automaticamente";
+        input.value = value.value ? formatCurrency(value.value) : "";
+        formulaHint = document.createElement("small"); formulaHint.className = "field-formula";
+        formulaHint.textContent = formulaExpression(definition);
       } else {
         input = document.createElement("input");
         if (fieldType === "Date") { input.type = "date"; input.value = value.value || ""; }
@@ -199,6 +315,39 @@ if (studio) {
         markDirty();
         return true;
       };
+      const commitDocument = confirmValue => {
+        const typed = input.value;
+        const digits = brDocumentDigits(typed);
+        if (!digits) {
+          assignValue(value, "");
+          value.confirmed = false;
+          value.error = null;
+          values.set(id, value);
+          markDirty();
+          return true;
+        }
+        if (digits.length < 11 || !brDocumentValid(typed)) {
+          const message = digits.length < 11
+            ? "Informe um CPF ou CNPJ completo."
+            : "CPF ou CNPJ inválido: confira os dígitos.";
+          value.draft = typed;
+          value.confirmed = false;
+          value.error = message;
+          fieldError.hidden = false;
+          fieldError.textContent = message;
+          if (localRevision === acknowledgedRevision) localRevision += 1;
+          state.textContent = `${fieldLabelText}: ${message}`;
+          state.dataset.state = "failed";
+          return false;
+        }
+        assignValue(value, maskBrDocument(typed));
+        value.confirmed = confirmValue && Boolean(value.value);
+        if (!confirmValue) value.confirmed = false;
+        value.error = null;
+        values.set(id, value);
+        markDirty();
+        return true;
+      };
       if (fieldType === "Currency" || fieldType === "Number") {
         input.addEventListener("input", () => {
           value.draft = input.value;
@@ -209,16 +358,36 @@ if (studio) {
           clearTimeout(timer);
         });
         input.addEventListener("blur", () => { if (commitNumeric(false)) refresh(); });
+      } else if (fieldType === "BrazilianDocument") {
+        input.dataset.documentField = "true";
+        input.addEventListener("input", () => {
+          const masked = maskBrDocument(input.value);
+          if (masked !== input.value) input.value = masked;
+          value.draft = input.value;
+          value.error = null;
+          fieldError.hidden = true;
+          state.textContent = "Digitação de documento em andamento"; state.dataset.state = "dirty";
+          if (localRevision === acknowledgedRevision) localRevision += 1;
+          clearTimeout(timer);
+        });
+        input.addEventListener("blur", () => { if (commitDocument(false)) refresh(); });
       } else if (input.tagName === "SELECT") {
         input.addEventListener("change", () => { if (commitText(false)) refresh(); });
       } else {
         input.addEventListener("input", () => commitText(false));
       }
       confirm.addEventListener("click", () => {
-        const ok = fieldType === "Currency" || fieldType === "Number" ? commitNumeric(true) : commitText(true);
+        const ok = fieldType === "Currency" || fieldType === "Number" ? commitNumeric(true)
+          : fieldType === "BrazilianDocument" ? commitDocument(true)
+          : commitText(true);
         if (ok) refresh();
       });
-      label.append(input); box.append(label, source, helpEl, fieldError, confirm); panel.append(box);
+      const boxParts = [label, source, helpEl];
+      if (formulaHint) boxParts.push(formulaHint);
+      boxParts.push(fieldError);
+      if (fieldType !== "Formula") boxParts.push(confirm);
+      label.append(input);
+      box.append(...boxParts); panel.append(box);
     }
     studio.querySelector("[data-pending-count]").textContent = String(pending);
   };
@@ -239,14 +408,40 @@ if (studio) {
     }
     return null;
   };
+  const rejectInvalidDrafts = () => {
+    for (const input of panel.querySelectorAll("[data-document-field='true']")) {
+      const typed = input.value;
+      if (!String(typed).trim()) continue;
+      const label = input.closest(".field-editor")?.querySelector("label")?.textContent ?? "Documento";
+      const digits = brDocumentDigits(typed);
+      if (digits.length < 11) return `${label}: informe um CPF ou CNPJ completo.`;
+      if (!brDocumentValid(typed)) return `${label}: CPF ou CNPJ inválido. Confira os dígitos.`;
+    }
+    for (const input of panel.querySelectorAll("input[type='date']")) {
+      const typed = input.value;
+      if (!typed) continue;
+      const label = input.closest(".field-editor")?.querySelector("label")?.textContent ?? "Data";
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(typed) || Number.isNaN(Date.parse(`${typed}T00:00:00Z`)))
+        return `${label}: informe uma data válida.`;
+    }
+    return null;
+  };
   const save = async force => {
     if (conflict || activeRequest) return;
-    if (!force && numericDrafts().some(item => item.input === document.activeElement)) {
-      state.textContent = "Digitação numérica em andamento"; state.dataset.state = "dirty"; return;
+    const editingDocument = [...panel.querySelectorAll("[data-document-field='true'], [data-numeric='true']")]
+      .some(input => input === document.activeElement);
+    if (!force && editingDocument) {
+      state.textContent = "Digitação em andamento"; state.dataset.state = "dirty"; return;
     }
     const blocked = rejectNumericDrafts();
     if (blocked) {
       state.textContent = blocked; state.dataset.state = "failed";
+      if (localRevision === acknowledgedRevision) localRevision += 1;
+      return;
+    }
+    const invalidDraft = rejectInvalidDrafts();
+    if (invalidDraft) {
+      state.textContent = invalidDraft; state.dataset.state = "failed";
       if (localRevision === acknowledgedRevision) localRevision += 1;
       return;
     }
@@ -262,6 +457,7 @@ if (studio) {
       }
       current.error = null;
     }
+    recomputeFormulas();
     if (localRevision === acknowledgedRevision) return;
     const sentRevision = localRevision; state.textContent = "Salvando…"; state.dataset.state = "saving";
     const requestId = crypto.randomUUID(); const token = studio.querySelector('input[name="__RequestVerificationToken"]')?.value;

@@ -51,7 +51,8 @@ public sealed class NpgsqlTenantAdministrationRepository(
 
         var result = await connection.QuerySingleOrDefaultAsync<OrganizationRecord>(new CommandDefinition(
             """
-            SELECT id AS "Id", display_name AS "Name", timezone AS "Timezone", status AS "Status", version AS "Version"
+            SELECT id AS "Id", display_name AS "Name", timezone AS "Timezone", status AS "Status", version AS "Version",
+                   activity_profile AS "ActivityProfile"
             FROM odca.tenants
             WHERE id = @tenantId;
             """,
@@ -68,6 +69,7 @@ public sealed class NpgsqlTenantAdministrationRepository(
         string name,
         string timezone,
         long version,
+        string? activityProfile,
         CancellationToken cancellationToken)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
@@ -77,17 +79,50 @@ public sealed class NpgsqlTenantAdministrationRepository(
             return UpdateOrganizationResult.Forbidden;
         }
 
+        var normalizedProfile = string.IsNullOrWhiteSpace(activityProfile) ? null : activityProfile.Trim();
+        if (normalizedProfile is not null &&
+            !AllowedActivityProfiles.Contains(normalizedProfile, StringComparer.Ordinal))
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return UpdateOrganizationResult.ProfileNotAllowed;
+        }
+
+        if (string.Equals(normalizedProfile, "plastic_surgery", StringComparison.Ordinal))
+        {
+            // B.3.4 (D3): the surgical profile is an Enterprise entitlement. The
+            // approval workflow itself lands with section C; only plan gating here.
+            var planCode = await connection.ExecuteScalarAsync<string?>(new CommandDefinition(
+                """
+                SELECT pv.code
+                  FROM odca.subscriptions s
+                  JOIN odca.plan_versions pv ON pv.id = s.plan_version_id
+                 WHERE s.tenant_id = @tenantId
+                   AND s.status = 'active'
+                   AND s.commercial_state = 'active'
+                 LIMIT 1;
+                """,
+                new { tenantId },
+                transaction,
+                cancellationToken: cancellationToken));
+            if (!string.Equals(planCode, "enterprise", StringComparison.Ordinal))
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return UpdateOrganizationResult.ProfileNotAllowed;
+            }
+        }
+
         var updated = await connection.ExecuteAsync(new CommandDefinition(
             """
             UPDATE odca.tenants
                SET display_name = @name,
                    timezone = @timezone,
+                   activity_profile = COALESCE(@normalizedProfile, activity_profile),
                    version = version + 1,
                    updated_at = now()
              WHERE id = @tenantId
                AND version = @version;
             """,
-            new { tenantId, name, timezone, version },
+            new { tenantId, name, timezone, version, normalizedProfile },
             transaction,
             cancellationToken: cancellationToken));
         if (updated == 0)
@@ -96,17 +131,24 @@ public sealed class NpgsqlTenantAdministrationRepository(
             return UpdateOrganizationResult.Conflict;
         }
 
+        var effectiveProfile = await connection.ExecuteScalarAsync<string>(new CommandDefinition(
+            "SELECT activity_profile FROM odca.tenants WHERE id = @tenantId;",
+            new { tenantId },
+            transaction,
+            cancellationToken: cancellationToken));
         await connection.ExecuteAsync(new CommandDefinition(
             """
             INSERT INTO odca.audit_events(scope_type,tenant_id,actor_user_id,action,entity_type,entity_id,result,metadata)
-            VALUES ('tenant',@tenantId,@actorId,'tenant.organization.updated','tenant',@tenantId,'success',jsonb_build_object('version',@nextVersion));
+            VALUES ('tenant',@tenantId,@actorId,'tenant.organization.updated','tenant',@tenantId,'success',jsonb_build_object('version',@nextVersion,'activityProfile',@effectiveProfile));
             """,
-            new { actorId, tenantId, nextVersion = version + 1 },
+            new { actorId, tenantId, nextVersion = version + 1, effectiveProfile },
             transaction,
             cancellationToken: cancellationToken));
         await transaction.CommitAsync(cancellationToken);
         return UpdateOrganizationResult.Updated;
     }
+
+    private static readonly string[] AllowedActivityProfiles = ["general", "therapy_clinic", "plastic_surgery"];
 
     public async Task<OrganizationOverview?> GetOrganizationOverviewAsync(Guid actorId, Guid tenantId, CancellationToken cancellationToken)
     {

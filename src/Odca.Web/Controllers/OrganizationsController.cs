@@ -73,7 +73,10 @@ public sealed class OrganizationsController(OdcaApiClient api) : Controller
             Name = details.Value.Name,
             Timezone = details.Value.Timezone,
             Status = details.Value.Status,
-            Version = details.Value.Version
+            Version = details.Value.Version,
+            ActivityProfile = string.IsNullOrWhiteSpace(details.Value.ActivityProfile)
+                ? "general"
+                : details.Value.ActivityProfile
         });
     }
 
@@ -101,7 +104,7 @@ public sealed class OrganizationsController(OdcaApiClient api) : Controller
         var result = await api.UpdateOrganizationAsync(
             token,
             tenantId,
-            new UpdateOrganizationRequest(model.Name.Trim(), model.Timezone.Trim(), model.Version),
+            new UpdateOrganizationRequest(model.Name.Trim(), model.Timezone.Trim(), model.Version, model.ActivityProfile),
             cancellationToken);
 
         if (result.Status == ApiCallStatus.Success)
@@ -122,6 +125,14 @@ public sealed class OrganizationsController(OdcaApiClient api) : Controller
 
         if (result.Status == ApiCallStatus.Conflict)
         {
+            if (string.Equals(result.ErrorCode, "organization.profile.plan_required", StringComparison.Ordinal))
+            {
+                ModelState.AddModelError(
+                    nameof(model.ActivityProfile),
+                    result.UserMessage("O perfil Cirurgião plástico exige plano Enterprise ativo."));
+                return View(model);
+            }
+
             model.VersionConflict = true;
             ModelState.AddModelError(
                 string.Empty,

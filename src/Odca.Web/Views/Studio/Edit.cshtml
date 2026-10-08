@@ -13,6 +13,10 @@
     <li><span>5</span> Revisão e emissão</li>
 </ol>
 <p class="next-step">Próximo passo: @(conference?.CanGenerate == true ? "gerar a versão e encaminhar à revisão." : conference?.PatientReconfirmationRequired == true ? "comparar o cadastro e escolher quais valores atualizar." : "preencher e confirmar os campos pendentes. O estado do salvamento aparece ao lado.")</p>
+@if (Model.RequiresOdcaApproval)
+{
+    <div class="error" role="alert" data-pending-odca-approval><strong>Modelo cirúrgico pendente de aprovação ODCA.</strong> Esta minuta pode ser editada e gerada, mas o preparativo de assinatura permanece bloqueado até a ODCA liberar o modelo (plano Enterprise · seção C do plano).</div>
+}
 <div class="studio" data-studio data-save-url="@Url.Action("Save",new{tenantId,draftId=Model.Id})"
      data-draft-url="@Url.Action("Edit",new{tenantId,draftId=Model.Id})"
      data-versions-url="@Url.Action("Versions",new{tenantId,draftId=Model.Id})"

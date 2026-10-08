@@ -2,7 +2,7 @@ namespace Odca.Contracts.Tenancy;
 
 public sealed record OrganizationSummary(Guid Id, string Name, string Status, long Version, string[] Permissions);
 
-public sealed record OrganizationDetails(Guid Id, string Name, string Timezone, string Status, long Version);
+public sealed record OrganizationDetails(Guid Id, string Name, string Timezone, string Status, long Version, string ActivityProfile);
 
 public sealed record OrganizationPendency(string Message, string? Tab, string? StatusFilter);
 
@@ -14,7 +14,7 @@ public sealed record OrganizationOverviewResponse(
     bool HasContracts,
     IReadOnlyList<OrganizationPendency> Pendencies);
 
-public sealed record UpdateOrganizationRequest(string Name, string Timezone, long Version);
+public sealed record UpdateOrganizationRequest(string Name, string Timezone, long Version, string? ActivityProfile = null);
 
 public sealed record PaginatedResponse<T>(IReadOnlyList<T> Items, int TotalCount, int Page, int PageSize);
 

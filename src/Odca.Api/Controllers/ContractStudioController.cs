@@ -78,7 +78,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         if (!await Allowed(c, actor.Value, tenantId, "tenant.contract_drafts.manage", ct)) return Forbid();
         await using var tx = await c.BeginTransactionAsync(ct); await SetTenant(c, tenantId, actor.Value, tx, ct);
         var source = await c.QuerySingleOrDefaultAsync<TemplateSource>(new CommandDefinition("""
-            SELECT t.id AS TemplateId,v.id AS VersionId,v.content::text AS Content,v.fields::text AS Fields,t.name AS TemplateName
+            SELECT t.id AS TemplateId,v.id AS VersionId,v.content::text AS Content,v.fields::text AS Fields,t.name AS TemplateName,t.official_key AS OfficialKey
             FROM odca.contract_templates t JOIN odca.contract_template_versions v ON v.template_id=t.id AND v.version_number=t.current_version
             WHERE t.id=@templateId AND t.status='published' AND (t.scope='global' OR t.owner_tenant_id=@tenantId OR EXISTS(SELECT 1 FROM odca.contract_template_access a WHERE a.template_id=t.id AND a.tenant_id=@tenantId AND a.revoked_at IS NULL))
             """, new { request.TemplateId, tenantId }, tx, cancellationToken: ct));
@@ -101,10 +101,29 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
                     templateId = request.TemplateId
                 });
         }
-        var initialValues = await InitialDraftValuesAsync(c, tx, tenantId, request.PatientId, source.Fields, contractorSource, ct);
+        // B.3.4 (D1/D3): the surgical template is an Enterprise entitlement gated on the
+        // tenant's activity profile; the therapy overlay extends the source document
+        // before any draft value or validation runs.
+        var activityProfile = await c.ExecuteScalarAsync<string>(new CommandDefinition(
+            "SELECT activity_profile FROM odca.tenants WHERE id=@tenantId",
+            new { tenantId }, tx, cancellationToken: ct));
+        if (OfficialContractTemplates.RequiresOdcaApproval(source.OfficialKey) &&
+            !string.Equals(activityProfile, ActivityProfileOverlays.PlasticSurgery, StringComparison.Ordinal))
+        {
+            return Conflict(new {
+                title = "Modelo cirúrgico restrito ao perfil Cirurgião plástico.",
+                detail = "Altere o perfil de atuação da organização para Cirurgião plástico (plano Enterprise) em Organização → Editar organização antes de usar este modelo.",
+                code = "draft.profile.surgical_required"
+            });
+        }
+        var (draftContent, draftFields) = ActivityProfileOverlays.Apply(source.OfficialKey, activityProfile, source.Content, source.Fields);
+        var initialValues = await InitialDraftValuesAsync(c, tx, tenantId, request.PatientId, draftFields, contractorSource, ct);
         if (request.PatientId is not null && !await c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.patients WHERE tenant_id=@tenantId AND id=@PatientId AND inactive_at IS NULL)", new { tenantId, request.PatientId }, tx, cancellationToken: ct)))
             return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"patientId",["Selecione um paciente ativo desta organização."]}}));
-        Validate(source.Content, source.Fields, "[]", ContractValidationMode.Structural);
+        Validate(draftContent, draftFields, "[]", ContractValidationMode.Structural);
+        // B.3.4: the server seeds the computed mensalidade total on creation when the
+        // formula is already decidable (initially "0.00" — nothing selected yet).
+        initialValues = StructuredContractDocument.NormalizeStoredValues(draftFields, initialValues);
 
         if (request.ChangeRequestId.HasValue && !request.ContractId.HasValue)
         {
@@ -208,7 +227,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
                           (SELECT row_version FROM odca.patients WHERE tenant_id=@tenantId AND id=@PatientId),
                           odca.patient_document_snapshot(@tenantId,@PatientId));
                         INSERT INTO odca.contract_events(tenant_id,contract_id,actor_id,event_type,details) VALUES(@tenantId,@contractId,@actor,'draft.created',jsonb_build_object('templateId',@templateId,'templateVersionId',@versionId));
-                        """, new { contractId, tenantId, request.PatientId, draftId, templateId = source.TemplateId, versionId = source.VersionId, source.Content, source.Fields, initialValues, actor }, tx, cancellationToken: ct));
+                        """, new { contractId, tenantId, request.PatientId, draftId, templateId = source.TemplateId, versionId = source.VersionId, Content = draftContent, Fields = draftFields, initialValues, actor }, tx, cancellationToken: ct));
                     await c.ExecuteAsync(new CommandDefinition("RELEASE SAVEPOINT create_draft;", tx, cancellationToken: ct));
                 }
                 catch (PostgresException ex) when (ex.SqlState == "23505" && (ex.ConstraintName == "contract_drafts_tenant_id_contract_id_key" || ex.ConstraintName?.Contains("contract_id") == true))
@@ -251,7 +270,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
                   (SELECT row_version FROM odca.patients WHERE tenant_id=@tenantId AND id=@PatientId),
                   odca.patient_document_snapshot(@tenantId,@PatientId));
                 INSERT INTO odca.contract_events(tenant_id,contract_id,actor_id,event_type,details) VALUES(@tenantId,@contractId,@actor,'draft.created',jsonb_build_object('templateId',@templateId,'templateVersionId',@versionId));
-                """, new { contractId, tenantId, request.PatientId, draftId, templateId = source.TemplateId, versionId = source.VersionId, source.Content, source.Fields, initialValues, actor }, tx, cancellationToken: ct));
+                """, new { contractId, tenantId, request.PatientId, draftId, templateId = source.TemplateId, versionId = source.VersionId, Content = draftContent, Fields = draftFields, initialValues, actor }, tx, cancellationToken: ct));
         }
 
         if (request.ChangeRequestId.HasValue)
@@ -687,7 +706,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     {
         var actor=Actor(); if(actor is null)return Unauthorized(); await using var c=await dataSource.OpenConnectionAsync(ct);
         if(!await Allowed(c,actor.Value,tenantId,"tenant.contract_drafts.read",ct))return Forbid(); await using var tx=await c.BeginTransactionAsync(ct); await SetTenant(c,tenantId,actor.Value,tx,ct);
-        var row=await c.QuerySingleOrDefaultAsync<DraftRow>(new CommandDefinition("SELECT d.id AS Id,d.contract_id AS ContractId,c.title AS Title,d.source_template_id AS SourceTemplateId,d.source_template_version_id AS SourceTemplateVersionId,d.content::text AS Content,d.fields::text AS Fields,d.values::text AS Values,d.row_version AS Version,d.last_client_revision AS LastClientRevision,d.updated_at AS UpdatedAt FROM odca.contract_drafts d JOIN odca.contracts c ON c.id=d.contract_id AND c.tenant_id=d.tenant_id WHERE d.tenant_id=@tenantId AND d.id=@draftId",new{tenantId,draftId},tx,cancellationToken:ct));
+        var row=await c.QuerySingleOrDefaultAsync<DraftRow>(new CommandDefinition("SELECT d.id AS Id,d.contract_id AS ContractId,c.title AS Title,d.source_template_id AS SourceTemplateId,d.source_template_version_id AS SourceTemplateVersionId,d.content::text AS Content,d.fields::text AS Fields,d.values::text AS Values,d.row_version AS Version,d.last_client_revision AS LastClientRevision,d.updated_at AS UpdatedAt,t.official_key AS OfficialKey FROM odca.contract_drafts d JOIN odca.contracts c ON c.id=d.contract_id AND c.tenant_id=d.tenant_id LEFT JOIN odca.contract_templates t ON t.id=d.source_template_id WHERE d.tenant_id=@tenantId AND d.id=@draftId",new{tenantId,draftId},tx,cancellationToken:ct));
         if(row is null)return NotFound(); await tx.CommitAsync(ct); return Ok(ToResponse(row));
     }
 
@@ -715,7 +734,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         if(d.TemplateStatus!="published")return Conflict(new{title="O modelo não está disponível para nova geração.",code="template.unavailable"});
         if(d.PatientId is not null && d.PatientInactiveAt is not null)return Conflict(new{title="O paciente está inativo.",detail="Restaure o cadastro antes de gerar um novo documento.",code="patient.inactive"});
         if(d.PatientId is not null && d.PatientVersion!=d.CurrentPatientVersion)return Conflict(new{title="Os dados do paciente mudaram durante a conferência.",detail="Crie uma nova minuta ou reconfirme os dados atualizados antes da emissão.",code="patient.version.conflict",currentPatientVersion=d.CurrentPatientVersion});
-        if(d.Version!=request.ExpectedVersion)return Conflict(new{title="Salve e resolva o conflito antes de gerar a versão.",currentVersion=d.Version});try{Validate(d.Content,d.Fields,d.Values,ContractValidationMode.Confirmed);}catch(InvalidDataException e){return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"pendingFields",[e.Message]}}));}
+        if(d.Version!=request.ExpectedVersion)return Conflict(new{title="Salve e resolva o conflito antes de gerar a versão.",currentVersion=d.Version});try{d.Values=StructuredContractDocument.NormalizeStoredValues(d.Fields,d.Values);Validate(d.Content,d.Fields,d.Values,ContractValidationMode.Confirmed);}catch(InvalidDataException e){return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"pendingFields",[e.Message]}}));}
         var number=await c.ExecuteScalarAsync<int>(new CommandDefinition("SELECT coalesce(max(version_number),0)+1 FROM odca.generated_contract_versions WHERE draft_id=@draftId",new{draftId},tx,cancellationToken:ct));
         var snapshot=Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new{schemaVersion=2,patient=d.PatientSnapshot is null?(JsonElement?)null:JsonSerializer.Deserialize<JsonElement>(d.PatientSnapshot),content=JsonSerializer.Deserialize<JsonElement>(d.Content),fields=JsonSerializer.Deserialize<JsonElement>(d.Fields),values=JsonSerializer.Deserialize<JsonElement>(d.Values)}));var hash=Convert.ToHexString(SHA256.HashData(snapshot)).ToLowerInvariant();var id=Guid.NewGuid();var key=$"generated/{tenantId:N}/{d.ContractId:N}/{id:N}.json";var root=configuration["Documents:StoragePath"]??Path.Combine(AppContext.BaseDirectory,"App_Data","documents");var path=Path.Combine(root,key.Replace('/',Path.DirectorySeparatorChar));Directory.CreateDirectory(Path.GetDirectoryName(path)!);await System.IO.File.WriteAllBytesAsync(path,snapshot,ct);
         var metadata=JsonSerializer.Serialize(new{title=d.Title,organization=await c.ExecuteScalarAsync<string>(new CommandDefinition("SELECT display_name FROM odca.tenants WHERE id=@tenantId",new{tenantId},tx,cancellationToken:ct)),template=await c.ExecuteScalarAsync<string>(new CommandDefinition("SELECT name FROM odca.contract_templates WHERE id=@sourceTemplateId",new{d.SourceTemplateId},tx,cancellationToken:ct)),author=await c.ExecuteScalarAsync<string>(new CommandDefinition("SELECT display_name FROM odca.users WHERE id=@actor",new{actor},tx,cancellationToken:ct))});
@@ -1238,9 +1257,10 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     }
     private async Task<SignatureReadinessResponse?> CalculateReadiness(NpgsqlConnection c,Guid tenantId,Guid versionId,NpgsqlTransaction tx,CancellationToken ct)
     {
-        var row=await c.QuerySingleOrDefaultAsync<ReadinessRow>(new CommandDefinition("SELECT v.pdf_status AS PdfStatus,v.pdf_storage_key AS PdfStorageKey,v.pdf_sha256 AS PdfSha256,v.review_status AS ReviewStatus,p.id AS PreparationId,p.status AS PreparationStatus,p.composition_revision AS CompositionRevision,(SELECT count(*) FROM odca.signature_participants sp WHERE sp.tenant_id=p.tenant_id AND sp.preparation_id=p.id AND sp.composition_revision=p.composition_revision) AS ParticipantCount FROM odca.generated_contract_versions v LEFT JOIN odca.signature_preparations p ON (p.tenant_id,p.generated_version_id)=(v.tenant_id,v.id) WHERE v.tenant_id=@tenantId AND v.id=@versionId",new{tenantId,versionId},tx,cancellationToken:ct));
+        var row=await c.QuerySingleOrDefaultAsync<ReadinessRow>(new CommandDefinition("SELECT v.pdf_status AS PdfStatus,v.pdf_storage_key AS PdfStorageKey,v.pdf_sha256 AS PdfSha256,v.review_status AS ReviewStatus,t.official_key AS OfficialKey,p.id AS PreparationId,p.status AS PreparationStatus,p.composition_revision AS CompositionRevision,(SELECT count(*) FROM odca.signature_participants sp WHERE sp.tenant_id=p.tenant_id AND sp.preparation_id=p.id AND sp.composition_revision=p.composition_revision) AS ParticipantCount FROM odca.generated_contract_versions v LEFT JOIN odca.contract_templates t ON t.id=v.source_template_id LEFT JOIN odca.signature_preparations p ON (p.tenant_id,p.generated_version_id)=(v.tenant_id,v.id) WHERE v.tenant_id=@tenantId AND v.id=@versionId",new{tenantId,versionId},tx,cancellationToken:ct));
         if(row is null)return null;var ok=new List<SignatureReadinessItem>();var blockers=new List<SignatureReadinessItem>();var warnings=new List<SignatureReadinessItem>();
         ok.Add(new("document.exists","Versão documental localizada.","A preparação está vinculada a uma versão imutável.","Nenhuma ação.",null));
+        if(OfficialContractTemplates.RequiresOdcaApproval(row.OfficialKey))blockers.Add(new("approval.odca.required","Modelo cirúrgico pendente de aprovação ODCA.","Modelos cirúrgicos exigem aprovação da ODCA antes do preparativo de assinatura (seção C do plano).","Aguardar liberação do modelo pela ODCA.","tenant.templates.manage"));
         if(row.PdfStatus!="completed"||string.IsNullOrWhiteSpace(row.PdfStorageKey)||string.IsNullOrWhiteSpace(row.PdfSha256))blockers.Add(new("pdf.incomplete","Gere um PDF íntegro antes de confirmar.","A confirmação deve congelar o artefato exato.","Gerar PDF final.","tenant.contract_drafts.manage"));
         else
         {
@@ -1269,7 +1289,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     }
 
     private static void Validate(string content,string fields,string values,ContractValidationMode mode){var definitions=JsonSerializer.Deserialize<ContractFieldDefinition[]>(fields,JsonOptions)??[];FieldMapping.Validate(definitions);var parsed=StructuredContractDocument.Parse(content,definitions);var fieldValues=JsonSerializer.Deserialize<ContractFieldValue[]>(values,JsonOptions)??[];StructuredContractDocument.ValidateValues(definitions,fieldValues,mode);if(definitions.Any(x=>!parsed.FieldOccurrences.ContainsKey(x.Id)))throw new InvalidDataException("Todo campo definido precisa ter ao menos uma ocorrência no documento.");}
-    private static DraftResponse ToResponse(DraftRow r)=>new(r.Id,r.ContractId,r.Title,r.SourceTemplateId,r.SourceTemplateVersionId,JsonSerializer.Deserialize<JsonElement>(r.Content),JsonSerializer.Deserialize<JsonElement>(r.Fields),JsonSerializer.Deserialize<JsonElement>(r.Values),r.Version,r.LastClientRevision,ToUtcOffset(r.UpdatedAt));
+    private static DraftResponse ToResponse(DraftRow r)=>new(r.Id,r.ContractId,r.Title,r.SourceTemplateId,r.SourceTemplateVersionId,JsonSerializer.Deserialize<JsonElement>(r.Content),JsonSerializer.Deserialize<JsonElement>(r.Fields),JsonSerializer.Deserialize<JsonElement>(r.Values),r.Version,r.LastClientRevision,ToUtcOffset(r.UpdatedAt),OfficialContractTemplates.RequiresOdcaApproval(r.OfficialKey));
     private Guid? Actor()=>Guid.TryParse(User.FindFirstValue("sub"),out var id)?id:null;
     private static Task<bool> Allowed(NpgsqlConnection c,Guid actor,Guid tenant,string permission,CancellationToken ct)=>c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT odca.tenant_actor_has_permission(@actor,@tenant,@permission)",new{actor,tenant,permission},cancellationToken:ct));
     private static Task<int> SetTenant(NpgsqlConnection c,Guid tenant,Guid actor,NpgsqlTransaction tx,CancellationToken ct)=>c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@value,true),set_config('odca.actor_id',@actor,true)",new{value=tenant.ToString(),actor=actor.ToString()},tx,cancellationToken:ct));
@@ -1282,7 +1302,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     }
 
     private static string SafeFileName(string value)=>string.Concat(value.Normalize().Select(x=>char.IsLetterOrDigit(x)||x is '-' or '_'?x:'_')).Trim('_') is {Length:>0} safe?safe:"documento";
-    private sealed record TemplateSource(Guid TemplateId,Guid VersionId,string Content,string Fields,string? TemplateName = null);
+    private sealed record TemplateSource(Guid TemplateId,Guid VersionId,string Content,string Fields,string? TemplateName = null,string? OfficialKey = null);
     private sealed record ExistingDraftRow(Guid Id, Guid TemplateId, Guid? PatientId, string TemplateName);
     private sealed record ContractInfoRow(Guid Id, string Title, string? Reference);
     private sealed record ChangeRequestRow(Guid Id, Guid ContractId, string Status, Guid? DraftId, long RowVersion);
@@ -1305,6 +1325,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         public long? CurrentPatientVersion { get; set; }
         public DateTime? PatientInactiveAt { get; set; }
         public string? TemplateStatus { get; set; }
+        public string? OfficialKey { get; set; }
     }
     private sealed class SaveRow
     {
@@ -1432,7 +1453,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         public Guid? ConfirmationOperationId { get; set; }
     }
     private sealed record PreparationVersionRow(Guid Id,Guid? PatientId,string? PatientSnapshot,string PdfStatus,string? PdfStorageKey,string? PdfSha256,string ReviewStatus);
-    private sealed record ReadinessRow(string PdfStatus,string? PdfStorageKey,string? PdfSha256,string ReviewStatus,Guid PreparationId,string? PreparationStatus,int CompositionRevision,long ParticipantCount);
+    private sealed record ReadinessRow(string PdfStatus,string? PdfStorageKey,string? PdfSha256,string ReviewStatus,string? OfficialKey,Guid PreparationId,string? PreparationStatus,int CompositionRevision,long ParticipantCount);
     private sealed record PreparationOperationRow(string OperationType,string CommandHash,string ResponseJson);
     private sealed record SignVersionRow(Guid Id,Guid ContractId,string ReviewStatus);
     private sealed record SignatureParticipantStateRow(Guid ClientId,string Name,DateTime? SignedAt,Guid? SignedBy);

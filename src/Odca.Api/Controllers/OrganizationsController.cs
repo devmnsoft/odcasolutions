@@ -36,7 +36,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
         var row = await service.GetOrganizationAsync(actor, tenantId, cancellationToken);
         return row is null
             ? Forbid()
-            : Ok(new OrganizationDetails(row.Id, row.Name, row.Timezone, row.Status, row.Version));
+            : Ok(new OrganizationDetails(row.Id, row.Name, row.Timezone, row.Status, row.Version, row.ActivityProfile));
     }
 
     [HttpGet("{tenantId:guid}/overview")]
@@ -90,12 +90,23 @@ public sealed class OrganizationsController(TenantAdministrationService service)
             }));
         }
 
+        var activityProfile = request.ActivityProfile?.Trim();
+        if (!string.IsNullOrWhiteSpace(activityProfile) &&
+            activityProfile is not ("general" or "therapy_clinic" or "plastic_surgery"))
+        {
+            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
+            {
+                ["activityProfile"] = ["Perfil de atuação inválido."]
+            }));
+        }
+
         var result = await service.UpdateOrganizationAsync(
             actor,
             tenantId,
             request.Name.Trim(),
             timezone,
             request.Version,
+            activityProfile,
             cancellationToken);
 
         return result switch
@@ -105,6 +116,12 @@ public sealed class OrganizationsController(TenantAdministrationService service)
             {
                 Title = "A organização foi alterada em outra sessão.",
                 Detail = "Recarregue os dados e revise suas alterações."
+            }),
+            UpdateOrganizationResult.ProfileNotAllowed => Conflict(new ProblemDetails
+            {
+                Title = "Perfil de atuação indisponível.",
+                Detail = "O perfil Cirurgião plástico exige plano Enterprise ativo.",
+                Extensions = { ["code"] = "organization.profile.plan_required" }
             }),
             UpdateOrganizationResult.NotFound => NotFound(),
             _ => Forbid()

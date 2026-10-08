@@ -90,6 +90,8 @@ public sealed class EditOrganizationViewModel
     [Required]
     public long Version { get; set; }
 
+    public string ActivityProfile { get; set; } = "general";
+
     public bool VersionConflict { get; set; }
 }
 
