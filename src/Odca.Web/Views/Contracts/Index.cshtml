@@ -50,8 +50,8 @@
 
 @if (contracts.Count > 0)
 {
-    <div class="table-responsive">
-        <table class="table" aria-label="Lista de contratos">
+    <div class="responsive-table">
+        <table aria-label="Lista de contratos">
             <thead>
                 <tr>
                     <th>Contrato</th>
@@ -76,7 +76,7 @@
                     var stateBadgeClass = item.ClosedAt.HasValue ? "badge-muted" : item.ArchivedAt.HasValue ? "badge-warning" : "badge-success";
 
                     <tr>
-                        <td>
+                        <td data-label="Contrato">
                             <a asp-controller="Contracts" asp-action="Sheet" asp-route-tenantId="@tenantId" asp-route-contractId="@item.Id">
                                 <strong>@item.Title</strong>
                             </a>
@@ -89,7 +89,7 @@
                                 <br /><small class="muted">Contraparte: @item.Counterparty</small>
                             }
                         </td>
-                        <td>
+                        <td data-label="Tipo">
                             @if (string.IsNullOrWhiteSpace(item.ContractType))
                             {
                                 <span class="muted">—</span>
@@ -99,7 +99,7 @@
                                 <span class="badge badge-muted">@item.ContractType</span>
                             }
                         </td>
-                        <td>
+                        <td data-label="Vigência">
                             <small>
                                 @if (item.StartDate.HasValue)
                                 {
@@ -122,9 +122,9 @@
                                 }
                             </small>
                         </td>
-                        <td>@(item.Value.HasValue ? item.Value.Value.ToString("N2") + (string.IsNullOrWhiteSpace(item.Currency) ? "" : $" {item.Currency}") : "—")</td>
-                        <td>@(string.IsNullOrWhiteSpace(item.Owner) ? "Não atribuído" : item.Owner)</td>
-                        <td>
+                        <td data-label="Valor">@(item.Value.HasValue ? item.Value.Value.ToString("N2") + (string.IsNullOrWhiteSpace(item.Currency) ? "" : $" {item.Currency}") : "—")</td>
+                        <td data-label="Responsável">@(string.IsNullOrWhiteSpace(item.Owner) ? "Não atribuído" : item.Owner)</td>
+                        <td data-label="Documento">
                             <small>
                                 <strong>Versão:</strong> @(item.LatestVersionNumber.HasValue ? item.LatestVersionNumber.ToString() : "—")
                             </small>
@@ -143,7 +143,7 @@
                                 })
                             </small>
                         </td>
-                        <td>
+                        <td data-label="Estado">
                             <span class="badge @stateBadgeClass">@stateLabel</span>
                             @if (item.ClosedAt.HasValue && !string.IsNullOrWhiteSpace(item.ClosureReason))
                             {
@@ -154,10 +154,10 @@
                                 <br /><small class="muted">@item.ArchiveReason</small>
                             }
                         </td>
-                        <td>
+                        <td data-label="Atualização">
                             <time datetime="@item.UpdatedAt.ToString("o")">@item.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</time>
                         </td>
-                        <td>
+                        <td data-label="Ações">
                             <div class="button-row">
                                 <a class="button button-small button-primary" asp-controller="Contracts" asp-action="Sheet" asp-route-tenantId="@tenantId" asp-route-contractId="@item.Id">Ficha</a>
                             </div>

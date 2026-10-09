@@ -343,28 +343,33 @@ public static class OfficialContractTemplates
                 Text("Há representante legal distinto do paciente? "), Field("has_representative"),
                 Text(". Responsável legal, quando houver: "), Field("legal_representative_info"),
                 Text(". Identificação do Paciente: "), Field("patient_identification"), Text(".")),
+            ClauseHeading("CLÁUSULA 1ª — DO OBJETO"),
             Paragraph(
-                Text("CLÁUSULA 1ª — DO OBJETO: Prestação de serviços terapêuticos continuados, com seleção independente. Neuropsicologia: "),
+                Text("Prestação de serviços terapêuticos continuados, com seleção independente. Neuropsicologia: "),
                 Field("therapy_neuropsychology"),
                 Text(". Psicologia: "), Field("therapy_psychology"),
                 Text(". Terapia ocupacional: "), Field("therapy_occupational"),
                 Text(". Fonoaudiologia: "), Field("therapy_speech"),
                 Text(". Os trabalhos desenvolvidos configuram-se como obrigação de meio e não de resultado, com duração média de 60 minutos por sessão. Este texto é um ponto de partida operacional e não reproduz integralmente o instrumento original.")),
+            ClauseHeading("CLÁUSULA 2ª — DO INVESTIMENTO"),
             Paragraph(
-                Text("CLÁUSULA 2ª — DO INVESTIMENTO: O(A) CONTRATANTE pagará os seguintes valores individuais por sessão realizada:"),
+                Text("O(A) CONTRATANTE pagará os seguintes valores individuais por sessão realizada:"),
                 Text(" Neuropsicologia: R$ "), Field("fee_neuropsychology"),
                 Text("; Psicologia: R$ "), Field("fee_psychology"),
                 Text("; Terapia Ocupacional: R$ "), Field("fee_occupational_therapy"),
                 Text("; Fonoaudiologia: R$ "), Field("fee_speech_therapy"), Text(".")),
+            ClauseHeading("DA FORMA E VENCIMENTO DO PAGAMENTO"),
             Paragraph(
-                Text("FORMA E VENCIMENTO DO PAGAMENTO: Pagamento mensal com vencimento selecionado: "),
+                Text("Pagamento mensal com vencimento selecionado: "),
                 Field("payment_due_day"),
                 Text(". Dados para pagamento: "), Field("payment_banking_details"), Text(".")),
+            ClauseHeading("CLÁUSULA 3ª — SIGILO, PROTEÇÃO DE DADOS E IMAGEM"),
             Paragraph(
-                Text("CLÁUSULA 3ª — SIGILO, PROTEÇÃO DE DADOS E IMAGEM: O tratamento dos dados do paciente e contratante observa estritamente a LGPD. Autorização de imagem: "),
+                Text("O tratamento dos dados do paciente e contratante observa estritamente a LGPD. Autorização de imagem: "),
                 Field("image_consent_option"), Text(".")),
+            ClauseHeading("CLÁUSULA 4ª — DO FORO E ENCERRAMENTO"),
             Paragraph(
-                Text("CLÁUSULA 4ª — DO FORO E ENCERRAMENTO: As partes elegem a Comarca de "),
+                Text("As partes elegem a Comarca de "),
                 Field("jurisdiction_city"), Text(" para dirimir eventuais controvérsias. Firmam o presente em "),
                 Field("signing_date"), Text(", com os participantes e testemunhas identificados: "),
                 Field("witnesses_identification"), Text("."))),
@@ -456,9 +461,9 @@ public static class OfficialContractTemplates
             Paragraph(
                 Text("HONORÁRIOS E PAGAMENTO: honorários de R$ "), Field("procedure_fee"),
                 Text(", com a condição "), Field("payment_terms"), Text(".")),
-            Paragraph(
+            Callout(Paragraph(
                 Text("RISCOS: o paciente declara ciência dos riscos e benefícios do procedimento: "), Field("risks_acknowledgement"),
-                Text(". Este modelo é um ponto de partida operacional e não substitui revisão jurídica.")),
+                Text(". Este modelo é um ponto de partida operacional e não substitui revisão jurídica."))),
             Paragraph(
                 Text("FORO E ASSINATURA: foro na comarca de "), Field("jurisdiction_city"),
                 Text(". Data de assinatura: "), Field("signing_date"), Text("."))),
@@ -491,6 +496,15 @@ public static class OfficialContractTemplates
 
     private static string Heading(string text) =>
         "{\"type\":\"heading\",\"level\":1,\"content\":[{\"type\":\"text\",\"text\":" + JsonSerializer.Serialize(text) + "}]}";
+
+    // Section D (D2): clause titles are real level-2 sections so the renderer can build
+    // the sumário; the literal CLÁUSULA numbering stays in the heading text (no duplicates).
+    private static string ClauseHeading(string text) =>
+        "{\"type\":\"heading\",\"level\":2,\"content\":[{\"type\":\"text\",\"text\":" + JsonSerializer.Serialize(text) + "}]}";
+
+    // Section D (D3): legal-design attention box — a first-class document node.
+    private static string Callout(params string[] blocks) =>
+        "{\"type\":\"callout\",\"variant\":\"attention\",\"content\":[" + string.Join(',', blocks) + "]}";
 
     private static string Paragraph(params string[] nodes) =>
         "{\"type\":\"paragraph\",\"alignment\":\"justify\",\"content\":[" + string.Join(',', nodes) + "]}";

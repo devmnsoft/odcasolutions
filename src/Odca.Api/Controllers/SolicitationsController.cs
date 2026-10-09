@@ -37,6 +37,8 @@ public sealed class SolicitationsController(NpgsqlDataSource dataSource) : Contr
         var actor = Actor(); if (actor is null) return Unauthorized();
         await using var c = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(c, actor.Value, tenantId, "tenant.solicitations.read", ct)) return Forbid();
+        var owner = await c.QueryFirstOrDefaultAsync<Guid>(new CommandDefinition("SELECT tenant_id FROM odca.solicitations WHERE id=@solicitation", new { solicitation = solicitationId }, cancellationToken: ct));
+        if (owner != tenantId) return NotFound();
         return await EnvelopeResult(c, "SELECT odca.solicitation_detail(@actor,@solicitation)::text", new { actor, solicitation = solicitationId }, ct);
     }
 

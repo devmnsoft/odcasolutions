@@ -43,7 +43,8 @@ public sealed record ContractFieldValue(string FieldId, string? Value, bool Conf
 public sealed class StructuredContractDocument
 {
     private static readonly HashSet<string> ContainerNodes = new(StringComparer.Ordinal)
-        { "document", "paragraph", "heading", "bulletList", "orderedList", "listItem", "table", "tableRow", "tableCell", "pageBreak" };
+        { "document", "paragraph", "heading", "bulletList", "orderedList", "listItem", "table", "tableRow", "tableCell", "pageBreak", "callout" };
+    private static readonly HashSet<string> CalloutVariants = new(StringComparer.Ordinal) { "attention", "info" };
     private static readonly HashSet<string> LeafNodes = new(StringComparer.Ordinal) { "text", "field" };
     private static readonly HashSet<string> Marks = new(StringComparer.Ordinal) { "bold", "italic", "underline" };
     private static readonly Regex SafeId = new("^[a-zA-Z][a-zA-Z0-9_.-]{0,79}$", RegexOptions.CultureInvariant);
@@ -291,12 +292,16 @@ public sealed class StructuredContractDocument
             "field" => new[] { "type", "fieldId" },
             "heading" => new[] { "type", "level", "content" },
             "paragraph" => new[] { "type", "alignment", "content" },
+            "callout" => new[] { "type", "variant", "content" },
             _ => new[] { "type", "content" }
         };
         if (item.Any(property => !allowed.Contains(property.Key, StringComparer.Ordinal)))
             throw new InvalidDataException("O documento contém atributo não suportado.");
 
         if (type == "pageBreak") return;
+        if (type == "callout" && item["variant"] is JsonValue calloutVariant &&
+            !CalloutVariants.Contains(calloutVariant.GetValue<string>()))
+            throw new InvalidDataException("Variante de caixa de atenção não suportada.");
         if (type == "text")
         {
             var text = item["text"]?.GetValue<string>() ?? string.Empty;

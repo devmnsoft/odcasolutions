@@ -752,7 +752,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
         var row=await c.QuerySingleOrDefaultAsync<GeneratedDetailRow>(new CommandDefinition("""
             SELECT v.id AS Id,v.contract_id AS ContractId,v.draft_id AS DraftId,v.patient_id AS PatientId,v.version_number AS Number,
-              coalesce(v.emission_metadata->>'title',c.title) AS Title,t.contract_type AS DocumentType,coalesce(v.emission_metadata->>'organization',tenant.display_name) AS Organization,
+              coalesce(v.emission_metadata->>'title',c.title) AS Title,t.contract_type AS DocumentType,coalesce(v.emission_metadata->>'organization',tenant.display_name) AS Organization,tenant.business_code AS OrganizationTaxId,
               coalesce(v.emission_metadata->>'template',t.name) AS Template,tv.version_number AS TemplateVersion,coalesce(v.emission_metadata->>'author',u.display_name) AS Author,
               v.created_at AS CreatedAt,v.canonical_sha256 AS Sha256,v.review_status AS ReviewStatus,
               'not_available' AS SignatureStatus,review.id AS ReviewId,v.patient_snapshot::text AS PatientSnapshot,
@@ -773,7 +773,8 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         var preparation=await ReadPreparation(c,tenantId,versionId,tx,ct);
         if(preparation is not null)preparation=preparation with{Readiness=await CalculateReadiness(c,tenantId,versionId,tx,ct)};
         string html;
-        try { html=ContractDocumentRenderer.ToHtml(row.Content,row.Fields,row.Values); }
+        var cover = new ContractDocumentRenderer.DocumentCoverInfo(row.Organization, row.OrganizationTaxId, row.Title, row.Number, ToUtcOffset(row.CreatedAt), row.Author);
+        try { html=ContractDocumentRenderer.ToHtml(row.Content,row.Fields,row.Values,cover); }
         catch(InvalidDataException exception) { return Problem(statusCode:StatusCodes.Status422UnprocessableEntity,title:"A estrutura histórica não pode ser apresentada.",detail:exception.Message); }
         await tx.CommitAsync(ct); return Ok(new GeneratedVersionDetail(row.Id,row.ContractId,row.DraftId,row.Number,row.Title,row.DocumentType,
             row.Organization,row.Template,row.TemplateVersion,row.Author,ToUtcOffset(row.CreatedAt),row.Sha256,row.ReviewStatus,
@@ -787,9 +788,15 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         var actor=Actor();if(actor is null)return Unauthorized();await using var c=await dataSource.OpenConnectionAsync(ct);
         if(!await Allowed(c,actor.Value,tenantId,"tenant.contract_drafts.manage",ct))return Forbid();
         await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
-        var row=await c.QuerySingleOrDefaultAsync<PdfRow>(new CommandDefinition("SELECT id AS Id,coalesce(emission_metadata->>'title','Documento') AS Title,version_number AS Number,content::text AS Content,fields::text AS Fields,values::text AS Values,pdf_status AS Status,pdf_storage_key AS StorageKey,pdf_byte_size AS ByteSize FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND id=@versionId FOR UPDATE",new{tenantId,versionId},tx,cancellationToken:ct));
+        var row=await c.QuerySingleOrDefaultAsync<PdfRow>(new CommandDefinition("""
+            SELECT id AS Id,coalesce(emission_metadata->>'title','Documento') AS Title,version_number AS Number,content::text AS Content,fields::text AS Fields,values::text AS Values,pdf_status AS Status,pdf_storage_key AS StorageKey,pdf_byte_size AS ByteSize,
+              coalesce(emission_metadata->>'organization',(SELECT display_name FROM odca.tenants WHERE id=odca.generated_contract_versions.tenant_id)) AS Organization,
+              (SELECT business_code FROM odca.tenants WHERE id=odca.generated_contract_versions.tenant_id) AS TaxId,
+              coalesce(emission_metadata->>'author',(SELECT display_name FROM odca.users WHERE id=odca.generated_contract_versions.created_by)) AS Author
+            FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND id=@versionId FOR UPDATE
+            """,new{tenantId,versionId},tx,cancellationToken:ct));
         if(row is null)return NotFound();if(row.Status=="completed"){await tx.CommitAsync(ct);return Ok(new{status="completed",byteSize=row.ByteSize,replayed=true});}
-        byte[] pdf;try{pdf=ContractDocumentRenderer.ToPdf(row.Content,row.Fields,row.Values,row.Title,row.Number);}catch(InvalidDataException e){await c.ExecuteAsync(new CommandDefinition("UPDATE odca.generated_contract_versions SET pdf_status='failed',pdf_failure_code='invalid_structure' WHERE tenant_id=@tenantId AND id=@versionId",new{tenantId,versionId},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Problem(statusCode:StatusCodes.Status422UnprocessableEntity,title:"Não foi possível gerar o PDF.",detail:e.Message);}
+        byte[] pdf;try{pdf=ContractDocumentRenderer.ToPdf(row.Content,row.Fields,row.Values,row.Title,row.Number,new ContractDocumentRenderer.DocumentCoverInfo(row.Organization,row.TaxId,row.Title,row.Number,DateTimeOffset.UtcNow,row.Author));}catch(InvalidDataException e){await c.ExecuteAsync(new CommandDefinition("UPDATE odca.generated_contract_versions SET pdf_status='failed',pdf_failure_code='invalid_structure' WHERE tenant_id=@tenantId AND id=@versionId",new{tenantId,versionId},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Problem(statusCode:StatusCodes.Status422UnprocessableEntity,title:"Não foi possível gerar o PDF.",detail:e.Message);}
         var hash=Convert.ToHexString(SHA256.HashData(pdf)).ToLowerInvariant();var key=$"generated/{tenantId:N}/{versionId:N}/final-{ContractDocumentRenderer.PdfRendererVersion}-{hash[..16]}.pdf";var root=configuration["Documents:StoragePath"]??Path.Combine(AppContext.BaseDirectory,"App_Data","documents");var path=Path.Combine(root,key.Replace('/',Path.DirectorySeparatorChar));var temporary=path+".attempt-"+Guid.NewGuid().ToString("N");Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         try
         {
@@ -1414,6 +1421,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         public string Title { get; set; } = "";
         public string DocumentType { get; set; } = "";
         public string Organization { get; set; } = "";
+        public string? OrganizationTaxId { get; set; }
         public string Template { get; set; } = "";
         public int TemplateVersion { get; set; }
         public string Author { get; set; } = "";
@@ -1430,7 +1438,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         public long? PdfByteSize { get; set; }
         public DateTime? PdfCompletedAt { get; set; }
     }
-    private sealed record PdfRow(Guid Id,string Title,int Number,string Content,string Fields,string Values,string Status,string? StorageKey,long? ByteSize);
+    private sealed record PdfRow(Guid Id,string Title,int Number,string Content,string Fields,string Values,string Status,string? StorageKey,long? ByteSize,string Organization,string? TaxId,string Author);
     private sealed record PdfDownloadRow(string StorageKey,string Sha256,string Title,Guid? PatientId);
     private sealed class PreparationRow
     {

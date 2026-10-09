@@ -11,20 +11,115 @@ public static class ContractDocumentRenderer
 {
     public const string PdfRendererVersion = "odca-pdf-1";
 
-    public static string ToHtml(string contentJson, string fieldsJson, string valuesJson)
+    /// <summary>Section D (D2): organization metadata used to build the cover page and the
+    /// table of contents. They are emitted only when the document is "adequate" for them
+    /// (at least two section headings of level 1, any level-2 section, or an explicit page
+    /// break); short one-title terms stay without cover.</summary>
+    public sealed record DocumentCoverInfo(
+        string OrganizationName,
+        string? OrganizationTaxId,
+        string Title,
+        int Version,
+        DateTimeOffset IssuedAt,
+        string? Author);
+
+    public static string ToHtml(string contentJson, string fieldsJson, string valuesJson, DocumentCoverInfo? cover = null)
     {
         var model = Read(contentJson, fieldsJson, valuesJson);
         var html = new StringBuilder("<article class=\"legal-document\">");
+        if (cover is not null && HasFrontMatter(model.Root))
+        {
+            RenderCoverHtml(cover, html);
+            RenderTocHtml(model, html);
+        }
         RenderHtml(model.Root, model.Values, model.Definitions, html);
         return html.Append("</article>").ToString();
     }
 
-    public static byte[] ToPdf(string contentJson, string fieldsJson, string valuesJson, string title, int version)
+    public static byte[] ToPdf(string contentJson, string fieldsJson, string valuesJson, string title, int version, DocumentCoverInfo? cover = null)
     {
         var model = Read(contentJson, fieldsJson, valuesJson);
-        var lines = new List<string> { title, $"Versão {version}" };
+        var lines = new List<string>();
+        if (cover is not null && HasFrontMatter(model.Root))
+        {
+            for (var blank = 0; blank < 8; blank++) lines.Add(string.Empty);
+            lines.Add(cover.OrganizationName.ToUpper(CultureInfo.CurrentCulture));
+            if (!string.IsNullOrWhiteSpace(cover.OrganizationTaxId)) lines.Add("CNPJ " + FormatTaxId(cover.OrganizationTaxId));
+            lines.Add(string.Empty); lines.Add(string.Empty);
+            lines.Add(cover.Title.ToUpper(CultureInfo.CurrentCulture));
+            lines.Add($"Versao {cover.Version} - Emitido em {cover.IssuedAt.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)}");
+            if (!string.IsNullOrWhiteSpace(cover.Author)) lines.Add("Emitido por " + cover.Author);
+            lines.Add("\f");
+            lines.Add("SUMARIO");
+            foreach (var entry in CollectTocEntries(model)) lines.Add("  " + entry);
+            lines.Add("\f");
+        }
+        lines.Add(title); lines.Add($"Versão {version}");
         Flatten(model.Root, model.Values, model.Definitions, lines, 0);
         return SimplePdf.Create(lines);
+    }
+
+    private static bool HasFrontMatter(JsonElement root)
+    {
+        var levelOneHeadings = 0;
+        if (!root.TryGetProperty("content", out var blocks) || blocks.ValueKind != JsonValueKind.Array) return false;
+        foreach (var block in blocks.EnumerateArray())
+        {
+            var type = block.GetProperty("type").GetString();
+            if (type == "pageBreak") return true;
+            if (type != "heading") continue;
+            var level = block.GetProperty("level").GetInt32();
+            if (level == 2) return true;
+            if (level == 1) levelOneHeadings++;
+        }
+        return levelOneHeadings >= 2;
+    }
+
+    private static void RenderCoverHtml(DocumentCoverInfo cover, StringBuilder output)
+    {
+        output.Append("<header class=\"document-cover\"><p class=\"document-cover-organization\">")
+            .Append(SafeHtmlEncode(cover.OrganizationName)).Append("</p>");
+        if (!string.IsNullOrWhiteSpace(cover.OrganizationTaxId))
+            output.Append("<p class=\"document-cover-tax-id\">CNPJ ").Append(SafeHtmlEncode(FormatTaxId(cover.OrganizationTaxId))).Append("</p>");
+        output.Append("<h1 class=\"document-cover-title\">").Append(SafeHtmlEncode(cover.Title)).Append("</h1>")
+            .Append("<p class=\"document-cover-meta\">Versão ").Append(cover.Version)
+            .Append(" &middot; Emitido em ").Append(cover.IssuedAt.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)).Append("</p>");
+        if (!string.IsNullOrWhiteSpace(cover.Author))
+            output.Append("<p class=\"document-cover-meta\">Emitido por ").Append(SafeHtmlEncode(cover.Author)).Append("</p>");
+        output.Append("</header><hr class=\"document-page-break\" aria-label=\"Fim da capa\">");
+    }
+
+    private static void RenderTocHtml(RenderModel model, StringBuilder output)
+    {
+        output.Append("<nav class=\"document-toc\" aria-label=\"Sumário\"><h2 class=\"document-toc-title\">Sumário</h2><ol class=\"document-toc-list\">");
+        foreach (var entry in CollectTocEntries(model))
+            output.Append("<li class=\"document-toc-item\">").Append(SafeHtmlEncode(entry)).Append("</li>");
+        output.Append("</ol></nav><hr class=\"document-page-break\" aria-label=\"Fim do sumário\">");
+    }
+
+    private static List<string> CollectTocEntries(RenderModel model)
+    {
+        var entries = new List<string>();
+        if (!model.Root.TryGetProperty("content", out var blocks) || blocks.ValueKind != JsonValueKind.Array) return entries;
+        foreach (var block in blocks.EnumerateArray())
+            if (block.GetProperty("type").GetString() == "heading")
+            {
+                var line = new StringBuilder();
+                CollectText(block, model.Values, model.Definitions, line);
+                var text = line.ToString().Trim();
+                if (text.Length > 0) entries.Add(text.TrimEnd('.', ':'));
+            }
+        return entries;
+    }
+
+    private static string FormatTaxId(string value)
+    {
+        var digits = new string(value.Where(char.IsDigit).ToArray());
+        return digits.Length == 14
+            ? $"{digits[..2]}.{digits[2..5]}.{digits[5..8]}/{digits[8..12]}-{digits[12..]}"
+            : digits.Length == 11
+                ? $"{digits[..3]}.{digits[3..6]}.{digits[6..9]}-{digits[9..]}"
+                : value;
     }
 
     private static RenderModel Read(string contentJson, string fieldsJson, string valuesJson)
@@ -45,7 +140,9 @@ public static class ContractDocumentRenderer
     private static string Display(string fieldId, IReadOnlyDictionary<string, string?> values, IReadOnlyDictionary<string, ContractFieldDefinition> definitions)
     {
         var value = values.GetValueOrDefault(fieldId);
-        if (string.IsNullOrWhiteSpace(value)) return "Não informado";
+        // Documentos finais nunca exibem variáveis não resolvidas: campos opcionais legitimamente
+        // vazios (ex.: representante legal "quando houver") saem como traço em branco, sem marcador.
+        if (string.IsNullOrWhiteSpace(value)) return "\u2014";
         if (definitions.TryGetValue(fieldId, out var definition) && definition.Type is ContractFieldType.Currency or ContractFieldType.Formula && CanonicalDecimal.TryFormatPtBr(value, out var formatted))
             return formatted;
         return value;
@@ -59,11 +156,20 @@ public static class ContractDocumentRenderer
         {
             var id = node.GetProperty("fieldId").GetString()!;
             var shown = Display(id, values, definitions);
-            output.Append("<span class=\"document-field").Append(shown == "Não informado" ? " document-field-empty" : "")
-                .Append("\">").Append(SafeHtmlEncode(shown)).Append("</span>");
+            output.Append("<span class=\"document-field\">")
+                .Append(SafeHtmlEncode(shown)).Append("</span>");
             return;
         }
         if (type == "pageBreak") { output.Append("<hr class=\"document-page-break\" aria-label=\"Quebra de página\">"); return; }
+        if (type == "callout")
+        {
+            var variant = node.TryGetProperty("variant", out var variantValue) && variantValue.GetString() == "info" ? "info" : "attention";
+            output.Append("<aside class=\"document-callout document-callout--").Append(variant)
+                .Append("\"><p class=\"document-callout-label\">").Append(variant == "info" ? "INFORMAÇÃO:" : "ATENÇÃO:").Append("</p>");
+            if (TryGetChildren(node, out var calloutChildren)) foreach (var calloutChild in calloutChildren) RenderHtml(calloutChild, values, definitions, output);
+            output.Append("</aside>");
+            return;
+        }
         var tag = type switch { "document" => "div", "heading" => $"h{node.GetProperty("level").GetInt32()}", "paragraph" => "p", "bulletList" => "ul", "orderedList" => "ol", "listItem" => "li", "table" => "table", "tableRow" => "tr", "tableCell" => "td", _ => "div" };
         output.Append('<').Append(tag);
         if (type == "paragraph" && node.TryGetProperty("alignment", out var alignment))
@@ -91,6 +197,12 @@ public static class ContractDocumentRenderer
     {
         var type = node.GetProperty("type").GetString();
         if (type == "pageBreak") { lines.Add("\f"); return; }
+        if (type == "callout")
+        {
+            lines.Add(node.TryGetProperty("variant", out var calloutVariant) && calloutVariant.GetString() == "info" ? "INFORMAÇÃO:" : "ATENÇÃO:");
+            if (TryGetChildren(node, out var calloutChildren)) foreach (var calloutChild in calloutChildren) Flatten(calloutChild, values, definitions, lines, depth + 1);
+            return;
+        }
         if (type is "paragraph" or "heading" or "listItem" or "tableRow")
         {
             var line = new StringBuilder(type == "listItem" ? "• " : "");

@@ -34,6 +34,21 @@
         .help-card fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; border: 1px solid #dce3ec; padding: 1rem; margin: 1rem 0; }
         .help-card fieldset label { display: grid; gap: .35rem; }
 
+        /* Section D — cover, table of contents and callouts inside the printable document. */
+        .document-callout { border: 1px solid #f0aaa4; border-left: 6px solid #b42318; background: #fff1f0; border-radius: 8px; break-inside: avoid; margin: 1.4em 0; padding: .9rem 1.1rem; }
+        .document-callout-label { color: #b42318; font-family: Arial, Helvetica, sans-serif; font-size: .8rem; font-weight: 800; letter-spacing: .06em; margin: 0 0 .3rem; text-transform: uppercase; }
+        .document-callout--info { border-color: #b6d7fe; border-left-color: #245bdb; background: #eef6ff; }
+        .document-callout--info .document-callout-label { color: #1849a9; }
+        .document-cover { border: 1px solid #d9e2ec; border-radius: 12px; display: grid; align-content: center; gap: .6rem; min-height: 34rem; padding: 4rem clamp(1.5rem, 5vw, 4rem); text-align: center; }
+        .document-cover-organization { color: #102a43; font-family: Arial, Helvetica, sans-serif; font-weight: 800; letter-spacing: .08em; margin: 0; text-transform: uppercase; }
+        .document-cover-tax-id { color: #5e7181; margin: 0; }
+        .document-cover-title { color: #102a43; font-size: 28px; letter-spacing: -.015em; margin: 3rem 0 1.25rem; }
+        .document-cover-meta { color: #5e7181; margin: 0; }
+        .document-toc { margin: 1.5rem 0 2rem; }
+        .document-toc-title { color: #102a43; font-family: Arial, Helvetica, sans-serif; }
+        .document-toc-list { list-style: decimal; margin: 0; padding-left: 1.5rem; }
+        .document-toc-item { border-bottom: 1px dashed #9aa9bc; padding: .45rem .25rem; }
+
         .watermark { position: fixed; inset: 0; z-index: 9999; pointer-events: none; display: flex; align-items: center; justify-content: center; }
         .watermark span { transform: rotate(-28deg); font-family: Arial, Helvetica, sans-serif; font-weight: 800; font-size: min(30vw, 240px); letter-spacing: .18em; color: rgba(16, 41, 79, .10); }
 
@@ -42,6 +57,7 @@
             body { padding: 0; }
             .no-print { display: none !important; }
             .document-page-break { break-after: page; visibility: hidden; }
+            .document-callout { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
     </style>
 </head>
