@@ -472,7 +472,7 @@ Sobre os endpoints já validados em B.3.2b, cada ação de contrato passou a ser
 
 ## C. Enterprise ODCA / SLA
 
-**Em aberto.** Inclui: solicitações (tipos revisão/adaptação/esclarecimento) com estados aberta→triagem→em atendimento→aguardando cliente→resolvida→encerrada e cancelamento com motivo; SLA por plano/serviço/prioridade com primeira resposta ≠ resolução, fuso/calendário explícitos, pausa/retomada justificada, reatribuição sem reiniciar relógio, violações registradas/alertadas.
+**Fechado (09/10/2026) — migração v042; suíte `validate-c-web.ps1` ALL PASS 93/93 (3 execuções).** Solicitações (revisão/adaptação/esclarecimento) com estados aberta→triagem→em atendimento→aguardando cliente→resolvida→encerrada (+cancelamento com motivo), SLA por plano/serviço/prioridade com snapshot no abrir, fuso/calendário explícitos, pausa/retomada justificada deslocando prazos, reatribuição sem reiniciar relógio, violações marcadas uma única vez pelo Worker (`violacao_*`), fila da Central ODCA multi-organização e aprovação formal dos modelos cirúrgicos (decisão aprovado/reprovado com nota, decisor auditado) que libera o blocker `approval.odca.required` da B.3.4 de forma reversível. Detalhamento: `docs/ENTREGA-CONCLUSAO-SISTEMA.md`, caderno `docs/execution/RESULTADO_SECAO_C_V42_20261009.md`, decisões D-C1…D-C11 em `DECISIONS-LOG.md`. Regressão B.3.4 conferida: 93/93.
 
 ## D. Design e homologação
 

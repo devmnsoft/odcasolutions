@@ -1,0 +1,82 @@
+@model System.Text.Json.JsonElement
+@{
+    var tenantId=(Guid)ViewData["TenantId"]!; var canManage=ViewData["CanManage"] as bool?==true;
+    var p=Model;
+    string Str(string n)=>p.TryGetProperty(n,out var v)&&v.ValueKind==JsonValueKind.String?v.GetString()??"" : "";
+    long Version=p.TryGetProperty("rowVersion",out var rv)&&rv.ValueKind==JsonValueKind.Number?rv.GetInt64():0;
+    DateTime? When(string n)=>p.TryGetProperty(n,out var v)&&v.ValueKind==JsonValueKind.String&&DateTime.TryParse(v.GetString(),out var d)?d:null;
+    var slaEl=p.TryGetProperty("sla",out var sl)?sl:default;
+    DateTime? SlaWhen(string n)=>slaEl.ValueKind==JsonValueKind.Object&&slaEl.TryGetProperty(n,out var v)&&v.ValueKind==JsonValueKind.String&&DateTime.TryParse(v.GetString(),out var d)?d:null;
+    string Fmt(DateTime? value)=>value?.ToString("dd/MM/yyyy HH:mm")??"—";
+    var status=Str("status"); var paused=p.TryGetProperty("paused",out var pv)&&pv.ValueKind==JsonValueKind.True;
+    string ServiceLabel(string value)=>value switch { "revisao"=>"Revisão","adaptacao"=>"Adaptação","esclarecimento"=>"Esclarecimento",_=>value };
+    string StatusLabel(string value)=>value switch { "aberta"=>"Aberta","triagem"=>"Em triagem","em_atendimento"=>"Em atendimento","aguardando_cliente"=>"Aguardando você","resolvida"=>"Resolvida","encerrada"=>"Encerrada","cancelada"=>"Cancelada",_=>value };
+    string PriorityLabel(string value)=>value switch { "baixa"=>"Baixa","normal"=>"Normal","alta"=>"Alta","critica"=>"Crítica",_=>value };
+    string EventLabel(string value)=>value switch { "abertura"=>"Solicitação aberta","triagem"=>"Triagem realizada pela ODCA","atendimento_inicio"=>"Atendimento iniciado","aguardando_cliente"=>"Aguardando sua resposta","pausa_sl"=>"SLA pausado pela ODCA","retomada_sl"=>"SLA retomado","retorno_cliente"=>"Você respondeu e o SLA retomou","resolucao"=>"Resolvida pela ODCA","reatribuicao"=>"Atendimento reatribuído","encerramento"=>"Solicitação encerrada","cancelamento"=>"Solicitação cancelada","mensagem_cliente"=>"Mensagem enviada","mensagem_odca"=>"Resposta da ODCA","violacao_primeira_resposta"=>"Violação do prazo de primeira resposta","violacao_resolucao"=>"Violação do prazo de resolução",_=>value };
+    string JStr(System.Text.Json.JsonElement e,string n)=>e.TryGetProperty(n,out var v)&&v.ValueKind==JsonValueKind.String?v.GetString()??"" : "";
+    var aberta=status is not ("encerrada" or "cancelada");
+}
+<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-action="Index" asp-route-tenantId="@tenantId">Central de solicitações</a><span>/</span><span aria-current="page">@Str("protocol")</span></nav>
+<header class="page-heading"><div><p class="eyebrow">@ServiceLabel(Str("service")) · Protocolo @Str("protocol")</p><h1>@Str("subject")</h1><p>Aberta por @Str("openedByName") em @Fmt(When("openedAt")).</p></div><span class="status-badge status-@status">@StatusLabel(status)</span>@if(paused){<span class="status-badge">SLA pausado</span>}</header>
+@if(TempData["SolNotice"] is string notice){<div class="alert alert-success" role="status">@notice</div>}@if(TempData["SolError"] is string error){<div class="alert alert-error" role="alert">@error</div>}
+@if(p.TryGetProperty("sla",out _)&&(SlaWhen("firstResponseBreachAt") is not null||SlaWhen("resolutionBreachAt") is not null)){<div class="alert alert-error" role="alert">Um prazo de SLA desta solicitação foi violado. A equipe ODCA foi avisada e priorizou o atendimento.</div>}
+<section class="summary-grid" aria-label="Resumo da solicitação">
+ <article><span>Prioridade</span><strong>@PriorityLabel(Str("priority"))</strong></article>
+ <article><span>Responsável ODCA</span><strong>@(string.IsNullOrWhiteSpace(Str("assigneeName"))?"Em triagem":Str("assigneeName"))</strong></article>
+ <article><span>Primeira resposta até</span><strong>@Fmt(SlaWhen("firstResponseDueAt"))</strong>@if(SlaWhen("firstResponseBreachAt") is not null){<small>Violada em @Fmt(SlaWhen("firstResponseBreachAt"))</small>}else if(When("firstResponseAt") is DateTime fr){<small>Cumprida em @Fmt(fr)</small>}</article>
+ <article><span>Resolução até</span><strong>@Fmt(SlaWhen("resolutionDueAt"))</strong>@if(SlaWhen("resolutionBreachAt") is not null){<small>Violada em @Fmt(SlaWhen("resolutionBreachAt"))</small>}else if(When("resolvedAt") is DateTime res){<small>Resolvida em @Fmt(res)</small>}</article>
+ @if(paused){<article><span>SLA pausado</span><strong>@Fmt(When("pausedAt"))</strong><small>@Str("pauseReason")</small></article>}
+ @if(!string.IsNullOrWhiteSpace(Str("cancellationReason"))){<article><span>Motivo do cancelamento</span><strong>@Str("cancellationReason")</strong></article>}
+</section>
+<div class="workspace-grid">
+ <section>
+  <h2>Descrição enviada</h2>
+  <article class="comment-card"><header><strong>@Str("openedByName")</strong><span>Abertura</span></header><p>@Str("body")</p><small>@Fmt(When("openedAt"))</small></article>
+  <h2>Conversa</h2>
+  @if(p.TryGetProperty("messages",out var msgs)&&msgs.ValueKind==System.Text.Json.JsonValueKind.Array){
+   @foreach(var m in msgs.EnumerateArray()){
+    <article class="comment-card @(JStr(m,"authorKind")=="odca"?"internal-note":null)"><header><strong>@JStr(m,"authorName")</strong><span>@(JStr(m,"authorKind")=="odca"?"Equipe ODCA":"Você")</span></header><p>@JStr(m,"body")</p><small>@(DateTime.TryParse(JStr(m,"createdAt"),out var mc)?mc.ToString("dd/MM/yyyy HH:mm"):"")</small></article>
+   }
+  }
+  @if(canManage&&aberta){
+   <form method="post" asp-action="AddMessage" asp-route-tenantId="@tenantId" asp-route-solicitationId="@Str("id")" data-prevent-double-submit>
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="expectedVersion" value="@Version" />
+    <label for="body">Mensagem para a ODCA <span aria-hidden="true">*</span></label>
+    <textarea id="body" name="body" required maxlength="8000"></textarea>
+    <button class="button button-primary" type="submit">Enviar mensagem</button>
+   </form>
+  }
+ </section>
+ <aside>
+  <h2>Linha do tempo</h2>
+  <ol class="timeline">
+   @if(p.TryGetProperty("events",out var evts)&&evts.ValueKind==System.Text.Json.JsonValueKind.Array){
+    @foreach(var e in evts.EnumerateArray()){
+     var details=e.TryGetProperty("details",out var d)?d:default;
+     var note=!string.IsNullOrWhiteSpace(JStr(details,"justificativa"))?JStr(details,"justificativa"):!string.IsNullOrWhiteSpace(JStr(details,"solucao"))?JStr(details,"solucao"):!string.IsNullOrWhiteSpace(JStr(details,"motivo"))?JStr(details,"motivo"):"";
+     var actor=JStr(e,"actorName");
+     <li><strong>@EventLabel(JStr(e,"eventType"))</strong>@if(!string.IsNullOrWhiteSpace(note)){<p>@note</p>}<span>@(string.IsNullOrWhiteSpace(actor)?"Sistema ODCA":actor) · @(DateTime.TryParse(JStr(e,"occurredAt"),out var oc)?oc.ToString("dd/MM/yyyy HH:mm"):"")</span></li>
+    }
+   }
+  </ol>
+ </aside>
+</div>
+@if(canManage&&aberta){
+ <section class="help-card" aria-labelledby="sol-close-title">
+  <h2 id="sol-close-title">Encerrar ou cancelar</h2>
+  <p>Encerre quando a resolução atendeu a demanda — a conversa fica registrada. O cancelamento exige um motivo e não reabre automaticamente.</p>
+  @if(status=="resolvida"){
+   <form method="post" asp-action="Act" asp-route-tenantId="@tenantId" asp-route-solicitationId="@Str("id")" data-prevent-double-submit>
+    @Html.AntiForgeryToken()<input type="hidden" name="expectedVersion" value="@Version" /><input type="hidden" name="action" value="encerrar" />
+    <button class="button button-primary" type="submit">Encerrar solicitação</button>
+   </form>
+  }
+  <form method="post" asp-action="Act" asp-route-tenantId="@tenantId" asp-route-solicitationId="@Str("id")" data-prevent-double-submit>
+   @Html.AntiForgeryToken()<input type="hidden" name="expectedVersion" value="@Version" /><input type="hidden" name="action" value="cancelar" />
+   <label for="cancelReason">Motivo do cancelamento <span aria-hidden="true">*</span></label>
+   <textarea id="cancelReason" name="text" required minlength="5" maxlength="2000"></textarea>
+   <button class="button button-danger" type="submit">Cancelar solicitação</button>
+  </form>
+ </section>
+}

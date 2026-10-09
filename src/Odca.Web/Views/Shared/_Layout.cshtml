@@ -39,6 +39,7 @@
     var canReadPatients = activeAccess?.HasAnyPermission("tenant.patients.read", "tenant.patients.manage") == true || isPlatform;
     var canReadImports = activeAccess?.HasPermission("tenant.imports.read") == true || isPlatform;
     var canReadReviews = activeAccess?.HasPermission("tenant.reviews.read") == true || isPlatform;
+    var canReadSolicitations = activeAccess?.HasPermission("tenant.solicitations.read") == true || isPlatform;
     var canReadContracts = activeAccess?.HasAnyPermission("tenant.contracts.read", "tenant.contract_drafts.read") == true || isPlatform;
     var canManageContracts = activeAccess?.HasPermission("tenant.contracts.manage") == true || isPlatform;
     var canReadOrganization = activeAccess?.HasAnyPermission("tenant.organization.read", "tenant.organization.manage") == true || isPlatform;
@@ -137,7 +138,8 @@
                         <a class="nav-item @(controller == "Plans" ? "active" : null)" aria-label="Planos e módulos" aria-current="@(controller == "Plans" ? "page" : null)" asp-controller="Plans" asp-action="Index"><span aria-hidden="true">▦</span><span>Planos e módulos</span></a>
                         <a class="nav-item" aria-label="Biblioteca de modelos" asp-controller="Modules" asp-action="Index" asp-route-module="biblioteca-modelos"><span aria-hidden="true">▤</span><span>Biblioteca de modelos</span></a>
                         <a class="nav-item" aria-label="Publicação e versões" asp-controller="Modules" asp-action="Index" asp-route-module="publicacao-versoes"><span aria-hidden="true">⇪</span><span>Publicação e versões</span></a>
-                        <a class="nav-item" aria-label="Solicitações Enterprise e SLA" asp-controller="Modules" asp-action="Index" asp-route-module="solicitacoes-enterprise"><span aria-hidden="true">☵</span><span>Solicitações Enterprise e SLA</span></a>
+                        <a class="nav-item @(controller == "AdminSolicitacoes" && ViewContext.RouteData.Values["action"]?.ToString() != "Aprovacoes" ? "active" : null)" aria-label="Fila de solicitações e SLA" asp-controller="AdminSolicitacoes" asp-action="Index"><span aria-hidden="true">☵</span><span>Solicitações e SLA</span></a>
+                        <a class="nav-item @(controller == "AdminSolicitacoes" && ViewContext.RouteData.Values["action"]?.ToString() == "Aprovacoes" ? "active" : null)" aria-label="Aprovação de modelos oficiais" asp-controller="AdminSolicitacoes" asp-action="Aprovacoes"><span aria-hidden="true">✒</span><span>Aprovação de modelos</span></a>
                         <a class="nav-item @(controller == "PlatformAudit" ? "active" : null)" aria-label="Auditoria da plataforma" aria-current="@(controller == "PlatformAudit" ? "page" : null)" asp-controller="PlatformAudit" asp-action="Index"><span aria-hidden="true">☰</span><span>Auditoria</span></a>
                         <a class="nav-item" aria-label="Configurações operacionais" asp-controller="Modules" asp-action="Index" asp-route-module="configuracoes"><span aria-hidden="true">⚙</span><span>Configurações operacionais</span></a>
                         @if (!string.IsNullOrWhiteSpace(tenantIdForLinks) && (hasActiveMembership || isPlatform))
@@ -176,6 +178,10 @@
                             @if (canReadReviews && !reviewsPlanRestricted)
                             {
                                 <a class="nav-item @(controller == "Reviews" ? "active" : null)" asp-controller="Reviews" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">☵</span><span>@MenuFeature("reviews", "Solicitações ODCA")</span></a>
+                            }
+                            @if (canReadSolicitations)
+                            {
+                                <a class="nav-item @(controller == "Solicitacoes" ? "active" : null)" asp-controller="Solicitacoes" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">✉</span><span>Central de solicitações</span></a>
                             }
                             @if (!string.IsNullOrWhiteSpace(activeContractId))
                             {
@@ -241,6 +247,10 @@
                             @if (canReadReviews && !reviewsPlanRestricted)
                             {
                                 <a class="nav-item @(controller == "Reviews" ? "active" : null)" asp-controller="Reviews" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">☵</span><span>@MenuFeature("reviews", "Solicitações ODCA")</span></a>
+                            }
+                            @if (canReadSolicitations)
+                            {
+                                <a class="nav-item @(controller == "Solicitacoes" ? "active" : null)" asp-controller="Solicitacoes" asp-action="Index" asp-route-tenantId="@tenantIdForLinks"><span aria-hidden="true">✉</span><span>Central de solicitações</span></a>
                             }
                             @if (canAccessWorkspace || canReadObligations)
                             {

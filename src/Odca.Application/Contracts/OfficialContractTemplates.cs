@@ -36,6 +36,9 @@ public static class OfficialContractTemplates
     public static bool RequiresOdcaApproval(string? officialKey) =>
         string.Equals(officialKey, "surgical-consent", StringComparison.Ordinal);
 
+    /// <summary>Section C: official keys tracked in the ODCA approval queue.</summary>
+    public static readonly IReadOnlyList<string> ApprovalRequiredKeys = ["surgical-consent"];
+
     public static string? NormalizeType(string? value) =>
         string.IsNullOrWhiteSpace(value) || !ContractTypes.Contains(value.Trim()) ? null : value.Trim();
 

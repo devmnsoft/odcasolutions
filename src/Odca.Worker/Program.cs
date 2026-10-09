@@ -11,6 +11,7 @@ builder.Services.AddHostedService<Worker>();
 builder.Services.AddHostedService<DocumentWorker>();
 builder.Services.AddHostedService<ObligationReminderWorker>();
 builder.Services.AddHostedService<RenewalApplicationWorker>();
+builder.Services.AddHostedService<SlaViolationScanWorker>();
 var dataProtection = builder.Services.AddDataProtection()
     .SetApplicationName(builder.Configuration["DataProtection:ApplicationName"] ?? "ODCA Solutions");
 var keysPath = builder.Configuration["DataProtection:KeysPath"];

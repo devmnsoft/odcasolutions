@@ -1,0 +1,40 @@
+@using Odca.Contracts.Solicitations
+@model ApprovalQueueRow[]
+@{
+    string ModelLabel(string key)=>key switch { "surgical-consent"=>"Termo de consentimento — cirurgia plástica",_=>key };
+    string Fmt(DateTime? value)=>value?.ToString("dd/MM/yyyy HH:mm")??"—";
+}
+<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-action="Index">Atendimento ODCA</a><span>/</span><span aria-current="page">Aprovação de modelos</span></nav>
+<header class="page-heading"><div><p class="eyebrow">Plataforma MNSOFT</p><h1>Aprovação de modelos oficiais</h1><p>Modelos cirúrgicos instalados em organizações clínicas precisam de decisão da ODCA antes que o cliente confirme a assinatura.</p></div></header>
+@if(ViewData["LoadError"] is string loadError){<div class="alert alert-error" role="alert">@loadError</div>}
+@if(TempData["SolNotice"] is string notice){<div class="alert alert-success" role="status">@notice</div>}@if(TempData["SolError"] is string error){<div class="alert alert-error" role="alert">@error</div>}
+<section class="help-card" aria-labelledby="approval-help"><h2 id="approval-help">Como funciona</h2><p>A fila lista instalações ativas de modelos oficiais que exigem aprovação. <strong>Aprovar</strong> libera o preparativo de assinatura para a organização; <strong>reprovar</strong> exige nota mínima de 5 caracteres e bloqueia novas confirmações até uma nova decisão.</p></section>
+<section aria-label="Fila de aprovações">
+ @if(Model.Length==0){<div class="empty-state"><p>Nenhuma instalação de modelo oficial aguardando aprovação.</p></div>}
+ else
+ {
+  <div class="table-scroll"><table><thead><tr><th>Organização</th><th>Perfil</th><th>Modelo</th><th>Contratos gerados</th><th>Decisão</th><th>Ações</th></tr></thead><tbody>
+  @foreach(var row in Model)
+  {
+   <tr>
+    <td><strong>@row.OrganizationName</strong></td>
+    <td>@(row.ActivityProfile??"—")</td>
+    <td>@ModelLabel(row.OfficialKey)<small>@row.OfficialKey</small></td>
+    <td>@row.GeneratedCount contratos<small>@(row.LastGeneratedAt is null?"sem geração registrada":$"última em {Fmt(row.LastGeneratedAt)}")</small></td>
+    <td>@if(row.Decision=="aprovado"){<span class="status-badge status-approved">Aprovado</span><small>@row.DecidedByName em @Fmt(row.DecidedAt)</small>@if(!string.IsNullOrWhiteSpace(row.DecisionNote)){<small>@row.DecisionNote</small>}}else if(row.Decision=="reprovado"){<span class="status-badge status-rejected">Reprovado</span><small>@row.DecidedByName em @Fmt(row.DecidedAt) — @row.DecisionNote</small>}else{<span class="status-badge">Pendente</span>}</td>
+    <td>
+     <form method="post" asp-action="DecideApproval" asp-route-tenantId="@row.TenantId" asp-route-key="@row.OfficialKey" data-prevent-double-submit>
+      @Html.AntiForgeryToken()
+      <label for="note-@row.TenantId-@row.OfficialKey">Nota da decisão (obrigatória na reprovação)</label>
+      <textarea id="note-@row.TenantId-@row.OfficialKey" name="note" maxlength="2000"></textarea>
+      <div class="form-actions-row">
+       <button class="button button-primary" type="submit" name="decision" value="aprovado">Aprovar</button>
+       <button class="button button-danger" type="submit" name="decision" value="reprovado">Reprovar</button>
+      </div>
+     </form>
+    </td>
+   </tr>
+  }
+  </tbody></table></div>
+ }
+</section>
