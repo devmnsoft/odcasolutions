@@ -51,7 +51,8 @@
             </div>
             <h3>Pendências</h3>
             @if (conference.PendingItems.Count == 0) { <p class="success" role="status">Nenhuma pendência impeditiva. Próxima ação: gerar a versão.</p> }
-            else { <ul class="check-list">@foreach(var item in conference.PendingItems){<li><strong>@item.Message</strong><br/><span>@item.Reason</span><br/><small>Corrigir em: @item.CorrectionTarget · @(item.CanCorrect?"Você possui permissão para corrigir.":"Solicite a uma pessoa autorizada.")</small></li>}</ul> }
+            else { <p class="muted">Erros que bloqueiam a geração da versão:</p> <ul class="check-list">@foreach(var item in conference.PendingItems){<li><strong>@item.Message</strong><br/><span>@item.Reason</span><br/><small>Corrigir em: @item.CorrectionTarget · @(item.CanCorrect?"Você possui permissão para corrigir.":"Solicite a uma pessoa autorizada.")</small></li>}</ul> }
+            @if (conference.Warnings is not null && conference.Warnings.Count > 0) { <h4>Alertas e informações</h4> <p class="muted">Avisos que não bloqueiam a emissão; avalie antes de gerar.</p> <ul class="check-list">@foreach(var item in conference.Warnings){<li><strong>@item.Message</strong><br/><span>@item.Reason</span><br/><small>Origem: @item.CorrectionTarget</small></li>}</ul> }
             @if (conference.PatientReconfirmationRequired)
             {
                 <h3>Reconfirmação cadastral</h3>

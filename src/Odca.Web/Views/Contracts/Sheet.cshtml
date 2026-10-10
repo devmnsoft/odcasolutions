@@ -303,6 +303,7 @@
                 {
                     <option value="renewal">Renovação de vigência</option>
                     <option value="amendment">Aditivo (alteração de escopo/valor/prazo)</option>
+                    <option value="revision">Revisão administrativa (correção não comercial)</option>
                 }
             </select>
         </label>
@@ -374,7 +375,7 @@
                 <a class="button button-quiet" href="/organizacoes/@tenantId/estudio/minutas/@sheet.DraftId.Value/checklist?version=@sheet.Version" target="_blank">
                     Checklist
                 </a>
-                <a class="button button-quiet" href="/organizacoes/@tenantId/estudio/comparar" target="_blank">
+                <a class="button button-quiet" href="/organizacoes/@tenantId/estudio/comparar-versoes?draftId=@sheet.DraftId.Value">
                     Comparar versões
                 </a>
             </div>

@@ -262,6 +262,15 @@ public sealed partial class OdcaApiClient(HttpClient client)
         return await SendAsync<RenewalReminderConfig>(message, false, ct);
     }
 
+    public Task<ApiCallResult<Odca.Contracts.Account.NotificationPage>> GetMyNotificationsAsync(string token, Guid tenantId, CancellationToken ct) =>
+        SendAsync<Odca.Contracts.Account.NotificationPage>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/notifications", token), false, ct);
+
+    public async Task<ApiCallResult<object>> MarkMyNotificationsReadAsync(string token, Guid tenantId, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/notifications/marcar-lidas", token);
+        return await SendAsync<object>(message, false, ct);
+    }
+
     public Task<ApiCallResult<SavedViewItem[]>> GetSavedViewsAsync(string token, Guid tenantId, string listingType, CancellationToken cancellationToken) =>
         SendAsync<SavedViewItem[]>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/saved-views?listingType={Uri.EscapeDataString(listingType)}", token), false, cancellationToken);
 

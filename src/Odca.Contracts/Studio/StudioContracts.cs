@@ -77,7 +77,8 @@ public sealed record DocumentConferenceResponse(Guid DraftId, long DraftVersion,
     int TemplateVersion, string DocumentType, string TemplateStatus, Guid? PatientId, string? PatientName,
     string? RepresentativeName, long? SelectedPatientVersion, long? CurrentPatientVersion, bool PatientActive,
     bool CanEdit, bool CanGenerate, bool PatientReconfirmationRequired, string ReviewStatus, string NextAction,
-    IReadOnlyList<PatientDataChange> PatientChanges, IReadOnlyList<DocumentPendingItem> PendingItems);
+    IReadOnlyList<PatientDataChange> PatientChanges, IReadOnlyList<DocumentPendingItem> PendingItems,
+    IReadOnlyList<DocumentPendingItem>? Warnings = null);
 public sealed record GeneratedVersionResponse(Guid Id, int Number, string Sha256, long ByteSize, DateTimeOffset CreatedAt, string Status);
 public sealed record GeneratedVersionDetail(Guid Id, Guid ContractId, Guid DraftId, int Number, string Title,
     string DocumentType, string Organization, string Template, int TemplateVersion, string Author,

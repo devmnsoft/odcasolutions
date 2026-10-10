@@ -2,7 +2,7 @@ namespace Odca.Contracts.Renewals;
 
 public sealed record RenewalSummary(int Expiring, int Expired, int Preparing, int InReview, int Scheduled, int NotRenewing, int Indeterminate = 0);
 public sealed record RenewalListItem(Guid ContractId, Guid? RequestId, string Name, string? Counterparty, string? OwnerName,
-    DateOnly? EndDate, DateOnly? DecisionDueOn, string Status, string NextAction, int? DaysRemaining, long ContractVersion, string? Priority = null);
+    DateOnly? EndDate, DateOnly? DecisionDueOn, string Status, string NextAction, int? DaysRemaining, long ContractVersion, string? Priority = null, string? Kind = null);
 public sealed record RenewalPage(IReadOnlyList<RenewalListItem> Items, RenewalSummary Summary, int Page, int PageSize, int Total, DateOnly? Today = null);
 public sealed record RenewalFilterOptions(IReadOnlyList<RenewalOption> Owners, IReadOnlyList<RenewalOption> ContractTypes, IReadOnlyList<RenewalOption> Counterparties);
 public sealed record RenewalOption(string Value, string Label);

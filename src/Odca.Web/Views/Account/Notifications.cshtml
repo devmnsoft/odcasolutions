@@ -1,0 +1,34 @@
+@model Odca.Contracts.Account.NotificationPage
+@{
+    ViewData["Title"] = "Notificações";
+    var hasTenant = ViewData["TenantId"] is not null;
+}
+<section class="narrow">
+    <header class="page-heading"><div><p class="eyebrow">Minha conta</p><h1>Notificações</h1><p>Avisos direcionados a você nesta organização.</p></div></header>
+
+    <div class="card">
+        @if (Model.UnreadCount > 0) { <p><span class="status-badge">@Model.UnreadCount não lida(s)</span></p> }
+        @if (Model.Items.Count == 0)
+        {
+            <div class="empty-state"><strong>Nenhuma notificação</strong><p>Você ainda não recebeu avisos nesta organização.</p></div>
+        }
+        else
+        {
+            @if (hasTenant)
+            {
+                <form method="post" action="/minha-conta/notificacoes/marcar-lidas" class="form-actions-row" style="margin-bottom:.75rem;" data-prevent-double-submit>
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="button button-secondary">Marcar todas como lidas</button>
+                </form>
+            }
+            <ul class="check-list">
+                @foreach (var n in Model.Items)
+                {
+                    <li class="@(n.ReadAt is null ? "notification-unread" : null)"><strong>@n.Title</strong><br /><span>@n.Body</span><br /><small>@n.CreatedAt.ToString("dd/MM/yyyy HH:mm")@(n.ReadAt is null ? "" : " · lida")</small></li>
+                }
+            </ul>
+        }
+    </div>
+
+    <div class="button-row"><a class="button button-quiet" asp-controller="Account" asp-action="Conta">Voltar para Minha conta</a></div>
+</section>

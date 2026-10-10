@@ -628,5 +628,57 @@ if ($sDraft) {
     }
 }
 
+Write-Host ''
+Write-Host '=== BLOCO C: centro de notificacoes + tipo revisao administrativa + comparacao de versoes ==='
+try {
+    $cli = Login-Web 'cliente.teste@odca.local' 'K8@wR3!nF6#zP2$m'
+    $cliUser = (Sql "SELECT id FROM odca.users WHERE email_normalized='cliente.teste@odca.local'").Trim()
+    Assert 'C.setup usuario cliente' ($cliUser -match '^[0-9a-f]{8}-') $cliUser
+
+    # A5: centro de notificacoes (nav + pagina + semear + listar + marcar-lidas)
+    $hNav = Invoke-Page 'GET' "$web/minha-conta" '' $cli.Jar
+    Assert 'C.notif menu exibe item' ($hNav.Contains('/minha-conta/notificacoes')) $script:lastUrl
+    SqlOpt "DELETE FROM odca.user_notifications WHERE kind='qa-bc-notif'"
+    $hN0 = Invoke-Page 'GET' "$web/minha-conta/notificacoes" '' $cli.Jar
+    Assert 'C.notif pagina renderiza autenticada' ($script:lastUrl -notlike '*entrar*') $script:lastUrl
+    Sql "INSERT INTO odca.user_notifications(tenant_id,user_id,kind,title,body,created_at) VALUES('$tenant','$cliUser','qa-bc-notif','QA BC Notif Titulo','QA BC Notif Corpo',now())"
+    $hN1 = Invoke-Page 'GET' "$web/minha-conta/notificacoes" '' $cli.Jar
+    Assert 'C.notif lista exibe notificacao semeada' ($hN1.Contains('QA BC Notif Titulo')) $script:lastUrl
+    Assert 'C.notif item marcado como nao lida' ($hN1.Contains('notification-unread')) $script:lastUrl
+    try {
+        $ntok = Get-Token $hN1
+        Invoke-Page 'POST' "$web/minha-conta/notificacoes/marcar-lidas" ('__RequestVerificationToken=' + (Esc $ntok)) $cli.Jar | Out-Null
+        $hN2 = Invoke-Page 'GET' "$web/minha-conta/notificacoes" '' $cli.Jar
+        Assert 'C.notif marcar-lidas zera nao lidas' (-not $hN2.Contains('notification-unread')) $script:lastUrl
+    } catch { Assert 'C.notif marcar-lidas zera nao lidas' $false ('erro: ' + $_.Exception.Message) }
+    SqlOpt "DELETE FROM odca.user_notifications WHERE kind='qa-bc-notif'"
+
+    # A3: terceiro tipo de alteracao (revisao administrativa) na listagem e no detalhe
+    # escolhe contrato sem alteracao ativa (evita violar contract_change_one_active_uq)
+    $bcContract = (Sql "SELECT c.id FROM odca.contracts c WHERE c.tenant_id='$tenant' AND NOT EXISTS (SELECT 1 FROM odca.contract_change_requests r WHERE r.tenant_id=c.tenant_id AND r.contract_id=c.id AND r.status NOT IN ('cancelled','conflict')) ORDER BY c.created_at DESC LIMIT 1").Trim()
+    if ($bcContract -match '[0-9a-f]{8}-') {
+        SqlOpt "DELETE FROM odca.contract_change_requests WHERE tenant_id='$tenant' AND reason='QA Bloco C revisao administrativa'"
+        $bcReq = (Sql "INSERT INTO odca.contract_change_requests(tenant_id,contract_id,kind,status,author_id,responsible_id,reason,effective_on,other_changes,base_contract_version,idempotency_key) VALUES('$tenant','$bcContract','revision','draft','$cliUser','$cliUser','QA Bloco C revisao administrativa',CURRENT_DATE,'[]',1,gen_random_uuid()) RETURNING id").Trim()
+        $hRen = Invoke-Page 'GET' "$web/organizacoes/$tenant/renovacoes" '' $cli.Jar
+        Assert 'C.renov lista exibe tipo revisao' ($hRen.Contains('Revisão administrativa')) $script:lastUrl
+        $hDet = Invoke-Page 'GET' "$web/organizacoes/$tenant/renovacoes/$bcReq" '' $cli.Jar
+        Assert 'C.renov detalhe rotula revisao' ($hDet.Contains('Revisão administrativa')) $script:lastUrl
+        SqlOpt "DELETE FROM odca.contract_change_requests WHERE id='$bcReq'"
+    } else {
+        Write-Host 'SKIP  C.renov: nenhum contrato sem alteracao ativa no tenant para teste de tipo'
+    }
+
+    # A2: pagina de comparacao de versoes (render)
+    $bcDraft = (Sql "SELECT d.id FROM odca.contract_drafts d WHERE d.tenant_id='$tenant' ORDER BY d.updated_at DESC LIMIT 1").Trim()
+    if ($bcDraft -match '[0-9a-f]{8}-') {
+        $hCmp = Invoke-Page 'GET' ("$web/organizacoes/$tenant/estudio/comparar-versoes?draftId=" + $bcDraft) '' $cli.Jar
+        Assert 'C.compare pagina renderiza autenticada' ($script:lastUrl -notlike '*entrar*' -and $hCmp.Contains('comparar-versoes')) $script:lastUrl
+    } else {
+        Write-Host 'SKIP  C.compare: nenhum rascunho no tenant'
+    }
+} catch {
+    Assert 'C.bloco_c executou sem erro fatal' $false ('excecao: ' + $_.Exception.Message)
+}
+
 Write-Host ('=== RESULTADO B34: PASS=' + $script:passes + ' FAIL=' + $script:failures + ' ===')
 if ($script:failures -gt 0) { exit 1 } else { exit 0 }

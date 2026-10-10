@@ -324,3 +324,36 @@ Fingerprint dos seeds após a cadeia: `9b641fa0c67d2bc840054c24776c9feb` (idênt
 - **Ambiguidade de parâmetro no v045 (SQL)**: `platform_catalog_set_status` declarava o parâmetro `official_key`, homônimo da coluna `contract_templates.official_key`; o PL/pgSQL resolvia o identificador como ambíguo (Postgres 42702) e publicar/retirar devolvia 500. Corrigido renomeando o parâmetro para `p_official_key`, re-hashando o bloco canônico para `3ced09a7…bef0b` e registrando `KnownDefectivePackage V045CatalogSetStatus` (defeito `ecfc3004…d57c` → reparado) — mesmo padrão dos reparos `V009PreviewInvitation`/`V035ConsumeMonthlyFranchise`; snapshot do release preservado imutável. Detalhes e validação (round-trip `nda-unilateral` `row_version` 2→3, status `published`) em DECISIONS-LOG e STATUS.
 - **Mapeamento de data (API)**: `TemplateCatalogRow` (registro Dapper) declarava `DateTimeOffset`/`DateTimeOffset?` para colunas `timestamptz`; o Npgsql materializa `timestamptz` como `DateTime` (UTC), então a materialização da linha do catálogo falhava (`GET …/template-catalog` → 500). Corrigido declarando `DateTime CreatedAt, DateTime? PublishedAt` e convertendo via `.ToUniversalTime()` ao montar os DTOs `TemplateCatalogItem` — listagem do catálogo volta a 200 com 9 linhas.
 - **Parse de arrays em PS 5.1 (suíte E S8)**: `@($body | ConvertFrom-Json)` não desenrola um array JSON no PowerShell 5.1 — devolve um único elemento que é o array inteiro; os laços de filtros de clientes/busca de usuário agora atribuem `$list = $body | ConvertFrom-Json` e iteram `foreach ($x in $list)`. A normalização de plano do TC (gravação de `planBefore` e assert `basic`) foi movida para antes dos testes de filtro, de modo que o filtro inclusivo `plan=basic&status=active` enxerga o TC.
+
+## 11. Bloco C — conferência documental por severidade, comparação de versões em página dedicada, revisão administrativa e centro de notificações (10/10/2026)
+
+Escopo do commit de Bloco C: **D-OC8** (conferência documental estratificada em erro/alerta/informação antes da emissão) + **D-OC9** (comparação de versões em página dedicada HTML) + **D-OC10** (terceiro tipo de alteração de vigência — revisão administrativa) + **D-OC6** (centro de notificações em-app com canal explícito). O **painel de pendências e prazos** (área 4) e o **gate de SLA por plano** (documental=Enterprise × técnico=todos os planos) já constam da base (caixa de entrada / `sla_policies`) e foram validados, não reconstruídos. Migração **v046** aplicada (`CurrentVersion=46`, checksum `12831bab…849241`, snapshot `database/releases/odca-v046.sql`).
+
+### Mudanças de código
+
+| Área | Arquivo(s) | Mudança |
+|---|---|---|
+| Conferência por severidade | `src/Odca.Contracts/Studio/StudioContracts.cs` + `src/Odca.Api/Controllers/ContractStudioController.cs` (`Conference`) | `DocumentConferenceResponse` ganha `Warnings` (último parâmetro, opcional); `Conference` preenche `warnings` a partir do checklist com `Severity=="warning"` (alertas não impeditivos) enquanto `PendingItems` segue reservado a bloqueios; `canGenerate = canEdit && pending.Count==0` inalterado |
+| Conferência (apresentação) | `src/Odca.Web/Views/Studio/Edit.cshtml` | Renderiza **Erros** (`PendingItems`, impeditivos) + **Alertas** (`Warnings`, informativos) em seções separadas; texto de sucesso verbatim preservado ("Nenhuma pendência impeditiva. Próxima ação: gerar a versão.") |
+| Comparação (página) | `src/Odca.Web/Controllers/StudioController.cs` (`CompareVisual`) + `Views/Studio/CompareVersions.cshtml` (novo) + `Models/CompareVersionsViewModel.cs` (novo) | `GET /organizacoes/{t}/estudio/comparar-versoes?draftId=` carrega as versões geradas (API já existente), usa por padrão `before`=2ª mais recente e `after`=mais recente, exibe o diff categorizado; vazio tratado (<2 versões / sem diff); selects antes/depois com rota absoluta |
+| Comparação (entrada) | `src/Odca.Web/Views/Contracts/Sheet.cshtml` | Link "Comparar versões" da ficha repontado para `/estudio/comparar-versoes?draftId=` (a rota JSON `Compare` segue servindo o diálogo JS da minuta) |
+| Revisão administrativa (API) | `src/Odca.Api/Controllers/RenewalCenterController.cs` | Validação aceita `kind='revision'`; CTE `latest` expõe `r.kind AS Kind` e o SELECT de itens carrega `Kind` |
+| Revisão administrativa (contrato) | `src/Odca.Contracts/Renewals/RenewalContracts.cs` | `RenewalListItem` ganha `string? Kind = null` (parâmetro final opcional; Dapper mapeia por nome) |
+| Revisão administrativa (apresentação) | `src/Odca.Web/Views/Renewals/{Index,Detail}.cshtml` + `Views/Contracts/Sheet.cshtml` | Mapas `KindLabel`/`kindLabel` 3 vias (`renewal`→Renovação, `amendment`→Aditivo, `revision`→Revisão administrativa); tag de tipo na linha; `<option value="revision">Revisão administrativa (correção não comercial)</option>` no formulário da ficha |
+| Notificações (contrato) | `src/Odca.Contracts/Account/NotificationContracts.cs` (novo) | `NotificationItem` + `NotificationPage` |
+| Notificações (API) | `src/Odca.Api/Controllers/NotificationsController.cs` (novo) | `GET /api/v1/organizations/{t}/notifications` + `POST …/notifications/read-all`; policy `PasswordChanged` (mesma das demais rotas de tenant); tenant/membresia resolvidos no servidor; fonte única `odca.user_notifications` (escrita só pelo worker) |
+| Notificações (Web) | `src/Odca.Web/Controllers/AccountController.cs` (`Notifications` + `MarkNotificationsRead`, ctor `(apiClient, tenantContext)`) + `Views/Account/Notifications.cshtml` (novo) + `Views/Account/Conta.cshtml` | Centro em `/minha-conta/notificacoes`: lista com não-lidas destacadas + marcar-todas-lidas (POST + antiforgery); card "Notificações" na conta; `OdcaApiClient.GetMyNotificationsAsync`/`MarkMyNotificationsReadAsync` |
+| Navegação | `src/Odca.Web/Navigation/NavigationRegistry.cs` | Item cliente `notificacoes` (🔔, `Available: x => x.HasTenant`) no registro central |
+| Esquema (v046) | `database/odca.sql` + `DatabaseSchema.cs` | `contract_change_requests_kind_check` estendido para `('renewal','amendment','revision')` (drop/add no bloco v046); `CurrentVersion` 45→46 |
+
+### Evidência executada
+
+_(probes diretos + tabela de regressão E→C→D→b34 + fingerprint — preenchidos após a execução da cadeia)_
+
+### Correções de suíte registradas neste ciclo
+
+- **Seed de revisão administrativa (b34)**: o INSERT de fixture em `odca.contract_change_requests` passava sem `base_contract_version` e `idempotency_key` (ambos `NOT NULL` sem padrão) — psql falhava e o bloco caía no catch externo. Corrigido fornecendo `base_contract_version=1` e `idempotency_key=gen_random_uuid()`; a escolha do contrato passou a excluir contratos com alteração ativa para não violar `contract_change_one_active_uq`.
+
+### Correções de causa raiz aplicadas neste ciclo
+
+- Sem correções de causa raiz em código nesta operação (as quatro frentes são recursos novos sobre base verde). Nota ambiental (fora do commit): a stack local foi estabilizada apontando `Host=localhost` → `Host=127.0.0.1` em `development-runtime.json` (arquivo local, não versionado) para eliminar uma corrida `WSALookupServiceEnd` do Npgsql sob carga que travava a subida da API/Web durante o seed de inicialização.

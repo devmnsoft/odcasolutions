@@ -9,7 +9,7 @@
   System.Func<string,string>AppLabel=s=>s switch{"not_applied"=>"Não aplicada","scheduled"=>"Agendada","applied"=>"Aplicada","failed"=>"Falhou",_=>s.Replace('_',' ')};
   System.Func<string?,string>PrioLabel=p=>p switch{"low"=>"Baixa","normal"=>"Normal","high"=>"Alta","critical"=>"Crítica",_=>"Não definida"};
   System.Func<string,string>EvLabel=t=>t switch{"created"=>"Proposta criada","submitted"=>"Encaminhada para revisão","cancelled"=>"Cancelada","manual_formalization"=>"Formalização manual registrada",_=>t.Replace('_',' ')};
-  var kindLabel=r.Kind=="amendment"?"Aditivo":"Renovação";
+  var kindLabel=r.Kind switch{"amendment"=>"Aditivo","revision"=>"Revisão administrativa",_=>"Renovação"};
   var chosenEvidence=r.EvidenceCandidates.FirstOrDefault(x=>x.VersionId==r.EvidenceVersionId);
   var showSubmit=Model.CanSubmit&&r.Status=="draft";
   var showCancel=Model.CanCancel&&!(r.Status=="formalized"||r.Status=="cancelled"||r.Status=="conflict");

@@ -1,0 +1,43 @@
+@model Odca.Web.Models.CompareVersionsViewModel
+@{
+    var tenantId = (Guid)ViewData["TenantId"]!;
+    var draftId = (Guid)ViewData["DraftId"]!;
+}
+<section class="narrow">
+    <header class="page-heading"><div><p class="eyebrow">Estúdio</p><h1>Comparar versões</h1><p>Diferença de conteúdo entre duas versões geradas da mesma minuta.</p></div></header>
+
+    <div class="card">
+        <form method="get" class="form-grid" action="/organizacoes/@tenantId/estudio/comparar-versoes">
+            <input type="hidden" name="draftId" value="@draftId" />
+            <label>Versão anterior<select name="before">@foreach (var v in Model.Versions) { <option value="@v.Id" selected="@(v.Id == Model.BeforeId)">v@v.Number · @(v.Author) · @v.CreatedAt.ToString("dd/MM/yyyy HH:mm") · @v.Status</option> }</select></label>
+            <label>Versão posterior<select name="after">@foreach (var v in Model.Versions) { <option value="@v.Id" selected="@(v.Id == Model.AfterId)">v@v.Number · @(v.Author) · @v.CreatedAt.ToString("dd/MM/yyyy HH:mm") · @v.Status</option> }</select></label>
+            <div class="form-actions-row"><button type="submit" class="button button-primary">Comparar</button></div>
+        </form>
+    </div>
+
+    @if (Model.Versions.Count < 2)
+    {
+        <div class="empty-state"><strong>Sem o que comparar</strong><p>Gere ao menos duas versões da minuta para visualizar a diferença.</p></div>
+    }
+    else if (Model.Comparison is null)
+    {
+        <div class="empty-state"><strong>Selecione as versões</strong><p>Escolha uma versão anterior e uma posterior e clique em Comparar.</p></div>
+    }
+    else if (Model.Comparison.Changes.Count == 0)
+    {
+        <div class="card"><p class="success">Nenhuma diferença de conteúdo entre as versões selecionadas.</p></div>
+    }
+    else
+    {
+        <div class="card">
+            <h2>Diferenças encontradas</h2>
+            <p class="muted">Comparação entre v@Model.Comparison.Before.Number e v@Model.Comparison.After.Number.</p>
+            <div class="responsive-table"><table>
+                <thead><tr><th>Tipo</th><th>Referência</th><th>Anterior</th><th>Posterior</th></tr></thead>
+                <tbody>@foreach (var ch in Model.Comparison.Changes) { <tr><td data-label="Tipo">@ch.Category</td><td data-label="Referência">@(ch.Reference ?? "Documento")</td><td data-label="Anterior">@(ch.Before ?? "—")</td><td data-label="Posterior">@(ch.After ?? "—")</td></tr> }</tbody>
+            </table></div>
+        </div>
+    }
+
+    <div class="button-row"><a class="button button-quiet" asp-controller="Studio" asp-action="Edit" asp-route-tenantId="@tenantId" asp-route-draftId="@draftId">Voltar à minuta</a></div>
+</section>

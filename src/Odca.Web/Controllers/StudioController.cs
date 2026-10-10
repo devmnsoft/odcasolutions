@@ -457,6 +457,27 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
     public async Task<IActionResult> Versions(Guid tenantId,Guid draftId,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Unauthorized();var r=await api.GetStudioVersionsAsync(token,tenantId,draftId,ct);return r.Succeeded?Json(r.Value):StatusCode(422,new{title=r.ErrorTitle});}
     [HttpGet("comparar")]
     public async Task<IActionResult> Compare(Guid tenantId,Guid before,Guid after,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Unauthorized();var r=await api.CompareStudioVersionsAsync(token,tenantId,before,after,ct);return r.Succeeded?Json(r.Value):StatusCode(r.Status==ApiCallStatus.NotFound?404:422,new{title=r.ErrorTitle,detail=r.ErrorDetail});}
+    [HttpGet("comparar-versoes")]
+    public async Task<IActionResult> CompareVisual(Guid tenantId,Guid draftId,Guid? before=null,Guid? after=null,CancellationToken ct=default)
+    {
+        var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
+        var versionsResult=await api.GetStudioVersionsAsync(token,tenantId,draftId,ct);
+        if(versionsResult.Status==ApiCallStatus.Unauthorized)return Challenge();
+        if(versionsResult.Status==ApiCallStatus.Forbidden)return Forbid();
+        if(!versionsResult.Succeeded||versionsResult.Value is null){Response.StatusCode=503;return View("ServiceUnavailable");}
+        var versions=versionsResult.Value.OrderByDescending(v=>v.Number).ThenByDescending(v=>v.CreatedAt).ToList();
+        ViewData["TenantId"]=tenantId;ViewData["DraftId"]=draftId;ViewData["Title"]="Comparar versões";
+        if(versions.Count>=2)
+        {
+            var afterId=after??versions[0].Id;
+            var beforeId=before??versions[1].Id;
+            if(!versions.Any(v=>v.Id==afterId))afterId=versions[0].Id;
+            if(!versions.Any(v=>v.Id==beforeId))beforeId=versions[1].Id;
+            var cmp=await api.CompareStudioVersionsAsync(token,tenantId,beforeId,afterId,ct);
+            if(cmp.Succeeded&&cmp.Value is not null)return View("CompareVersions",new CompareVersionsViewModel(cmp.Value,versions,beforeId,afterId));
+        }
+        return View("CompareVersions",new CompareVersionsViewModel(null,versions));
+    }
     [HttpGet("minutas/{draftId:guid}/checklist")]
     public async Task<IActionResult> Checklist(Guid tenantId,Guid draftId,long version,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Unauthorized();var r=await api.GetStudioChecklistAsync(token,tenantId,draftId,version,ct);return r.Succeeded?Json(r.Value):StatusCode(422,new{title=r.ErrorTitle});}
     [HttpGet("minutas/{draftId:guid}/comentarios")]

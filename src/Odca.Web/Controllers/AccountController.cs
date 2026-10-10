@@ -11,7 +11,7 @@ using QRCoder;
 
 namespace Odca.Web.Controllers;
 
-public sealed class AccountController(OdcaApiClient apiClient) : Controller
+public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContext tenantContext) : Controller
 {
     [AllowAnonymous]
     [HttpGet("entrar")]
@@ -24,6 +24,37 @@ public sealed class AccountController(OdcaApiClient apiClient) : Controller
     {
         ViewData["Title"] = "Minha conta";
         return View();
+    }
+
+    [Authorize]
+    [HttpGet("minha-conta/notificacoes")]
+    public async Task<IActionResult> Notifications(CancellationToken ct)
+    {
+        ViewData["Title"] = "Notificações";
+        var access = await tenantContext.GetCurrentOrFirstActiveAsync(null, ct);
+        if (access is null) return View(new Odca.Contracts.Account.NotificationPage(Array.Empty<Odca.Contracts.Account.NotificationItem>(), 0));
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+        var result = await apiClient.GetMyNotificationsAsync(token, access.TenantId, ct);
+        if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (!result.Succeeded || result.Value is null) { Response.StatusCode = 503; return View("ServiceUnavailable"); }
+        ViewData["TenantId"] = access.TenantId;
+        return View(result.Value);
+    }
+
+    [Authorize]
+    [HttpPost("minha-conta/notificacoes/marcar-lidas")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarkNotificationsRead(CancellationToken ct)
+    {
+        var access = await tenantContext.GetCurrentOrFirstActiveAsync(null, ct);
+        if (access is null) return RedirectToAction(nameof(Notifications));
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+        await apiClient.MarkMyNotificationsReadAsync(token, access.TenantId, ct);
+        TempData["Success"] = "Notificações marcadas como lidas.";
+        return RedirectToAction(nameof(Notifications));
     }
 
     [AllowAnonymous]

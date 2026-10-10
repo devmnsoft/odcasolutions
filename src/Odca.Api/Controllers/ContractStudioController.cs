@@ -630,6 +630,9 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         if (!row.PatientActive) pending.Add(new("patient.inactive", "O paciente está inativo.", "Cadastros inativos não permitem nova emissão.", "Ficha do paciente", canEdit));
         if (row.SelectedPatientVersion != row.CurrentPatientVersion) pending.Add(new("patient.version.conflict", "O cadastro do paciente foi atualizado.", "Os dados precisam ser comparados e confirmados antes da emissão.", "Comparação cadastral", canEdit));
         if (row.TemplateStatus != "published") pending.Add(new("template.unavailable", "O modelo não está disponível para nova geração.", "Somente modelos publicados podem originar uma nova emissão.", "Biblioteca de modelos", false));
+        var warnings = checklist.Where(x => x.Severity == "warning")
+            .Select(x => new DocumentPendingItem(x.Code, x.Message,
+                "Não impede a emissão; avalie antes de gerar.", x.Reference is null ? "Dados do documento" : $"Campo {x.Reference}", canEdit)).ToList();
         var changes = PatientChanges(row.SelectedPatientSnapshot, row.CurrentPatientSnapshot);
         var canGenerate = canEdit && pending.Count == 0;
         await tx.CommitAsync(ct);
@@ -637,7 +640,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             row.TemplateVersion, row.DocumentType, row.TemplateStatus, row.PatientId, row.PatientName,
             row.RepresentativeName, row.SelectedPatientVersion, row.CurrentPatientVersion, row.PatientActive,
             canEdit, canGenerate, row.SelectedPatientVersion != row.CurrentPatientVersion, row.ReviewStatus, canGenerate ? "generate" : row.SelectedPatientVersion != row.CurrentPatientVersion ? "confirm_patient" : "complete_fields",
-            changes, pending));
+            changes, pending, warnings));
     }
 
     [HttpPost("drafts/{draftId:guid}/patient-confirmation")]

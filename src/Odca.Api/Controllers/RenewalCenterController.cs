@@ -32,7 +32,7 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
               CASE WHEN c.renewal_notice_amount IS NULL OR c.end_date IS NULL THEN NULL WHEN c.renewal_notice_unit='calendar_months' THEN c.end_date-(c.renewal_notice_amount||' months')::interval ELSE c.end_date-c.renewal_notice_amount END::date AS DecisionDueOn,
               CASE WHEN r.status IS NOT NULL THEN r.status WHEN c.end_date IS NULL THEN 'indeterminate' WHEN c.end_date<@today THEN 'expired' WHEN c.end_date<=@windowEnd THEN 'expiring' ELSE 'outside_window' END AS Status,
               CASE WHEN r.status='formalized' AND r.application_status='scheduled' THEN 'Aguardar aplicação programada' WHEN r.status='in_review' THEN 'Acompanhar revisão' WHEN r.status='awaiting_formalization' THEN 'Registrar formalização' WHEN r.status='draft' THEN 'Concluir proposta' WHEN c.end_date IS NULL THEN 'Definir prazo de vigência' WHEN c.end_date<@today THEN 'Analisar contrato vencido' ELSE 'Decidir renovação' END AS NextAction,
-              CASE WHEN c.end_date IS NULL THEN NULL ELSE c.end_date-@today END AS DaysRemaining,r.priority AS Priority,c.version AS ContractVersion,c.owner_id AS OwnerId,c.contract_type AS ContractType
+              CASE WHEN c.end_date IS NULL THEN NULL ELSE c.end_date-@today END AS DaysRemaining,r.priority AS Priority,c.version AS ContractVersion,c.owner_id AS OwnerId,c.contract_type AS ContractType,r.kind AS Kind
             FROM odca.contracts c LEFT JOIN latest r ON r.contract_id=c.id LEFT JOIN odca.users u ON u.id=c.owner_id WHERE c.tenant_id=@tenantId)
             """;
         const string filter = """
@@ -42,7 +42,7 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
               AND (@status::text IS NOT NULL OR Status<>'outside_window')
             """;
         var total = await c.ExecuteScalarAsync<int>(new CommandDefinition(projection + "SELECT count(*)::int FROM projected " + filter, args, tx, cancellationToken: ct));
-        var items = await c.QueryAsync<RenewalListItem>(new CommandDefinition(projection + "SELECT ContractId,RequestId,Name,Counterparty,OwnerName,EndDate,DecisionDueOn,Status,NextAction,DaysRemaining,ContractVersion,Priority FROM projected " + filter + " ORDER BY COALESCE(DecisionDueOn,EndDate),Name LIMIT @pageSize OFFSET @offset", args, tx, cancellationToken: ct));
+        var items = await c.QueryAsync<RenewalListItem>(new CommandDefinition(projection + "SELECT ContractId,RequestId,Name,Counterparty,OwnerName,EndDate,DecisionDueOn,Status,NextAction,DaysRemaining,ContractVersion,Priority,Kind FROM projected " + filter + " ORDER BY COALESCE(DecisionDueOn,EndDate),Name LIMIT @pageSize OFFSET @offset", args, tx, cancellationToken: ct));
         var counts = await c.QuerySingleAsync<CountRow>(new CommandDefinition(projection + "SELECT count(*) FILTER(WHERE Status='expiring')::int AS Expiring,count(*) FILTER(WHERE Status='expired')::int AS Expired,count(*) FILTER(WHERE Status='draft')::int AS Preparing,count(*) FILTER(WHERE Status='in_review')::int AS InReview,count(*) FILTER(WHERE Status='formalized')::int AS Scheduled,count(*) FILTER(WHERE Status='cancelled')::int AS NotRenewing,count(*) FILTER(WHERE Status='indeterminate')::int AS Indeterminate FROM projected " + filter, args, tx, cancellationToken: ct));
         await tx.CommitAsync(ct);
         return Ok(new RenewalPage(items.AsList(), new(counts.Expiring, counts.Expired, counts.Preparing, counts.InReview, counts.Scheduled, counts.NotRenewing, counts.Indeterminate), page, pageSize, total, Today: today));
@@ -52,7 +52,7 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
     public async Task<IActionResult> Create(Guid tenantId, Guid contractId, [FromBody] CreateRenewalRequest request, CancellationToken ct)
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
-        if (request.Kind is not ("renewal" or "amendment") || string.IsNullOrWhiteSpace(request.Reason)) return ValidationProblem();
+        if (request.Kind is not ("renewal" or "amendment" or "revision") || string.IsNullOrWhiteSpace(request.Reason)) return ValidationProblem();
         if (request.ProposedEndDate < request.ProposedStartDate || request.ProposedValue < 0 || (request.ProposedValue.HasValue && string.IsNullOrWhiteSpace(request.Currency))) return ValidationProblem();
         if (request.ValueChangeMode is not (null or "total" or "increase" or "decrease"))
             return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]> {{ "valueChangeMode", ["Use total, increase ou decrease."] }}));
