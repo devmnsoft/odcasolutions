@@ -632,7 +632,7 @@ Write-Host ''
 Write-Host '=== BLOCO C: centro de notificacoes + tipo revisao administrativa + comparacao de versoes ==='
 try {
     $cli = Login-Web 'cliente.teste@odca.local' 'K8@wR3!nF6#zP2$m'
-    $cliUser = (Sql "SELECT id FROM odca.users WHERE email_normalized='cliente.teste@odca.local'").Trim()
+    $cliUser = (Sql "SELECT id FROM odca.users WHERE email_normalized=upper('cliente.teste@odca.local')").Trim()
     Assert 'C.setup usuario cliente' ($cliUser -match '^[0-9a-f]{8}-') $cliUser
 
     # A5: centro de notificacoes (nav + pagina + semear + listar + marcar-lidas)
