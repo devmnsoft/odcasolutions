@@ -357,3 +357,33 @@ _(probes diretos + tabela de regressão E→C→D→b34 + fingerprint — preenc
 ### Correções de causa raiz aplicadas neste ciclo
 
 - Sem correções de causa raiz em código nesta operação (as quatro frentes são recursos novos sobre base verde). Nota ambiental (fora do commit): a stack local foi estabilizada apontando `Host=localhost` → `Host=127.0.0.1` em `development-runtime.json` (arquivo local, não versionado) para eliminar uma corrida `WSALookupServiceEnd` do Npgsql sob carga que travava a subida da API/Web durante o seed de inicialização.
+
+## 12. Reauditoria da entrega recente sobre `2a6fc43` (10/10/2026)
+
+Base reconfirmada: `codex/s00-foundation` @ `2a6fc43` (**árvore limpa**). Este commit já incorpora os Blocos A (`62ba38f`), B (`2412875`) e C (`4875c67`+`2a6fc43`, migração v046). Os dois commits finais ("novos ajustes") contêm exatamente o trabalho do Bloco C (24 arquivos alterados; o volume de inserções é o snapshot `database/releases/odca-v046.sql`). Nada pendente de commit; os dados, snapshots e histórico estão preservados.
+
+**Baseline validado nesta sessão:** **E 140/0** · **C 98/0** · **D 116/0** · **b34 109/0** — 0 falhas; **fingerprint dos seeds idêntico** ao baseline (`9b641fa0c67d2bc840054c24776c9feb`) e **0 `qa-%` residuais** (isolamento comprovado). Notas de causa: (i) um único defeito real foi encontrado e já corrigido+commitado — o `C.setup` da b34 consultava `email_normalized='cliente.teste@odca.local'` em minúsculas, mas o valor é normalizado em **maiúsculas** (convenção `upper(...)` das suítes), deixando `$cliUser=''`; corrigido com `upper('cliente.teste@odca.local')`. (ii) A suíte **D** falhou de forma reproduzível *dentro da cadeia* E→C→D→b34 porque seu primeiro pedido excedeu 60 s (`HttpWebRequest.GetRequestStream` timeout) quando executada imediatamente após a E (caixa quente); em **reexecução isolada com caixa tranquila, D = 116/0** — não é regressão de código, é sensibilidade do harness à carga. Recomenda-se maior tolerância no timeout ou execução com caixa fria.
+
+### Classificação dos nove itens (código + persistência + comportamento, sem presumir fixture)
+
+| # | Item | Situação | Evidência / observação |
+|---|---|---|---|
+| 1 | Navegação centralizada | **comprovado** | Fonte única `NavigationRegistry` + `_Layout`; b34 (T2.x) verde; `aria-current="page"` normalizado |
+| 2 | Biblioteca oficial global | **parcial** | Publicação/dedupe comprovados (seeder idempotente por `official_key`, `VisibleFilter`); **não comprovado**: retirada preservada após reinício (o seeder reinsere quando não há linha global não‑arquivada → risco de **republicar o retirado**) e atualização de linha global sem troca silenciosa de versão em rascunhos existentes (resolve sempre a corrente) |
+| 3 | Busca administrativa de usuários | **comprovado** | `PlatformOperationsController` busca global com vínculos; probe de plataforma (Bloco B) 19/19 |
+| 4 | Publicação/retirada de modelos | **parcial** | Publicar + visibilidade sem instalação (D02) comprovados; **retirar → bloquear novo uso + persistir após reinício a homologar** |
+| 5 | Suporte técnico por plano | **comprovado** | 4º serviço `suporte_tecnico` em todos os planos vigentes; documental continua Enterprise (gate `solicitations.plan.required`); suíte C (SLA) verde |
+| 6 | Conferência por severidade | **comprovado (código)** | `Conference`: `blocker`→PendingItems, `warning`→Warnings, `canGenerate = canEdit && pending.Count==0` (L627‑637); **probe manual de live pendente** (não fixada em suíte) |
+| 7 | Comparação de versões | **parcial** | Página dedicada com isolamento por tenant+documento e fallback para ids adulterados (cruzamento impedido); **a verificar/homologar**: categorização administrativo×jurídico no diff da API, polimento de UI (teclado/celular) e estados |
+| 8 | Revisão administrativa | **comprovado** | CHECK `kind` estendido + apresentação + trava client-side + **regra de servidor**: `Create` rejeita `kind='revision'` com delta comercial (valor/vigência/moeda), comparando o efeito aplicado ao contrato atual. Evidência de live: suíte **D D12b** — reajuste→**400**, revisão pura→**201**; D completo **118/0** |
+| 9 | Notificações | **parcial** | Lista + marcar‑todas‑lidas corretamente escopadas (tenant+usuário+RLS) e idempotentes; **ausentes**: paginação, leitura individual, preferências (tipo/canal/idioma) e link seguro de destino que respeite autorização |
+
+### Pontos de integridade a fechar (entrada dos Blocos A′/B′/C′)
+
+- **A′/2 — revisão administrativa (CONCLUÍDO nesta sessão, D-OC11)**: regra de servidor em `RenewalCenterController.Create` — `revision` **não** altera condições comerciais; o efeito aplicado (vigência/valor/moeda) é comparado ao contrato atual e qualquer delta comercial é rejeitado (400); uma correção sem delta é aceita e preserva as condições comerciais ao aplicar. Documento emitido/assinado permanece imutável (snapshot); `renewal`/`amendment` e registros `revision` existentes preservados. Evidência: **D D12b** (reajuste→400, pura→201), D **118/0**.
+- **A′/3 — biblioteca/retirada**: garantir que o reinício **não republique** modelo retirado (suprimir reseed pela decisão administrativa explícita) e que atualizar uma linha global **não troque silenciosamente** a versão fixada a rascunhos existentes; homologar publicar→cliente encontra→retirar→novo contrato bloqueado→reiniciar→retirada preservada→republicar com autorização.
+- **A′/5 — notificações**: paginação (hoje `LIMIT 200` fixo), leitura individual, preferências de tipo/canal/idioma e link seguro de destino (sem funcionar como atalho p/ recurso não autorizado); escopo explícito do "marcar todas" já respeita tenant+usuário.
+- **B′/8 — quatro idiomas**: implementar pt/en/fr/es ponta‑a‑ponta com localização nativa (`.resx`), seletor persistente por usuário + fallback + allowlist, formatos culturais (data/número/moeda explícita), idioma documental registrado no snapshot (idioma ≠ idioma da interface); jornada completa nos 4 idiomas como aceite.
+- **B′/9 — revisão editorial**: padronizar glossário (rascunho/modelo/contrato/versão/organização/assinatura/renovação/aditivo/revisão administrativa); cada mensagem com o que aconteceu + consequência + próximo passo; sem IDs como referência principal.
+- **C′/10·11·12 — design e homologação**: concluir design das superfícies reais + PDF renderizado inspecionado (360/768/1440 nos 4 idiomas); matriz plano→benefício→limite→perfil→menu→operação→evidência→pendência; homologação superadmin funcional (sem ampliar privilégios p/ passar).
+- **Ambiente/harness**: sensibilidade da suíte D ao timeout de 60 s sob carga (false‑failure na cadeia) — mitigar no harness ou executar com caixa fria; WSA `WSALookupServiceEnd` do Npgsql resolvido localmente (fora do commit).

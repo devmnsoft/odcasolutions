@@ -74,6 +74,22 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
         };
         if (proposedValue < 0 || request.ValueChangeMode is "increase" or "decrease" && !contract.Value.HasValue)
             return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]> {{ "proposedValue", ["Acréscimo ou redução exige valor atual e não pode resultar em valor negativo."] }}));
+        // Revisão administrativa (Bloco A'): correção não comercial — não altera condições
+        // comerciais (valores, vigência, objeto ou partes). Qualquer delta comercial segue
+        // aditivo ou nova versão; o efeito aplicado é comparado ao contrato atual.
+        if (request.Kind == "revision")
+        {
+            var appliedStart = request.ProposedStartDate ?? contract.StartDate;
+            var appliedEnd   = request.ProposedEndDate ?? contract.EndDate;
+            var appliedValue = proposedValue ?? contract.Value;
+            var appliedCcy   = proposedValue.HasValue ? (request.Currency?.Trim().ToUpperInvariant() ?? contract.Currency) : contract.Currency;
+            if (appliedStart != contract.StartDate || appliedEnd != contract.EndDate
+                || appliedValue != contract.Value || !string.Equals(appliedCcy, contract.Currency, StringComparison.Ordinal))
+                return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
+                {
+                    { "kind", ["A revisão administrativa é uma correção não comercial: ela não altera valores, vigência, objeto ou partes. Use um aditivo ou uma nova versão para alterações materiais."] }
+                }));
+        }
         var id = Guid.NewGuid();
         var inserted = await c.ExecuteScalarAsync<Guid?>(new CommandDefinition("""
                 WITH created AS (INSERT INTO odca.contract_change_requests(id,tenant_id,contract_id,kind,author_id,responsible_id,reason,current_start_date,current_end_date,proposed_start_date,proposed_end_date,current_value,proposed_value,currency,current_operational_owner_id,effective_on,source_document_version_id,draft_id,base_contract_version,idempotency_key,other_changes,priority)

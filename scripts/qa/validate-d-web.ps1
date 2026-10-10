@@ -700,6 +700,23 @@ Write-Host '--- Setup fixtures Val D ---'
     $renWeb = Invoke-Page 'GET' ($web + "/organizacoes/$D1/renovacoes") '' $cliWeb.Jar
     Assert 'D12.pagina_renovacoes_mostra_critica' ($renWeb.Contains('Crítica') -or $renWeb.Contains('crítica') -or $renWeb.Contains('Renovação Aurora')) ('len=' + $renWeb.Length)
 
+    # ---------- D12b: revisao administrativa nao altera condicoes comerciais (Bloco A'/item 2) ----------
+    Write-Host '--- D12b revisao administrativa (item 2) ---'
+    Sql @"
+    INSERT INTO odca.contracts (tenant_id,title,start_date,end_date,value,currency)
+    VALUES ('$D1','Val D: Contrato Revisao Aurora','2025-10-01','2026-12-31',5000.00,'BRL');
+"@ | Out-Null
+    $cE1r = Sql "SELECT id FROM odca.contracts WHERE tenant_id='$D1' AND title='Val D: Contrato Revisao Aurora' LIMIT 1;"
+    $rRevDelta = Invoke-Api 'POST' ($api + "/api/v1/organizations/$D1/renewals/contracts/$cE1r") $cliTok (ToJson @{
+        kind = 'revision'; reason = 'Correcao administrativa com reajuste indevido.'
+        proposedValue = 500; valueChangeMode = 'increase'; currency = 'BRL'
+        effectiveOn = $today; contractVersion = 1; responsibleId = $USER_CLIENTE; idempotencyKey = [guid]::NewGuid().ToString() })
+    Assert 'D12b.revisao_delta_comercial_400' ($rRevDelta.Code -eq 400) ('code=' + $rRevDelta.Code + ' ' + (Snip $rRevDelta.Body))
+    $rRevPure = Invoke-Api 'POST' ($api + "/api/v1/organizations/$D1/renewals/contracts/$cE1r") $cliTok (ToJson @{
+        kind = 'revision'; reason = 'Correcao administrativa nao comercial.'
+        effectiveOn = $today; contractVersion = 1; responsibleId = $USER_CLIENTE; idempotencyKey = [guid]::NewGuid().ToString() })
+    Assert 'D12b.revisao_pura_201' ($rRevPure.Code -eq 201) ('code=' + $rRevPure.Code + ' ' + (Snip $rRevPure.Body))
+
     # ---------- D13: submeter -> formalizar (evidencia) -> aplicar (D1) ----------
     Write-Host '--- D13 formalizacao com evidencia ---'
     $stateParts = (Get-RowState $propId) -split '\|'
