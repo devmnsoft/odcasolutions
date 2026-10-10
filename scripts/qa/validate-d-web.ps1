@@ -436,6 +436,10 @@ Write-Host '--- Setup fixtures Val D ---'
 
     # ---------- D02: instalacao limpa + wizard + overlay terapias (D1) ----------
     Write-Host '--- D02 instalacao + overlay ---'
+    # D-OC1: o catalogo oficial e publicado pela plataforma; um tenant novo ve os
+    # modelos publicados sem instalar nada (linha global, sem copia propria).
+    $catPre = Invoke-Api 'GET' ("$api/api/v1/organizations/$D1/studio/templates?pageSize=50") $cliTok $null
+    Assert 'D02.catalogo_publicado_visivel_sem_instalacao' ($catPre.Code -eq 200 -and [int](JGet ($catPre.Body | ConvertFrom-Json) 'total') -ge 9) ('code=' + $catPre.Code + ' ' + (Snip $catPre.Body))
     $r = Invoke-Api 'POST' ("$api/api/v1/organizations/$D1/studio/templates/official") $cliTok '{}'
     Assert 'D02.instalar_oficiais_D1_200' ($r.Code -eq 200) (Snip $r.Body)
     $r = Invoke-Api 'POST' ("$api/api/v1/organizations/$D2/studio/templates/official") $cliTok '{}'

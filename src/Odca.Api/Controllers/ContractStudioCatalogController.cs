@@ -113,7 +113,7 @@ public sealed class ContractStudioCatalogController(NpgsqlDataSource dataSource)
                 SELECT EXISTS(
                     SELECT 1 FROM odca.contract_templates t
                      WHERE t.official_key = @key AND t.status <> 'archived'
-                       AND (t.scope = 'global' OR (t.scope = 'private' AND t.owner_tenant_id = @tenantId)))
+                       AND (t.scope = 'private' AND t.owner_tenant_id = @tenantId))
                 """,
                 new { key = template.Key, tenantId },
                 tx,

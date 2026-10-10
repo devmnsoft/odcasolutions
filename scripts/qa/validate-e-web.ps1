@@ -75,15 +75,26 @@ function SqlOpt([string]$sql) {
 # Batch de cleanup sem ON_ERROR_STOP: cada instrucao roda mesmo se outra falhar.
 # Assim uma dependencia de schema desconhecida nao impede a limpeza do restante;
 # os invariantes finais sao checados pelos asserts apos a chamada.
+# Obs.: stderr vai para arquivo (nao 2>&1) porque com $ErrorActionPreference='Stop'
+# o PS 5.1 converte registro de stderr em erro terminante e mataria este best-effort.
 function SqlBest([string]$sql) {
     $tmp = Join-Path $env:TEMP ('odca-e-' + [guid]::NewGuid().ToString('N') + '.sql')
+    $errf = Join-Path $env:TEMP ('odca-e-err-' + [guid]::NewGuid().ToString('N') + '.txt')
     [IO.File]::WriteAllText($tmp, $sql, (New-Object System.Text.UTF8Encoding($false)))
     $prev = $env:PGPASSWORD; $env:PGPASSWORD = '123456'
-    $out = & $psql -U postgres -d $db -P pager=off -t -A -q -f $tmp 2>&1
+    $out = & $psql -U postgres -d $db -P pager=off -t -A -q -f $tmp 2> $errf
     $code = $LASTEXITCODE
     $env:PGPASSWORD = $prev
     Remove-Item $tmp -EA SilentlyContinue
-    if ($code -ne 0) { $t = (($out | Out-String)).Trim(); Write-Host ('      [warn] batch parcial: ' + $t.Substring(0, [Math]::Min(300, $t.Length))) }
+    if ($code -ne 0) {
+        $t = (($out | Out-String))
+        if (Test-Path $errf) { $t += ((Get-Content $errf -Raw)) }
+        Remove-Item $errf -EA SilentlyContinue
+        $t = (($t | Out-String)).Trim()
+        Write-Host ('      [warn] batch parcial: ' + $t.Substring(0, [Math]::Min(300, $t.Length)))
+    } else {
+        Remove-Item $errf -EA SilentlyContinue
+    }
     return ''
 }
 
@@ -115,8 +126,8 @@ DELETE FROM odca.template_approvals WHERE tenant_id='$TC' AND official_key='surg
 DELETE FROM odca.contract_template_access WHERE granted_by IN ($qa) OR revoked_by IN ($qa);
 DELETE FROM odca.resource_movements WHERE actor_user_id IN ($qa);
 DELETE FROM odca.tenant_invitations WHERE created_by IN ($qa);
-DELETE FROM odca.sessions WHERE user_id IN ($qa);
 DELETE FROM odca.mfa_recovery_codes WHERE user_id IN ($qa);
+DELETE FROM odca.sessions WHERE user_id IN ($qa);
 DELETE FROM odca.member_roles WHERE user_id IN ($qa) OR assigned_by IN ($qa);
 DELETE FROM odca.memberships WHERE user_id IN ($qa);
 DELETE FROM odca.audit_events WHERE actor_user_id IN ($qa);
@@ -295,6 +306,9 @@ function Login-MfaAdmin([string]$loginName, [string]$pwd) {
     if ($c.Code -ne 200) { throw ('mfa/confirm falhou: ' + $c.Code + ' ' + (Snip $c.Body)) }
     $vtok = (JGet ($c.Body | ConvertFrom-Json) 'accessToken')
     if (-not $vtok) { throw ('mfa/confirm sem token: ' + (Snip $c.Body)) }
+    # Codigos de recuperacao emitidos nesta confirmacao (usados pelo S7).
+    $rcRaw = ($c.Body | ConvertFrom-Json).recoveryCodes
+    $script:lastMfaRecoveryCodes = if ($null -eq $rcRaw) { @() } else { @($rcRaw) }
     return $vtok
 }
 
@@ -461,7 +475,7 @@ AND NOT EXISTS(SELECT 1 FROM odca.member_roles mr WHERE mr.tenant_id='$TC' AND m
 "@
 
     $mig = Sql 'SELECT max(version) FROM odca.schema_migrations;'
-    Assert 'S0.schema_v43' ([int]$mig -ge 43) "max=$mig"
+    Assert 'S0.schema_v44' ([int]$mig -ge 44) "max=$mig"
 
     Write-Host '--- S0 logins (API) ---'
     # O assinante e administrador de plataforma de proposito: nesta versao so
@@ -919,8 +933,61 @@ AND NOT EXISTS(SELECT 1 FROM odca.member_roles mr WHERE mr.tenant_id='$TC' AND m
 
             $audDec = Sql "SELECT count(*) FROM odca.audit_events WHERE action='odca.template_approval.aprovado' AND metadata->>'officialKey'='surgical-consent' AND actor_user_id='$G_ADMIN';"
             Assert 'S6.auditoria_das_decisoes' ([int]$audDec -ge 2) "rows=$audDec"
+
+            # D-OC1 (Bloco A): tenant sem copia propria resolve via a linha global
+            # publicada pela plataforma e a decisao fica presa a versao global.
+            $gTplId = Sql "SELECT id FROM odca.contract_templates WHERE owner_tenant_id IS NULL AND scope='global' AND official_key='surgical-consent' AND status<>'archived';"
+            $gVerId = Sql "SELECT tv.id FROM odca.contract_template_versions tv JOIN odca.contract_templates t ON t.id=tv.template_id AND tv.version_number=t.current_version WHERE t.owner_tenant_id IS NULL AND t.scope='global' AND t.official_key='surgical-consent' AND t.status<>'archived';"
+            Assert 'S6.linha_global_publicada' ($gTplId.Trim() -match '[0-9a-f]{8}-' -and $gVerId.Trim() -match '[0-9a-f]{8}-') ('tpl=' + $gTplId.Trim() + ' ver=' + $gVerId.Trim())
+            $noOwner = Sql "SELECT t.id::text FROM odca.tenants t WHERE NOT t.is_deleted AND t.id<>uuid '$TC' AND NOT EXISTS(SELECT 1 FROM odca.contract_templates c WHERE c.owner_tenant_id=t.id AND c.official_key='surgical-consent' AND c.status<>'archived') AND NOT EXISTS(SELECT 1 FROM odca.template_approvals ta WHERE ta.tenant_id=t.id AND ta.official_key='surgical-consent') ORDER BY t.created_at LIMIT 1;"
+            if ($noOwner.Trim() -match '[0-9a-f]{8}-') {
+                $dqG = Invoke-Api 'POST' "$api/api/v1/platform/template-approvals/$noOwner/surgical-consent/decision" $script:adminTok (ToJson @{ decision = 'aprovado'; note = 'Suite E: aprovacao via catalogo global (D-OC1).' })
+                $dqGj = $dqG.Body | ConvertFrom-Json
+                Assert 'S6.decisao_via_linha_global_200' ($dqG.Code -eq 200 -and [bool](JGet $dqGj 'ok')) (Snip $dqG.Body)
+                $stamped = Sql "SELECT template_version_id::text || '|' || template_version_number::text FROM odca.template_approvals WHERE tenant_id=uuid '$noOwner' AND official_key='surgical-consent';"
+                $stP = ($stamped.Trim() -split '\|', 2)
+                Assert 'S6.decisao_global_presa_a_versao_global' (($stP.Count -eq 2) -and ($stP[0] -eq $gVerId.Trim()) -and ($stP[1] -eq '1')) ('stamped=' + $stamped.Trim() + ' esperado=' + $gVerId.Trim())
+                $null = SqlOpt "DELETE FROM odca.template_approvals WHERE tenant_id=uuid '$noOwner' AND official_key='surgical-consent';"
+            } else {
+                Assert 'S6.tenant_prova_sem_copia_localizavel' $false 'nenhum tenant sem copia propria e sem aprovacao previa'
+            }
         }
     }
+
+    # ---------- S7: reinicio de sessao com codigo de recuperacao (MFA) ----------
+    Write-Host '--- S7 MFA recovery code + restart ---'
+    # A inscricao do S0 emitiu 8 codigos de recuperacao (guardados em
+    # $script:lastMfaRecoveryCodes pelo Login-MfaAdmin). O fluxo de reinicio:
+    # senha -> desafio -> codigo de recuperacao -> sessao MFA autorizada.
+    $rcSet = @($script:lastMfaRecoveryCodes)
+    $freeBefore = Sql "SELECT count(*) FROM odca.mfa_recovery_codes WHERE user_id='$G_ADMIN' AND consumed_at IS NULL;"
+    $consBefore = Sql "SELECT count(*) FROM odca.mfa_recovery_codes WHERE user_id='$G_ADMIN' AND consumed_at IS NOT NULL;"
+    Assert 'S7.conjunto_persistido_no_banco' (($rcSet.Count -eq 8) -and ([int]$freeBefore -eq 8)) ('codes=' + $rcSet.Count + ' livres=' + $freeBefore)
+
+    $lo = Invoke-Api 'POST' ($api + '/api/v1/auth/logout') $script:adminTok $null
+    Assert 'S7.logout_encerra_sessao_204' ($lo.Code -eq 204) ('code=' + $lo.Code)
+
+    $l7 = Login-Plain 'qa-e-admin@odca.local' $QA_PWD
+    $l7j = $l7.Body | ConvertFrom-Json
+    Assert 'S7.relogin_exige_desafio_mfa' ((JGet $l7j 'requiresMfaChallenge') -eq 'True' -and (JGet $l7j 'mfaVerified') -ne 'True') (Snip $l7.Body)
+    $ch7 = Invoke-Api 'POST' ($api + '/api/v1/auth/mfa/challenge') (JGet $l7j 'accessToken') (ToJson @{ code = $rcSet[0] })
+    $ch7j = $ch7.Body | ConvertFrom-Json
+    $ch7Tok = JGet $ch7j 'accessToken'
+    Assert 'S7.desafio_com_codigo_de_recuperacao_200' ($ch7.Code -eq 200 -and (JGet $ch7j 'mfaVerified') -eq 'True' -and [bool]$ch7Tok) (Snip $ch7.Body)
+    $consAfter = Sql "SELECT count(*) FROM odca.mfa_recovery_codes WHERE user_id='$G_ADMIN' AND consumed_at IS NOT NULL;"
+    Assert 'S7.codigo_consumido_na_bd' ([int]$consAfter -eq ([int]$consBefore + 1)) ('antes=' + $consBefore + ' depois=' + $consAfter)
+
+    $q7 = Invoke-Api 'GET' "$api/api/v1/platform/template-approvals" $ch7Tok $null
+    Assert 'S7.sessao_reiniciada_autorizada' ($q7.Code -eq 200) (Snip $q7.Body)
+
+    $null = Invoke-Api 'POST' ($api + '/api/v1/auth/logout') $ch7Tok $null
+    $l7b = Login-Plain 'qa-e-admin@odca.local' $QA_PWD
+    $l7bj = $l7b.Body | ConvertFrom-Json
+    $ch7b = Invoke-Api 'POST' ($api + '/api/v1/auth/mfa/challenge') (JGet $l7bj 'accessToken') (ToJson @{ code = $rcSet[0] })
+    Assert 'S7.reuso_do_mesmo_codigo_rejeitado' ($ch7b.Code -ne 200) ('code=' + $ch7b.Code + ' ' + (Snip $ch7b.Body))
+    $consAfter2 = Sql "SELECT count(*) FROM odca.mfa_recovery_codes WHERE user_id='$G_ADMIN' AND consumed_at IS NOT NULL;"
+    Assert 'S7.sem_consumo_duplo' ([int]$consAfter2 -eq ([int]$consBefore + 1)) ('depois=' + $consAfter2)
+    $script:adminTok = JGet $l7bj 'accessToken'
 }
 catch {
     $script:unhandled = $_.Exception.Message

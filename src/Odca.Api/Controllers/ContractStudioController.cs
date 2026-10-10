@@ -1091,10 +1091,10 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         long nextVersion=preparation.Version+1;
         int unsignedCount=await c.ExecuteScalarAsync<int>(new CommandDefinition("SELECT count(*)::int FROM odca.signature_participants WHERE tenant_id=@tenantId AND preparation_id=@preparationId AND composition_revision=@revision AND signed_at IS NULL",new{tenantId,preparationId,revision=preparation.ConfirmedRevision},tx,cancellationToken:ct));
         await c.ExecuteAsync(new CommandDefinition("UPDATE odca.signature_preparations SET last_reminded_at=now(),last_reminded_by=@actor,row_version=row_version+1,updated_by=@actor,updated_at=now() WHERE tenant_id=@tenantId AND id=@preparationId",new{tenantId,preparationId,actor},tx,cancellationToken:ct));
-        await AddPreparationEvent(c,tenantId,preparationId,preparation.ConfirmedRevision!.Value,actor,"reminded",new{unsignedCount},tx,ct);
-        await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.audit_events(scope_type,tenant_id,actor_user_id,action,entity_type,entity_id,result,metadata) VALUES('tenant',@tenantId,@actor,'signature.reminded','generated_contract_version',@versionId,'success',jsonb_build_object('preparationId',@preparationId))",new{tenantId,actor,versionId,preparationId},tx,cancellationToken:ct));
+        await AddPreparationEvent(c,tenantId,preparationId,preparation.ConfirmedRevision!.Value,actor,"reminded",new{unsignedCount,delivery=new{channel="not_configured",sent=false}},tx,ct);
+        await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.audit_events(scope_type,tenant_id,actor_user_id,action,entity_type,entity_id,result,metadata) VALUES('tenant',@tenantId,@actor,'signature.reminded','generated_contract_version',@versionId,'success',jsonb_build_object('preparationId',@preparationId,'channel','not_configured','sent',false))",new{tenantId,actor,versionId,preparationId},tx,cancellationToken:ct));
         await tx.CommitAsync(ct);
-        return Ok(new{remindedAt=ToUtcOffset(now),version=nextVersion});
+        return Ok(new{remindedAt=ToUtcOffset(now),version=nextVersion,delivery=new{channel="not_configured",sent=false,message="Lembrete registrado localmente com auditoria; o canal externo de envio ainda não está configurado."}});
     }
 
     [HttpGet("reviewers")]

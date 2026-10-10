@@ -353,6 +353,20 @@ $hStudio = Invoke-Page 'GET' ("$web/organizacoes/$tenant/estudio") '' $cli.Jar
 Assert 'T4.3 catalogo mostra modelo cirurgico' $hStudio.Contains('Termo de Consentimento para Procedimento Cirúrgico') $script:lastUrl
 Assert 'T4.3 descricao cita aprovacao ODCA' $hStudio.Contains('aprovação da ODCA') ''
 
+# ---------- T4.4: dedup do catalogo global (D-OC1) ----------
+Write-Host '--- T4.4 dedup catalogo global ---'
+$globCount = Sql "SELECT count(*) FROM odca.contract_templates WHERE owner_tenant_id IS NULL AND scope='global' AND official_key IS NOT NULL AND status<>'archived';"
+Assert 'T4.4.1 linhas_globais_publicadas=9' ([int]$globCount -eq 9) ("global=" + $globCount)
+$pubVis = Sql @"
+SELECT count(*) FROM odca.contract_templates t
+ WHERE t.status='published' AND t.official_key IS NOT NULL
+   AND (t.scope='global' OR t.owner_tenant_id='$tenant')
+   AND (t.scope<>'global' OR NOT EXISTS(
+        SELECT 1 FROM odca.contract_templates o
+         WHERE o.official_key=t.official_key AND o.owner_tenant_id='$tenant' AND o.status<>'archived'));
+"@
+Assert 'T4.4 catalogo_sem_duplicata_dedup_global' ([int]$pubVis -eq 9) ("publicados_visiveis=" + $pubVis + " globais=" + $globCount)
+
 # ---------- T5: gate do modelo cirurgico + estado pendente (D3) ----------
 Write-Host '--- T5 gate cirurgico ---'
 $r = New-Draft $sgId 'B34 Termo Cirurgico'

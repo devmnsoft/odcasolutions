@@ -18,6 +18,13 @@ public sealed class NpgsqlTemplateCatalogRepository(NpgsqlDataSource dataSource)
                AND a.tenant_id = @tenantId
                AND a.revoked_at IS NULL)))
          OR (t.status IN ('draft','archived') AND t.owner_tenant_id = @tenantId))
+        -- D-OC1 (Bloco A): linha global do catálogo oficial não duplica cópia própria ativa.
+        AND (t.scope <> 'global' OR t.official_key IS NULL OR NOT EXISTS (
+            SELECT 1
+              FROM odca.contract_templates o
+             WHERE o.official_key = t.official_key
+               AND o.owner_tenant_id = @tenantId
+               AND o.status <> 'archived'))
         AND (@search IS NULL OR t.name ILIKE @search OR t.description ILIKE @search)
         AND (@contractType IS NULL OR t.contract_type = @contractType)
         AND (@scope IS NULL OR t.scope = @scope)

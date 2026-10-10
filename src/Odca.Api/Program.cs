@@ -31,6 +31,7 @@ builder.Services.AddTransient<ReleaseFeatureGate>();
 builder.Services.AddOpenApi();
 builder.Services.AddOdcaInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<Odca.Api.StartupValidationService>();
+builder.Services.AddHostedService<Odca.Api.OfficialCatalogSeedingService>();
 builder.Services.AddHealthChecks()
     .AddCheck<PostgresReadinessHealthCheck>("postgresql", tags: ["ready"]);
 builder.Services.AddRateLimiter(options =>

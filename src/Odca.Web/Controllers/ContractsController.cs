@@ -1111,7 +1111,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
             return Redirect(returnUrl);
         }
 
-        TempData["ContractSheetNotice"] = "Lembrete de assinatura reenviado aos participantes pendentes.";
+        TempData["ContractSheetNotice"] = "Lembrete registrado para os participantes pendentes. O envio por canal externo ainda não está configurado — avise os signatários pelos seus canais.";
         return Redirect(returnUrl);
     }
 
