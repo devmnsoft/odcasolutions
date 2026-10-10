@@ -18,6 +18,14 @@ public sealed class AccountController(OdcaApiClient apiClient) : Controller
     public IActionResult Login(string? returnUrl = null) =>
         View(new LoginViewModel { ReturnUrl = SafeReturnUrl(returnUrl) });
 
+    [Authorize]
+    [HttpGet("minha-conta")]
+    public IActionResult Conta()
+    {
+        ViewData["Title"] = "Minha conta";
+        return View();
+    }
+
     [AllowAnonymous]
     [HttpPost("entrar")]
     public async Task<IActionResult> Login(LoginViewModel model, CancellationToken cancellationToken)

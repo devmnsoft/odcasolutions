@@ -1,0 +1,56 @@
+@model Odca.Contracts.Administration.TemplateCatalogResponse
+@using Odca.Contracts.Administration
+@{
+    ViewData["Title"] = "Biblioteca de modelos";
+    string Fmt(DateTimeOffset? value) => value?.ToLocalTime().ToString("dd/MM/yyyy") ?? "—";
+    string FmtText(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "—" :
+        (DateTimeOffset.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var parsed) ? Fmt(parsed) : value);
+    string TypeLabel(string value) => value switch
+    {
+        "consent" => "Consentimento",
+        "contract" => "Contrato",
+        "term" => "Termo",
+        "release" => "Autorização",
+        _ => value
+    };
+}
+<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-controller="Home" asp-action="Index">Visão global</a><span>/</span><span aria-current="page">Biblioteca de modelos</span></nav>
+<header class="page-heading"><div><p class="eyebrow">Administração global</p><h1>Biblioteca de modelos</h1><p>Catálogo oficial mantido pela plataforma: nove modelos carregados por código e publicados para todas as organizações. Publicar e retirar exigem justificativa e ficam auditados.</p></div></header>
+@if(TempData["Success"] is string ok){<div class="alert alert-success" role="status">@ok</div>}
+@if(TempData["Error"] is string err){<div class="alert alert-error" role="alert">@err</div>}
+<div class="responsive-table panel"><table>
+<thead><tr><th>Modelo</th><th>Tipo</th><th>Situação</th><th>Revisão</th><th>Criado em</th><th>Publicado em</th><th>Gestão do catálogo</th></tr></thead>
+<tbody>
+@foreach(var item in Model.Items)
+{
+    var published = item.Status == "published";
+    <tr>
+      <td data-label="Modelo"><strong>@item.Name</strong><small>@item.OfficialKey</small>@if(!string.IsNullOrWhiteSpace(item.Description)){<small>@item.Description</small>}</td>
+      <td data-label="Tipo">@TypeLabel(item.ContractType)</td>
+      <td data-label="Situação"><span class="status-badge">@(published ? "Publicado" : "Retirado")</span></td>
+      <td data-label="Revisão">@item.CurrentRevision</td>
+      <td data-label="Criado em">@Fmt(item.CreatedAt)</td>
+      <td data-label="Publicado em">@Fmt(item.PublishedAt)</td>
+      <td data-label="Gestão do catálogo">
+        <details>
+          <summary>Versões (@item.Versions.Count)</summary>
+          <ul style="padding-left:1rem;margin:.5rem 0">
+          @foreach(var v in item.Versions)
+          {
+            <li>Revisão @v.VersionNumber — criada em @FmtText(v.CreatedAt)@(string.IsNullOrEmpty(v.PublishedAt) ? "" : $" · publicada em {FmtText(v.PublishedAt)}")</li>
+          }
+          </ul>
+        </details>
+        <form method="post" asp-action="Status" asp-route-key="@item.OfficialKey" data-prevent-double-submit>
+          @Html.AntiForgeryToken()
+          <input type="hidden" name="action" value="@(published ? "retire" : "publish")" />
+          <label>Justificativa (@(published ? "retirada" : "publicação"))<input name="reason" minlength="5" maxlength="500" required /></label>
+          <button class="button @(published ? "button-secondary" : "button-primary")" type="submit">@(published ? "Retirar do catálogo" : "Publicar no catálogo")</button>
+        </form>
+      </td>
+    </tr>
+}
+</tbody>
+</table></div>
+<details class="help-card"><summary>Como funciona</summary><p>A retirada não apaga nada: a linha global passa a ficar arquivada e novas organizações deixam de recebê-la; as cópias já instaladas e os contratos já emitidos permanecem intactos. A publicação devolve o modelo ao catálogo para resolução pelas organizações sem cópia própria. Cada operação registra um evento de auditoria com a justificativa informada.</p></details>

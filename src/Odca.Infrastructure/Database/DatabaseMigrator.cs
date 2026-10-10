@@ -235,11 +235,48 @@ public sealed class DatabaseMigrator(string sqlPath)
         COMMIT;
         """);
 
+    // v045 was applied during development with platform_catalog_set_status declaring
+    // a parameter named official_key. PL/pgSQL resolves that identifier ambiguously
+    // against contract_templates.official_key (error 42702) inside the SELECT that
+    // compares the column to the parameter. The parameter is renamed to p_official_key;
+    // the argument types and positional behavior are identical.
+    private static readonly KnownDefectivePackage V045CatalogSetStatus = new(
+        45,
+        "ecfc30049d774820ea3e00f3eed308e637967927ebd92d3e4325f6c94bdcd57c",
+        "3ced09a710ec053f9fb10b97d803e7f3e204e439c7e07014d5e2c02b321bef0b",
+        """
+        BEGIN;
+        DROP FUNCTION IF EXISTS odca.platform_catalog_set_status(uuid,text,text,text);
+        CREATE FUNCTION odca.platform_catalog_set_status(actor uuid,p_official_key text,action text,reason text)
+        RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,odca AS $fn$
+        DECLARE t odca.contract_templates%rowtype; v_reason text:=btrim(coalesce(reason,'')); v_new text;
+        BEGIN
+        PERFORM odca.assert_platform_actor(actor);
+        IF action IS NULL OR action NOT IN('publish','retire')
+        THEN RETURN jsonb_build_object('error','Acao invalida.','code','catalog.action_invalid'); END IF;
+        IF length(v_reason)<5 OR length(v_reason)>500
+        THEN RETURN jsonb_build_object('error','Justificativa deve ter entre 5 e 500 caracteres.','code','catalog.reason'); END IF;
+        SELECT * INTO t FROM odca.contract_templates WHERE owner_tenant_id IS NULL AND scope='global' AND official_key=btrim(coalesce(p_official_key,'')) FOR UPDATE;
+        IF NOT FOUND THEN RETURN jsonb_build_object('error','Modelo nao existe no catalogo global da plataforma.','code','catalog.not_found'); END IF;
+        v_new := CASE WHEN action='retire' THEN 'archived' ELSE 'published' END;
+        IF t.status=v_new THEN RETURN jsonb_build_object('ok',true,'noOp',true,'key',t.official_key,'status',v_new,'rowVersion',t.row_version); END IF;
+        UPDATE odca.contract_templates SET status=v_new,row_version=row_version+1 WHERE id=t.id;
+        INSERT INTO odca.audit_events(scope_type,tenant_id,actor_user_id,action,entity_type,entity_id,result,metadata)
+        VALUES('platform',NULL,actor,'template.catalog.'||v_new,'contract_template',t.id,'success',jsonb_build_object('officialKey',t.official_key,'reason',v_reason));
+        RETURN jsonb_build_object('ok',true,'noOp',false,'key',t.official_key,'status',v_new,'rowVersion',t.row_version+1);
+        END $fn$;
+        REVOKE ALL ON FUNCTION odca.platform_catalog_set_status(uuid,text,text,text) FROM PUBLIC;
+        GRANT EXECUTE ON FUNCTION odca.platform_catalog_set_status(uuid,text,text,text) TO odca_app;
+        UPDATE odca.schema_migrations SET checksum='3ced09a710ec053f9fb10b97d803e7f3e204e439c7e07014d5e2c02b321bef0b' WHERE version=45 AND checksum='ecfc30049d774820ea3e00f3eed308e637967927ebd92d3e4325f6c94bdcd57c';
+        COMMIT;
+        """);
+
     private static readonly KnownDefectivePackage[] KnownDefectivePackages =
     [
         V009PreviewInvitation,
         V035ConsumeMonthlyFranchise,
         V042DeclaredChecksum,
+        V045CatalogSetStatus,
     ];
 
     private static async Task RepairKnownDefectivePackagesAsync(

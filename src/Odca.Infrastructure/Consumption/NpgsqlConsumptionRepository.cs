@@ -54,7 +54,7 @@ public sealed class NpgsqlConsumptionRepository(NpgsqlDataSource dataSource, IPa
         return true;
     },cancellationToken);
 
-    public async Task<IReadOnlyList<PlatformCustomer>> ListCustomersAsync(Guid actorId,string? search,CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<PlatformCustomer>> ListCustomersAsync(Guid actorId,string? search,string? planCode,string? tenantStatus,CancellationToken cancellationToken)
     {
         const string sql = """
             SELECT "TenantId" AS "TenantId",
@@ -68,7 +68,7 @@ public sealed class NpgsqlConsumptionRepository(NpgsqlDataSource dataSource, IPa
                    COALESCE("LimitBytes", 0)::bigint AS "LimitBytes",
                    COALESCE("PendingRequests", 0)::int AS "PendingRequests",
                    "LastActivity" AS "LastActivity"
-              FROM odca.platform_consumption_customers(@actor, @search::text);
+              FROM odca.platform_consumption_customers(@actor, @search::text, @plan::text, @status::text);
             """;
 
         await using var c = await dataSource.OpenConnectionAsync(cancellationToken);
@@ -78,7 +78,7 @@ public sealed class NpgsqlConsumptionRepository(NpgsqlDataSource dataSource, IPa
             new { actor = actorId.ToString() }, tx, cancellationToken: cancellationToken));
         var rows = (await c.QueryAsync<PlatformCustomerRow>(new CommandDefinition(
             sql,
-            new { actor = actorId, search = string.IsNullOrWhiteSpace(search) ? null : search.Trim() },
+            new { actor = actorId, search = string.IsNullOrWhiteSpace(search) ? null : search.Trim(), plan = string.IsNullOrWhiteSpace(planCode) ? null : planCode.Trim(), status = string.IsNullOrWhiteSpace(tenantStatus) ? null : tenantStatus.Trim() },
             tx,
             cancellationToken: cancellationToken))).AsList();
         var balances = (await c.QueryAsync<FranchiseBalanceRow>(new CommandDefinition(

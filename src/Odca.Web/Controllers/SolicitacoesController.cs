@@ -31,11 +31,16 @@ public sealed class SolicitacoesController(OdcaApiClient api, IUserTenantContext
     }
 
     [HttpGet("nova")]
-    public async Task<IActionResult> Nova(Guid tenantId, CancellationToken ct)
+    public async Task<IActionResult> Nova(Guid tenantId, [FromQuery] string? service, CancellationToken ct)
     {
         var access = await tenants.GetAccessAsync(tenantId, ct);
         if (access?.HasPermission("tenant.solicitations.manage") != true) return Forbid();
         ViewData["Title"] = "Nova solicitação"; ViewData["TenantId"] = tenantId;
+        var normalized = service?.Trim().ToLowerInvariant();
+        if (normalized is "revisao" or "adaptacao" or "esclarecimento" or "suporte_tecnico")
+        {
+            TempData["SolService"] = normalized;
+        }
         return View();
     }
 
@@ -49,7 +54,7 @@ public sealed class SolicitacoesController(OdcaApiClient api, IUserTenantContext
         if (!result.Succeeded)
         {
             TempData["SolService"] = service; TempData["SolPriority"] = priority; TempData["SolSubject"] = subject; TempData["SolBody"] = body;
-            TempData["SolError"] = result.UserMessage("Não foi possível abrir a solicitação. Verifique se o plano Enterprise está ativo.");
+            TempData["SolError"] = result.UserMessage(service == "suporte_tecnico" ? "Não foi possível abrir a solicitação. Verifique se a organização tem uma assinatura ativa." : "Não foi possível abrir a solicitação. Os serviços documentais exigem o plano Enterprise ativo.");
             return RedirectToAction(nameof(Nova), new { tenantId });
         }
         var protocol = TryProtocol(result.Value);

@@ -24,7 +24,7 @@ public sealed class PlatformAuditController(OdcaApiClient api) : Controller
             Response.StatusCode = forbidden ? 403 : 503;
             return View(forbidden ? "AccessDenied" : "ServiceUnavailable");
         }
-        var customers = await api.GetCustomersAsync(token, null, ct);
+        var customers = await api.GetCustomersAsync(token, null, null, null, ct);
         var tenantOptions = customers.Succeeded && customers.Value is not null
             ? customers.Value.Select(customer => new PlatformAuditTenantOption(customer.TenantId, customer.Name)).ToArray()
             : Array.Empty<PlatformAuditTenantOption>();

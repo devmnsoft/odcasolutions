@@ -21,7 +21,7 @@ public sealed class ConsumptionController(IConsumptionRepository repository) : C
 
     [Authorize(Policy="PlatformAdministrator")]
     [HttpGet("api/v1/platform/customers")]
-    public async Task<IActionResult> Customers([FromQuery]string? search,CancellationToken ct){var actor=Actor();return actor is null?Unauthorized():Ok(await repository.ListCustomersAsync(actor.Value,search,ct));}
+    public async Task<IActionResult> Customers([FromQuery]string? search,[FromQuery]string? plan,[FromQuery]string? status,CancellationToken ct){var actor=Actor();return actor is null?Unauthorized():Ok(await repository.ListCustomersAsync(actor.Value,search,plan,status,ct));}
     [Authorize(Policy="PlatformAdministrator")]
     [HttpPost("api/v1/platform/customers")]
     public async Task<IActionResult> CreateCustomer([FromBody]CreatePlatformCustomerRequest request,CancellationToken ct)

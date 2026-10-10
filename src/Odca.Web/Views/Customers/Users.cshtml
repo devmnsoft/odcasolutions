@@ -1,0 +1,36 @@
+@model Odca.Web.Models.UserSearchViewModel
+@{
+    ViewData["Title"] = "Localizar usuários";
+    string StatusLabel(string? value) => value switch { "active" => "Ativo", "blocked" => "Bloqueado", _ => value ?? "—" };
+}
+<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-action="Index">Clientes</a><span>/</span><span aria-current="page">Localizar usuários</span></nav>
+<header class="page-heading"><div><p class="eyebrow">Administração global</p><h1>Localizar usuários</h1><p>Busca em todo o ambiente por e-mail ou nome: identidades, vínculos por organização e situação de cada vínculo. Bloqueios e reabilitações se fazem na tela de equipe da organização correspondente.</p></div></header>
+<form method="get" class="review-filters" aria-label="Busca global de usuários">
+ <label>Buscar<input type="search" name="search" value="@Model.Search" placeholder="E-mail ou nome" /></label>
+ <button class="button button-primary" type="submit">Pesquisar</button>
+</form>
+@if (Model.Users.Count == 0)
+{
+    <div class="empty-state">@if(string.IsNullOrWhiteSpace(Model.Search)){<p>Nenhum usuário localizado com os filtros atuais.</p>;}else{<p>Nenhum usuário corresponde a "@Model.Search". Confira a grafia do e-mail ou do nome.</p>}</div>
+}
+else
+{
+    <div class="responsive-table panel"><table>
+    <thead><tr><th>Usuário</th><th>E-mail</th><th>Perfil</th><th>Vínculos</th></tr></thead>
+    <tbody>
+    @foreach(var u in Model.Users)
+    {
+        <tr>
+          <td data-label="Usuário"><strong>@u.DisplayName</strong>@if(u.IsDeleted){<small style="display:block;color:var(--danger)">Conta removida</small>}</td>
+          <td data-label="E-mail">@u.Email</td>
+          <td data-label="Perfil">@(u.IsPlatformAdministrator ? "Administrador da plataforma" : "Cliente")</td>
+          <td data-label="Vínculos">
+            @if(u.Links.Count == 0){<span>—</span>}
+            else{<ul style="padding-left:1rem;margin:0">@foreach(var l in u.Links){<li>@(l.TenantName ?? "Organização") — <span class="status-badge">@StatusLabel(l.MembershipStatus)</span>@if(!string.IsNullOrWhiteSpace(l.RoleCode)){<small> · @l.RoleCode</small>}</li>}</ul>}
+          </td>
+        </tr>
+    }
+    </tbody>
+    </table></div>
+    <p class="muted">Até 100 resultados por busca, ordenados por e-mail.</p>
+}

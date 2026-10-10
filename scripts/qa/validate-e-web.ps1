@@ -43,9 +43,16 @@ function Snip([string]$s) { if (-not $s) { return '' } return $s.Substring(0, [M
 
 function De([string]$h) {
     if (-not $h) { return '' }
-    $s = [regex]::Replace($h, '&#[xX]([0-9a-fA-F]+);', { param($m) [char][Convert]::ToInt32($m.Groups[1].Value, 16) })
-    $s = [regex]::Replace($s, '&#(\d+);', { param($m) [char][int]$m.Groups[1].Value })
+    $s = [regex]::Replace($h, '&#[xX]([0-9a-fA-F]+);', { param($m) De-Cp ([Convert]::ToInt32($m.Groups[1].Value, 16)) })
+    $s = [regex]::Replace($s, '&#(\d+);', { param($m) De-Cp ([int]$m.Groups[1].Value) })
     return ($s.Replace('&amp;', '&').Replace('&lt;', '<').Replace('&gt;', '>').Replace('&quot;', '"').Replace('&apos;', "'"))
+}
+
+# Codepoints acima de U+FFFF (emojis astrais usados como ícones de menu) exigem par de surogados.
+function De-Cp([int]$cp) {
+    if ($cp -le 0xFFFF) { return ([string][char]$cp) }
+    $x = $cp - 0x10000
+    return ([string][char](0xD800 + ($x -shr 10)) + [char](0xDC00 + ($x -band 0x3FF)))
 }
 
 function Dec([string]$s) {
@@ -121,6 +128,10 @@ DELETE FROM odca.draft_save_receipts WHERE draft_id IN $dset;
 DELETE FROM odca.generated_contract_versions WHERE id IN $vset;
 DELETE FROM odca.contract_drafts WHERE id IN $dset;
 DELETE FROM odca.contract_events WHERE contract_id IN (SELECT id FROM odca.contracts WHERE tenant_id='$TC' AND title LIKE 'Val E:%');
+DELETE FROM odca.solicitation_events WHERE solicitation_id IN (SELECT id FROM odca.solicitations WHERE subject LIKE 'Val E:%');
+DELETE FROM odca.solicitation_messages WHERE solicitation_id IN (SELECT id FROM odca.solicitations WHERE subject LIKE 'Val E:%');
+DELETE FROM odca.solicitation_pauses WHERE solicitation_id IN (SELECT id FROM odca.solicitations WHERE subject LIKE 'Val E:%');
+DELETE FROM odca.solicitations WHERE subject LIKE 'Val E:%';
 DELETE FROM odca.contracts WHERE tenant_id='$TC' AND title LIKE 'Val E:%';
 DELETE FROM odca.template_approvals WHERE tenant_id='$TC' AND official_key='surgical-consent';
 DELETE FROM odca.contract_template_access WHERE granted_by IN ($qa) OR revoked_by IN ($qa);
@@ -475,7 +486,7 @@ AND NOT EXISTS(SELECT 1 FROM odca.member_roles mr WHERE mr.tenant_id='$TC' AND m
 "@
 
     $mig = Sql 'SELECT max(version) FROM odca.schema_migrations;'
-    Assert 'S0.schema_v44' ([int]$mig -ge 44) "max=$mig"
+    Assert 'S0.schema_v45' ([int]$mig -ge 45) "max=$mig"
 
     Write-Host '--- S0 logins (API) ---'
     # O assinante e administrador de plataforma de proposito: nesta versao so
@@ -988,6 +999,126 @@ AND NOT EXISTS(SELECT 1 FROM odca.member_roles mr WHERE mr.tenant_id='$TC' AND m
     $consAfter2 = Sql "SELECT count(*) FROM odca.mfa_recovery_codes WHERE user_id='$G_ADMIN' AND consumed_at IS NOT NULL;"
     Assert 'S7.sem_consumo_duplo' ([int]$consAfter2 -eq ([int]$consBefore + 1)) ('depois=' + $consAfter2)
     $script:adminTok = JGet $l7bj 'accessToken'
+
+    # ---------- S8: Bloco B — operacoes da plataforma + suporte tecnico (D-OC4/D-OC7) ----------
+    Write-Host '--- S8 Bloco B: catalogo global, usuarios, filtros e suporte tecnico ---'
+    # O S7 encerrou com o adminTok em sessao sem MFA; o S8 reabre uma sessao MFA
+    # consumindo outro codigo de recuperacao (a politica de plataforma exige mfaVerified).
+    $l8 = Login-Plain 'qa-e-admin@odca.local' $QA_PWD
+    $l8j = $l8.Body | ConvertFrom-Json
+    Assert 'S8.login_admin_pede_desafio' ((JGet $l8j 'requiresMfaChallenge') -eq 'True') (Snip $l8.Body)
+    $ch8 = Invoke-Api 'POST' ($api + '/api/v1/auth/mfa/challenge') (JGet $l8j 'accessToken') (ToJson @{ code = $rcSet[1] })
+    $ch8j = $ch8.Body | ConvertFrom-Json
+    $adm8 = JGet $ch8j 'accessToken'
+    Assert 'S8.sessao_mfa_reaberta' ($ch8.Code -eq 200 -and [bool]$adm8) (Snip $ch8.Body)
+    $script:adminTok = $adm8
+
+    # Catalogo oficial global: listagem integral com versoes por modelo.
+    $cat = Invoke-Api 'GET' "$api/api/v1/platform/template-catalog" $adm8 $null
+    $catItems = @()
+    if ($cat.Code -eq 200) { $catBody = $cat.Body | ConvertFrom-Json; $catItems = @($catBody.items) }
+    Assert 'S8.catalogo_global_com_9_modelos' ($cat.Code -eq 200 -and $catItems.Count -eq 9) ('code=' + $cat.Code + ' items=' + $catItems.Count)
+    $probeKey = ''
+    foreach ($it in $catItems) { if ((JGet $it 'officialKey') -ne 'surgical-consent') { $probeKey = JGet $it 'officialKey'; break } }
+    Assert 'S8.chave_probe_selecionada' ($probeKey -ne '') ('itens=' + (($catItems | ForEach-Object { JGet $_ 'officialKey' }) -join ','))
+
+    # Normaliza o estado da chave de probe (execucao interrompida pode ter deixado arquivada).
+    $probeStatus = Sql "SELECT status FROM odca.contract_templates WHERE owner_tenant_id IS NULL AND scope='global' AND official_key='$probeKey';"
+    if ($probeStatus -eq 'archived') {
+        $norm = Invoke-Api 'POST' "$api/api/v1/platform/template-catalog/$probeKey/status" $adm8 (ToJson @{ action = 'publish'; reason = 'Suite E: normalizacao do estado do catalogo.' })
+        Assert 'S8.normalizacao_publica' ($norm.Code -eq 200) (Snip $norm.Body)
+    }
+
+    # Espelho fiel do VisibleFilter do studio limitado a uma official_key.
+    function Visible-OfficialCount([string]$key, [string]$tid) {
+        return (Sql @"
+SELECT count(*)::int FROM odca.contract_templates t
+WHERE ((t.status='published' AND (t.scope='global' OR t.owner_tenant_id=uuid '$tid' OR EXISTS(
+         SELECT 1 FROM odca.contract_template_access a WHERE a.template_id=t.id AND a.tenant_id=uuid '$tid' AND a.revoked_at IS NULL)))
+       OR (t.status IN ('draft','archived') AND t.owner_tenant_id=uuid '$tid'))
+AND (t.scope<>'global' OR t.official_key IS NULL OR NOT EXISTS(
+         SELECT 1 FROM odca.contract_templates o WHERE o.official_key=t.official_key AND o.owner_tenant_id=uuid '$tid' AND o.status<>'archived'))
+AND t.official_key='$key';
+"@)
+    }
+    $copyless = Sql "SELECT t.id::text FROM odca.tenants t WHERE NOT t.is_deleted AND t.id<>uuid '$TC' AND NOT EXISTS(SELECT 1 FROM odca.contract_templates c WHERE c.owner_tenant_id=t.id AND c.official_key='$probeKey' AND c.status<>'archived') ORDER BY t.created_at LIMIT 1;"
+    $hasCopyless = $copyless.Trim() -match '[0-9a-f]{8}-'
+    if ($hasCopyless) {
+        $visBefore = Visible-OfficialCount $probeKey $copyless.Trim()
+        Assert 'S8.tenant_prova_ve_linha_global' ([int]$visBefore -eq 1) ("tenant=" + $copyless.Trim() + " visiveis=$visBefore")
+    } else {
+        Assert 'S8.tenant_prova_sem_copia_localizavel' $false "nenhum tenant sem copia propria para $probeKey"
+    }
+
+    $probeRvBefore = Sql "SELECT row_version FROM odca.contract_templates WHERE owner_tenant_id IS NULL AND scope='global' AND official_key='$probeKey';"
+    $ret = Invoke-Api 'POST' "$api/api/v1/platform/template-catalog/$probeKey/status" $adm8 (ToJson @{ action = 'retire'; reason = 'Suite E: retirada de teste do catalogo global.' })
+    $retj = ''
+    if ($ret.Code -eq 200) { $retj = $ret.Body | ConvertFrom-Json }
+    Assert 'S8.retirada_200_efetiva' ($ret.Code -eq 200 -and [bool](JGet $retj 'ok') -and (JGet $retj 'noOp') -ne 'True') (Snip $ret.Body)
+    $probeStatusNow = Sql "SELECT status FROM odca.contract_templates WHERE owner_tenant_id IS NULL AND scope='global' AND official_key='$probeKey';"
+    Assert 'S8.retirada_linha_global_arquivada' ($probeStatusNow -eq 'archived') "status=$probeStatusNow"
+    $probeRvAfter = Sql "SELECT row_version FROM odca.contract_templates WHERE owner_tenant_id IS NULL AND scope='global' AND official_key='$probeKey';"
+    Assert 'S8.retirada_incrementou_row_version' ([int64]$probeRvAfter -gt [int64]$probeRvBefore) ("antes=$probeRvBefore depois=$probeRvAfter")
+    $audRet = Sql "SELECT count(*) FROM odca.audit_events WHERE scope_type='platform' AND actor_user_id='$G_ADMIN' AND action='template.catalog.archived' AND entity_type='contract_template' AND result='success' AND metadata->>'officialKey'='$probeKey';"
+    Assert 'S8.auditoria_da_retirada' ([int]$audRet -ge 1) "rows=$audRet"
+    if ($hasCopyless) {
+        $visAfter = Visible-OfficialCount $probeKey $copyless.Trim()
+        Assert 'S8.tenant_prova_perde_visibilidade' ([int]$visAfter -eq 0) "visiveis=$visAfter"
+    }
+
+    $rep = Invoke-Api 'POST' "$api/api/v1/platform/template-catalog/$probeKey/status" $adm8 (ToJson @{ action = 'publish'; reason = 'Suite E: republicacao de teste do catalogo.' })
+    $repj = ''
+    if ($rep.Code -eq 200) { $repj = $rep.Body | ConvertFrom-Json }
+    Assert 'S8.publicacao_200_efetiva' ($rep.Code -eq 200 -and [bool](JGet $repj 'ok')) (Snip $rep.Body)
+    $probeStatusFinal = Sql "SELECT status FROM odca.contract_templates WHERE owner_tenant_id IS NULL AND scope='global' AND official_key='$probeKey';"
+    Assert 'S8.publicacao_restaura_linha' ($probeStatusFinal -eq 'published') "status=$probeStatusFinal"
+
+    $badReason = Invoke-Api 'POST' "$api/api/v1/platform/template-catalog/$probeKey/status" $adm8 (ToJson @{ action = 'retire'; reason = 'abc' })
+    Assert 'S8.justificativa_curta_400' ($badReason.Code -eq 400 -and $badReason.Body -match 'catalog\.reason') ('code=' + $badReason.Code + ' ' + (Snip $badReason.Body))
+
+    # Busca global de usuarios (identidade + vinculos).
+    $us = Invoke-Api 'GET' "$api/api/v1/platform/users?search=admin@odca.local" $adm8 $null
+    $usHit = ''
+    # PS 5.1: @(texto | ConvertFrom-Json) devolve o array como UM item; atribuir antes de iterar.
+    if ($us.Code -eq 200) {
+        $usList = $us.Body | ConvertFrom-Json
+        foreach ($u in $usList) { if ((JGet $u 'email') -eq 'admin@odca.local') { $usHit = $u } }
+    }
+    Assert 'S8.busca_encontra_admin_plataforma' ($us.Code -eq 200 -and $usHit -ne '' -and (JGet $usHit 'isPlatformAdministrator') -eq 'True') ('code=' + $us.Code + ' ' + (Snip $us.Body))
+
+    # As secoes anteriores podem deixar TC em outro plano (ex.: teste documental em Enterprise);
+    # normaliza para o plano original antes dos filtros de clientes por plano.
+    $null = Sql "UPDATE odca.subscriptions SET plan_version_id='$($script:planBefore)' WHERE tenant_id='$TC';"
+    $planS8 = Sql "SELECT pv.code FROM odca.subscriptions s JOIN odca.plan_versions pv ON pv.id=s.plan_version_id WHERE s.tenant_id='$TC' AND s.status='active';"
+    Assert 'S8.tc_normalizado_para_plano_original' ($planS8 -eq 'basic') "plan=$planS8"
+
+    # Filtros de clientes por plano e situacao.
+    $cust = Invoke-Api 'GET' "$api/api/v1/platform/customers?plan=basic&status=active" $adm8 $null
+    $custHit = $false
+    if ($cust.Code -eq 200) {
+        $custList = $cust.Body | ConvertFrom-Json
+        foreach ($c in $custList) { if ((JGet $c 'tenantId') -eq $TC) { $custHit = $true } }
+    }
+    Assert 'S8.filtro_clientes_basico_ativa_inclui_tc' ($cust.Code -eq 200 -and $custHit) ('code=' + $cust.Code + ' ' + (Snip $cust.Body))
+    $custEnt = Invoke-Api 'GET' "$api/api/v1/platform/customers?plan=enterprise" $adm8 $null
+    $custEntHasTc = $false
+    if ($custEnt.Code -eq 200) {
+        $custEntList = $custEnt.Body | ConvertFrom-Json
+        foreach ($c in $custEntList) { if ((JGet $c 'tenantId') -eq $TC) { $custEntHasTc = $true } }
+    }
+    Assert 'S8.filtro_enterprise_exclui_tc' ($custEnt.Code -eq 200 -and (-not $custEntHasTc)) ('code=' + $custEnt.Code + ' ' + (Snip $custEnt.Body))
+
+    # D-OC7: suporte tecnico abre em qualquer plano ativo; documental segue Enterprise.
+    # (Login fresco: o token do S0 pode ter vencido — validade de 15 minutos.)
+    $rr8 = Login-Plain 'qa-e-recorder@odca.local' $QA_PWD
+    $rec8Tok = JGet ($rr8.Body | ConvertFrom-Json) 'accessToken'
+    Assert 'S8.token_recorder_fresco' ([bool]$rec8Tok) (Snip $rr8.Body)
+    $solOk = Invoke-Api 'POST' "$api/api/v1/organizations/$TC/solicitations" $rec8Tok (ToJson @{ service = 'suporte_tecnico'; priority = 'normal'; subject = 'Val E: suporte tecnico em basic'; body = 'Problema de acesso para validar o beneficio de todos os planos.'; idempotencyKey = [guid]::NewGuid().ToString() })
+    $solOkj = ''
+    if ($solOk.Code -eq 200) { $solOkj = $solOk.Body | ConvertFrom-Json }
+    Assert 'S8.suporte_tecnico_abre_em_basic' ($solOk.Code -eq 200 -and (JGet $solOkj 'status') -eq 'aberta') ('code=' + $solOk.Code + ' ' + (Snip $solOk.Body))
+    $solGate = Invoke-Api 'POST' "$api/api/v1/organizations/$TC/solicitations" $rec8Tok (ToJson @{ service = 'esclarecimento'; priority = 'normal'; subject = 'Val E: documental em basic'; body = 'Documental deve seguir exigindo Enterprise.'; idempotencyKey = [guid]::NewGuid().ToString() })
+    Assert 'S8.documental_mantem_gate_enterprise' ($solGate.Code -eq 409 -and $solGate.Body -match 'solicitations\.plan\.required') ('code=' + $solGate.Code + ' ' + (Snip $solGate.Body))
 }
 catch {
     $script:unhandled = $_.Exception.Message

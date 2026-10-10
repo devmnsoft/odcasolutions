@@ -24,9 +24,16 @@ function Assert([string]$name, [bool]$cond, [string]$detail) {
 
 function De([string]$h) {
     if (-not $h) { return '' }
-    $s = [regex]::Replace($h, '&#[xX]([0-9a-fA-F]+);', { param($m) [char][Convert]::ToInt32($m.Groups[1].Value, 16) })
-    $s = [regex]::Replace($s, '&#(\d+);', { param($m) [char][int]$m.Groups[1].Value })
+    $s = [regex]::Replace($h, '&#[xX]([0-9a-fA-F]+);', { param($m) De-Cp ([Convert]::ToInt32($m.Groups[1].Value, 16)) })
+    $s = [regex]::Replace($s, '&#(\d+);', { param($m) De-Cp ([int]$m.Groups[1].Value) })
     return ($s.Replace('&amp;', '&').Replace('&lt;', '<').Replace('&gt;', '>').Replace('&quot;', '"').Replace('&apos;', "'"))
+}
+
+# Codepoints acima de U+FFFF (emojis astrais usados como ícones de menu) exigem par de surogados.
+function De-Cp([int]$cp) {
+    if ($cp -le 0xFFFF) { return ([string][char]$cp) }
+    $x = $cp - 0x10000
+    return ([string][char](0xD800 + ($x -shr 10)) + [char](0xDC00 + ($x -band 0x3FF)))
 }
 
 # Decodes \uXXXX escapes emitted by System.Text.Json's default encoder so that
@@ -296,6 +303,15 @@ Assert 'T2.1 label Perfil de atuação' $hEdit.Contains('Perfil de atuação') $
 Assert 'T2.1 opcao general selecionada' ([regex]::IsMatch($hEdit, 'value="general"\s+selected')) ''
 Assert 'T2.1 opcao therapy_clinic' $hEdit.Contains('value="therapy_clinic"') ''
 Assert 'T2.1 opcao plastic_surgery (Enterprise)' $hEdit.Contains('value="plastic_surgery"') ''
+
+# Bloco B: registro central de navegacao (D-OC4) — itens novos com as rotas corretas.
+$hHome = Invoke-Page 'GET' "$web/" '' $cli.Jar
+Assert 'T2.9 menu_exibe_arquivados' ($hHome.Contains('Arquivados') -and $hHome.Contains('status=arquivados')) $script:lastUrl
+Assert 'T2.9 menu_exibe_suporte_tecnico' ($hHome.Contains('Suporte técnico') -and $hHome.Contains('service=suporte_tecnico')) $script:lastUrl
+Assert 'T2.9 menu_exibe_minha_conta' ($hHome.Contains('Minha conta') -and $hHome.Contains('/minha-conta')) $script:lastUrl
+$hConta = Invoke-Page 'GET' "$web/minha-conta" '' $cli.Jar
+Assert 'T2.9 pagina_minha_conta_renderiza' ($hConta.Contains('Segurança da conta')) $script:lastUrl
+Assert 'T2.9 menu_sem_publicacao_versoes' (-not $hHome.Contains('Publicação e versões')) ''
 
 $org = Get-Org
 $vS = [string]$org.version

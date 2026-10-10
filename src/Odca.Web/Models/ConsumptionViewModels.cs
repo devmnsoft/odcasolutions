@@ -1,8 +1,10 @@
 using System.ComponentModel.DataAnnotations;
+using Odca.Contracts.Administration;
 using Odca.Contracts.Consumption;
 namespace Odca.Web.Models;
 public sealed record ConsumptionViewModel(ConsumptionSummary Summary,IReadOnlyList<StoragePackage> Packages,IReadOnlyList<AdditionalStorageRequest> Requests);
-public sealed record CustomerListViewModel(IReadOnlyList<PlatformCustomer> Customers,string? Search);
+public sealed record CustomerListViewModel(IReadOnlyList<PlatformCustomer> Customers,string? Search,string? Plan,string? Status);
+public sealed record UserSearchViewModel(IReadOnlyList<PlatformUserRow> Users,string? Search);
 public sealed class CreateCustomerViewModel
 {
     [Required(ErrorMessage = "Informe o nome da organização.")]

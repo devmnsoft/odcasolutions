@@ -2,7 +2,7 @@
     var tenantId=(Guid)ViewData["TenantId"]!;
 }
 <nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-action="Index" asp-route-tenantId="@tenantId">Central de solicitações</a><span>/</span><span aria-current="page">Nova</span></nav>
-<header class="page-heading"><div><p class="eyebrow">Atendimento ODCA</p><h1>Nova solicitação</h1><p>Descreva a demanda com detalhes suficientes para a equipe iniciar o atendimento. Os prazos de SLA começam na abertura.</p></div></header>
+<header class="page-heading"><div><p class="eyebrow">Atendimento ODCA</p><h1>Nova solicitação</h1><p>Descreva a demanda com detalhes suficientes para a equipe iniciar o atendimento. Os prazos de SLA começam na abertura. Revisão, adaptação e esclarecimento exigem o plano Enterprise; suporte técnico e recuperação de acesso estão abertos a qualquer assinatura ativa.</p></div></header>
 @if(TempData["SolError"] is string error){<div class="alert alert-error" role="alert">@error</div>}
 <form method="post" asp-action="Create" asp-route-tenantId="@tenantId" data-prevent-double-submit>
  @Html.AntiForgeryToken()
@@ -10,7 +10,8 @@
  <select id="service" name="service" required>
   <option value="esclarecimento" selected="@(TempData["SolService"] as string=="esclarecimento")">Esclarecimento — dúvidas sobre contratos e uso da plataforma</option>
   <option value="revisao" selected="@(TempData["SolService"] as string=="revisao")">Revisão — análise de um documento ou cláusula</option>
-  <option value="adaptacao" selected="@(TempData["SolService"] as string=="adaptacao")">Adaptação — ajuste de modelo ou minuta pela ODCA</option>
+  <option value="adaptacao" selected="@(TempData["SolService"] as string=="adaptacao")">Adaptação — ajuste de modelo ou minuta pela ODCA (plano Enterprise)</option>
+  <option value="suporte_tecnico" selected="@(TempData["SolService"] as string=="suporte_tecnico")">Suporte técnico e recuperação de acesso — todos os planos</option>
  </select>
  <label for="priority">Prioridade</label>
  <select id="priority" name="priority">

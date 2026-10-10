@@ -278,3 +278,49 @@ Fingerprint dos seeds após a cadeia: `9b641fa0c67d2bc840054c24776c9feb` — **i
 - **Ordem de cleanup (E)**: `mfa_recovery_codes` passou a ser removido antes de `sessions` — o novo S7 consome um código e grava `consumed_session_id`, criando FK para `sessions`; na ordem antiga a limpeza estolava no meio e o `finally` morria antes dos asserts de seed.
 - **`SqlBest` (E)**: stderr do psql foi redirecionado para arquivo em vez de `2>&1` — com `$ErrorActionPreference='Stop'` o PS 5.1 converte registro de stderr em erro terminante, quebrando o contrato best-effort do batch de cleanup (documentado no comentário da função).
 - **Metodologia preservada**: nenhuma expectativa anterior foi alterada para passar — só assertes novos foram adicionados (E 109→120, D 115→116, b34 93→95, C 99→99).
+
+## 10. Bloco B — navegação centralizada, menus reais, suporte técnico em todos os planos e administração global (10/10/2026)
+
+Escopo do commit de Bloco B: **D-OC4** (registro central de navegação consumido pelo `_Layout`, com itens reais no lugar dos placeholders) + **D-OC7** (suporte técnico e recuperação de acesso como quarto serviço de solicitação, aberto a qualquer plano vigente) + **administração global completa** (catálogo oficial publicável/retirável, busca global de usuários, filtros de clientes por plano/situação). Migração **v045** aplicada (`CurrentVersion=45`, checksum `ecfc30049d774820ea3e00f3eed308e637967927ebd92d3e4325f6c94bdcd57c`, snapshot `database/releases/odca-v045.sql`).
+
+### Mudanças de código
+
+| Área | Arquivo(s) | Mudança |
+|---|---|---|
+| Registro de navegação | `src/Odca.Web/Navigation/{NavModels,NavigationRegistry,NavigationRenderer}.cs` (novos) | Fonte única dos menus: `NavItem` (chave/rótulo pt-BR/ícone/grupo+estilo/controller-ação ou rota c/ `tenantId`/`FeatureCode`/`Available`/`IsActive`), `NavContext`, `NavigationRegistry.Client/Platform(ctx)` preservam ordem e condições exatas do markup antigo; `NavigationRenderer` emite `span.menu-caption` + `a.nav-item [active][aria-current=page]` |
+| Layout | `src/Odca.Web/Views/Shared/_Layout.cshtml` | Menus inline substituídos pelo registro; única normalização: `aria-current="page"` em todo item ativo (antes inconsistente); `aria-label` mantido só onde existia |
+| Minha conta | `src/Odca.Web/Controllers/AccountController.cs` (`Conta`) + `Views/Account/Conta.cshtml` | Hub `/minha-conta`: alteração de senha + MFA em autoatendimento via claim `requires_mfa_enrollment` (pendente → ativar; ativo → regenerar chave/códigos); sem placeholder "em construção" |
+| Biblioteca (plataforma) | `src/Odca.Web/Controllers/PlatformLibraryController.cs` + `Views/PlatformLibrary/Index.cshtml` | Página real `administracao/biblioteca`: catálogo global com versões, publicar/retirar com justificativa 5–500 |
+| Config. operacionais | `src/Odca.Web/Controllers/PlatformOperationsController.cs` (Web) + `Views/PlatformOperations/Index.cshtml` | Matriz SLA somente-leitura por plano/serviço/prioridade; documenta documental=Enterprise, suporte técnico=todos os planos |
+| Clientes (plataforma) | `src/Odca.Web/Controllers/CustomersController.cs` (+`Users`) + views + `Models/ConsumptionViewModels.cs` | Filtros de plano/situação na lista; página `administracao/clientes/usuarios` (busca global) |
+| Suporte técnico (cliente) | `src/Odca.Web/Views/Solicitations/Nova.cshtml` + `SolicitacoesController.cs` | Opção `suporte_tecnico` ("todos os planos"), pré-seleção `?service=`, rótulos em Index/Detalhes/AdminSolicitacoes; mensagem de erro de abertura sensível ao serviço |
+| API — plataforma | `src/Odca.Api/Controllers/PlatformOperationsController.cs` (novo) + `Contracts/Administration/PlatformOperationsContracts.cs` (novo) | `GET/POST /platform/template-catalog[/{key}/status]`, `GET /platform/users?search=` (policy `PlatformAdministrator` = sessão MFA) |
+| API — consumo | `src/Odca.Api/Controllers/ConsumptionController.cs` + reposição de consumo | `GET /platform/customers?plan=&status=` |
+| Web → API client | `src/Odca.Web/Services/OdcaApiClient.cs` | `GetCustomersAsync` c/ filtros + 4 métodos de plataforma |
+| Esquema (v045) | `database/odca.sql` + `DatabaseSchema.cs` | CHECKs aceitam `suporte_tecnico`; 12 políticas SLA (3 planos × 4 prioridades, base `esclarecimento` × multiplicador do plano); `solicitations_open` relaxa o gate (assinatura ativa p/ suporte técnico; Enterprise p/ documentais, msg byte-idêntica); `platform_consumption_customers` 4 parâmetros; novas `platform_user_search` e `platform_catalog_set_status` (audita `template.catalog.published\|archived`) |
+
+### Evidência executada
+
+Probes diretos na stack reiniciada (antes das suítes): seeder segue com **9 linhas globais oficiais** (idempotente, fingerprint intacto); login Web do cliente cai em `/organizacoes/{TC}/caixa`; menu renderiza **Arquivados** (`status=arquivados`), **Suporte técnico** (`service=suporte_tecnico`) e **Minha conta** (`/minha-conta`); `/minha-conta` 200 com seção de segurança; Nova pré-seleciona `suporte_tecnico`; abrir solicitação `suporte_tecnico` em TC (basic) → **200** `status=aberta` com snapshot de SLA; `GET /platform/customers` com token de cliente → **403** (sem policy de plataforma).
+
+Regressão completa pós-mudança (sequencial E→C→D→b34, banco `odca_test_disposable`):
+
+| Suíte | Assertos | Falhas | novos asserts | seed_intacto | log |
+|---|---|---|---|---|---|
+| E | 140 | 0 | S8: catálogo 9 · retirada/publicação da linha global (auditoria + row_version + visibilidade p/ tenant sem cópia) · justificativa curta 400 · busca de usuário · filtros de clientes · suporte técnico abre em basic + documental segue Enterprise | intacto | `baseline-e-20261010-084538.log` |
+| C | 99 | 0 | — (inalterada) | intacto | `baseline-c-20261010-084717.log` |
+| D | 116 | 0 | — (inalterada) | intacto | `baseline-d-20261010-084838.log` |
+| b34 | 100 | 0 | T2.9: itens novos no menu + `/minha-conta` renderiza + "Publicação e versões" ausente | intacto | `baseline-b34-20261010-084934.log` |
+
+Fingerprint dos seeds após a cadeia: `9b641fa0c67d2bc840054c24776c9feb` (idêntico ao baseline pré-mudança); schema em v45.
+
+### Correções de suíte registradas neste ciclo
+
+- **Cleanup de solicitações (E)**: `Get-SuiteCleanupSql` ganhou remoção em ordem de FK (`solicitation_events → messages → pauses → solicitations`) para fixtures `subject LIKE 'Val E:%'` criadas pelo S8 — espelha o padrão da suíte C.
+- **Login fresco no S8**: o token de membro do S0 pode expirar (JWT 15 min) antes do fim da suíte; o S8 reautentica o recorder antes de abrir solicitações e reabre sessão MFA consumindo um segundo código de recuperação (o S7 já rejeitou o reuso do primeiro).
+
+### Correções de causa raiz aplicadas neste ciclo
+
+- **Ambiguidade de parâmetro no v045 (SQL)**: `platform_catalog_set_status` declarava o parâmetro `official_key`, homônimo da coluna `contract_templates.official_key`; o PL/pgSQL resolvia o identificador como ambíguo (Postgres 42702) e publicar/retirar devolvia 500. Corrigido renomeando o parâmetro para `p_official_key`, re-hashando o bloco canônico para `3ced09a7…bef0b` e registrando `KnownDefectivePackage V045CatalogSetStatus` (defeito `ecfc3004…d57c` → reparado) — mesmo padrão dos reparos `V009PreviewInvitation`/`V035ConsumeMonthlyFranchise`; snapshot do release preservado imutável. Detalhes e validação (round-trip `nda-unilateral` `row_version` 2→3, status `published`) em DECISIONS-LOG e STATUS.
+- **Mapeamento de data (API)**: `TemplateCatalogRow` (registro Dapper) declarava `DateTimeOffset`/`DateTimeOffset?` para colunas `timestamptz`; o Npgsql materializa `timestamptz` como `DateTime` (UTC), então a materialização da linha do catálogo falhava (`GET …/template-catalog` → 500). Corrigido declarando `DateTime CreatedAt, DateTime? PublishedAt` e convertendo via `.ToUniversalTime()` ao montar os DTOs `TemplateCatalogItem` — listagem do catálogo volta a 200 com 9 linhas.
+- **Parse de arrays em PS 5.1 (suíte E S8)**: `@($body | ConvertFrom-Json)` não desenrola um array JSON no PowerShell 5.1 — devolve um único elemento que é o array inteiro; os laços de filtros de clientes/busca de usuário agora atribuem `$list = $body | ConvertFrom-Json` e iteram `foreach ($x in $list)`. A normalização de plano do TC (gravação de `planBefore` e assert `basic`) foi movida para antes dos testes de filtro, de modo que o filtro inclusivo `plan=basic&status=active` enxerga o TC.

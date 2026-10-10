@@ -1,0 +1,38 @@
+@{
+    ViewData["Title"] = "Minha conta";
+    var mfaPending = User.FindFirst("requires_mfa_enrollment")?.Value == "true";
+}
+<section class="narrow">
+    <header class="page-heading"><div><p class="eyebrow">Minha conta</p><h1>Segurança da conta</h1><p>Ações sobre o seu próprio usuário, sem depender de outra pessoa da organização.</p></div></header>
+
+    <div class="card">
+        <h2>Senha</h2>
+        <p class="muted">Altere a senha de acesso usando a senha atual.</p>
+        <div class="button-row">
+            <a class="button button-primary" asp-controller="Account" asp-action="ChangePassword">Alterar senha</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Autenticação em dois fatores (MFA)</h2>
+        @if (mfaPending)
+        {
+            <p><span class="status-badge">Ativação pendente</span></p>
+            <p class="muted">Cadastre um aplicativo autenticador para proteger o acesso. Ao confirmar, você recebe códigos de recuperação para usar se perder o dispositivo.</p>
+            <div class="button-row">
+                <a class="button button-primary" asp-controller="Account" asp-action="MfaEnrollment">Ativar MFA</a>
+            </div>
+        }
+        else
+        {
+            <p><span class="status-badge">Ativo</span></p>
+            <p class="muted">Se trocar de celular ou perder os códigos de recuperação, gere uma nova chave. A chave anterior deixa de ser válida e novos códigos de recuperação são exibidos na confirmação.</p>
+            <form method="post" action="/mfa/inscricao/regenerar" class="form-actions-row" data-prevent-double-submit>
+                @Html.AntiForgeryToken()
+                <button class="button button-secondary" type="submit">Gerar nova chave e códigos</button>
+            </form>
+        }
+    </div>
+
+    <details class="help-card"><summary>O que fica aqui depois</summary><p>Preferência de idioma e o centro de notificações desta conta entram nos próximos blocos da operação contratual; enquanto não existem, não aparecem como itens "em construção".</p></details>
+</section>

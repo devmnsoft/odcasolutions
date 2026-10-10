@@ -5360,7 +5360,7 @@ VALUES(44,'Operacao contratual A: catalogo oficial global e resolucao de aprovac
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 044
--- ODCA-MIGRATION 045 CHECKSUM 3ced09a710ec053f9fb10b97d803e7f3e204e439c7e07014d5e2c02b321bef0b
+-- ODCA-MIGRATION 045 CHECKSUM ecfc30049d774820ea3e00f3eed308e637967927ebd92d3e4325f6c94bdcd57c
 BEGIN;
 SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
 
@@ -5460,7 +5460,7 @@ REVOKE ALL ON FUNCTION odca.platform_user_search(uuid,text,integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION odca.platform_user_search(uuid,text,integer) TO odca_app;
 
 -- Publicar/retirar modelos do catalogo global oficial (gestao da plataforma).
-CREATE FUNCTION odca.platform_catalog_set_status(actor uuid,p_official_key text,action text,reason text)
+CREATE FUNCTION odca.platform_catalog_set_status(actor uuid,official_key text,action text,reason text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,odca AS $fn$
 DECLARE t odca.contract_templates%rowtype; v_reason text:=btrim(coalesce(reason,'')); v_new text;
 BEGIN
@@ -5469,7 +5469,7 @@ BEGIN
  THEN RETURN jsonb_build_object('error','Acao invalida.','code','catalog.action_invalid'); END IF;
  IF length(v_reason)<5 OR length(v_reason)>500
  THEN RETURN jsonb_build_object('error','Justificativa deve ter entre 5 e 500 caracteres.','code','catalog.reason'); END IF;
- SELECT * INTO t FROM odca.contract_templates WHERE owner_tenant_id IS NULL AND scope='global' AND official_key=btrim(coalesce(p_official_key,'')) FOR UPDATE;
+ SELECT * INTO t FROM odca.contract_templates WHERE owner_tenant_id IS NULL AND scope='global' AND official_key=btrim(coalesce(official_key,'')) FOR UPDATE;
  IF NOT FOUND THEN RETURN jsonb_build_object('error','Modelo nao existe no catalogo global da plataforma.','code','catalog.not_found'); END IF;
  v_new := CASE WHEN action='retire' THEN 'archived' ELSE 'published' END;
  IF t.status=v_new THEN RETURN jsonb_build_object('ok',true,'noOp',true,'key',t.official_key,'status',v_new,'rowVersion',t.row_version); END IF;
@@ -5482,7 +5482,7 @@ REVOKE ALL ON FUNCTION odca.platform_catalog_set_status(uuid,text,text,text) FRO
 GRANT EXECUTE ON FUNCTION odca.platform_catalog_set_status(uuid,text,text,text) TO odca_app;
 
 INSERT INTO odca.schema_migrations(version,name,checksum)
-VALUES(45,'Operacao contratual B: suporte tecnico em todos os planos, catalogo global publicavel/retiravel, busca global de usuarios e filtros de clientes','3ced09a710ec053f9fb10b97d803e7f3e204e439c7e07014d5e2c02b321bef0b')
+VALUES(45,'Operacao contratual B: suporte tecnico em todos os planos, catalogo global publicavel/retiravel, busca global de usuarios e filtros de clientes','ecfc30049d774820ea3e00f3eed308e637967927ebd92d3e4325f6c94bdcd57c')
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 045

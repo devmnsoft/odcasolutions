@@ -2,7 +2,7 @@
 @model SolicitationListItem[]
 @{
     Guid? filterTenant=ViewData["TenantId"] as Guid?; var service=ViewData["Service"] as string; var status=ViewData["Status"] as string; var search=ViewData["Search"] as string;
-    string ServiceLabel(string value)=>value switch { "revisao"=>"Revisão","adaptacao"=>"Adaptação","esclarecimento"=>"Esclarecimento",_=>value };
+    string ServiceLabel(string value)=>value switch { "revisao"=>"Revisão","adaptacao"=>"Adaptação","esclarecimento"=>"Esclarecimento","suporte_tecnico"=>"Suporte técnico",_=>value };
     string StatusLabel(string value)=>value switch { "aberta"=>"Aberta","triagem"=>"Em triagem","em_atendimento"=>"Em atendimento","aguardando_cliente"=>"Aguardando cliente","resolvida"=>"Resolvida","encerrada"=>"Encerrada","cancelada"=>"Cancelada",_=>value };
     string PriorityLabel(string value)=>value switch { "baixa"=>"Baixa","normal"=>"Normal","alta"=>"Alta","critica"=>"Crítica",_=>value };
     string Fmt(DateTime? value)=>value?.ToString("dd/MM/yyyy HH:mm")??"—";
@@ -14,7 +14,7 @@
 <section class="help-card" aria-labelledby="fila-help"><h2 id="fila-help">Fluxo de atendimento</h2><p>Abra a solicitação, faça a <strong>triagem</strong> (a primeira resposta do SLA zera ao responder ou iniciar o atendimento), resolva com um resumo da solução e aguarde o cliente encerrar. Pausas e esperas justificadas param o relógio; violações ficam registradas no histórico.</p></section>
 <form method="get" class="review-filters" aria-label="Filtros da fila">
  <label>Organização (ID)<input type="text" name="tenantId" value="@filterTenant" placeholder="opcional" /></label>
- <label>Serviço<select name="service"><option value="">Todos</option>@foreach(var option in new[]{("revisao","Revisão"),("adaptacao","Adaptação"),("esclarecimento","Esclarecimento")}){<option value="@option.Item1" selected="@(service==option.Item1)">@option.Item2</option>}</select></label>
+ <label>Serviço<select name="service"><option value="">Todos</option>@foreach(var option in new[]{("revisao","Revisão"),("adaptacao","Adaptação"),("esclarecimento","Esclarecimento"),("suporte_tecnico","Suporte técnico")}){<option value="@option.Item1" selected="@(service==option.Item1)">@option.Item2</option>}</select></label>
  <label>Situação<select name="status"><option value="">Todas</option>@foreach(var option in new[]{("aberta","Aberta"),("triagem","Em triagem"),("em_atendimento","Em atendimento"),("aguardando_cliente","Aguardando cliente"),("resolvida","Resolvida"),("encerrada","Encerrada"),("cancelada","Cancelada")}){<option value="@option.Item1" selected="@(status==option.Item1)">@option.Item2</option>}</select></label>
  <label>Buscar<input type="search" name="search" value="@search" placeholder="Protocolo, assunto ou organização" /></label>
  <button class="button button-quiet" type="submit">Aplicar filtros</button>

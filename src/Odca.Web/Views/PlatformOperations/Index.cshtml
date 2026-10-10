@@ -1,0 +1,32 @@
+@model Odca.Contracts.Administration.SlaPolicyRow[]
+@using Odca.Contracts.Administration
+@{
+    ViewData["Title"] = "Configurações operacionais";
+    string PlanLabel(string value) => value switch { "basic" => "Básico", "intermediate" => "Intermediário", "enterprise" => "Enterprise", _ => value };
+    string ServiceLabel(string value) => value switch { "revisao" => "Revisão (documental)", "adaptacao" => "Adaptação (documental)", "esclarecimento" => "Esclarecimento (documental)", "suporte_tecnico" => "Suporte técnico e recuperação de acesso", _ => value };
+    string PriorityLabel(string value) => value switch { "baixa" => "Baixa", "normal" => "Normal", "alta" => "Alta", "critica" => "Crítica", _ => value };
+    string Hours(int minutes) => minutes % 60 == 0 ? $"{minutes / 60d:0.#} h" : $"{minutes} min";
+    var order = new Dictionary<string, int> { ["baixa"] = 0, ["normal"] = 1, ["alta"] = 2, ["critica"] = 3 };
+    var rows = Model.OrderBy(r => r.PlanCode).ThenBy(r => r.Service).ThenBy(r => order.GetValueOrDefault(r.Priority, 99)).ToArray();
+}
+<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-controller="Home" asp-action="Index">Visão global</a><span>/</span><span aria-current="page">Configurações operacionais</span></nav>
+<header class="page-heading"><div><p class="eyebrow">Administração global</p><h1>Políticas de SLA vigentes</h1><p>Prazos de primeira resposta e de resolução por plano, serviço e prioridade, calculados em dias úteis dentro da janela comercial indicada (fuso America/Sao_Paulo). Valores atuais do catálogo operacional da plataforma.</p></div></header>
+<div class="responsive-table panel"><table>
+<thead><tr><th>Plano</th><th>Serviço</th><th>Prioridade</th><th>Primeira resposta</th><th>Resolução</th><th>Janela comercial</th><th>Calendário</th><th>Situação</th></tr></thead>
+<tbody>
+@foreach(var row in rows)
+{
+    <tr>
+      <td data-label="Plano">@PlanLabel(row.PlanCode)</td>
+      <td data-label="Serviço">@ServiceLabel(row.Service)</td>
+      <td data-label="Prioridade">@PriorityLabel(row.Priority)</td>
+      <td data-label="Primeira resposta">@Hours(row.FirstResponseMinutes)</td>
+      <td data-label="Resolução">@Hours(row.ResolutionMinutes)</td>
+      <td data-label="Janela comercial">@row.BusinessStart–@row.BusinessEnd</td>
+      <td data-label="Calendário">@(row.Calendar == "dias_uteis" ? "Dias úteis" : "Contínuo")</td>
+      <td data-label="Situação"><span class="status-badge">@(row.Enabled ? "Vigente" : "Desativada")</span></td>
+    </tr>
+}
+</tbody>
+</table></div>
+<details class="help-card"><summary>Como ler esta matriz</summary><p>Os serviços documentais (revisão, adaptação e esclarecimento) são operados pela equipe ODCA apenas para o plano Enterprise, conforme o escopo contratual. Suporte técnico e recuperação de acesso estão abertos a todos os planos vigentes e usam a linha correspondente ao plano da organização. Alterar estes valores é uma decisão de política da plataforma e ainda não é exposta para edição nesta operação.</p></details>

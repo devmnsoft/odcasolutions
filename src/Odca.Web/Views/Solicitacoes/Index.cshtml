@@ -3,18 +3,18 @@
 @{
     var tenantId=(Guid)ViewData["TenantId"]!; var service=ViewData["Service"] as string; var status=ViewData["Status"] as string;
     var search=ViewData["Search"] as string; var canManage=ViewData["CanManage"] as bool?==true;
-    string ServiceLabel(string value)=>value switch { "revisao"=>"Revisão","adaptacao"=>"Adaptação","esclarecimento"=>"Esclarecimento",_=>value };
+    string ServiceLabel(string value)=>value switch { "revisao"=>"Revisão","adaptacao"=>"Adaptação","esclarecimento"=>"Esclarecimento","suporte_tecnico"=>"Suporte técnico",_=>value };
     string StatusLabel(string value)=>value switch { "aberta"=>"Aberta","triagem"=>"Em triagem","em_atendimento"=>"Em atendimento","aguardando_cliente"=>"Aguardando você","resolvida"=>"Resolvida","encerrada"=>"Encerrada","cancelada"=>"Cancelada",_=>value };
     string PriorityLabel(string value)=>value switch { "baixa"=>"Baixa","normal"=>"Normal","alta"=>"Alta","critica"=>"Crítica",_=>value };
     string Fmt(DateTime? value)=>value?.ToString("dd/MM/yyyy HH:mm")??"—";
 }
 <nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-controller="Onboarding" asp-action="CustomerHome">Visão geral</a><span>/</span><span aria-current="page">Central de solicitações</span></nav>
-<header class="page-heading"><div><p class="eyebrow">Atendimento ODCA</p><h1>Central de solicitações</h1><p>Fale com a equipe ODCA para revisar, adaptar ou esclarecer documentos. Prazos de resposta são monitorados por SLA.</p></div>@if(canManage){<a class="button button-primary" asp-action="Nova" asp-route-tenantId="@tenantId">Nova solicitação</a>}</header>
+<header class="page-heading"><div><p class="eyebrow">Atendimento ODCA</p><h1>Central de solicitações</h1><p>Fale com a equipe ODCA para revisar, adaptar ou esclarecer documentos. Prazos de resposta são monitorados por SLA.</p></div>@if(canManage){@if(string.IsNullOrEmpty(service)){<a class="button button-primary" asp-action="Nova" asp-route-tenantId="@tenantId">Nova solicitação</a>}else{<a class="button button-primary" asp-action="Nova" asp-route-tenantId="@tenantId" asp-route-service="@service">Nova solicitação (@ServiceLabel(service))</a>}}</header>
 @if(ViewData["LoadError"] is string loadError){<div class="alert alert-error" role="alert">@loadError</div>}
 @if(TempData["SolNotice"] is string notice){<div class="alert alert-success" role="status">@notice</div>}
 <section class="help-card" aria-labelledby="sol-help"><h2 id="sol-help">Como funciona</h2><p>Descreva a demanda e acompanhe as respostas em uma única conversa. A ODCA responde dentro dos prazos do seu plano; quando a solicitação fica <strong>aguardando você</strong>, o relógio do SLA é pausado até a sua resposta.</p></section>
 <form method="get" class="review-filters" aria-label="Filtros da central">
- <label>Serviço<select name="service"><option value="">Todos</option>@foreach(var option in new[]{("revisao","Revisão"),("adaptacao","Adaptação"),("esclarecimento","Esclarecimento")}){<option value="@option.Item1" selected="@(service==option.Item1)">@option.Item2</option>}</select></label>
+ <label>Serviço<select name="service"><option value="">Todos</option>@foreach(var option in new[]{("revisao","Revisão"),("adaptacao","Adaptação"),("esclarecimento","Esclarecimento"),("suporte_tecnico","Suporte técnico")}){<option value="@option.Item1" selected="@(service==option.Item1)">@option.Item2</option>}</select></label>
  <label>Situação<select name="status"><option value="">Todas</option>@foreach(var option in new[]{("aberta","Aberta"),("triagem","Em triagem"),("em_atendimento","Em atendimento"),("aguardando_cliente","Aguardando você"),("resolvida","Resolvida"),("encerrada","Encerrada"),("cancelada","Cancelada")}){<option value="@option.Item1" selected="@(status==option.Item1)">@option.Item2</option>}</select></label>
  <label>Buscar<input type="search" name="search" value="@search" placeholder="Protocolo ou assunto" /></label>
  <button class="button button-quiet" type="submit">Aplicar filtros</button>
