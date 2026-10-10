@@ -154,7 +154,8 @@ public sealed class StructuredContractDocumentTests
 
         var html=ContractDocumentRenderer.ToHtml(content,fields,"[]");
 
-        Assert.Contains("Não informado",html);
+        Assert.DoesNotContain("Não informado",html);
+        Assert.Contains("\u2014",html);
     }
 
     [Fact]
@@ -200,6 +201,47 @@ public sealed class StructuredContractDocumentTests
             var offset = int.Parse(xrefLines[i + 3].AsSpan(0, 10), CultureInfo.InvariantCulture);
             Assert.StartsWith($"{i + 1} 0 obj\n", pdf[offset..]);
         }
+    }
+
+    [Fact]
+    public void PdfEncodesWinAnsiSymbolsAsSingleCp1252Bytes()
+    {
+        // Travessão (U+2014) e bullet (U+2022) devem virar bytes únicos CP1252 (0x97/0x95),
+        // nunca sequências UTF-8 de três bytes dentro da stream.
+        const string content = """{"type":"document","content":[{"type":"paragraph","content":[{"type":"text","text":"Valor — total; item • único"}]}]}""";
+
+        var pdf = ContractDocumentRenderer.ToPdf(content, "[]", "[]", "Documento", 1);
+
+        Assert.Contains((byte)0x97, pdf);
+        Assert.Contains((byte)0x95, pdf);
+        Assert.False(ByteSequenceExtensions.Contains(pdf, new byte[] { 0xE2, 0x80, 0x94 }), "travessão em UTF-8");
+        Assert.False(ByteSequenceExtensions.Contains(pdf, new byte[] { 0xE2, 0x80, 0xA2 }), "bullet em UTF-8");
+    }
+
+    [Fact]
+    public void PdfInfoDictionaryIsStableAndCarriesDatesOnlyWhenCoverIsRendered()
+    {
+        const string plainContent = """{"type":"document","content":[{"type":"paragraph","content":[{"type":"text","text":"Corpo"}]}]}""";
+        const string coverContent = """{"type":"document","content":[{"type":"heading","level":1,"content":[{"type":"text","text":"Seção A"}]},{"type":"heading","level":1,"content":[{"type":"text","text":"Seção B"}]}]}""";
+        var issuedAt = new DateTimeOffset(2026, 10, 9, 12, 0, 0, TimeSpan.Zero);
+
+        var withoutCover = ContractDocumentRenderer.ToPdf(plainContent, "[]", "[]", "Documento", 1);
+        var withCover = ContractDocumentRenderer.ToPdf(
+            coverContent, "[]", "[]", "Documento", 1,
+            new ContractDocumentRenderer.DocumentCoverInfo("ACME LTDA", null, "Contrato", 1, issuedAt, null));
+        var textWithout = Encoding.Latin1.GetString(withoutCover);
+        var textWith = Encoding.Latin1.GetString(withCover);
+
+        // /Info presente nos dois casos com producer/version estáveis e referenciado no trailer.
+        Assert.Contains("/Producer (ODCA Solutions (" + ContractDocumentRenderer.PdfRendererVersion + "))", textWithout);
+        Assert.Contains("/Producer (ODCA Solutions (" + ContractDocumentRenderer.PdfRendererVersion + "))", textWith);
+        Assert.Contains("/Info ", textWithout);
+        Assert.Contains("/Info ", textWith);
+        // Sem capa não há data estável: o artefato permanece determinístico (D-A4).
+        Assert.DoesNotContain("/CreationDate", textWithout);
+        // Com capa a data vem do snapshot da versão, formatada D:yyyyMMddHHmmssZ.
+        Assert.Contains("/CreationDate (D:20261009120000Z)", textWith);
+        Assert.Contains("SUMARIO", textWith);
     }
 
     [Theory]

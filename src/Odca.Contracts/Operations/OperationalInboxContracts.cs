@@ -112,7 +112,10 @@ public sealed record ContractSheetSignatureParticipantDto(
     string Name,
     string Role,
     string ParticipantType,
-    DateTimeOffset? SignedAt);
+    DateTimeOffset? SignedAt,
+    // v043: modalidade registrada na assinatura (nulo em linhas pré-v043) e vínculo de identidade com o espectador.
+    string? SignedThrough = null,
+    bool IdentityLinkedToMe = false);
 
 /// <summary>
 /// Versão gerada mais recente com preparação de assinatura (B.3.2c).

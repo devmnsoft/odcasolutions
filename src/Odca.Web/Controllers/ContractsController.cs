@@ -958,6 +958,8 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         Guid versionId,
         Guid preparationId,
         Guid participantClientId,
+        string? signMode = null,
+        string? evidence = null,
         string? participantName = null,
         [FromQuery] string? from = null,
         [FromQuery] int? year = null,
@@ -975,7 +977,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         var name = string.IsNullOrWhiteSpace(participantName) ? "o participante" : participantName.Trim();
         var returnUrl = BuildReturnUrl(tenantId, contractId, "#assinatura", from, year, month, scope, kind, urgency, viewId, obrigacao);
 
-        var result = await api.SignSignatureParticipantAsync(token, tenantId, versionId, preparationId, participantClientId, ct);
+        var result = await api.SignSignatureParticipantAsync(token, tenantId, versionId, preparationId, participantClientId, new SignParticipantRequest(signMode, evidence), ct);
         if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         if (result.Status == ApiCallStatus.NotFound)
@@ -990,6 +992,8 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
             {
                 "preparation.not_confirmed" => "A preparação de assinatura ainda não foi confirmada no Estúdio do Contrato.",
                 "participant.already_signed" => $"A assinatura de {name} já havia sido registrada.",
+                "participant.identity_not_linked" => "Vincule sua conta a este participante antes de assinar pela sua sessão.",
+                "sign.mfa_required" => "A assinatura pela sua sessão exige verificação em dois fatores (MFA). Conclua o MFA e repita.",
                 _ => result.UserMessage("Não foi possível registrar a assinatura.")
             };
             return Redirect(returnUrl);
@@ -1009,6 +1013,54 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
             TempData["ContractSheetNotice"] = $"Assinatura de {name} registrada. Todos os participantes assinaram — a versão foi marcada como assinada.";
         else
             TempData["ContractSheetNotice"] = $"Assinatura de {name} registrada em nome do usuário conectado nesta sessão.";
+        return Redirect(returnUrl);
+    }
+
+    [HttpPost("assinaturas/vincular")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> LinkParticipantIdentity(
+        Guid tenantId,
+        Guid contractId,
+        Guid versionId,
+        Guid preparationId,
+        Guid participantClientId,
+        string? participantName = null,
+        [FromQuery] string? from = null,
+        [FromQuery] int? year = null,
+        [FromQuery] int? month = null,
+        [FromQuery] string? scope = null,
+        [FromQuery] string? kind = null,
+        [FromQuery] string? urgency = null,
+        [FromQuery] Guid? viewId = null,
+        [FromQuery] Guid? obrigacao = null,
+        CancellationToken ct = default)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+
+        var name = string.IsNullOrWhiteSpace(participantName) ? "o participante" : participantName.Trim();
+        var returnUrl = BuildReturnUrl(tenantId, contractId, "#assinatura", from, year, month, scope, kind, urgency, viewId, obrigacao);
+
+        var result = await api.LinkSignatureParticipantIdentityAsync(token, tenantId, versionId, preparationId, participantClientId, ct);
+        if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (result.Status is ApiCallStatus.NotFound or ApiCallStatus.Conflict)
+        {
+            TempData["ContractSheetError"] = result.ErrorCode switch
+            {
+                "preparation.not_confirmed" => "A preparação de assinatura ainda não foi confirmada no Estúdio do Contrato.",
+                "link.not_member" => "Somente membros desta organização podem vincular a própria conta.",
+                _ => result.UserMessage("Não foi possível vincular sua conta a este participante.")
+            };
+            return Redirect(returnUrl);
+        }
+        if (!result.Succeeded)
+        {
+            TempData["ContractSheetError"] = result.UserMessage("Não foi possível vincular sua conta a este participante.");
+            return Redirect(returnUrl);
+        }
+
+        TempData["ContractSheetNotice"] = $"Sua conta foi vinculada a {name}. Você já pode assinar pela sua sessão (com MFA).";
         return Redirect(returnUrl);
     }
 

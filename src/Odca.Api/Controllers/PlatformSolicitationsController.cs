@@ -84,6 +84,8 @@ public sealed class PlatformSolicitationsController(NpgsqlDataSource dataSource)
 
     private Guid? Actor() => Guid.TryParse(User.FindFirstValue("sub"), out var id) ? id : null;
 
+    // Asse: os parâmetros seguem exatamente a ordem das colunas do RETURNS TABLE
+    // de odca.template_approvals_queue (materialização Dapper por nome; sem opcionais).
     internal sealed record ApprovalQueueRow(Guid TenantId, string OrganizationName, string? ActivityProfile, string OfficialKey,
-        string? Decision, string? DecisionNote, DateTime? DecidedAt, string? DecidedByName, long GeneratedCount, DateTime? LastGeneratedAt);
+        string? Decision, string? DecisionNote, DateTime? DecidedAt, string? DecidedByName, int? ApprovedRevision, long GeneratedCount, DateTime? LastGeneratedAt);
 }

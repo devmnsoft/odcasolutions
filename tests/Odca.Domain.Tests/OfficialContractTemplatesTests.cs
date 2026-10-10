@@ -8,7 +8,9 @@ public sealed class OfficialContractTemplatesTests
     public void OfficialLibraryParsesAgainstCanonicalSchema()
     {
         OfficialContractTemplates.EnsureValid();
-        Assert.Equal(8, OfficialContractTemplates.All.Count);
+        // Chaves oficiais: nda-unilateral, nda-mutual, services-agreement, contract-amendment,
+        // supply-agreement, lease-agreement, multiple-therapies, informed-consent, surgical-consent
+        Assert.Equal(9, OfficialContractTemplates.All.Count);
         Assert.Equal(OfficialContractTemplates.All.Count, OfficialContractTemplates.All.Select(item => item.Key).Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(OfficialContractTemplates.All.Count, OfficialContractTemplates.All.Select(item => item.Name).Distinct(StringComparer.Ordinal).Count());
     }

@@ -40,7 +40,8 @@
         "generated" => "Gerada",
         "submitted" => "Em revisão",
         "internally_approved" => "Aprovada internamente",
-        "externally_signed" => "Assinada",
+        "changes_requested" => "Ajustes solicitados",
+        "externally_signed" => "Concluída na plataforma",
         _ => value ?? "—"
     };
 
@@ -891,6 +892,13 @@
         @foreach (var participant in signature.Participants)
         {
             var alreadySigned = participant.SignedAt.HasValue;
+            // D-A1: exibição honesta da modalidade registrada (linhas pré-v043 sem modalidade).
+            var modalityLabel = participant.SignedThrough switch
+            {
+                "session" => "Assinado pela conta vinculada (MFA)",
+                "evidence" => "Registrado por evidência",
+                _ => "Assinado (registro anterior à rastreabilidade de modalidade)"
+            };
             <article class="renewal-row">
                 <div>
                     <span class="status-label">@ParticipantTypeLabel(participant.ParticipantType)</span>
@@ -900,7 +908,7 @@
                 <div class="next-action">
                     @if (alreadySigned)
                     {
-                        <span class="status-label">Assinado em @participant.SignedAt!.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                        <span class="status-label">@modalityLabel em @participant.SignedAt!.Value.ToString("dd/MM/yyyy HH:mm")</span>
                     }
                     else
                     {
@@ -913,11 +921,40 @@
                                   asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="participantName" value="@participant.Name" />
-                                <button class="button button-primary" type="button"
-                                        data-confirm-open data-confirm-form="sign-form-@participant.ClientId"
-                                        data-confirm-title="Registrar assinatura"
-                                        data-confirm-body="Deseja registrar a assinatura de '@participant.Name' nesta versão? O ato será registrado pelo usuário conectado (@(User.Identity?.Name ?? "sua sessão")) e permanece no histórico."
-                                        data-confirm-action="Registrar assinatura">Assinar — @participant.Name</button>
+                                @if (participant.IdentityLinkedToMe)
+                                {
+                                    <input type="hidden" name="signMode" value="session" />
+                                    <button class="button button-primary" type="button"
+                                            data-confirm-open data-confirm-form="sign-form-@participant.ClientId"
+                                            data-confirm-title="Assinar pela sua conta"
+                                            data-confirm-body="Você assina como '@participant.Name' pela sua própria conta (@(User.Identity?.Name ?? "sua sessão")). A sessão exige verificação em dois fatores (MFA)."
+                                            data-confirm-action="Assinar pela minha conta">Assinar pela minha conta (MFA)</button>
+                                }
+                                else
+                                {
+                                    <input type="hidden" name="signMode" value="evidence" />
+                                    <details class="sign-evidence-details">
+                                        <summary class="button button-quiet" style="display:inline-block">Registrar por evidência — @participant.Name</summary>
+                                        <div class="field-stack">
+                                            <label class="field-label" for="evidence-@participant.ClientId">Evidência da assinatura (mínimo 5 caracteres)</label>
+                                            <textarea id="evidence-@participant.ClientId" name="evidence" rows="3" required minlength="5" maxlength="2000"
+                                                      placeholder="Descreva o documento físico, contrato assinado fora da plataforma ou outra evidência"></textarea>
+                                            <button class="button button-primary" type="submit">Registrar por evidência</button>
+                                        </div>
+                                    </details>
+                                }
+                            </form>
+                            <form id="link-form-@participant.ClientId" method="post" asp-action="LinkParticipantIdentity" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
+                                  asp-route-versionId="@signature.VersionId" asp-route-preparationId="@signature.PreparationId" asp-route-participantClientId="@participant.ClientId"
+                                  asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+                                  asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="participantName" value="@participant.Name" />
+                                <button class="button button-quiet" type="button"
+                                        data-confirm-open data-confirm-form="link-form-@participant.ClientId"
+                                        data-confirm-title="Vincular sua conta"
+                                        data-confirm-body="Deseja vincular sua conta (@(User.Identity?.Name ?? "sua sessão")) ao participante '@participant.Name'? O vínculo é pessoal e auditável; só você vincula a própria conta."
+                                        data-confirm-action="Vincular minha conta">Vincular minha conta</button>
                             </form>
                         }
                     }

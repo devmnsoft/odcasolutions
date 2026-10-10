@@ -204,13 +204,20 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
                 signatureRow.Participants = (await connection.QueryAsync<SheetSignatureParticipantRow>(new CommandDefinition(
                     """
                     SELECT sp.client_id AS ClientId, sp.name AS Name, sp.role AS Role,
-                           sp.participant_type AS ParticipantType, sp.signed_at AS SignedAt
+                           sp.participant_type AS ParticipantType, sp.signed_at AS SignedAt,
+                           sp.signed_through AS SignedThrough,
+                           EXISTS (
+                             SELECT 1 FROM odca.memberships m
+                              WHERE m.id = sp.identity_membership_id
+                                AND m.tenant_id = sp.tenant_id
+                                AND m.user_id = @viewerId
+                           ) AS IdentityLinkedToMe
                       FROM odca.signature_participants sp
                      WHERE sp.tenant_id = @tenantId AND sp.preparation_id = @preparationId
                        AND sp.composition_revision = @revision
                      ORDER BY sp.position
                     """,
-                    new { tenantId, preparationId = signatureRow.PreparationId, revision },
+                    new { tenantId, preparationId = signatureRow.PreparationId, revision, viewerId },
                     transaction,
                     cancellationToken: cancellationToken))).AsList();
             }
@@ -264,7 +271,8 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             signatureRow.PdfStatus,
             signatureRow.Participants
                 .Select(row => new ContractSheetSignatureParticipantDto(
-                    row.ClientId, row.Name, row.Role, row.ParticipantType, ToUtcOffset(row.SignedAt)))
+                    row.ClientId, row.Name, row.Role, row.ParticipantType, ToUtcOffset(row.SignedAt),
+                    row.SignedThrough, row.IdentityLinkedToMe))
                 .ToArray(),
             ToUtcOffset(signatureRow.LastRemindedAt));
 
@@ -354,6 +362,9 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
         public string Role { get; set; } = string.Empty;
         public string ParticipantType { get; set; } = string.Empty;
         public DateTime? SignedAt { get; set; }
+        // v043: modalidade registrada (session/evidence) e vínculo do espectador.
+        public string? SignedThrough { get; set; }
+        public bool IdentityLinkedToMe { get; set; }
     }
 
     private static DateTimeOffset ToUtcOffset(DateTime dt) =>

@@ -389,4 +389,25 @@ public sealed class MigrationChecksumTests
         Assert.Contains("CREATE OR REPLACE FUNCTION odca.consume_monthly_franchise(", snapshot, StringComparison.Ordinal);
         Assert.Contains("tenant.status <> 'suspended'", snapshot, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ReleaseV042PreservesTheDefectiveDeclaredChecksumForAudit()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var previous = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v041.sql")).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v042.sql")).Replace("\r\n", "\n");
+        DatabaseMigrator.ValidateChecksums(previous);
+        DatabaseMigrator.ValidateChecksums(canonical);
+        for (var version = 1; version <= 41; version++)
+            Assert.Equal(MigrationBlock(previous, version), MigrationBlock(canonical, version));
+        // The distributed v042 package declared cfb7990e…, which did not match the
+        // SHA-256 of its own normalized body (901a50fc…). The immutable snapshot keeps
+        // the defective package for audit; the canonical installer carries the repaired
+        // declaration, and the migrator re-stamps the stored history row.
+        Assert.Contains("ODCA-MIGRATION 042 CHECKSUM cfb7990e2d98c35a3825857952b4489397c9c58c91150d2028a7c7b86880947f", snapshot, StringComparison.Ordinal);
+        Assert.Contains("'cfb7990e2d98c35a3825857952b4489397c9c58c91150d2028a7c7b86880947f'", snapshot, StringComparison.Ordinal);
+        Assert.DoesNotContain("ODCA-MIGRATION 043", snapshot, StringComparison.Ordinal);
+        Assert.Contains("ODCA-MIGRATION 042 CHECKSUM 901a50fc9b4cf02bc18189b602df973102ae754f27926511700281eadb75ee9e", canonical, StringComparison.Ordinal);
+        Assert.NotEqual(File.ReadAllBytes(FindSql()), File.ReadAllBytes(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v042.sql")));
+    }
 }

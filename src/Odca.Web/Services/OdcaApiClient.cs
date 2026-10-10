@@ -147,8 +147,15 @@ public sealed partial class OdcaApiClient(HttpClient client)
         return await SendAsync<ContractLifecycleResult>(message, false, ct);
     }
 
-    public Task<ApiCallResult<JsonElement>> SignSignatureParticipantAsync(string token, Guid tenantId, Guid versionId, Guid preparationId, Guid participantClientId, CancellationToken ct) =>
-        SendAsync<JsonElement>(CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/versions/{versionId}/signature-preparations/{preparationId}/participants/{participantClientId}/sign", token), false, ct);
+    public async Task<ApiCallResult<JsonElement>> SignSignatureParticipantAsync(string token, Guid tenantId, Guid versionId, Guid preparationId, Guid participantClientId, SignParticipantRequest body, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/versions/{versionId}/signature-preparations/{preparationId}/participants/{participantClientId}/sign", token);
+        message.Content = JsonContent.Create(body);
+        return await SendAsync<JsonElement>(message, false, ct);
+    }
+
+    public Task<ApiCallResult<JsonElement>> LinkSignatureParticipantIdentityAsync(string token, Guid tenantId, Guid versionId, Guid preparationId, Guid participantClientId, CancellationToken ct) =>
+        SendAsync<JsonElement>(CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/versions/{versionId}/signature-preparations/{preparationId}/participants/{participantClientId}/identity-link", token), false, ct);
 
     public Task<ApiCallResult<JsonElement>> RemindSignaturePreparationAsync(string token, Guid tenantId, Guid versionId, Guid preparationId, CancellationToken ct) =>
         SendAsync<JsonElement>(CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/versions/{versionId}/signature-preparations/{preparationId}/remind", token), false, ct);

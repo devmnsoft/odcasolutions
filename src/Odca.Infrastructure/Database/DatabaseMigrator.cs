@@ -219,10 +219,27 @@ public sealed class DatabaseMigrator(string sqlPath)
         COMMIT;
         """);
 
+    // v042 was committed with a declared checksum (cfb7990e…) that did not match
+    // the SHA-256 of its own normalized body; databases migrated from that file
+    // state keep the wrong checksum in odca.schema_migrations. The migration
+    // body itself was correct, so the repair only re-stamps the history row.
+    private static readonly KnownDefectivePackage V042DeclaredChecksum = new(
+        42,
+        "cfb7990e2d98c35a3825857952b4489397c9c58c91150d2028a7c7b86880947f",
+        "901a50fc9b4cf02bc18189b602df973102ae754f27926511700281eadb75ee9e",
+        """
+        BEGIN;
+        UPDATE odca.schema_migrations
+           SET checksum = '901a50fc9b4cf02bc18189b602df973102ae754f27926511700281eadb75ee9e'
+         WHERE version = 42 AND checksum = 'cfb7990e2d98c35a3825857952b4489397c9c58c91150d2028a7c7b86880947f';
+        COMMIT;
+        """);
+
     private static readonly KnownDefectivePackage[] KnownDefectivePackages =
     [
         V009PreviewInvitation,
         V035ConsumeMonthlyFranchise,
+        V042DeclaredChecksum,
     ];
 
     private static async Task RepairKnownDefectivePackagesAsync(
