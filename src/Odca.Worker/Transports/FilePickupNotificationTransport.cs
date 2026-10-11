@@ -22,4 +22,12 @@ public sealed class FilePickupNotificationTransport : INotificationTransport
         var path = Path.Combine(_pickupDirectory, $"{id:N}.txt");
         await File.WriteAllTextAsync(path, content, cancellationToken);
     }
+
+    public async Task SendUserNotificationAsync(string destination, string subject, Uri link, CancellationToken cancellationToken)
+    {
+        var id = Guid.NewGuid();
+        var content = $"Notificação local — Assunto: {subject}\nDestinatário: {destination}\n{link}\n";
+        var path = Path.Combine(_pickupDirectory, $"notif-{id:N}.txt");
+        await File.WriteAllTextAsync(path, content, cancellationToken);
+    }
 }

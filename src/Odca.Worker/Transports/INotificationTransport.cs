@@ -7,4 +7,5 @@ namespace Odca.Worker.Transports;
 public interface INotificationTransport
 {
     Task SendInvitationAsync(string destination, Uri link, CancellationToken cancellationToken);
+    Task SendUserNotificationAsync(string destination, string subject, Uri link, CancellationToken cancellationToken);
 }

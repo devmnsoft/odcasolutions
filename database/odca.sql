@@ -5551,3 +5551,75 @@ VALUES(47,'Aprofundamento 3: resolucao oficial honra a versao fixada pela minuta
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 047
+
+-- ODCA-MIGRATION 048 CHECKSUM 4527c22dbabc8d2f1d0c8c9b23ae413b023f033f1d7ade189cc5ff63e6270b64
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
+
+-- Aprofundamento 5 (notificacoes): paginacao, leitura individual, preferencias
+-- (tipo/canal/idioma) e link seguro de destino com autorizacao por recurso.
+
+-- 1) user_notifications: canal + alvo de destino + indices da consulta
+ALTER TABLE odca.user_notifications
+  ADD COLUMN IF NOT EXISTS channel varchar(32) NOT NULL DEFAULT 'in_app',
+  ADD COLUMN IF NOT EXISTS target_type varchar(40),
+  ADD COLUMN IF NOT EXISTS target_id uuid;
+ALTER TABLE odca.user_notifications DROP CONSTRAINT IF EXISTS user_notifications_channel_ck;
+ALTER TABLE odca.user_notifications ADD CONSTRAINT user_notifications_channel_ck CHECK (channel IN ('in_app','email'));
+UPDATE odca.user_notifications SET target_type='obligation', target_id=obligation_id WHERE target_type IS NULL AND obligation_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS user_notifications_user_feed_ix ON odca.user_notifications(tenant_id,user_id,created_at DESC,id DESC);
+CREATE INDEX IF NOT EXISTS user_notifications_user_unread_ix ON odca.user_notifications(tenant_id,user_id) WHERE read_at IS NULL;
+
+-- 2) preferencias por tipo (habilitacao + canais) e ajustes globais (idioma)
+CREATE TABLE IF NOT EXISTS odca.user_notification_preferences
+(
+  tenant_id uuid NOT NULL, user_id uuid NOT NULL, kind varchar(80) NOT NULL,
+  enabled boolean NOT NULL DEFAULT true, channel_in_app boolean NOT NULL DEFAULT true, channel_email boolean NOT NULL DEFAULT false,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY(tenant_id,user_id,kind),
+  FOREIGN KEY(tenant_id,user_id) REFERENCES odca.memberships(tenant_id,user_id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS odca.user_notification_settings
+(
+  tenant_id uuid NOT NULL, user_id uuid NOT NULL, preferred_language varchar(16) NOT NULL DEFAULT 'pt-BR',
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY(tenant_id,user_id),
+  FOREIGN KEY(tenant_id,user_id) REFERENCES odca.memberships(tenant_id,user_id) ON DELETE CASCADE
+);
+ALTER TABLE odca.user_notification_preferences ENABLE ROW LEVEL SECURITY;
+ALTER TABLE odca.user_notification_preferences FORCE ROW LEVEL SECURITY;
+ALTER TABLE odca.user_notification_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE odca.user_notification_settings FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON odca.user_notification_preferences;
+CREATE POLICY tenant_isolation ON odca.user_notification_preferences TO odca_app USING(tenant_id=NULLIF(current_setting('odca.tenant_id',true),'')::uuid) WITH CHECK(tenant_id=NULLIF(current_setting('odca.tenant_id',true),'')::uuid);
+DROP POLICY IF EXISTS tenant_isolation ON odca.user_notification_settings;
+CREATE POLICY tenant_isolation ON odca.user_notification_settings TO odca_app USING(tenant_id=NULLIF(current_setting('odca.tenant_id',true),'')::uuid) WITH CHECK(tenant_id=NULLIF(current_setting('odca.tenant_id',true),'')::uuid);
+GRANT SELECT,INSERT,UPDATE ON odca.user_notification_preferences,odca.user_notification_settings TO odca_app;
+
+-- 3) canal de e-mail reusa o outbox: invitation_id passa a ser opcional
+ALTER TABLE odca.notification_outbox ALTER COLUMN invitation_id DROP NOT NULL;
+
+CREATE OR REPLACE FUNCTION odca.notification_channel_state(tenant_id uuid,user_id uuid,kind text)
+RETURNS TABLE(enabled boolean,channel_in_app boolean,channel_email boolean) LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,odca AS $$
+ SELECT COALESCE((SELECT enabled FROM odca.user_notification_preferences WHERE tenant_id=$1 AND user_id=$2 AND kind=$3), true),
+        COALESCE((SELECT channel_in_app FROM odca.user_notification_preferences WHERE tenant_id=$1 AND user_id=$2 AND kind=$3), true),
+        COALESCE((SELECT channel_email FROM odca.user_notification_preferences WHERE tenant_id=$1 AND user_id=$2 AND kind=$3), false);
+$$;
+REVOKE ALL ON FUNCTION odca.notification_channel_state(uuid,uuid,text) FROM PUBLIC; GRANT EXECUTE ON FUNCTION odca.notification_channel_state(uuid,uuid,text) TO odca_app;
+
+CREATE OR REPLACE FUNCTION odca.notification_target_authorized(actor_id uuid,tenant_id uuid,target_type text,target_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,odca AS $$
+ SELECT CASE
+   WHEN target_type='obligation' AND target_id IS NOT NULL THEN
+     EXISTS(SELECT 1 FROM odca.contract_obligations o WHERE o.tenant_id=tenant_id AND o.id=target_id AND o.deleted_at IS NULL
+       AND (o.owner_id=actor_id OR odca.tenant_actor_has_permission(actor_id,tenant_id,'tenant.obligations.read_all')))
+     AND odca.tenant_actor_has_permission(actor_id,tenant_id,'tenant.obligations.read')
+   ELSE false END;
+$$;
+REVOKE ALL ON FUNCTION odca.notification_target_authorized(uuid,uuid,text,uuid) FROM PUBLIC; GRANT EXECUTE ON FUNCTION odca.notification_target_authorized(uuid,uuid,text,uuid) TO odca_app;
+
+INSERT INTO odca.schema_migrations(version,name,checksum)
+VALUES(48,'Aprofundamento 5: notificacoes paginadas com leitura individual, preferencias e link seguro','4527c22dbabc8d2f1d0c8c9b23ae413b023f033f1d7ade189cc5ff63e6270b64')
+ON CONFLICT(version) DO NOTHING;
+COMMIT;
+-- ODCA-END 048

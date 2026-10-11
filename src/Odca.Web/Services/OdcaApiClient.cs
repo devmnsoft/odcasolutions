@@ -262,13 +262,29 @@ public sealed partial class OdcaApiClient(HttpClient client)
         return await SendAsync<RenewalReminderConfig>(message, false, ct);
     }
 
-    public Task<ApiCallResult<Odca.Contracts.Account.NotificationPage>> GetMyNotificationsAsync(string token, Guid tenantId, CancellationToken ct) =>
-        SendAsync<Odca.Contracts.Account.NotificationPage>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/notifications", token), false, ct);
+    public Task<ApiCallResult<Odca.Contracts.Account.NotificationPage>> GetMyNotificationsAsync(string token, Guid tenantId, int page = 1, int pageSize = 25, CancellationToken ct = default) =>
+        SendAsync<Odca.Contracts.Account.NotificationPage>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/notifications?page={page}&pageSize={pageSize}", token), false, ct);
 
     public async Task<ApiCallResult<object>> MarkMyNotificationsReadAsync(string token, Guid tenantId, CancellationToken ct)
     {
         using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/notifications/marcar-lidas", token);
         return await SendAsync<object>(message, false, ct);
+    }
+
+    public async Task<ApiCallResult<object>> MarkOneNotificationReadAsync(string token, Guid tenantId, Guid notificationId, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/notifications/{notificationId}/ler", token);
+        return await SendAsync<object>(message, false, ct);
+    }
+
+    public Task<ApiCallResult<Odca.Contracts.Account.NotificationPreferences>> GetMyNotificationPreferencesAsync(string token, Guid tenantId, CancellationToken ct) =>
+        SendAsync<Odca.Contracts.Account.NotificationPreferences>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/notifications/preferencias", token), false, ct);
+
+    public async Task<ApiCallResult<Odca.Contracts.Account.NotificationPreferences>> PutMyNotificationPreferencesAsync(string token, Guid tenantId, Odca.Contracts.Account.UpdateNotificationPreferencesRequest request, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Put, $"api/v1/organizations/{tenantId}/notifications/preferencias", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<Odca.Contracts.Account.NotificationPreferences>(message, false, ct);
     }
 
     public Task<ApiCallResult<SavedViewItem[]>> GetSavedViewsAsync(string token, Guid tenantId, string listingType, CancellationToken cancellationToken) =>

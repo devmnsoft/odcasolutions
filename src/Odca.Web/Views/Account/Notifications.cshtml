@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "Notificações";
     var hasTenant = ViewData["TenantId"] is not null;
+    var tenantId = ViewData["TenantId"] as string;
 }
 <section class="narrow">
     <header class="page-heading"><div><p class="eyebrow">Minha conta</p><h1>Notificações</h1><p>Avisos direcionados a você nesta organização.</p></div></header>
@@ -24,11 +25,51 @@
             <ul class="check-list">
                 @foreach (var n in Model.Items)
                 {
-                    <li class="@(n.ReadAt is null ? "notification-unread" : null)"><strong>@n.Title</strong><br /><span>@n.Body</span><br /><small>@n.CreatedAt.ToString("dd/MM/yyyy HH:mm")@(n.ReadAt is null ? "" : " · lida")</small></li>
+                    <li class="@(n.ReadAt is null ? "notification-unread" : null)">
+                        <strong>@n.Title</strong>
+                        <br /><span>@n.Body</span>
+                        <br />
+                        <small>@n.CreatedAtFormatted@(n.ReadAt is null ? "" : " · lida")</small>
+                        @if (n.CanOpen && n.TargetType == "obligation" && n.TargetId.HasValue && hasTenant)
+                        {
+                            <br /><a href="/organizacoes/@tenantId/obrigacoes/@n.TargetId/historico" class="notification-link">Ver obrigação →</a>
+                        }
+                        @if (n.ReadAt is null && hasTenant)
+                        {
+                            <form method="post" action="/minha-conta/notificacoes/@n.Id/ler" style="display:inline;margin-left:.5rem;" data-prevent-double-submit>
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="button button-quiet" style="font-size:.8rem;padding:.2rem .5rem;">Marcar lida</button>
+                            </form>
+                        }
+                    </li>
                 }
             </ul>
         }
     </div>
+
+    @if (hasTenant)
+    {
+        <div class="card" style="margin-top:1rem;">
+            <h3>Preferências de notificação</h3>
+            <p>Configure quais tipos de aviso você recebe e por qual canal.</p>
+            <a class="button button-secondary" asp-controller="Account" asp-action="NotificationPreferences">Gerenciar preferências</a>
+        </div>
+    }
+
+    @if (Model.Total > Model.PageSize)
+    {
+        <div class="pagination" style="margin-top:1rem;display:flex;gap:.5rem;align-items:center;">
+            @if (Model.Page > 1)
+            {
+                <a class="button button-quiet" asp-controller="Account" asp-action="Notifications" asp-route-page="(Model.Page - 1)" asp-route-pageSize="@Model.PageSize">← Anterior</a>
+            }
+            <span>Página @Model.Page de @((int)Math.Ceiling((double)Model.Total / Model.PageSize)) (@Model.Total avisos)</span>
+            @if (Model.HasMore)
+            {
+                <a class="button button-quiet" asp-controller="Account" asp-action="Notifications" asp-route-page="(Model.Page + 1)" asp-route-pageSize="@Model.PageSize">Próxima →</a>
+            }
+        </div>
+    }
 
     <div class="button-row"><a class="button button-quiet" asp-controller="Account" asp-action="Conta">Voltar para Minha conta</a></div>
 </section>

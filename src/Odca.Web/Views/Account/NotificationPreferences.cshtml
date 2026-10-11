@@ -1,0 +1,56 @@
+@model Odca.Contracts.Account.NotificationPreferences
+@{
+    ViewData["Title"] = "Preferências de notificação";
+    var idx = 0;
+}
+<section class="narrow">
+    <header class="page-heading"><div><p class="eyebrow">Minha conta</p><h1>Preferências de notificação</h1><p>Escolha quais avisos você recebe e por qual canal.</p></div></header>
+
+    <div class="card">
+        <form method="post" action="/minha-conta/notificacoes/preferencias" data-prevent-double-submit>
+            @Html.AntiForgeryToken()
+
+            <fieldset style="margin-bottom:1.5rem;">
+                <legend>Idioma</legend>
+                <p>O idioma afeta o formato de datas e números exibidos nas notificações.</p>
+                <select name="PreferredLanguage" style="max-width:220px;">
+                    <option value="pt-BR" @(Model.PreferredLanguage == "pt-BR" ? "selected" : "")>Português (Brasil)</option>
+                    <option value="en-US" @(Model.PreferredLanguage == "en-US" ? "selected" : "")>English (US)</option>
+                    <option value="fr-FR" @(Model.PreferredLanguage == "fr-FR" ? "selected" : "")>Français</option>
+                    <option value="es-ES" @(Model.PreferredLanguage == "es-ES" ? "selected" : "")>Español</option>
+                </select>
+            </fieldset>
+
+            <fieldset>
+                <legend>Tipo de aviso</legend>
+                <table class="data-table" style="width:100%;">
+                    <thead>
+                        <tr><th>Tipo</th><th>Ativo</th><th>Aplicativo</th><th>E-mail</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var k in Model.Kinds)
+                        {
+                            <tr>
+                                <td>
+                                    <input type="hidden" name="Kinds[@idx].Kind" value="@k.Kind" />
+                                    @(k.Kind == "obligation_due" ? "Lembrete de obrigação" : k.Kind)
+                                </td>
+                                <td><input type="checkbox" name="Kinds[@idx].Enabled" value="true" @(k.Enabled ? "checked" : "") /></td>
+                                <td><input type="checkbox" name="Kinds[@idx].ChannelInApp" value="true" @(k.ChannelInApp ? "checked" : "") /></td>
+                                <td><input type="checkbox" name="Kinds[@idx].ChannelEmail" value="true" @(k.ChannelEmail ? "checked" : "") /></td>
+                            </tr>
+                            idx++;
+                        }
+                    </tbody>
+                </table>
+            </fieldset>
+
+            <div class="form-actions-row" style="margin-top:1rem;">
+                <button type="submit" class="button">Salvar preferências</button>
+                <a class="button button-quiet" asp-controller="Account" asp-action="Notifications">Cancelar</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="button-row"><a class="button button-quiet" asp-controller="Account" asp-action="Notifications">Voltar para Notificações</a></div>
+</section>

@@ -13,6 +13,7 @@ public sealed class Worker(
     ILogger<Worker> logger) : BackgroundService
 {
     private readonly IDataProtector protector = protectionProvider.CreateProtector("ODCA.TenantInvitation.v1");
+    private readonly IDataProtector _notifProtector = protectionProvider.CreateProtector("ODCA.UserNotification.v1");
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -53,7 +54,7 @@ public sealed class Worker(
                    destination AS "Destination",
                    protected_payload AS "ProtectedPayload",
                    lease_token AS "LeaseToken"
-              FROM odca.claim_notification(@worker);
+               FROM odca.claim_notification(@worker);
             """,
             new { worker = Environment.MachineName },
             cancellationToken: ct));
@@ -70,9 +71,14 @@ public sealed class Worker(
                 throw new InvalidOperationException("notification_configuration_invalid");
             }
 
-            var token = protector.Unprotect(item.ProtectedPayload);
-            var link = new Uri(baseUri, $"convites/aceitar?invitationId={item.InvitationId:D}&token={Uri.EscapeDataString(token)}");
-            await transport.SendInvitationAsync(item.Destination, link, ct);
+            if (item.InvitationId.HasValue)
+            {
+                await DispatchInvitationAsync(baseUri, item, ct);
+            }
+            else
+            {
+                await DispatchUserNotificationAsync(baseUri, item, ct);
+            }
 
             await connection.ExecuteAsync(new CommandDefinition(
                 "SELECT odca.complete_notification(@id, @token, true, NULL);",
@@ -98,6 +104,20 @@ public sealed class Worker(
         }
     }
 
+    private async Task DispatchInvitationAsync(Uri baseUri, OutboxItem item, CancellationToken ct)
+    {
+        var token = protector.Unprotect(item.ProtectedPayload);
+        var link = new Uri(baseUri, $"convites/aceitar?invitationId={item.InvitationId:D}&token={Uri.EscapeDataString(token)}");
+        await transport.SendInvitationAsync(item.Destination, link, ct);
+    }
+
+    private async Task DispatchUserNotificationAsync(Uri baseUri, OutboxItem item, CancellationToken ct)
+    {
+        var subject = _notifProtector.Unprotect(item.ProtectedPayload);
+        var link = new Uri(baseUri, "/minha-conta/notificacoes");
+        await transport.SendUserNotificationAsync(item.Destination, subject, link, ct);
+    }
+
     private static string NormalizeErrorCode(Exception ex)
     {
         var raw = ex.Message;
@@ -113,7 +133,7 @@ public sealed class Worker(
     private sealed record OutboxItem(
         Guid Id,
         Guid TenantId,
-        Guid InvitationId,
+        Guid? InvitationId,
         string Destination,
         string ProtectedPayload,
         Guid LeaseToken);

@@ -28,14 +28,14 @@ public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContex
 
     [Authorize]
     [HttpGet("minha-conta/notificacoes")]
-    public async Task<IActionResult> Notifications(CancellationToken ct)
+    public async Task<IActionResult> Notifications(int page = 1, int pageSize = 25, CancellationToken ct = default)
     {
         ViewData["Title"] = "Notificações";
         var access = await tenantContext.GetCurrentOrFirstActiveAsync(null, ct);
-        if (access is null) return View(new Odca.Contracts.Account.NotificationPage(Array.Empty<Odca.Contracts.Account.NotificationItem>(), 0));
+        if (access is null) return View(new Odca.Contracts.Account.NotificationPage(Array.Empty<Odca.Contracts.Account.NotificationItem>(), 0, 1, 25, 0, false));
         var token = await HttpContext.GetTokenAsync("access_token");
         if (token is null) return Challenge();
-        var result = await apiClient.GetMyNotificationsAsync(token, access.TenantId, ct);
+        var result = await apiClient.GetMyNotificationsAsync(token, access.TenantId, page, pageSize, ct);
         if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         if (!result.Succeeded || result.Value is null) { Response.StatusCode = 503; return View("ServiceUnavailable"); }
@@ -55,6 +55,61 @@ public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContex
         await apiClient.MarkMyNotificationsReadAsync(token, access.TenantId, ct);
         TempData["Success"] = "Notificações marcadas como lidas.";
         return RedirectToAction(nameof(Notifications));
+    }
+
+    [Authorize]
+    [HttpPost("minha-conta/notificacoes/{id:guid}/ler")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarkOneNotificationRead(Guid id, CancellationToken ct)
+    {
+        var access = await tenantContext.GetCurrentOrFirstActiveAsync(null, ct);
+        if (access is null) return RedirectToAction(nameof(Notifications));
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+        await apiClient.MarkOneNotificationReadAsync(token, access.TenantId, id, ct);
+        TempData["Success"] = "Notificação marcada como lida.";
+        return RedirectToAction(nameof(Notifications));
+    }
+
+    [Authorize]
+    [HttpGet("minha-conta/notificacoes/preferencias")]
+    public async Task<IActionResult> NotificationPreferences(CancellationToken ct)
+    {
+        ViewData["Title"] = "Preferências de notificação";
+        var access = await tenantContext.GetCurrentOrFirstActiveAsync(null, ct);
+        if (access is null) return RedirectToAction(nameof(Notifications));
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+        var result = await apiClient.GetMyNotificationPreferencesAsync(token, access.TenantId, ct);
+        if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (!result.Succeeded || result.Value is null) { Response.StatusCode = 503; return View("ServiceUnavailable"); }
+        ViewData["TenantId"] = access.TenantId;
+        return View(result.Value);
+    }
+
+    [Authorize]
+    [HttpPost("minha-conta/notificacoes/preferencias")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveNotificationPreferences(Odca.Contracts.Account.UpdateNotificationPreferencesRequest model, CancellationToken ct)
+    {
+        var access = await tenantContext.GetCurrentOrFirstActiveAsync(null, ct);
+        if (access is null) return RedirectToAction(nameof(NotificationPreferences));
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+        var result = await apiClient.PutMyNotificationPreferencesAsync(token, access.TenantId, model, ct);
+        if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
+        if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (!result.Succeeded)
+        {
+            ModelState.AddModelError("", "Não foi possível salvar as preferências.");
+            var current = await apiClient.GetMyNotificationPreferencesAsync(token, access.TenantId, ct);
+            if (current.Succeeded && current.Value is not null)
+                return View("NotificationPreferences", ToUpdateRequest(current.Value));
+            return RedirectToAction(nameof(NotificationPreferences));
+        }
+        TempData["Success"] = "Preferências de notificação salvas.";
+        return RedirectToAction(nameof(NotificationPreferences));
     }
 
     [AllowAnonymous]
@@ -390,4 +445,11 @@ public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContex
         var svg = new SvgQRCode(qrCodeData).GetGraphic(4);
         return $"data:image/svg+xml;base64,{Convert.ToBase64String(Encoding.UTF8.GetBytes(svg))}";
     }
+
+    private static Odca.Contracts.Account.UpdateNotificationPreferencesRequest ToUpdateRequest(Odca.Contracts.Account.NotificationPreferences prefs) =>
+        new()
+        {
+            PreferredLanguage = prefs.PreferredLanguage,
+            Kinds = prefs.Kinds.Select(k => new Odca.Contracts.Account.NotificationKindPreference { Kind = k.Kind, Enabled = k.Enabled, ChannelInApp = k.ChannelInApp, ChannelEmail = k.ChannelEmail }).ToList()
+        };
 }
