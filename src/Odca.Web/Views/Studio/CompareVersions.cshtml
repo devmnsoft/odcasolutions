@@ -2,42 +2,183 @@
 @{
     var tenantId = (Guid)ViewData["TenantId"]!;
     var draftId = (Guid)ViewData["DraftId"]!;
+    var culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
 }
 <section class="narrow">
-    <header class="page-heading"><div><p class="eyebrow">Estúdio</p><h1>Comparar versões</h1><p>Diferença de conteúdo entre duas versões geradas da mesma minuta.</p></div></header>
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Estúdio</p>
+            <h1>@L.T("action.filter", culture)</h1>
+            <p class="muted">Diferenças objetivas entre duas versões geradas da mesma minuta.</p>
+        </div>
+    </header>
 
     <div class="card">
         <form method="get" class="form-grid" action="/organizacoes/@tenantId/estudio/comparar-versoes">
             <input type="hidden" name="draftId" value="@draftId" />
-            <label>Versão anterior<select name="before">@foreach (var v in Model.Versions) { <option value="@v.Id" selected="@(v.Id == Model.BeforeId)">v@v.Number · @(v.Author) · @v.CreatedAt.ToString("dd/MM/yyyy HH:mm") · @v.Status</option> }</select></label>
-            <label>Versão posterior<select name="after">@foreach (var v in Model.Versions) { <option value="@v.Id" selected="@(v.Id == Model.AfterId)">v@v.Number · @(v.Author) · @v.CreatedAt.ToString("dd/MM/yyyy HH:mm") · @v.Status</option> }</select></label>
-            <div class="form-actions-row"><button type="submit" class="button button-primary">Comparar</button></div>
+            <label>Versão anterior
+                <select name="before">
+                    @foreach (var v in Model.Versions)
+                    {
+                        <option value="@v.Id" selected="@(v.Id == Model.BeforeId)">
+                            v@v.Number · @(v.Author) · @v.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                        </option>
+                    }
+                </select>
+            </label>
+            <label>Versão posterior
+                <select name="after">
+                    @foreach (var v in Model.Versions)
+                    {
+                        <option value="@v.Id" selected="@(v.Id == Model.AfterId)">
+                            v@v.Number · @(v.Author) · @v.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                        </option>
+                    }
+                </select>
+            </label>
+            <div class="form-actions-row">
+                <button type="submit" class="button button-primary">@L.T("action.submit", culture)</button>
+            </div>
         </form>
     </div>
 
     @if (Model.Versions.Count < 2)
     {
-        <div class="empty-state"><strong>Sem o que comparar</strong><p>Gere ao menos duas versões da minuta para visualizar a diferença.</p></div>
+        <div class="empty-state">
+            <strong>Sem o que comparar</strong>
+            <p>Gere ao menos duas versões da minuta para visualizar a diferença.</p>
+        </div>
     }
     else if (Model.Comparison is null)
     {
-        <div class="empty-state"><strong>Selecione as versões</strong><p>Escolha uma versão anterior e uma posterior e clique em Comparar.</p></div>
+        <div class="empty-state">
+            <strong>Selecione as versões</strong>
+            <p>Escolha uma versão anterior e uma posterior e clique em Comparar.</p>
+        </div>
     }
     else if (Model.Comparison.Changes.Count == 0)
     {
-        <div class="card"><p class="success">Nenhuma diferença de conteúdo entre as versões selecionadas.</p></div>
+        <div class="card"><p class="success">Nenhuma diferença entre as versões selecionadas.</p></div>
     }
     else
     {
-        <div class="card">
-            <h2>Diferenças encontradas</h2>
-            <p class="muted">Comparação entre v@Model.Comparison.Before.Number e v@Model.Comparison.After.Number.</p>
-            <div class="responsive-table"><table>
-                <thead><tr><th>Tipo</th><th>Referência</th><th>Anterior</th><th>Posterior</th></tr></thead>
-                <tbody>@foreach (var ch in Model.Comparison.Changes) { <tr><td data-label="Tipo">@ch.Category</td><td data-label="Referência">@(ch.Reference ?? "Documento")</td><td data-label="Anterior">@(ch.Before ?? "—")</td><td data-label="Posterior">@(ch.After ?? "—")</td></tr> }</tbody>
-            </table></div>
+        // Group changes by category for visual organization
+        var metadata = Model.Comparison.Changes.Where(c => c.Category == "metadata").ToList();
+        var fields = Model.Comparison.Changes.Where(c => c.Category == "field").ToList();
+        var textAdded = Model.Comparison.Changes.Where(c => c.Category == "text-added").ToList();
+        var textRemoved = Model.Comparison.Changes.Where(c => c.Category == "text-removed").ToList();
+        var textChanged = Model.Comparison.Changes.Where(c => c.Category is "text" or "formatting").ToList();
+
+        <div class="callout callout-info" role="note">
+            <strong>Comparação objetiva.</strong>
+            <span>As diferenças abaixo são descritivas e não constituem análise jurídica de validade ou efeito contratual. Para avaliar implicações jurídicas, consulte o profissional responsável.</span>
         </div>
+
+        <div class="card compare-summary">
+            <h2>Resumo</h2>
+            <p class="muted">Comparação entre <strong>v@Model.Comparison.Before.Number</strong> (@Model.Comparison.Before.Author, @Model.Comparison.Before.CreatedAt.ToString("dd/MM/yyyy")) e <strong>v@Model.Comparison.After.Number</strong> (@Model.Comparison.After.Author, @Model.Comparison.After.CreatedAt.ToString("dd/MM/yyyy")).</p>
+            <ul class="compare-counts">
+                @if (metadata.Count > 0) { <li><span class="badge badge-muted">@metadata.Count</span> Metadados administrativos</li> }
+                @if (fields.Count > 0) { <li><span class="badge badge-info">@fields.Count</span> Campos e dados</li> }
+                @if (textAdded.Count > 0) { <li><span class="badge badge-success">@textAdded.Count</span> Texto adicionado</li> }
+                @if (textRemoved.Count > 0) { <li><span class="badge badge-danger">@textRemoved.Count</span> Texto removido</li> }
+                @if (textChanged.Count > 0) { <li><span class="badge badge-warning">@textChanged.Count</span> Texto modificado</li> }
+            </ul>
+        </div>
+
+        @if (metadata.Count > 0)
+        {
+            <div class="card">
+                <h2>Metadados administrativos</h2>
+                <div class="responsive-table"><table>
+                    <thead><tr><th>Campo</th><th>Anterior</th><th>Posterior</th></tr></thead>
+                    <tbody>
+                        @foreach (var ch in metadata)
+                        {
+                            <tr>
+                                <td data-label="Campo">@ch.Reference</td>
+                                <td data-label="Anterior" class="diff-before">@(ch.Before ?? "—")</td>
+                                <td data-label="Posterior" class="diff-after">@(ch.After ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table></div>
+            </div>
+        }
+
+        @if (fields.Count > 0)
+        {
+            <div class="card">
+                <h2>Dados das partes, valores e prazos</h2>
+                <div class="responsive-table"><table>
+                    <thead><tr><th>Campo</th><th>Anterior</th><th>Posterior</th></tr></thead>
+                    <tbody>
+                        @foreach (var ch in fields)
+                        {
+                            <tr>
+                                <td data-label="Campo">@ch.Reference</td>
+                                <td data-label="Anterior" class="diff-before">@(ch.Before ?? "—")</td>
+                                <td data-label="Posterior" class="diff-after">@(ch.After ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table></div>
+            </div>
+        }
+
+        @if (textAdded.Count > 0 || textRemoved.Count > 0 || textChanged.Count > 0)
+        {
+            <div class="card">
+                <h2>Conteúdo documental</h2>
+                <div class="responsive-table"><table>
+                    <thead><tr><th>Tipo</th><th>Referência</th><th>Anterior</th><th>Posterior</th></tr></thead>
+                    <tbody>
+                        @foreach (var ch in textAdded)
+                        {
+                            <tr class="row-added">
+                                <td data-label="Tipo"><span class="badge badge-success">Adicionado</span></td>
+                                <td data-label="Referência">@ch.Reference</td>
+                                <td data-label="Anterior">—</td>
+                                <td data-label="Posterior" class="diff-after">@ch.After</td>
+                            </tr>
+                        }
+                        @foreach (var ch in textRemoved)
+                        {
+                            <tr class="row-removed">
+                                <td data-label="Tipo"><span class="badge badge-danger">Removido</span></td>
+                                <td data-label="Referência">@ch.Reference</td>
+                                <td data-label="Anterior" class="diff-before">@ch.Before</td>
+                                <td data-label="Posterior">—</td>
+                            </tr>
+                        }
+                        @foreach (var ch in textChanged)
+                        {
+                            <tr class="row-modified">
+                                <td data-label="Tipo"><span class="badge badge-warning">Modificado</span></td>
+                                <td data-label="Referência">@ch.Reference</td>
+                                <td data-label="Anterior" class="diff-before">@(ch.Before ?? "—")</td>
+                                <td data-label="Posterior" class="diff-after">@(ch.After ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table></div>
+            </div>
+        }
     }
 
-    <div class="button-row"><a class="button button-quiet" asp-controller="Studio" asp-action="Edit" asp-route-tenantId="@tenantId" asp-route-draftId="@draftId">Voltar à minuta</a></div>
+    <div class="button-row">
+        <a class="button button-quiet" asp-controller="Studio" asp-action="Edit"
+           asp-route-tenantId="@tenantId" asp-route-draftId="@draftId">@L.T("action.back", culture)</a>
+    </div>
 </section>
+
+<style>
+.compare-counts { list-style: none; display: flex; flex-wrap: wrap; gap: .75rem; padding: 0; margin: .5rem 0; }
+.compare-counts li { display: flex; align-items: center; gap: .35rem; font-size: .9rem; }
+.diff-before { background: #FFF3F3; text-decoration: line-through; opacity: .8; }
+.diff-after { background: #F0FFF4; font-weight: 500; }
+.row-added td { background: #F0FFF4; }
+.row-removed td { background: #FFF3F3; }
+.row-modified td { background: #FFFBEB; }
+.callout-info { border-left: 4px solid var(--action-600, #245bdb); padding: .75rem 1rem; margin-bottom: 1rem; }
+</style>
