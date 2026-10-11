@@ -29,7 +29,7 @@ public sealed class NotificationKindPreference
     public string Kind { get; set; } = "";
     public bool Enabled { get; set; } = true;
     public bool ChannelInApp { get; set; } = true;
-    public bool ChannelEmail { get; set; } = false;
+    public bool ChannelEmail { get; set; }
 }
 
 /// <summary>Resumo das preferências de notificação do usuário.</summary>

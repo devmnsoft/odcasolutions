@@ -14,10 +14,10 @@
                 <legend>Idioma</legend>
                 <p>O idioma afeta o formato de datas e números exibidos nas notificações.</p>
                 <select name="PreferredLanguage" style="max-width:220px;">
-                    <option value="pt-BR" @(Model.PreferredLanguage == "pt-BR" ? "selected" : "")>Português (Brasil)</option>
-                    <option value="en-US" @(Model.PreferredLanguage == "en-US" ? "selected" : "")>English (US)</option>
-                    <option value="fr-FR" @(Model.PreferredLanguage == "fr-FR" ? "selected" : "")>Français</option>
-                    <option value="es-ES" @(Model.PreferredLanguage == "es-ES" ? "selected" : "")>Español</option>
+                    <option value="pt-BR" selected="@(Model.PreferredLanguage == "pt-BR" ? "selected" : null)">Português (Brasil)</option>
+                    <option value="en-US" selected="@(Model.PreferredLanguage == "en-US" ? "selected" : null)">English (US)</option>
+                    <option value="fr-FR" selected="@(Model.PreferredLanguage == "fr-FR" ? "selected" : null)">Français</option>
+                    <option value="es-ES" selected="@(Model.PreferredLanguage == "es-ES" ? "selected" : null)">Español</option>
                 </select>
             </fieldset>
 

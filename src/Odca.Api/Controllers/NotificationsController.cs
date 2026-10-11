@@ -146,7 +146,7 @@ public sealed class NotificationsController(NpgsqlDataSource dataSource) : Contr
         return Ok(result);
     }
 
-    private async Task<NotificationPreferences> LoadPreferences(NpgsqlConnection c, NpgsqlTransaction tx, Guid tenantId, Guid actor, CancellationToken ct)
+    private static async Task<NotificationPreferences> LoadPreferences(NpgsqlConnection c, NpgsqlTransaction tx, Guid tenantId, Guid actor, CancellationToken ct)
     {
         var lang = (await c.ExecuteScalarAsync<string?>(new CommandDefinition(
             "SELECT preferred_language FROM odca.user_notification_settings WHERE tenant_id=@tenantId AND user_id=@actor",
