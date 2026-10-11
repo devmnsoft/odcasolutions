@@ -9,14 +9,13 @@ public sealed record RenewalOption(string Value, string Label);
 public sealed record CreateRenewalRequest(Guid IdempotencyKey, Guid ResponsibleId, string Kind, string Reason,
     DateOnly EffectiveOn, DateOnly? ProposedStartDate, DateOnly? ProposedEndDate, decimal? ProposedValue,
     string? Currency, string? ProposedScope, Guid? SourceDocumentVersionId, long ContractVersion,
-    Guid? DraftId = null, string? ValueChangeMode = null, string? Priority = null);
+    Guid? DraftId = null, string? ValueChangeMode = null, string? Priority = null, bool ClearEndDate = false);
 public sealed record RenewalRequestDetails(Guid Id, Guid ContractId, string ContractName, string Kind, string Status,
     string ApplicationStatus, string Reason, string? Priority, Guid? ResponsibleId, string? ResponsibleName,
     DateOnly? CurrentStartDate, DateOnly? CurrentEndDate, decimal? CurrentValue,
     DateOnly? ProposedStartDate, DateOnly? ProposedEndDate, decimal? ProposedValue,
     string? Currency, DateOnly EffectiveOn, long BaseContractVersion, long RowVersion, Guid? EvidenceVersionId,
-    DateTimeOffset? FormalizedAt, string? FormalizationJustification,
-    IReadOnlyList<RenewalChangeEvent> Events, IReadOnlyList<RenewalEvidenceOption> EvidenceCandidates);
+    DateTimeOffset? FormalizedAt, string? FormalizationJustification, IReadOnlyList<RenewalChangeEvent> Events, IReadOnlyList<RenewalEvidenceOption> EvidenceCandidates, bool ClearEndDate = false);
 public sealed record RenewalChangeEvent(string EventType, DateTimeOffset OccurredAt, string? ActorName);
 public sealed record RenewalEvidenceOption(Guid VersionId, int VersionNumber, string DisplayName, string SecurityStatus, DateTimeOffset UploadedAt);
 public sealed record FormalizeRenewalRequest(Guid EvidenceVersionId, DateOnly FormalizedOn, string Justification, long RowVersion);

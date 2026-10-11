@@ -80,7 +80,7 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
         if (request.Kind == "revision")
         {
             var appliedStart = request.ProposedStartDate ?? contract.StartDate;
-            var appliedEnd   = request.ProposedEndDate ?? contract.EndDate;
+            var appliedEnd   = request.ClearEndDate ? null! : (request.ProposedEndDate ?? contract.EndDate);
             var appliedValue = proposedValue ?? contract.Value;
             var appliedCcy   = proposedValue.HasValue ? (request.Currency?.Trim().ToUpperInvariant() ?? contract.Currency) : contract.Currency;
             if (appliedStart != contract.StartDate || appliedEnd != contract.EndDate
@@ -91,13 +91,14 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
                 }));
         }
         var id = Guid.NewGuid();
+        var clearEnd = request.ClearEndDate;
         var inserted = await c.ExecuteScalarAsync<Guid?>(new CommandDefinition("""
-                WITH created AS (INSERT INTO odca.contract_change_requests(id,tenant_id,contract_id,kind,author_id,responsible_id,reason,current_start_date,current_end_date,proposed_start_date,proposed_end_date,current_value,proposed_value,currency,current_operational_owner_id,effective_on,source_document_version_id,draft_id,base_contract_version,idempotency_key,other_changes,priority)
-                VALUES(@id,@tenantId,@contractId,@kind,@actor,@responsibleId,@reason,@currentStart,@currentEnd,@proposedStart,@proposedEnd,@currentValue,@proposedValue,@currency,@currentOwner,@effectiveOn,@sourceDocument,@draftId,@baseVersion,@idempotencyKey,jsonb_build_array(jsonb_build_object('field','value','mode',COALESCE(@valueChangeMode,'total'))),@priority)
+                WITH created AS (INSERT INTO odca.contract_change_requests(id,tenant_id,contract_id,kind,author_id,responsible_id,reason,current_start_date,current_end_date,proposed_start_date,proposed_end_date,current_value,proposed_value,currency,current_operational_owner_id,effective_on,source_document_version_id,draft_id,base_contract_version,idempotency_key,other_changes,priority,clear_end_date)
+                VALUES(@id,@tenantId,@contractId,@kind,@actor,@responsibleId,@reason,@currentStart,@currentEnd,@proposedStart,@proposedEnd,@currentValue,@proposedValue,@currency,@currentOwner,@effectiveOn,@sourceDocument,@draftId,@baseVersion,@idempotencyKey,jsonb_build_array(jsonb_build_object('field','value','mode',COALESCE(@valueChangeMode,'total'))),@priority,@clearEnd)
                 ON CONFLICT DO NOTHING RETURNING id)
                 INSERT INTO odca.contract_change_events(tenant_id,request_id,actor_id,event_type,details)
                 SELECT @tenantId,id,@actor,'created',jsonb_build_object('baseContractVersion',@baseVersion,'priority',@priority) FROM created RETURNING request_id;
-                """, new { id, tenantId, contractId, kind=request.Kind, actor, request.ResponsibleId, reason=request.Reason.Trim(), currentStart=contract.StartDate, currentEnd=contract.EndDate, proposedStart=request.ProposedStartDate, proposedEnd=request.ProposedEndDate, currentValue=contract.Value, proposedValue, currency=request.Currency?.Trim().ToUpperInvariant() ?? contract.Currency, currentOwner=contract.OwnerId, effectiveOn=request.EffectiveOn, sourceDocument=request.SourceDocumentVersionId, request.DraftId, baseVersion=contract.Version, request.IdempotencyKey, request.ValueChangeMode, priority }, tx, cancellationToken: ct));
+                """, new { id, tenantId, contractId, kind=request.Kind, actor, request.ResponsibleId, reason=request.Reason.Trim(), currentStart=contract.StartDate, currentEnd=contract.EndDate, proposedStart=request.ProposedStartDate, proposedEnd=request.ProposedEndDate, currentValue=contract.Value, proposedValue, currency=request.Currency?.Trim().ToUpperInvariant() ?? contract.Currency, currentOwner=contract.OwnerId, effectiveOn=request.EffectiveOn, sourceDocument=request.SourceDocumentVersionId, request.DraftId, baseVersion=contract.Version, request.IdempotencyKey, request.ValueChangeMode, priority, clearEnd }, tx, cancellationToken: ct));
         if (!inserted.HasValue)
         {
             var existing=await c.ExecuteScalarAsync<Guid?>(new CommandDefinition("SELECT id FROM odca.contract_change_requests WHERE tenant_id=@tenantId AND idempotency_key=@key",new{tenantId,key=request.IdempotencyKey},tx,cancellationToken:ct));
@@ -128,11 +129,23 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
 
     internal static async Task<object?> ApplyCore(NpgsqlConnection c,NpgsqlTransaction tx,Guid tenantId,Guid id,Guid actor,long rowVersion,DateOnly today,CancellationToken ct)
     {
-        var row=await c.QuerySingleOrDefaultAsync<ApplyRow>(new CommandDefinition("SELECT r.contract_id AS ContractId,r.base_contract_version AS BaseVersion,r.proposed_start_date AS StartDate,r.proposed_end_date AS EndDate,r.proposed_value AS Value,r.currency AS Currency,r.effective_on AS EffectiveOn,c.version AS CurrentVersion,c.start_date AS OldStart,c.end_date AS OldEnd,c.value AS OldValue,c.currency AS OldCurrency FROM odca.contract_change_requests r JOIN odca.contracts c ON c.tenant_id=r.tenant_id AND c.id=r.contract_id WHERE r.tenant_id=@tenantId AND r.id=@id AND (r.row_version=@rowVersion OR (r.base_contract_version=@rowVersion AND c.version=@rowVersion)) AND r.status='formalized' AND r.application_status IN('not_applied','scheduled','failed') FOR UPDATE OF r,c",new{tenantId,id,rowVersion},tx,cancellationToken:ct));
+        var row=await c.QuerySingleOrDefaultAsync<ApplyRow>(new CommandDefinition("SELECT r.contract_id AS ContractId,r.base_contract_version AS BaseVersion,r.proposed_start_date AS StartDate,r.proposed_end_date AS EndDate,r.proposed_value AS Value,r.currency AS Currency,r.effective_on AS EffectiveOn,c.version AS CurrentVersion,c.start_date AS OldStart,c.end_date AS OldEnd,c.value AS OldValue,c.currency AS OldCurrency,r.kind AS Kind,r.clear_end_date AS ClearEnd FROM odca.contract_change_requests r JOIN odca.contracts c ON c.tenant_id=r.tenant_id AND c.id=r.contract_id WHERE r.tenant_id=@tenantId AND r.id=@id AND (r.row_version=@rowVersion OR (r.base_contract_version=@rowVersion AND c.version=@rowVersion)) AND r.status='formalized' AND r.application_status IN('not_applied','scheduled','failed') FOR UPDATE OF r,c",new{tenantId,id,rowVersion},tx,cancellationToken:ct));
         if(row is null||row.EffectiveOn>today)return null;if(row.CurrentVersion!=row.BaseVersion){await c.ExecuteAsync(new CommandDefinition("UPDATE odca.contract_change_requests SET status='conflict',application_status='failed',row_version=row_version+1,updated_at=now() WHERE tenant_id=@tenantId AND id=@id",new{tenantId,id},tx,cancellationToken:ct));return null;}
-        var changed=await c.ExecuteAsync(new CommandDefinition("UPDATE odca.contracts SET start_date=COALESCE(@start,start_date),end_date=COALESCE(@end,end_date),value=COALESCE(@value,value),currency=CASE WHEN @value IS NULL THEN currency ELSE @currency END,version=version+1,updated_at=now() WHERE tenant_id=@tenantId AND id=@contractId AND version=@baseVersion",new{start=row.StartDate,end=row.EndDate,value=row.Value,currency=row.Currency,tenantId,contractId=row.ContractId,baseVersion=row.BaseVersion},tx,cancellationToken:ct));if(changed!=1)return null;
-        await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.contract_change_applications(tenant_id,request_id,contract_id,applied_by,before_data,after_data) VALUES(@tenantId,@id,@contractId,@actor,jsonb_build_object('startDate',@oldStart::date,'endDate',@oldEnd::date,'value',@oldValue::numeric,'currency',@oldCurrency::text),jsonb_build_object('startDate',COALESCE(@start::date,@oldStart::date),'endDate',COALESCE(@end::date,@oldEnd::date),'value',COALESCE(@value::numeric,@oldValue::numeric),'currency',COALESCE(@currency::text,@oldCurrency::text))) ON CONFLICT(tenant_id,request_id) DO NOTHING; UPDATE odca.contract_change_requests SET application_status='applied',row_version=row_version+1,updated_at=now() WHERE tenant_id=@tenantId AND id=@id",new{tenantId,id,contractId=row.ContractId,actor,oldStart=row.OldStart,oldEnd=row.OldEnd,oldValue=row.OldValue,oldCurrency=row.OldCurrency,start=row.StartDate,end=row.EndDate,value=row.Value,currency=row.Currency},tx,cancellationToken:ct));
-        return new ApplyRenewalResponse(true, row.CurrentVersion + 1, true, row.EndDate ?? row.OldEnd);
+        var changed=await c.ExecuteAsync(new CommandDefinition("UPDATE odca.contracts SET start_date=COALESCE(@start,start_date),end_date=CASE WHEN @clearEnd THEN NULL ELSE COALESCE(@end,end_date) END,value=COALESCE(@value,value),currency=CASE WHEN @value IS NULL THEN currency ELSE @currency END,version=CASE WHEN @kind='revision' THEN version ELSE version+1 END,updated_at=now() WHERE tenant_id=@tenantId AND id=@contractId AND version=@baseVersion",new{start=row.StartDate,end=row.EndDate,value=row.Value,currency=row.Currency,clearEnd=row.ClearEnd,kind=row.Kind,tenantId,contractId=row.ContractId,baseVersion=row.BaseVersion},tx,cancellationToken:ct));if(changed!=1)return null;
+        await c.ExecuteAsync(new CommandDefinition("""
+            INSERT INTO odca.contract_change_applications(tenant_id,request_id,contract_id,applied_by,before_data,after_data)
+            VALUES(@tenantId,@id,@contractId,@actor,
+              jsonb_build_object('startDate',@oldStart::date,'endDate',@oldEnd::date,'value',@oldValue::numeric,'currency',@oldCurrency::text),
+              jsonb_build_object('startDate',COALESCE(@start::date,@oldStart::date),
+                'endDate',CASE WHEN @clearEnd THEN NULL ELSE COALESCE(@end::date,@oldEnd::date) END,
+                'value',COALESCE(@value::numeric,@oldValue::numeric),
+                'currency',CASE WHEN @value IS NULL THEN @oldCurrency ELSE COALESCE(@currency::text,'') END))
+            ON CONFLICT(tenant_id,request_id) DO NOTHING;
+            UPDATE odca.contract_change_requests SET application_status='applied',row_version=row_version+1,updated_at=now() WHERE tenant_id=@tenantId AND id=@id
+            """,new{tenantId,id,contractId=row.ContractId,actor,oldStart=row.OldStart,oldEnd=row.OldEnd,oldValue=row.OldValue,oldCurrency=row.OldCurrency,start=row.StartDate,end=row.EndDate,value=row.Value,currency=row.Currency,clearEnd=row.ClearEnd},tx,cancellationToken:ct));
+        var newVersion=row.Kind=="revision"?row.CurrentVersion:row.CurrentVersion+1;
+        var endsOn=row.ClearEnd?(DateOnly?)null:(row.EndDate??row.OldEnd);
+        return new ApplyRenewalResponse(true,newVersion,true,endsOn);
     }
 
     [HttpGet("{id:guid}")]
@@ -148,7 +161,7 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
               r.current_start_date AS CurrentStartDate,r.current_end_date AS CurrentEndDate,r.current_value AS CurrentValue,
               r.proposed_start_date AS ProposedStartDate,r.proposed_end_date AS ProposedEndDate,r.proposed_value AS ProposedValue,r.currency AS Currency,
               r.effective_on AS EffectiveOn,r.base_contract_version AS BaseContractVersion,r.row_version AS RowVersion,r.evidence_version_id AS EvidenceVersionId,
-              r.formalized_at AS FormalizedAt,r.formalization_justification AS FormalizationJustification
+              r.formalized_at AS FormalizedAt,r.formalization_justification AS FormalizationJustification,r.clear_end_date AS ClearEnd
             FROM odca.contract_change_requests r JOIN odca.contracts c ON c.tenant_id=r.tenant_id AND c.id=r.contract_id
             LEFT JOIN odca.users u ON u.id=r.responsible_id WHERE r.tenant_id=@tenantId AND r.id=@id
             """, new { tenantId, id }, tx, cancellationToken: ct));
@@ -171,7 +184,7 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
             row.ResponsibleId, row.ResponsibleName, row.CurrentStartDate, row.CurrentEndDate, row.CurrentValue,
             row.ProposedStartDate, row.ProposedEndDate, row.ProposedValue, row.Currency, row.EffectiveOn,
             row.BaseContractVersion, row.RowVersion, row.EvidenceVersionId, ToUtcOffset(row.FormalizedAt), row.FormalizationJustification,
-            events, evidence));
+            events, evidence, row.ClearEnd));
     }
 
     [HttpPost("{id:guid}/submit")]
@@ -249,8 +262,8 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
     private static Task<int> SetTenant(NpgsqlConnection c,Guid tenant,Guid actor,NpgsqlTransaction tx,CancellationToken ct)=>c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenant,true),set_config('odca.actor_id',@actor,true)",new{tenant=tenant.ToString(),actor=actor.ToString()},tx,cancellationToken:ct));
     private sealed record CountRow(int Expiring,int Expired,int Preparing,int InReview,int Scheduled,int NotRenewing,int Indeterminate=0);
     private sealed record ContractBase(DateOnly? StartDate,DateOnly? EndDate,decimal? Value,string? Currency,Guid? OwnerId,long Version);
-    private sealed record ApplyRow(Guid ContractId,long BaseVersion,DateOnly? StartDate,DateOnly? EndDate,decimal? Value,string? Currency,DateOnly EffectiveOn,long CurrentVersion,DateOnly? OldStart,DateOnly? OldEnd,decimal? OldValue,string? OldCurrency);
-    private sealed record RenewalRequestRow(Guid Id,Guid ContractId,string ContractName,string Kind,string Status,string ApplicationStatus,string Reason,string? Priority,Guid? ResponsibleId,string? ResponsibleName,DateOnly? CurrentStartDate,DateOnly? CurrentEndDate,decimal? CurrentValue,DateOnly? ProposedStartDate,DateOnly? ProposedEndDate,decimal? ProposedValue,string? Currency,DateOnly EffectiveOn,long BaseContractVersion,long RowVersion,Guid? EvidenceVersionId,DateTime? FormalizedAt,string? FormalizationJustification);
+    private sealed record ApplyRow(Guid ContractId,long BaseVersion,DateOnly? StartDate,DateOnly? EndDate,decimal? Value,string? Currency,DateOnly EffectiveOn,long CurrentVersion,DateOnly? OldStart,DateOnly? OldEnd,decimal? OldValue,string? OldCurrency,string Kind,bool ClearEnd);
+    private sealed record RenewalRequestRow(Guid Id,Guid ContractId,string ContractName,string Kind,string Status,string ApplicationStatus,string Reason,string? Priority,Guid? ResponsibleId,string? ResponsibleName,DateOnly? CurrentStartDate,DateOnly? CurrentEndDate,decimal? CurrentValue,DateOnly? ProposedStartDate,DateOnly? ProposedEndDate,decimal? ProposedValue,string? Currency,DateOnly EffectiveOn,long BaseContractVersion,long RowVersion,Guid? EvidenceVersionId,DateTime? FormalizedAt,string? FormalizationJustification,bool ClearEnd);
     private sealed record RenewalEventRow(string EventType,DateTime OccurredAt,string? ActorName);
     private sealed record RenewalEvidenceRow(Guid VersionId,int VersionNumber,string DisplayName,string SecurityStatus,DateTime UploadedAt);
     private static DateTimeOffset ToUtcOffset(DateTime dt) => dt.Kind == DateTimeKind.Utc ? new DateTimeOffset(dt, TimeSpan.Zero) : new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc), TimeSpan.Zero);

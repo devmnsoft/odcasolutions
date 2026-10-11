@@ -5623,3 +5623,28 @@ VALUES(48,'Aprofundamento 5: notificacoes paginadas com leitura individual, pref
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 048
+
+-- ODCA-MIGRATION 049 CHECKSUM d601c7d5d9678143e8a28e41d57aa87e1057cac89a0bf3e6ac7c26abbb308a28
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
+
+DO $odca$
+DECLARE
+    expected_checksum constant char(64) := 'd601c7d5d9678143e8a28e41d57aa87e1057cac89a0bf3e6ac7c26abbb308a28';
+    recorded_checksum char(64);
+BEGIN
+    SELECT checksum INTO recorded_checksum FROM odca.schema_migrations WHERE version = 49;
+    IF recorded_checksum IS NOT NULL AND recorded_checksum <> expected_checksum THEN
+        RAISE EXCEPTION 'ODCA migration 049 checksum mismatch: stored %, expected %', recorded_checksum, expected_checksum;
+    END IF;
+END
+$odca$;
+
+-- Prazo indeterminado: explicit flag to clear end_date on apply, distinct from "keep current value" (NULL proposal).
+ALTER TABLE odca.contract_change_requests ADD COLUMN IF NOT EXISTS clear_end_date boolean NOT NULL DEFAULT false;
+
+INSERT INTO odca.schema_migrations(version,name,checksum)
+VALUES(49,'ApplyCore integrity: clear_end_date for prazo indeterminado','d601c7d5d9678143e8a28e41d57aa87e1057cac89a0bf3e6ac7c26abbb308a28')
+ON CONFLICT(version) DO NOTHING;
+COMMIT;
+-- ODCA-END 049
