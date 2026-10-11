@@ -1041,6 +1041,10 @@ AND (t.scope<>'global' OR t.official_key IS NULL OR NOT EXISTS(
 AND t.official_key='$key';
 "@)
     }
+    # A'/3: quantas fontes a resolucao oficial encontra para o tenant+chave (0 ou 1).
+    function Resolve-OfficialHits([string]$tid, [string]$key) {
+        return (Sql "SELECT count(*)::int FROM odca.resolve_official_template(uuid '$tid','$key');")
+    }
     $copyless = Sql "SELECT t.id::text FROM odca.tenants t WHERE NOT t.is_deleted AND t.id<>uuid '$TC' AND NOT EXISTS(SELECT 1 FROM odca.contract_templates c WHERE c.owner_tenant_id=t.id AND c.official_key='$probeKey' AND c.status<>'archived') ORDER BY t.created_at LIMIT 1;"
     $hasCopyless = $copyless.Trim() -match '[0-9a-f]{8}-'
     if ($hasCopyless) {
@@ -1048,6 +1052,12 @@ AND t.official_key='$key';
         Assert 'S8.tenant_prova_ve_linha_global' ([int]$visBefore -eq 1) ("tenant=" + $copyless.Trim() + " visiveis=$visBefore")
     } else {
         Assert 'S8.tenant_prova_sem_copia_localizavel' $false "nenhum tenant sem copia propria para $probeKey"
+    }
+
+    # A'/3: linha global publicada -> o tenant sem copia resolve o modelo pela linha global.
+    if ($hasCopyless) {
+        $resPub = Resolve-OfficialHits $copyless.Trim() $probeKey
+        Assert 'S8.resolve_publicado_cliente_encontra' ([int]$resPub -eq 1) ('hits=' + $resPub)
     }
 
     $probeRvBefore = Sql "SELECT row_version FROM odca.contract_templates WHERE owner_tenant_id IS NULL AND scope='global' AND official_key='$probeKey';"
@@ -1066,12 +1076,24 @@ AND t.official_key='$key';
         Assert 'S8.tenant_prova_perde_visibilidade' ([int]$visAfter -eq 0) "visiveis=$visAfter"
     }
 
+    # A'/3: apos a retirada, o tenant sem copia nao resolve mais o modelo (novo contrato bloqueado).
+    if ($hasCopyless) {
+        $resRet = Resolve-OfficialHits $copyless.Trim() $probeKey
+        Assert 'S8.resolve_retirado_novo_contrato_bloqueado' ([int]$resRet -eq 0) ('hits=' + $resRet)
+    }
+
     $rep = Invoke-Api 'POST' "$api/api/v1/platform/template-catalog/$probeKey/status" $adm8 (ToJson @{ action = 'publish'; reason = 'Suite E: republicacao de teste do catalogo.' })
     $repj = ''
     if ($rep.Code -eq 200) { $repj = $rep.Body | ConvertFrom-Json }
     Assert 'S8.publicacao_200_efetiva' ($rep.Code -eq 200 -and [bool](JGet $repj 'ok')) (Snip $rep.Body)
     $probeStatusFinal = Sql "SELECT status FROM odca.contract_templates WHERE owner_tenant_id IS NULL AND scope='global' AND official_key='$probeKey';"
     Assert 'S8.publicacao_restaura_linha' ($probeStatusFinal -eq 'published') "status=$probeStatusFinal"
+
+    # A'/3: apos a republicacao autorizada, o tenant sem copia volta a resolver o modelo.
+    if ($hasCopyless) {
+        $resRep = Resolve-OfficialHits $copyless.Trim() $probeKey
+        Assert 'S8.resolve_republicado_cliente_encontra' ([int]$resRep -eq 1) ('hits=' + $resRep)
+    }
 
     $badReason = Invoke-Api 'POST' "$api/api/v1/platform/template-catalog/$probeKey/status" $adm8 (ToJson @{ action = 'retire'; reason = 'abc' })
     Assert 'S8.justificativa_curta_400' ($badReason.Code -eq 400 -and $badReason.Body -match 'catalog\.reason') ('code=' + $badReason.Code + ' ' + (Snip $badReason.Body))

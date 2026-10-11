@@ -11,9 +11,12 @@ namespace Odca.Api;
 /// globais (owner_tenant_id NULL, scope='global') sob gestão da plataforma.
 /// O cliente consulta modelos publicados e cria minutas/copias próprias; ele
 /// não carrega modelos. Idempotente e auto-corretivo a cada inicialização da
-/// API: modelos ausentes do catálogo global são repostos com conteúdo do código
-/// (mesma fonte de OfficialContractTemplates usada pela instalação por tenant),
-/// preservando cópias particulares já existentes.
+/// API: modelos ainda sem linha global no catálogo são repostos com conteúdo do
+/// código (mesma fonte de OfficialContractTemplates usada pela instalação por
+/// tenant), preservando cópias particulares já existentes. Uma linha global que
+/// já existe em qualquer estado — inclusive arquivada/retirada pela plataforma
+/// (platform_catalog_set_status 'retire') — NÃO é reposta: a retirada persiste
+/// após reinício e só é revertida por uma nova publicação autorizada.
 /// </summary>
 public sealed partial class OfficialCatalogSeedingService(
     NpgsqlDataSource dataSource,
@@ -71,7 +74,7 @@ public sealed partial class OfficialCatalogSeedingService(
                 SELECT EXISTS(
                     SELECT 1 FROM odca.contract_templates t
                      WHERE t.official_key = @key AND t.owner_tenant_id IS NULL
-                       AND t.scope = 'global' AND t.status <> 'archived')
+                       AND t.scope = 'global')
                 """,
                 new { key = template.Key },
                 tx,

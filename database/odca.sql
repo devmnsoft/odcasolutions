@@ -5501,3 +5501,53 @@ VALUES(46,'Operacao contratual C: revisao administrativa como tipo de alteracao 
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 046
+-- ODCA-MIGRATION 047 CHECKSUM 1b1bef45651f9c4f40d8bc4f3073e03dd6254bf4d6c46f82de21d9eaa5d4f2b6
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
+
+-- Aprofundamento 3 (biblioteca oficial): a resolucao de modelo oficial usada pela
+-- decisao de aprovacao deve honrar a versao fixada pela minuta (source_template
+-- _version_id da ultima versao gerada) e nao trocar silenciosamente pela versao
+-- publicada corrente do modelo. A ordem de fontes (ultimo usado -> copia propria
+-- -> linha global publicada) e a visibilidade por status permanecem as mesmas.
+
+CREATE OR REPLACE FUNCTION odca.resolve_official_template(p_tenant uuid,p_key text)
+RETURNS TABLE(template_id uuid,version_id uuid,version_number integer)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,odca AS $fn$
+DECLARE v_tid uuid; v_vid uuid; v_num integer;
+BEGIN
+  SELECT c.tid,c.vid,c.vnum INTO v_tid,v_vid,v_num
+  FROM (
+    SELECT latest.tid, tv.id AS vid, tv.version_number AS vnum, 1::int AS rank
+      FROM (
+        SELECT v.source_template_id AS tid, v.source_template_version_id AS vid
+          FROM odca.generated_contract_versions v
+          JOIN odca.contract_templates t ON t.id=v.source_template_id
+         WHERE v.tenant_id=p_tenant AND t.official_key=p_key
+         ORDER BY v.created_at DESC LIMIT 1
+      ) latest
+      JOIN odca.contract_templates t ON t.id=latest.tid AND t.status<>'archived'
+      JOIN odca.contract_template_versions tv ON tv.id=latest.vid
+    UNION ALL
+    SELECT t.id, tv.id, tv.version_number, 2::int
+      FROM odca.contract_templates t
+      JOIN odca.contract_template_versions tv ON tv.template_id=t.id AND tv.version_number=t.current_version
+     WHERE t.official_key=p_key AND t.owner_tenant_id=p_tenant AND t.status<>'archived'
+    UNION ALL
+    SELECT t.id, tv.id, tv.version_number, 3::int
+      FROM odca.contract_templates t
+      JOIN odca.contract_template_versions tv ON tv.template_id=t.id AND tv.version_number=t.current_version
+     WHERE t.official_key=p_key AND t.owner_tenant_id IS NULL AND t.scope='global' AND t.status<>'archived'
+  ) c
+  ORDER BY c.rank
+  LIMIT 1;
+  IF v_vid IS NOT NULL THEN RETURN QUERY SELECT v_tid,v_vid,v_num; END IF;
+END $fn$;
+REVOKE ALL ON FUNCTION odca.resolve_official_template(uuid,text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.resolve_official_template(uuid,text) TO odca_app;
+
+INSERT INTO odca.schema_migrations(version,name,checksum)
+VALUES(47,'Aprofundamento 3: resolucao oficial honra a versao fixada pela minuta','1b1bef45651f9c4f40d8bc4f3073e03dd6254bf4d6c46f82de21d9eaa5d4f2b6')
+ON CONFLICT(version) DO NOTHING;
+COMMIT;
+-- ODCA-END 047
