@@ -112,6 +112,21 @@ public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContex
         return RedirectToAction(nameof(NotificationPreferences));
     }
 
+    [Authorize]
+    [HttpPost("minha-conta/idioma")]
+    public IActionResult SetLanguage(string? lang, string? returnUrl)
+    {
+        var code = Localization.LocalizationService.ResolveCultureCode(lang) ?? "pt-BR";
+        Response.Cookies.Append(Middleware.CultureMiddleware.CookieName, code, new CookieOptions
+        {
+            HttpOnly = true,
+            SameSite = SameSiteMode.Lax,
+            Secure = Request.IsHttps,
+            MaxAge = TimeSpan.FromDays(365)
+        });
+        return Redirect(SafeReturnUrl(returnUrl ?? "/") ?? "/");
+    }
+
     [AllowAnonymous]
     [HttpPost("entrar")]
     public async Task<IActionResult> Login(LoginViewModel model, CancellationToken cancellationToken)

@@ -105,20 +105,23 @@
         CanAccessWorkspace = canAccessWorkspace,
         CanReadDocuments = canReadDocuments,
         SituationUnconfirmed = situationUnconfirmed,
-        ReviewsPlanRestricted = reviewsPlanRestricted
+        ReviewsPlanRestricted = reviewsPlanRestricted,
+        Localizer = key => L.T(key, (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey])
     };
     string ContextLabel()
     {
-        if (isPlatform && string.IsNullOrWhiteSpace(activeTenantId)) return "PLATAFORMA";
-        if (organizationSuspended || featureErrorCode == "organization_suspended") return "ORGANIZAÇÃO SUSPENSA";
-        if (string.IsNullOrWhiteSpace(activeTenantId)) return "SEM ORGANIZAÇÃO";
-        if (featureCallStatus is ApiCallStatus.Unavailable or ApiCallStatus.Timeout) return "SITUAÇÃO NÃO CONFIRMADA";
-        if (featureCallStatus == ApiCallStatus.Unauthorized) return "SESSÃO NÃO ACEITA";
-        if (featureCallStatus == ApiCallStatus.Forbidden) return "ACESSO NÃO CONFIRMADO";
-        if (situationUnconfirmed) return "SITUAÇÃO NÃO CONFIRMADA";
-        if (organizationStatus == "active") return "ORGANIZAÇÃO ATIVA";
-        return "ORGANIZAÇÃO";
+        var culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+        if (isPlatform && string.IsNullOrWhiteSpace(activeTenantId)) return L.T("layout.platform", culture).ToUpper();
+        if (organizationSuspended || featureErrorCode == "organization_suspended") return L.T("layout.org_suspended", culture);
+        if (string.IsNullOrWhiteSpace(activeTenantId)) return L.T("layout.no_org", culture);
+        if (featureCallStatus is ApiCallStatus.Unavailable or ApiCallStatus.Timeout) return L.T("layout.not_confirmed", culture);
+        if (featureCallStatus == ApiCallStatus.Unauthorized) return L.T("layout.session_not_accepted", culture);
+        if (featureCallStatus == ApiCallStatus.Forbidden) return L.T("layout.access_not_confirmed", culture);
+        if (situationUnconfirmed) return L.T("layout.not_confirmed", culture);
+        if (organizationStatus == "active") return L.T("layout.org_active", culture);
+        return L.T("layout.org", culture);
     }
+    var _culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
     string MenuFeature(string code, string label)
     {
         if (situationUnconfirmed)
@@ -132,7 +135,7 @@
     }
 }
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="@_culture">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -142,13 +145,13 @@
 <body class="@(showApplication ? "application" : "public")">
     @if (showApplication)
     {
-        <a class="skip-link" href="#main-content">Pular para o conteúdo</a>
+        <a class="skip-link" href="#main-content">@L.T("layout.skip_content", _culture)</a>
         <div class="app-shell" data-app-shell>
             <div class="drawer-scrim" data-drawer-close></div>
             <aside class="sidebar" id="application-navigation" aria-label="Navegação principal">
                 <div class="sidebar-brand">
                     <a class="brand" asp-controller="Home" asp-action="Index"><span class="brand-mark" aria-hidden="true">O</span><span class="brand-name">ODCA Solutions</span></a>
-                    <button class="icon-button sidebar-collapse" type="button" data-sidebar-collapse aria-label="Recolher menu" aria-expanded="true"><span aria-hidden="true">‹</span></button>
+                    <button class="icon-button sidebar-collapse" type="button" data-sidebar-collapse aria-label="@L.T("layout.collapse_menu", _culture)" aria-expanded="true"><span aria-hidden="true">‹</span></button>
                 </div>
                 <div class="context-card">
                     <span class="context-label">@ContextLabel()</span>
@@ -163,48 +166,57 @@
                         }
                     }
                 </nav>
-                <div class="sidebar-footer"><span class="status-dot" aria-hidden="true"></span><span>Sessão autenticada</span></div>
+                <div class="sidebar-footer"><span class="status-dot" aria-hidden="true"></span><span>@L.T("layout.session_active", _culture)</span></div>
             </aside>
             <div class="app-content">
                 <header class="app-topbar">
-                    <button class="icon-button mobile-menu" type="button" data-drawer-open aria-controls="application-navigation" aria-expanded="false"><span aria-hidden="true">☰</span><span class="sr-only">Abrir menu</span></button>
-                    <div class="topbar-context"><span>@(isPlatform ? "Plataforma" : "Organização")</span><strong>@ViewData["Title"]</strong></div>
+                    <button class="icon-button mobile-menu" type="button" data-drawer-open aria-controls="application-navigation" aria-expanded="false"><span aria-hidden="true">☰</span><span class="sr-only">@L.T("layout.expand_menu", _culture)</span></button>
+                    <div class="topbar-context"><span>@(isPlatform ? L.T("layout.platform", _culture) : L.T("layout.org", _culture))</span><strong>@ViewData["Title"]</strong></div>
                     <details class="user-menu">
-                        <summary><span class="avatar" aria-hidden="true">@avatarText</span><span class="user-name">@(string.IsNullOrWhiteSpace(displayName) ? "Usuário" : displayName)</span></summary>
+                        <summary><span class="avatar" aria-hidden="true">@avatarText</span><span class="user-name">@(string.IsNullOrWhiteSpace(displayName) ? L.T("layout.user_default", _culture) : displayName)</span></summary>
                         <div class="user-menu-panel">
-                            <span class="menu-caption">Conta autenticada</span>
-                            <form asp-controller="Account" asp-action="Logout" method="post">@Html.AntiForgeryToken()<button class="menu-action" type="submit">Sair com segurança</button></form>
+                            <span class="menu-caption">@L.T("layout.session_active", _culture)</span>
+                            <form asp-controller="Account" asp-action="SetLanguage" method="post" class="lang-form">@Html.AntiForgeryToken()
+                                <label for="lang-select" class="menu-action-label">@L.T("account.language", _culture)</label>
+                                <select name="lang" id="lang-select" onchange="this.form.submit()">
+                                    <option value="pt-BR" selected="@(_culture == "pt-BR")">Português (BR)</option>
+                                    <option value="en-US" selected="@(_culture == "en-US")">English (US)</option>
+                                    <option value="fr-FR" selected="@(_culture == "fr-FR")">Français</option>
+                                    <option value="es-ES" selected="@(_culture == "es-ES")">Español</option>
+                                </select>
+                            </form>
+                            <form asp-controller="Account" asp-action="Logout" method="post">@Html.AntiForgeryToken()<button class="menu-action" type="submit">@L.T("layout.logout", _culture)</button></form>
                         </div>
                     </details>
                 </header>
                 <main class="page-shell" id="main-content" tabindex="-1">
                     @if (organizationSuspended || featureErrorCode == "organization_suspended")
                     {
-                        <div class="alert alert-error" role="status">Esta organização está suspensa. Cadastros e documentos permanecem armazenados. As operações desta organização ficam indisponíveis até o superadministrador restaurar o acesso. Outra organização ativa do mesmo usuário não é afetada. Isto não é falha de comunicação, bloqueio de módulo nem restrição de plano.</div>
+                        <div class="alert alert-error" role="status">@L.T("alert.suspended", _culture)</div>
                     }
                     else if (featureCallStatus is ApiCallStatus.Unavailable or ApiCallStatus.Timeout)
                     {
-                        <div class="alert alert-error" role="alert"><strong>Falha de comunicação.</strong> Não foi possível consultar a situação da organização. Ela não foi confirmada como ativa e nenhum bloqueio foi descartado.</div>
+                        <div class="alert alert-error" role="alert"><strong>@L.T("alert.comm_failure", _culture)</strong> @L.T("alert.comm_detail", _culture)</div>
                     }
                     else if (featureCallStatus == ApiCallStatus.Unauthorized)
                     {
-                        <div class="alert alert-error" role="alert"><strong>Sessão não aceita.</strong> A consulta não identificou uma sessão operacional válida. Isso pode ocorrer com usuário bloqueado ou sessão encerrada. Não é falha de comunicação e não confirma a organização como ativa.</div>
+                        <div class="alert alert-error" role="alert"><strong>@L.T("alert.session_rejected", _culture)</strong> @L.T("alert.session_detail", _culture)</div>
                     }
                     else if (featureCallStatus == ApiCallStatus.Forbidden)
                     {
-                        <div class="alert alert-error" role="alert"><strong>Acesso não confirmado.</strong> O vínculo com esta organização pode estar bloqueado ou a permissão é insuficiente. Outra organização do mesmo usuário permanece independente. Liberar um módulo não remove suspensão nem restrição de plano.</div>
+                        <div class="alert alert-error" role="alert"><strong>@L.T("alert.access_not_confirmed", _culture)</strong> @L.T("alert.access_detail", _culture)</div>
                     }
                     else if (!string.IsNullOrWhiteSpace(featureLoadError))
                     {
-                        <div class="alert alert-error" role="alert"><strong>Situação não confirmada.</strong> @featureLoadError A organização não foi marcada como ativa.</div>
+                        <div class="alert alert-error" role="alert"><strong>@L.T("alert.situation_unconfirmed", _culture)</strong> @featureLoadError</div>
                     }
                     else if (featureStates.Values.Any(state => state == "administratively_blocked"))
                     {
-                        <div class="alert" role="status">Há módulo bloqueado pela administração. Os dados permanecem. Liberar o módulo não remove suspensão nem restrição de plano.</div>
+                        <div class="alert" role="status">@L.T("alert.module_blocked", _culture)</div>
                     }
                     else if (featureStates.Values.Any(state => state == "plan_restricted"))
                     {
-                        <div class="alert" role="status">Há funcionalidade fora do plano atual. Isso é diferente de bloqueio administrativo e de falta de permissão.</div>
+                        <div class="alert" role="status">@L.T("alert.plan_restricted", _culture)</div>
                     }
                     @RenderBody()
                 </main>
@@ -214,14 +226,14 @@
     else
     {
         <header class="public-topbar">
-            <a class="brand" asp-controller="Home" asp-action="Index" aria-label="ODCA Solutions — início"><span class="brand-mark" aria-hidden="true">O</span><span>ODCA Solutions</span></a>
+            <a class="brand" asp-controller="Home" asp-action="Index" aria-label="ODCA Solutions"><span class="brand-mark" aria-hidden="true">O</span><span>ODCA Solutions</span></a>
             @if (!authenticated)
             {
-                <nav class="public-actions" aria-label="Navegação pública"><a asp-controller="Catalog" asp-action="Plans">Planos</a><a asp-controller="Privacy" asp-action="Index">Privacidade</a></nav>
+                <nav class="public-actions"><a asp-controller="Catalog" asp-action="Plans">Planos</a><a asp-controller="Privacy" asp-action="Index">@L.T("privacidade", _culture)</a></nav>
             }
             else
             {
-                <form asp-controller="Account" asp-action="Logout" method="post">@Html.AntiForgeryToken()<button class="button button-quiet" type="submit">Sair</button></form>
+                <form asp-controller="Account" asp-action="Logout" method="post">@Html.AntiForgeryToken()<button class="button button-quiet" type="submit">@L.T("account.logout", _culture)</button></form>
             }
         </header>
         <main class="page-shell" id="main-content">@RenderBody()</main>

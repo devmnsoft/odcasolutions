@@ -37,7 +37,9 @@ public static class NavigationRenderer
                 {
                     caption.Attributes["style"] = item.GroupStyle;
                 }
-                caption.InnerHtml.Append(item.Group);
+                var groupKey = "group_" + item.Group.Trim().ToLowerInvariant().Replace(" ", "_").Replace("&", "").Replace("é", "e").Replace("ê", "e").Replace("á", "a").Replace("â", "a");
+                var groupLabel = ctx.Localizer?.Invoke(groupKey) ?? item.Group;
+                caption.InnerHtml.Append(groupLabel);
                 output.Add(caption);
             }
 
@@ -70,7 +72,8 @@ public static class NavigationRenderer
             icon.InnerHtml.Append(item.Icon);
             link.InnerHtml.AppendHtml(icon);
 
-            var label = item.FeatureCode is null ? item.Label : decorateLabel(item.FeatureCode, item.Label);
+            var baseLabel = ctx.Localizer?.Invoke(item.Key) ?? item.Label;
+            var label = item.FeatureCode is null ? baseLabel : decorateLabel(item.FeatureCode, baseLabel);
             var labelSpan = new TagBuilder("span");
             labelSpan.InnerHtml.Append(label);
             link.InnerHtml.AppendHtml(labelSpan);

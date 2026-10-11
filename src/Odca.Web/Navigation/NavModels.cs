@@ -32,6 +32,12 @@ public sealed class NavContext
     public bool HasTenant => !string.IsNullOrWhiteSpace(TenantId);
     public bool HasContract => !string.IsNullOrWhiteSpace(ContractId);
 
+    /// <summary>
+    /// Resolver de rótulos por idioma (D-OC5). Quando presente, NavigationRenderer usa
+    /// Localizer(navItemKey) para o rótulo e Localizer("group_" + grupoNormalizado) para grupos.
+    /// </summary>
+    public Func<string, string>? Localizer { get; init; }
+
     public string? Q(string key) => Query.GetValueOrDefault(key);
 }
 
