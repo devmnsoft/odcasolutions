@@ -74,6 +74,13 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
         };
         if (proposedValue < 0 || request.ValueChangeMode is "increase" or "decrease" && !contract.Value.HasValue)
             return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]> {{ "proposedValue", ["Acréscimo ou redução exige valor atual e não pode resultar em valor negativo."] }}));
+        // Validação do estado resultante (não apenas campos enviados)
+        var resultStart = request.ProposedStartDate ?? contract.StartDate;
+        var resultEnd = request.ClearEndDate ? (DateOnly?)null : (request.ProposedEndDate ?? contract.EndDate);
+        if (resultStart is not null && resultEnd is not null && resultStart > resultEnd)
+            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]> {{ "dates", ["A data inicial do contrato resultante não pode ser posterior à data final."] }}));
+        if (request.Currency is not null && !string.IsNullOrWhiteSpace(request.Currency) && request.ProposedValue is null)
+            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]> {{ "currency", ["Moeda proposta sem valor correspondente. Ombra a moeda atual não será alterada."] }}));
         // Revisão administrativa (Bloco A'): correção não comercial — não altera condições
         // comerciais (valores, vigência, objeto ou partes). Qualquer delta comercial segue
         // aditivo ou nova versão; o efeito aplicado é comparado ao contrato atual.
@@ -139,8 +146,17 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
 
     internal static async Task<object?> ApplyCore(NpgsqlConnection c,NpgsqlTransaction tx,Guid tenantId,Guid id,Guid actor,long rowVersion,DateOnly today,CancellationToken ct)
     {
-        var row=await c.QuerySingleOrDefaultAsync<ApplyRow>(new CommandDefinition("SELECT r.contract_id AS ContractId,r.base_contract_version AS BaseVersion,r.proposed_start_date AS StartDate,r.proposed_end_date AS EndDate,r.proposed_value AS Value,r.currency AS Currency,r.effective_on AS EffectiveOn,c.version AS CurrentVersion,c.start_date AS OldStart,c.end_date AS OldEnd,c.value AS OldValue,c.currency AS OldCurrency,r.kind AS Kind,r.clear_end_date AS ClearEnd FROM odca.contract_change_requests r JOIN odca.contracts c ON c.tenant_id=r.tenant_id AND c.id=r.contract_id WHERE r.tenant_id=@tenantId AND r.id=@id AND (r.row_version=@rowVersion OR (r.base_contract_version=@rowVersion AND c.version=@rowVersion)) AND r.status='formalized' AND r.application_status IN('not_applied','scheduled','failed') FOR UPDATE OF r,c",new{tenantId,id,rowVersion},tx,cancellationToken:ct));
+        var row=await c.QuerySingleOrDefaultAsync<ApplyRow>(new CommandDefinition("SELECT r.contract_id AS ContractId,r.base_contract_version AS BaseVersion,r.proposed_start_date AS StartDate,r.proposed_end_date AS EndDate,r.proposed_value AS Value,r.currency AS Currency,r.effective_on AS EffectiveOn,c.version AS CurrentVersion,c.start_date AS OldStart,c.end_date AS OldEnd,c.value AS OldValue,c.currency AS OldCurrency,r.kind AS Kind,r.clear_end_date AS ClearEnd FROM odca.contract_change_requests r JOIN odca.contracts c ON c.tenant_id=r.tenant_id AND c.id=r.contract_id WHERE r.tenant_id=@tenantId AND r.id=@id AND r.row_version=@rowVersion AND r.status='formalized' AND r.application_status IN('not_applied','scheduled','failed') FOR UPDATE OF r,c",new{tenantId,id,rowVersion},tx,cancellationToken:ct));
         if(row is null||row.EffectiveOn>today)return null;if(row.CurrentVersion!=row.BaseVersion){await c.ExecuteAsync(new CommandDefinition("UPDATE odca.contract_change_requests SET status='conflict',application_status='failed',row_version=row_version+1,updated_at=now() WHERE tenant_id=@tenantId AND id=@id",new{tenantId,id},tx,cancellationToken:ct));return null;}
+        // Revalidação defensiva: revisão administrativa não pode introduzir delta comercial na aplicação
+        if (row.Kind == "revision")
+        {
+            var revStart = row.StartDate ?? row.OldStart;
+            var revEnd = row.ClearEnd ? (DateOnly?)null : (row.EndDate ?? row.OldEnd);
+            var revValue = row.Value ?? row.OldValue;
+            if (revStart != row.OldStart || revEnd != row.OldEnd || revValue != row.OldValue)
+            { await c.ExecuteAsync(new CommandDefinition("UPDATE odca.contract_change_requests SET status='conflict',application_status='failed',row_version=row_version+1,updated_at=now() WHERE tenant_id=@tenantId AND id=@id",new{tenantId,id},tx,cancellationToken:ct)); return null; }
+        }
         var changed=await c.ExecuteAsync(new CommandDefinition("UPDATE odca.contracts SET start_date=COALESCE(@start,start_date),end_date=CASE WHEN @clearEnd THEN NULL ELSE COALESCE(@end,end_date) END,value=COALESCE(@value,value),currency=CASE WHEN @value IS NULL THEN currency ELSE @currency END,version=CASE WHEN @kind='revision' THEN version ELSE version+1 END,updated_at=now() WHERE tenant_id=@tenantId AND id=@contractId AND version=@baseVersion",new{start=row.StartDate,end=row.EndDate,value=row.Value,currency=row.Currency,clearEnd=row.ClearEnd,kind=row.Kind,tenantId,contractId=row.ContractId,baseVersion=row.BaseVersion},tx,cancellationToken:ct));if(changed!=1)return null;
         await c.ExecuteAsync(new CommandDefinition("""
             INSERT INTO odca.contract_change_applications(tenant_id,request_id,contract_id,applied_by,before_data,after_data)
@@ -149,7 +165,7 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
               jsonb_build_object('startDate',COALESCE(@start::date,@oldStart::date),
                 'endDate',CASE WHEN @clearEnd THEN NULL ELSE COALESCE(@end::date,@oldEnd::date) END,
                 'value',COALESCE(@value::numeric,@oldValue::numeric),
-                'currency',CASE WHEN @value IS NULL THEN @oldCurrency ELSE COALESCE(@currency::text,'') END))
+                'currency',CASE WHEN @value IS NULL THEN @oldCurrency::text ELSE @currency::text END))
             ON CONFLICT(tenant_id,request_id) DO NOTHING;
             UPDATE odca.contract_change_requests SET application_status='applied',row_version=row_version+1,updated_at=now() WHERE tenant_id=@tenantId AND id=@id
             """,new{tenantId,id,contractId=row.ContractId,actor,oldStart=row.OldStart,oldEnd=row.OldEnd,oldValue=row.OldValue,oldCurrency=row.OldCurrency,start=row.StartDate,end=row.EndDate,value=row.Value,currency=row.Currency,clearEnd=row.ClearEnd},tx,cancellationToken:ct));
