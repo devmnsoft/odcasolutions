@@ -11,6 +11,7 @@ public interface IConsumptionRepository
     Task<bool> DecideRequestAsync(Guid actorId, Guid tenantId, Guid requestId, DecideStorageRequest request, CancellationToken cancellationToken);
     Task<bool> GrantStorageAsync(Guid actorId, Guid tenantId, ManualStorageGrant request, CancellationToken cancellationToken);
     Task<bool> ChangeOrganizationStatusAsync(Guid actorId, Guid tenantId, bool restore, string reason, CancellationToken cancellationToken);
+    Task<bool> ActivateOrganizationAsync(Guid actorId, Guid tenantId, string reason, CancellationToken cancellationToken);
     Task<IReadOnlyList<PlatformCustomer>> ListCustomersAsync(Guid actorId, string? search, string? planCode, string? tenantStatus, CancellationToken cancellationToken);
     Task<CreatePlatformCustomerResponse?> CreateCustomerAsync(Guid actorId, CreatePlatformCustomerRequest request, CancellationToken cancellationToken);
 }

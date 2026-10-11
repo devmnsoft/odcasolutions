@@ -54,6 +54,26 @@ public sealed class NpgsqlConsumptionRepository(NpgsqlDataSource dataSource, IPa
         return true;
     },cancellationToken);
 
+    public Task<bool> ActivateOrganizationAsync(Guid actorId,Guid tenantId,string reason,CancellationToken cancellationToken)=>MutatePlatform(actorId,tenantId,async(c,tx,ct)=>
+    {
+        var tenantStatus=await c.ExecuteScalarAsync<string?>(new CommandDefinition("SELECT status FROM odca.tenants WHERE id=@tenantId AND NOT is_deleted FOR UPDATE",new{tenantId},tx,cancellationToken:ct));
+        if(tenantStatus is null)return false;
+        // Already active — idempotent success
+        if(tenantStatus=="active")return true;
+        // Only pending can be activated (not suspended or already active)
+        if(tenantStatus!="pending")return false;
+        // Update tenant status
+        var changedTenant=await c.ExecuteAsync(new CommandDefinition("UPDATE odca.tenants SET status='active',updated_at=now() WHERE id=@tenantId AND status='pending'",new{tenantId},tx,cancellationToken:ct));
+        if(changedTenant!=1)return false;
+        // Update subscription commercial_state and status
+        await c.ExecuteAsync(new CommandDefinition("""
+            UPDATE odca.subscriptions SET commercial_state='active',status='active',updated_at=now()
+            WHERE tenant_id=@tenantId AND commercial_state IN('email_pending','commercial_pending') AND status='pending'
+            """,new{tenantId},tx,cancellationToken:ct));
+        await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.audit_events(scope_type,tenant_id,actor_user_id,action,entity_type,entity_id,result,metadata) VALUES('tenant',@tenantId,@actor,'organization.activated','tenant',@tenantId,'success',jsonb_build_object('reason',@reason,'previous_status','pending','new_status','active'))",new{tenantId,actor=actorId,reason},tx,cancellationToken:ct));
+        return true;
+    },cancellationToken);
+
     public async Task<IReadOnlyList<PlatformCustomer>> ListCustomersAsync(Guid actorId,string? search,string? planCode,string? tenantStatus,CancellationToken cancellationToken)
     {
         const string sql = """
