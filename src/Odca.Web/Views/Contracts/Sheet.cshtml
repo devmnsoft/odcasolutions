@@ -156,6 +156,10 @@
     <a href="#minutas">Minutas</a>
     <a href="#assinatura">Assinatura</a>
     <a href="#documentos">Documentos</a>
+    @if (sheet.Solicitations is { Count: > 0 })
+    {
+        <a href="#solicitacoes">Solicitações</a>
+    }
     @if (Model.CanReadHistory)
     {
         <a href="#historico">Histórico</a>
@@ -1035,6 +1039,38 @@
         }
     }
 </section>
+
+<!-- SEÇÃO SOLICITAÇÕES ODCA RELACIONADAS AO CONTRATO -->
+@if (sheet.Solicitations is { Count: > 0 })
+{
+    <section id="solicitacoes" class="renewal-list">
+        <div class="list-header">
+            <h2>Solicitações ODCA relacionadas</h2>
+            <span>@sheet.Solicitations.Count solicitação(ões)</span>
+        </div>
+        @foreach (var sol in sheet.Solicitations)
+        {
+            <article class="renewal-row">
+                <div>
+                    <span class="status-label">@sol.StatusLabel</span>
+                    <h3>@sol.Subject</h3>
+                </div>
+                <dl>
+                    <div><dt>Serviço</dt><dd>@sol.ServiceLabel</dd></div>
+                    <div><dt>Prioridade</dt><dd>@sol.Priority</dd></div>
+                    @if (sol.SlaDueOn.HasValue)
+                    {
+                        <div><dt>Prazo SLA</dt><dd>@sol.SlaDueOn.Value.ToString("dd/MM/yyyy")</dd></div>
+                    }
+                </dl>
+                <div class="next-action">
+                    <a class="button button-quiet" asp-controller="Solicitacoes" asp-action="Detail"
+                       asp-route-tenantId="@tenantId" asp-route-id="@sol.Id">Abrir</a>
+                </div>
+            </article>
+        }
+    </section>
+}
 
 <!-- SEÇÃO HISTÓRICO DO CONTRATO (B.3.2c) -->
 @if (Model.CanReadHistory)

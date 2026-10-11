@@ -104,7 +104,19 @@ public sealed record ContractSheetDto(
     DateTimeOffset? ClosedAt = null,
     DateOnly? ClosedOn = null,
     string? ClosureReason = null,
-    ContractSheetSignatureDto? Signature = null);
+    ContractSheetSignatureDto? Signature = null,
+    IReadOnlyList<ContractSheetSolicitationDto>? Solicitations = null);
+
+/// <summary>Solicitação ODCA projetada na ficha do contrato (Bloco B/9).</summary>
+public sealed record ContractSheetSolicitationDto(
+    Guid Id,
+    string Subject,
+    string ServiceType,
+    string Priority,
+    string Status,
+    DateOnly? SlaDueOn,
+    string StatusLabel = "",
+    string ServiceLabel = "");
 
 /// <summary>Participante da preparação de assinatura projetado na ficha do contrato.</summary>
 public sealed record ContractSheetSignatureParticipantDto(

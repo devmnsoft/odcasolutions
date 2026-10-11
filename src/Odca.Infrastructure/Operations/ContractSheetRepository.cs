@@ -276,6 +276,20 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
                 .ToArray(),
             ToUtcOffset(signatureRow.LastRemindedAt));
 
+        // Solicitações ODCA ativas do tenant (contexto na ficha — Bloco B/9)
+        var solRows = await connection.QueryAsync<SheetSolicitationRow>(new CommandDefinition("""
+            SELECT s.id AS Id, s.subject AS Subject, s.service AS ServiceType, s.priority AS Priority,
+                   s.status AS Status, s.resolution_due_at::date AS SlaDueOn
+            FROM odca.solicitations s
+            WHERE s.tenant_id=@tenantId AND s.status IN ('open','in_progress','awaiting_customer','paused')
+            ORDER BY s.opened_at DESC LIMIT 10
+            """, new { tenantId }, transaction, cancellationToken: cancellationToken));
+        var solicitations = solRows.Select(r => new ContractSheetSolicitationDto(
+            r.Id, r.Subject, r.ServiceType, r.Priority, r.Status, r.SlaDueOn,
+            StatusLabel: r.Status switch { "open" => "Aberta", "in_progress" => "Em atendimento", "awaiting_customer" => "Aguardando cliente", _ => r.Status },
+            ServiceLabel: r.ServiceType switch { "revisao" => "Revisão", "adaptacao" => "Adaptação", "esclarecimento" => "Esclarecimento", "suporte_tecnico" => "Suporte técnico", _ => r.ServiceType }))
+            .ToArray();
+
         return new ContractSheetDto(
             header.ContractId,
             header.Title,
@@ -302,7 +316,8 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             ClosedAt: ToUtcOffset(header.ClosedAt),
             ClosedOn: header.ClosedOn,
             ClosureReason: header.ClosureReason,
-            Signature: signature);
+            Signature: signature,
+            Solicitations: solicitations);
     }
 
     private sealed record SheetHeader(
@@ -322,6 +337,9 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
         string? ClosureReason,
         int? NoticeAmount,
         string? NoticeUnit);
+
+    private sealed record SheetSolicitationRow(
+        Guid Id, string Subject, string ServiceType, string Priority, string Status, DateOnly? SlaDueOn);
 
     private sealed class ContractSheetDocumentRow
     {
