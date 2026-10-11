@@ -5648,3 +5648,32 @@ VALUES(49,'ApplyCore integrity: clear_end_date for prazo indeterminado','d601c7d
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 049
+
+-- ODCA-MIGRATION 050 CHECKSUM 512a837521f904d80db8255d1d4bde804931f746e767ae05966213fd36a9a0a8
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
+
+DO $odca$
+DECLARE
+    expected_checksum constant char(64) := '512a837521f904d80db8255d1d4bde804931f746e767ae05966213fd36a9a0a8';
+    recorded_checksum char(64);
+BEGIN
+    SELECT checksum INTO recorded_checksum FROM odca.schema_migrations WHERE version = 50;
+    IF recorded_checksum IS NOT NULL AND recorded_checksum <> expected_checksum THEN
+        RAISE EXCEPTION 'ODCA migration 050 checksum mismatch: stored %, expected %', recorded_checksum, expected_checksum;
+    END IF;
+END
+$odca$;
+
+-- Idempotência: chave de replay para formalização e dedup por origem no outbox.
+ALTER TABLE odca.contract_change_requests ADD COLUMN IF NOT EXISTS formalization_idempotency_key uuid;
+
+ALTER TABLE odca.notification_outbox ADD COLUMN IF NOT EXISTS source_id uuid;
+CREATE UNIQUE INDEX IF NOT EXISTS notification_outbox_source_uq
+    ON odca.notification_outbox (source_id) WHERE source_id IS NOT NULL;
+
+INSERT INTO odca.schema_migrations(version,name,checksum)
+VALUES(50,'Idempotencia: formalization replay and outbox dedup by source','512a837521f904d80db8255d1d4bde804931f746e767ae05966213fd36a9a0a8')
+ON CONFLICT(version) DO NOTHING;
+COMMIT;
+-- ODCA-END 050

@@ -113,14 +113,24 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
     {
         var actor=Actor(); if(actor is null)return Unauthorized(); if(string.IsNullOrWhiteSpace(request.Justification))return ValidationProblem();
         await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.renewals.formalize",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
+        // Idempotent replay: if already formalized with matching key, return success.
+        if (request.IdempotencyKey.HasValue)
+        {
+            var replay = await c.QuerySingleOrDefaultAsync<ReplayCheck>(new CommandDefinition(
+                "SELECT status AS Status, formalization_idempotency_key AS Key FROM odca.contract_change_requests WHERE tenant_id=@tenantId AND id=@id FOR UPDATE",
+                new { tenantId, id }, tx, cancellationToken: ct));
+            if (replay is not null && replay.Status == "formalized" && replay.Key == request.IdempotencyKey.Value)
+            { await tx.CommitAsync(ct); return Ok(new { manualFormalization = true, replayed = true }); }
+        }
         var organizationToday=await OrganizationToday(c,tenantId,tx,ct);if(request.FormalizedOn>organizationToday)return ValidationProblem();
         var changed=await c.ExecuteAsync(new CommandDefinition("""
             UPDATE odca.contract_change_requests r SET status='formalized',application_status=CASE WHEN effective_on>@today THEN 'scheduled' ELSE 'not_applied' END,
-              evidence_version_id=@evidence,formalized_on=@date,formalization_justification=@reason,formalized_by=@actor,formalized_at=now(),row_version=row_version+1,updated_at=now()
+              evidence_version_id=@evidence,formalized_on=@date,formalization_justification=@reason,formalized_by=@actor,formalized_at=now(),
+              formalization_idempotency_key=@idemKey,row_version=row_version+1,updated_at=now()
             WHERE r.tenant_id=@tenantId AND r.id=@id AND r.row_version=@version AND r.status IN('in_review','internally_approved','awaiting_formalization')
               AND EXISTS(SELECT 1 FROM odca.document_versions v WHERE v.tenant_id=r.tenant_id AND v.contract_id=r.contract_id AND v.id=@evidence AND v.security_status='safe')
-            """,new{tenantId,id,version=request.RowVersion,evidence=request.EvidenceVersionId,date=request.FormalizedOn,reason=request.Justification.Trim(),actor,today=organizationToday},tx,cancellationToken:ct));
-        if(changed!=1)return Conflict(new{title="Estado, versão ou evidência segura inválidos."});await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.contract_change_events(tenant_id,request_id,actor_id,event_type,details) VALUES(@tenantId,@id,@actor,'manual_formalization',jsonb_build_object('evidenceVersionId',@evidence))",new{tenantId,id,actor,evidence=request.EvidenceVersionId},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Ok(new{manualFormalization=true});
+            """,new{tenantId,id,version=request.RowVersion,evidence=request.EvidenceVersionId,date=request.FormalizedOn,reason=request.Justification.Trim(),actor,today=organizationToday,idemKey=request.IdempotencyKey},tx,cancellationToken:ct));
+        if(changed!=1)return Conflict(new{title="Estado, versão ou evidência segura inválidos."});await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.contract_change_events(tenant_id,request_id,actor_id,event_type,details) VALUES(@tenantId,@id,@actor,'manual_formalization',jsonb_build_object('evidenceVersionId',@evidence))",new{tenantId,id,actor,evidence=request.EvidenceVersionId},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Ok(new{manualFormalization=true,replayed=false});
     }
 
     [HttpPost("{id:guid}/apply")]
@@ -261,6 +271,7 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
     private static Task<bool> Allowed(NpgsqlConnection c,Guid actor,Guid tenant,string permission,CancellationToken ct)=>c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT odca.tenant_actor_has_permission(@actor,@tenant,@permission)",new{actor,tenant,permission},cancellationToken:ct));
     private static Task<int> SetTenant(NpgsqlConnection c,Guid tenant,Guid actor,NpgsqlTransaction tx,CancellationToken ct)=>c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenant,true),set_config('odca.actor_id',@actor,true)",new{tenant=tenant.ToString(),actor=actor.ToString()},tx,cancellationToken:ct));
     private sealed record CountRow(int Expiring,int Expired,int Preparing,int InReview,int Scheduled,int NotRenewing,int Indeterminate=0);
+    private sealed record ReplayCheck(string Status, Guid? Key);
     private sealed record ContractBase(DateOnly? StartDate,DateOnly? EndDate,decimal? Value,string? Currency,Guid? OwnerId,long Version);
     private sealed record ApplyRow(Guid ContractId,long BaseVersion,DateOnly? StartDate,DateOnly? EndDate,decimal? Value,string? Currency,DateOnly EffectiveOn,long CurrentVersion,DateOnly? OldStart,DateOnly? OldEnd,decimal? OldValue,string? OldCurrency,string Kind,bool ClearEnd);
     private sealed record RenewalRequestRow(Guid Id,Guid ContractId,string ContractName,string Kind,string Status,string ApplicationStatus,string Reason,string? Priority,Guid? ResponsibleId,string? ResponsibleName,DateOnly? CurrentStartDate,DateOnly? CurrentEndDate,decimal? CurrentValue,DateOnly? ProposedStartDate,DateOnly? ProposedEndDate,decimal? ProposedValue,string? Currency,DateOnly EffectiveOn,long BaseContractVersion,long RowVersion,Guid? EvidenceVersionId,DateTime? FormalizedAt,string? FormalizationJustification,bool ClearEnd);

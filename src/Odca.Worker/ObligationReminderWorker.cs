@@ -43,14 +43,14 @@ public sealed class ObligationReminderWorker(
                 return;
             }
 
-            await MaybeEnqueueNotificationEmailAsync(connection, tx, item.TenantId, item.RecipientId, ct);
+            await MaybeEnqueueNotificationEmailAsync(connection, tx, item.TenantId, item.RecipientId, item.Id, ct);
             await tx.CommitAsync(ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception exception) { logger.LogError(exception, "Falha transitória no processamento de lembrete interno."); }
     }
 
-    private async Task MaybeEnqueueNotificationEmailAsync(NpgsqlConnection connection, NpgsqlTransaction tx, Guid tenantId, Guid userId, CancellationToken ct)
+    private async Task MaybeEnqueueNotificationEmailAsync(NpgsqlConnection connection, NpgsqlTransaction tx, Guid tenantId, Guid userId, Guid sourceId, CancellationToken ct)
     {
         try
         {
@@ -71,8 +71,8 @@ public sealed class ObligationReminderWorker(
 
             var protectedPayload = _protector.Protect(title);
             await connection.ExecuteAsync(new CommandDefinition(
-                "INSERT INTO odca.notification_outbox(tenant_id,invitation_id,kind,destination,protected_payload) VALUES(@tenantId,NULL,'user_notification',@email,@payload)",
-                new { tenantId, email, payload = protectedPayload }, transaction: tx, cancellationToken: ct));
+                "INSERT INTO odca.notification_outbox(tenant_id,invitation_id,kind,destination,protected_payload,source_id) VALUES(@tenantId,NULL,'user_notification',@email,@payload,@sourceId) ON CONFLICT(source_id) DO NOTHING",
+                new { tenantId, email, payload = protectedPayload, sourceId }, transaction: tx, cancellationToken: ct));
         }
         catch (Exception ex)
         {

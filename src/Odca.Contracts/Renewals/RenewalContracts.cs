@@ -18,7 +18,7 @@ public sealed record RenewalRequestDetails(Guid Id, Guid ContractId, string Cont
     DateTimeOffset? FormalizedAt, string? FormalizationJustification, IReadOnlyList<RenewalChangeEvent> Events, IReadOnlyList<RenewalEvidenceOption> EvidenceCandidates, bool ClearEndDate = false);
 public sealed record RenewalChangeEvent(string EventType, DateTimeOffset OccurredAt, string? ActorName);
 public sealed record RenewalEvidenceOption(Guid VersionId, int VersionNumber, string DisplayName, string SecurityStatus, DateTimeOffset UploadedAt);
-public sealed record FormalizeRenewalRequest(Guid EvidenceVersionId, DateOnly FormalizedOn, string Justification, long RowVersion);
+public sealed record FormalizeRenewalRequest(Guid EvidenceVersionId, DateOnly FormalizedOn, string Justification, long RowVersion, Guid? IdempotencyKey = null);
 public sealed record ApplyRenewalRequest(long RowVersion);
 public sealed record ApplyRenewalResponse(bool Applied, long ContractVersion, bool ObligationsPreserved, DateOnly? EndsOn);
 public sealed record SubmitRenewalRequest(long RowVersion);

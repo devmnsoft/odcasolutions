@@ -2,5 +2,5 @@ namespace Odca.Infrastructure.Database;
 
 public static class DatabaseSchema
 {
-    public const int CurrentVersion = 49;
+    public const int CurrentVersion = 50;
 }
