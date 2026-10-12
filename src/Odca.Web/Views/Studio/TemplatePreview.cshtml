@@ -1,0 +1,34 @@
+@model Odca.Contracts.Studio.TemplateRenderedPreview
+@{
+    var _culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    var tenantId = ViewData["TenantId"];
+}
+<nav class="breadcrumb" aria-label="Navegação">
+    <a asp-action="Index" asp-route-tenantId="@tenantId">@L.T("nav.templates", _culture)</a>
+    <span>/</span>
+    <span aria-current="page">@L.T("studio.preview_title", _culture): @Model.Name</span>
+</nav>
+
+<header class="renewal-heading">
+    <div>
+        <p class="eyebrow">@L.T("studio.preview_eyebrow", _culture)</p>
+        <h1>@Model.Name</h1>
+        <p class="muted">@L.T("studio.preview_subtitle", _culture)</p>
+    </div>
+    <div class="form-actions-row">
+        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">@L.T("studio.preview_back", _culture)</a>
+    </div>
+</header>
+
+<div class="banner-notice-warning" role="note" style="margin-bottom:1rem;">
+    @L.T("studio.preview_disclaimer", _culture)
+</div>
+
+<div class="panel legal-document-preview" style="padding:2rem; max-width:800px; margin:0 auto;">
+    @Html.Raw(Model.Html)
+</div>
+
+<div style="margin-top:1.5rem; display:flex; gap:0.5rem; align-items:center;">
+    <strong>@L.T("studio.preview_action_title", _culture):</strong>
+    <a class="button button-primary" asp-action="Index" asp-route-tenantId="@tenantId">@L.T("studio.preview_use_template", _culture)</a>
+</div>

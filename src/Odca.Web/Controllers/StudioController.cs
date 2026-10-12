@@ -28,6 +28,22 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         return View(result.Value!);
     }
 
+    [HttpGet("modelos/{templateId:guid}/previa")]
+    public async Task<IActionResult> TemplatePreview(Guid tenantId, Guid templateId, CancellationToken ct)
+    {
+        ViewData["TenantId"] = tenantId;
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+        var result = await api.GetStudioTemplatePreviewHtmlAsync(token, tenantId, templateId, ct);
+        if (!result.Succeeded)
+        {
+            if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+            TempData["PreviewError"] = result.UserMessage("Não foi possível gerar a prévia.");
+            return RedirectToAction(nameof(Index), new { tenantId });
+        }
+        return View(result.Value!);
+    }
+
     [HttpGet("modelos/novo")]
     public async Task<IActionResult> NewTemplate(Guid tenantId, CancellationToken ct)
     {

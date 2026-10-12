@@ -48,6 +48,33 @@ public sealed class ContractStudioCatalogController(NpgsqlDataSource dataSource)
         return Ok(new TemplatePreview(row.Id, row.Name, row.Description, row.ContractType, row.Scope, row.Status, row.Version, fields, labels, row.RowVersion, content));
     }
 
+    [HttpGet("templates/{templateId:guid}/preview")]
+    public async Task<IActionResult> TemplatePreview(Guid tenantId, Guid templateId, CancellationToken ct)
+    {
+        var actor = Actor(); if (actor is null) return Unauthorized();
+        await using var connection = await dataSource.OpenConnectionAsync(ct);
+        if (!await Allowed(connection, actor.Value, tenantId, "tenant.templates.read", ct) &&
+            !await Allowed(connection, actor.Value, tenantId, "tenant.templates.manage", ct)) return Forbid();
+        var row = await connection.QuerySingleOrDefaultAsync<TemplatePreviewRow>(new CommandDefinition("""
+            SELECT t.id AS Id, t.name AS Name, t.description AS Description, t.contract_type AS ContractType,
+                   t.scope AS Scope, t.status AS Status, t.current_version AS Version, t.row_version AS RowVersion,
+                   v.fields::text AS Fields, v.content::text AS Content
+              FROM odca.contract_templates t
+              JOIN odca.contract_template_versions v ON v.template_id = t.id AND v.version_number = t.current_version
+             WHERE t.id = @templateId
+               AND (t.status = 'published' OR ((t.status = 'draft' OR t.status = 'archived') AND t.owner_tenant_id = @tenantId))
+               AND (t.scope = 'global' OR t.owner_tenant_id = @tenantId OR EXISTS (
+                    SELECT 1 FROM odca.contract_template_access a
+                     WHERE a.template_id = t.id AND a.tenant_id = @tenantId AND a.revoked_at IS NULL))
+            """, new { templateId, tenantId }, cancellationToken: ct));
+        if (row is null) return NotFound();
+        // Prévia com valores vazios — mostra estrutura e campos sem dados reais.
+        var valuesJson = "{}";
+        var contentJson = row.Content ?? "{}";
+        var html = ContractDocumentRenderer.ToHtml(contentJson, row.Fields, valuesJson);
+        return Ok(new { name = row.Name, contractType = row.ContractType, html });
+    }
+
     [HttpGet("templates/official/{key}")]
     public async Task<IActionResult> OfficialTemplate(Guid tenantId, string key, CancellationToken ct)
     {

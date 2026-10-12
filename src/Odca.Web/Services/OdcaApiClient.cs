@@ -740,6 +740,9 @@ public sealed partial class OdcaApiClient(HttpClient client)
     public Task<ApiCallResult<TemplatePreview>> GetStudioTemplateAsync(string token, Guid tenantId, Guid templateId, CancellationToken ct) =>
         SendAsync<TemplatePreview>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/studio/templates/{templateId}", token), false, ct);
 
+    public Task<ApiCallResult<TemplateRenderedPreview>> GetStudioTemplatePreviewHtmlAsync(string token, Guid tenantId, Guid templateId, CancellationToken ct) =>
+        SendAsync<TemplateRenderedPreview>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/studio/templates/{templateId}/preview", token), false, ct);
+
     public async Task<ApiCallResult<TemplateMutationResponse>> CreateStudioTemplateAsync(string token, Guid tenantId, CreateTemplateRequest request, CancellationToken ct)
     {
         using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/templates", token);

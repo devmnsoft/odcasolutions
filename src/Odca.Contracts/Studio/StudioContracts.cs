@@ -121,4 +121,7 @@ public sealed record CreateTemplateRequest(string Name, string? Description, str
 public sealed record UpdateTemplateRequest(string Name, string? Description, string ContractType, JsonElement Content, JsonElement Fields, long ExpectedVersion);
 public sealed record TemplateMutationResponse(Guid Id, int Version, long RowVersion, string Status);
 public sealed record TemplatePreview(Guid Id, string Name, string? Description, string ContractType, string Scope, string Status, int Version, JsonElement Fields, IReadOnlyList<string> FieldLabels, long RowVersion = 1, JsonElement? Content = null);
+
+/// <summary>Prévia renderizada do modelo com valores vazios (Estúdio item 4).</summary>
+public sealed record TemplateRenderedPreview(string Name, string ContractType, string Html);
 public sealed record OfficialTemplateInstallResponse(int Installed, int AlreadyPresent, IReadOnlyList<string> Names);

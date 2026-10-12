@@ -194,4 +194,11 @@
     "sheet.chg_not_applied": "Formalizado — pendente de aplicação"
     "sheet.chg_review": "Em revisão"
     "sheet.chg_scheduled": "Agendado (efeito futuro)"
+"studio.preview_action_title": "Pronto para usar?"
+    "studio.preview_back": "Voltar ao catálogo"
+    "studio.preview_disclaimer": "Esta é uma prévia ilustrativa. Os campos entre chaves são variáveis que serão preenchidos durante o processo de criação da minuta. Este documento não é um contrato emitido nem está sujeito a assinatura."
+    "studio.preview_eyebrow": "Avaliação prévia"
+    "studio.preview_subtitle": "Visualização da estrutura do modelo com campos variáveis destacados. Nenhum dado real é utilizado."
+    "studio.preview_title": "Prévia do modelo"
+    "studio.preview_use_template": "Criar minuta com este modelo"
 }
