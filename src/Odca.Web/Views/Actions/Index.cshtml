@@ -1,0 +1,122 @@
+@model Odca.Web.Controllers.ActionCenterViewModel
+@{
+    var _culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    var tenantId = ViewData["TenantId"];
+    var ac = Model.Data;
+}
+<header class="renewal-heading">
+    <div>
+        <p class="eyebrow">Operações</p>
+        <h1>@L.T("actions.title", _culture)</h1>
+        <p class="muted">@L.T("actions.subtitle", _culture)</p>
+    </div>
+</header>
+
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <div class="validation-summary" role="alert">@Model.Error</div>
+}
+
+@if (ac is not null)
+{
+    <!-- Summary cards -->
+    <section class="inbox-summary-cards" aria-label="Resumo por categoria">
+        <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-scope="@Model.Scope" class="@(Model.Source is null ? "" : "")">
+            <strong>@ac.Overdue.Count</strong><span>@L.T("actions.overdue", _culture)</span>
+        </a>
+        <span><strong>@ac.MyAction.Count</strong><span>@L.T("actions.my_action", _culture)</span></span>
+        <span><strong>@ac.WaitingOther.Count</strong><span>@L.T("actions.waiting", _culture)</span></span>
+        <span><strong>@ac.UpcomingDeadlines.Count</strong><span>@L.T("actions.upcoming", _culture)</span></span>
+        <span><strong>@ac.ConflictsAndFailures.Count</strong><span>@L.T("actions.conflicts", _culture)</span></span>
+        <span><strong>@ac.Total</strong><span>@L.T("actions.total", _culture)</span></span>
+    </section>
+
+    <!-- Filters -->
+    <details class="filter-panel" open>
+        <summary>Filtros</summary>
+        <form method="get" class="renewal-filters">
+            <label>Escopo
+                <select name="scope">
+                    <option value="mine" selected="@(Model.Scope=="mine")">@L.T("inbox.scope_mine", _culture)</option>
+                    <option value="organization" selected="@(Model.Scope=="organization")">@L.T("inbox.scope_org", _culture)</option>
+                </select>
+            </label>
+            <label>Fonte
+                <select name="source">
+                    <option value="">Todas</option>
+                    <option value="obligation" selected="@(Model.Source=="obligation")">Obrigações</option>
+                    <option value="renewal" selected="@(Model.Source=="renewal")">Alterações</option>
+                    <option value="solicitation" selected="@(Model.Source=="solicitation")">Solicitações</option>
+                    <option value="signature" selected="@(Model.Source=="signature")">Assinaturas</option>
+                    <option value="contract" selected="@(Model.Source=="contract")">Contratos</option>
+                </select>
+            </label>
+            <button class="button button-primary" type="submit">Aplicar</button>
+            <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">Limpar</a>
+        </form>
+    </details>
+
+    <!-- Items -->
+    <section class="renewal-list" aria-live="polite">
+        @if (ac.Total == 0)
+        {
+            <div class="empty-state">
+                <strong>@L.T("actions.empty_title", _culture)</strong>
+                <p>@L.T("actions.empty_body", _culture)</p>
+            </div>
+        }
+        else
+        {
+            var allItems = new List<(string Category, Odca.Contracts.Operations.ActionItemDto Item)>();
+            foreach (var i in ac.Overdue) allItems.Add(("overdue", i));
+            foreach (var i in ac.MyAction) allItems.Add(("my_action", i));
+            foreach (var i in ac.UpcomingDeadlines) allItems.Add(("upcoming", i));
+            foreach (var i in ac.ConflictsAndFailures) allItems.Add(("conflict", i));
+            foreach (var i in ac.WaitingOther) allItems.Add(("waiting", i));
+            foreach (var i in ac.Info) allItems.Add(("info", i));
+
+            foreach (var (cat, item) in allItems)
+            {
+                var catLabel = cat switch
+                {
+                    "overdue" => L.T("actions.cat_overdue", _culture),
+                    "my_action" => L.T("actions.cat_my_action", _culture),
+                    "upcoming" => L.T("actions.cat_upcoming", _culture),
+                    "conflict" => L.T("actions.cat_conflict", _culture),
+                    "waiting" => L.T("actions.cat_waiting", _culture),
+                    "info" => L.T("actions.cat_info", _culture),
+                    _ => cat
+                };
+                var sourceLabel = item.SourceType switch
+                {
+                    "obligation" => "Obrigação",
+                    "renewal" => "Alteração",
+                    "solicitation" => "Solicitação",
+                    "signature" => "Assinatura",
+                    "contract" => "Contrato",
+                    _ => item.SourceType
+                };
+                <article class="renewal-row">
+                    <div>
+                        <span class="status-label">@sourceLabel · @catLabel @(item.Priority == "critical" ? "⚠" : "")</span>
+                        <h3>@item.Context</h3>
+                        <p>@(item.Reason ?? "") @(item.Responsible != null ? "· Resp: " + item.Responsible : "")</p>
+                    </div>
+                    <dl>
+                        <div><dt>Prazo</dt><dd>@(item.Deadline?.ToString("dd/MM/yyyy") ?? "—")</dd></div>
+                        <div><dt>Ação</dt><dd>@item.NextAction</dd></div>
+                    </dl>
+                </article>
+            }
+        }
+    </section>
+
+    <!-- Pagination -->
+    @if (Model.Page * 25 < ac.Total)
+    {
+        <nav class="pagination" aria-label="Paginação">
+            <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-scope="@Model.Scope" asp-route-source="@Model.Source" asp-route-page="@(Model.Page + 1)">Próxima →</a>
+            <span>Página @Model.Page de @((int)Math.Ceiling(ac.Total / 25.0))</span>
+        </nav>
+    }
+}

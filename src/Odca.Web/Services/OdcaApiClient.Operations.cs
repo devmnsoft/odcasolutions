@@ -37,6 +37,24 @@ public sealed partial class OdcaApiClient
             false,
             ct);
 
+    public Task<ApiCallResult<ActionCenterResponse>> GetActionCenterAsync(
+        string token, Guid tenantId, string scope, string? source, int page, int pageSize, CancellationToken ct) =>
+        SendAsync<ActionCenterResponse>(
+            CreateAuthorized(HttpMethod.Get, ActionCenterPath(tenantId, scope, source, page, pageSize), token),
+            false, ct);
+
+    private static string ActionCenterPath(Guid tenantId, string scope, string? source, int page, int pageSize)
+    {
+        var query = new Dictionary<string, string?>
+        {
+            ["scope"] = scope,
+            ["source"] = source,
+            ["page"] = page.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["pageSize"] = pageSize.ToString(System.Globalization.CultureInfo.InvariantCulture)
+        };
+        return $"api/v1/organizations/{tenantId}/operations/action-center?{JoinQuery(query)}";
+    }
+
     public Task<ApiCallResult<ContractSheetDto>> GetContractSheetAsync(
         string token,
         Guid tenantId,

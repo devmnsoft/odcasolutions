@@ -162,3 +162,27 @@ public sealed record CreateSheetRenewalProposalRequest(
     Guid? ResponsibleId,
     decimal? ProposedValue,
     string? Currency);
+
+// Central de Acao (Operations Center)
+public sealed record ActionItemDto(
+    string SourceType,
+    string SourceId,
+    string Context,
+    string Reason,
+    string? Responsible,
+    DateOnly? Deadline,
+    string NextAction,
+    string Priority,
+    string Category);
+
+public sealed record ActionCenterResponse(
+    IReadOnlyList<ActionItemDto> MyAction,
+    IReadOnlyList<ActionItemDto> WaitingOther,
+    IReadOnlyList<ActionItemDto> UpcomingDeadlines,
+    IReadOnlyList<ActionItemDto> Overdue,
+    IReadOnlyList<ActionItemDto> ConflictsAndFailures,
+    IReadOnlyList<ActionItemDto> Info,
+    int Total,
+    DateOnly Today,
+    int Page,
+    int PageSize);
