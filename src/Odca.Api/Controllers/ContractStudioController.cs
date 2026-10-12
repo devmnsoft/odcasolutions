@@ -22,13 +22,13 @@ namespace Odca.Api.Controllers;
 public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfiguration configuration, ITemplateCatalogRepository templateCatalog) : ControllerBase
 {
     [HttpGet("templates")]
-    public async Task<IActionResult> Templates(Guid tenantId, [FromQuery] string? search, [FromQuery] string? type, [FromQuery] string? scope, [FromQuery] int page = 1, [FromQuery] int pageSize = 12, CancellationToken ct = default)
+    public async Task<IActionResult> Templates(Guid tenantId, [FromQuery] string? search, [FromQuery] string? type, [FromQuery] string? scope, [FromQuery] string? purpose, [FromQuery] int page = 1, [FromQuery] int pageSize = 12, CancellationToken ct = default)
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
         await using var c = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(c, actor.Value, tenantId, "tenant.templates.read", ct)) return Forbid();
         page = Math.Max(page, 1); pageSize = Math.Clamp(pageSize, 1, 50);
-        return Ok(await templateCatalog.ListAsync(tenantId, search, type, scope, page, pageSize, ct));
+        return Ok(await templateCatalog.ListAsync(tenantId, search, type, scope, purpose, page, pageSize, ct));
     }
 
     [HttpPost("templates")]

@@ -396,7 +396,7 @@ public sealed class DocumentCentralAndStudioTests(DatabaseFixture database) : IC
 
     private sealed class StubTemplateCatalogRepository : ITemplateCatalogRepository
     {
-        public Task<TemplateCatalogPage> ListAsync(Guid tenantId, string? search, string? contractType, string? scope, int page, int pageSize, CancellationToken cancellationToken) =>
+        public Task<TemplateCatalogPage> ListAsync(Guid tenantId, string? search, string? contractType, string? scope, string? documentPurpose, int page, int pageSize, CancellationToken cancellationToken) =>
             Task.FromResult(new TemplateCatalogPage([], page, pageSize, 0));
     }
 

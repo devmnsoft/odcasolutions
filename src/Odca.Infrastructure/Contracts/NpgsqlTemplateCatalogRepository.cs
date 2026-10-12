@@ -28,6 +28,7 @@ public sealed class NpgsqlTemplateCatalogRepository(NpgsqlDataSource dataSource)
         AND (@search IS NULL OR t.name ILIKE @search OR t.description ILIKE @search)
         AND (@contractType IS NULL OR t.contract_type = @contractType)
         AND (@scope IS NULL OR t.scope = @scope)
+        AND (@purpose IS NULL OR t.document_purpose = @purpose)
         """;
 
     public async Task<TemplateCatalogPage> ListAsync(
@@ -35,6 +36,7 @@ public sealed class NpgsqlTemplateCatalogRepository(NpgsqlDataSource dataSource)
         string? search,
         string? contractType,
         string? scope,
+        string? documentPurpose,
         int page,
         int pageSize,
         CancellationToken cancellationToken)
@@ -45,6 +47,7 @@ public sealed class NpgsqlTemplateCatalogRepository(NpgsqlDataSource dataSource)
             search = string.IsNullOrWhiteSpace(search) ? null : $"%{search.Trim()}%",
             contractType,
             scope,
+            purpose = documentPurpose,
             offset = (page - 1) * pageSize,
             pageSize
         };
@@ -59,6 +62,7 @@ public sealed class NpgsqlTemplateCatalogRepository(NpgsqlDataSource dataSource)
                    t.name AS Name,
                    t.description AS Description,
                    t.contract_type AS ContractType,
+                   t.document_purpose AS DocumentPurpose,
                    t.scope AS Scope,
                    t.status AS Status,
                    t.current_version AS Version,
@@ -85,7 +89,8 @@ public sealed class NpgsqlTemplateCatalogRepository(NpgsqlDataSource dataSource)
         row.Version,
         row.Author,
         AsOffset(row.CreatedAt, nameof(row.CreatedAt)),
-        row.PublishedAt is null ? null : AsOffset(row.PublishedAt.Value, nameof(row.PublishedAt)));
+        row.PublishedAt is null ? null : AsOffset(row.PublishedAt.Value, nameof(row.PublishedAt)),
+        row.DocumentPurpose);
 
     private static DateTimeOffset AsOffset(DateTime value, string column) => value.Kind switch
     {
@@ -102,6 +107,7 @@ public sealed class NpgsqlTemplateCatalogRepository(NpgsqlDataSource dataSource)
         public string Name { get; init; } = null!;
         public string? Description { get; init; }
         public string ContractType { get; init; } = null!;
+        public string? DocumentPurpose { get; init; }
         public string Scope { get; init; } = null!;
         public string Status { get; init; } = null!;
         public int Version { get; init; }

@@ -1,5 +1,21 @@
 # Status de execução
 
+## Incremento: Item 3 — categorias de descoberta na biblioteca do Estúdio (12/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `6667f62` (início). Commit único deste incremento (ver abaixo).
+- **Build**: solution 0 avisos / 0 erros · IntegrationTests `TemplateCatalogPersistenceTests` **3/3 PASS** (banco dedicado `odca_test_local`, fixture `ODCA_INTEGRATION_TESTS`).
+- **Item 3**: a biblioteca oficial de modelos agora é descobrível por **finalidade documental** (a coluna `document_purpose` já existia desde a migração 031 com CHECK de 7 valores; o formulário de criação de modelo oficial já a gravava — faltava expô-la na descoberta):
+  - API: `GET studio/templates` aceita `?purpose=` (parâmetro validado por allow-list de domínio no SQL, Dapper parametrizado) e devolve `documentPurpose` no DTO `TemplateCatalogItem` (novo campo opcional).
+  - View `Studio/Index.cshtml`: select "Finalidade" na barra de filtros (7 categorias), **badge de categoria** no card quando preenchida, filtro preservado em paginação (`asp-route-purpose`) e no "Duplicar como particular" (hidden input). Rótulos seguem a convenção PT-hardcoded deste arquivo (i18n completo do Estúdio segue no Bloco F).
+  - Testes: `TemplateCatalogPersistenceTests` ganhou cobertura real do filtro (template publicado com `confidentiality` aparece só no filtro correspondente; rascunho sem finalidade nunca aparece em nenhum filtro de finalidade); stubs dos demais testes atualizados para a nova assinatura.
+  - **Evidência comportamental** (API real, sessão MFA admin, tenant 0001): catálogo sem filtro `total=12` (item 0 já traz `documentPurpose='confidentiality'`) → `?purpose=lease` `total=1` (único valor distinto = `lease`) → `?purpose=xyz` `total=0`. Renderização Web confirmada: 12 cards sem filtro → 1 card com `purpose=lease`, com badge de categoria "Locação" dentro do card e select com opção selecionada preservada.
+- **Próximos passos**:
+  - Item 7: tabela formal de homologação de salvamento (12 linhas).
+  - Estúdio item 11: publicar nova revisão preservando documentos existentes (UI).
+  - Itens 19–20: recuperação de divergência + fila de exceções.
+  - Bloco F: i18n do Estúdio (4 idiomas), validação de formatos (data/moeda), design 360/768/1440px, homologação visual de PDF.
+  - Sem push/merge/deploy automático.
+
 ## Incremento: Item 12 — sequência de documentos derivados na ficha (aditivo/renovação/revisão) + fix de transação latente na Sheet (12/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `2fd53c8` (início). Commit único deste incremento (ver abaixo).

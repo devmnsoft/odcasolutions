@@ -9,6 +9,7 @@ public interface ITemplateCatalogRepository
         string? search,
         string? contractType,
         string? scope,
+        string? documentPurpose,
         int page,
         int pageSize,
         CancellationToken cancellationToken);

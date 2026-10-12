@@ -17,7 +17,7 @@ public sealed class TemplateCatalogPersistenceTests(DatabaseFixture database) : 
         await using var dataSource = NpgsqlDataSource.Create(database.AppConnectionString);
         var repository = new NpgsqlTemplateCatalogRepository(dataSource);
 
-        var page = await repository.ListAsync(TenantId, "integração catálogo", null, null, 1, 12, CancellationToken.None);
+        var page = await repository.ListAsync(TenantId, "integração catálogo", null, null, null, 1, 12, CancellationToken.None);
 
         var item = Assert.Single(page.Items, x => x.Id == PublishedId);
         Assert.Null(item.Description);
@@ -29,8 +29,17 @@ public sealed class TemplateCatalogPersistenceTests(DatabaseFixture database) : 
         Assert.Equal("draft", draft.Status);
         Assert.Equal(2, page.Total);
 
+        // Filtro por finalidade documental (categorias de descoberta): só expõe linhas com o valor pedido;
+        // linhas sem finalidade (rascunho) não aparecem em nenhum filtro de finalidade.
+        var byPurpose = await repository.ListAsync(TenantId, "integração catálogo", null, null, "confidentiality", 1, 12, CancellationToken.None);
+        var byPurposeItem = Assert.Single(byPurpose.Items, x => x.Id == PublishedId);
+        Assert.Equal("confidentiality", byPurposeItem.DocumentPurpose);
+        var otherPurpose = await repository.ListAsync(TenantId, "integração catálogo", null, null, "lease", 1, 12, CancellationToken.None);
+        Assert.Empty(otherPurpose.Items);
+        Assert.Equal(0, otherPurpose.Total);
+
         // Rascunhos só são visíveis ao tenant proprietário: outro tenant vê apenas o publicado global.
-        var other = await repository.ListAsync(Guid.NewGuid(), "integração catálogo", null, null, 1, 12, CancellationToken.None);
+        var other = await repository.ListAsync(Guid.NewGuid(), "integração catálogo", null, null, null, 1, 12, CancellationToken.None);
         var otherItem = Assert.Single(other.Items);
         Assert.Equal(PublishedId, otherItem.Id);
     }
@@ -41,7 +50,7 @@ public sealed class TemplateCatalogPersistenceTests(DatabaseFixture database) : 
         await using var dataSource = NpgsqlDataSource.Create(database.AppConnectionString);
         var repository = new NpgsqlTemplateCatalogRepository(dataSource);
 
-        var page = await repository.ListAsync(Guid.NewGuid(), Guid.NewGuid().ToString("N"), null, null, 1, 12, CancellationToken.None);
+        var page = await repository.ListAsync(Guid.NewGuid(), Guid.NewGuid().ToString("N"), null, null, null, 1, 12, CancellationToken.None);
 
         Assert.Empty(page.Items);
         Assert.Equal(0, page.Total);
@@ -124,15 +133,16 @@ public sealed class TemplateCatalogPersistenceTests(DatabaseFixture database) : 
             ON CONFLICT(id) DO NOTHING;
 
             INSERT INTO odca.contract_templates
-                (id,owner_tenant_id,name,description,contract_type,scope,status,current_version,author_id,created_at,published_at)
+                (id,owner_tenant_id,name,description,contract_type,scope,status,current_version,author_id,created_at,published_at,document_purpose)
             VALUES
                 (@PublishedId,NULL,'Integração catálogo publicado',NULL,'service','global','published',7,
-                 '20000000-0000-0000-0000-000000000001','2026-09-16 09:30:00-03','2026-09-16 09:30:00-03'),
+                 '20000000-0000-0000-0000-000000000001','2026-09-16 09:30:00-03','2026-09-16 09:30:00-03','confidentiality'),
                 (@DraftId,@TenantId,'Integração catálogo rascunho',NULL,'service','private','draft',1,
-                 '20000000-0000-0000-0000-000000000001','2026-09-16 09:30:00-03',NULL)
+                 '20000000-0000-0000-0000-000000000001','2026-09-16 09:30:00-03',NULL,NULL)
             ON CONFLICT(id) DO UPDATE SET
                 name=EXCLUDED.name,description=EXCLUDED.description,status=EXCLUDED.status,
-                current_version=EXCLUDED.current_version,created_at=EXCLUDED.created_at,published_at=EXCLUDED.published_at;
+                current_version=EXCLUDED.current_version,created_at=EXCLUDED.created_at,published_at=EXCLUDED.published_at,
+                document_purpose=EXCLUDED.document_purpose;
             """;
         await using var connection = new NpgsqlConnection(database.AdminConnectionString);
         await connection.ExecuteAsync(sql, new { TenantId, PublishedId, DraftId });

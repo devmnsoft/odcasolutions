@@ -15,15 +15,15 @@ namespace Odca.Web.Controllers;
 public sealed class StudioController(OdcaApiClient api, IConfiguration configuration, IUserTenantContext tenantContext) : Controller
 {
     [HttpGet("")]
-    public async Task<IActionResult> Index(Guid tenantId,string? search,string? type,string? scope,Guid? patientId,int page=1,CancellationToken ct=default)
+    public async Task<IActionResult> Index(Guid tenantId,string? search,string? type,string? scope,string? purpose,Guid? patientId,int page=1,CancellationToken ct=default)
     {
         var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
         var access = await tenantContext.GetAccessAsync(tenantId, ct);
         var isSuperAdmin = User.IsInRole("SuperAdministrator") || User.HasClaim("role", "SuperAdministrator") || (User.FindFirst("permissions")?.Value.Contains("tenant:all") == true);
         var canManage = isSuperAdmin || (access?.HasPermission("tenant.templates.manage") ?? false);
-        ViewData["Title"]="Modelos de contrato";ViewData["TenantId"]=tenantId;ViewData["Search"]=search;ViewData["Type"]=type;ViewData["Scope"]=scope;ViewData["PatientId"]=patientId;
+        ViewData["Title"]="Modelos de contrato";ViewData["TenantId"]=tenantId;ViewData["Search"]=search;ViewData["Type"]=type;ViewData["Scope"]=scope;ViewData["Purpose"]=purpose;ViewData["PatientId"]=patientId;
         ViewData["CanManageTemplates"]=canManage;
-        var result=await GetCatalogAsync(token,tenantId,search,type,scope,page,ct);
+        var result=await GetCatalogAsync(token,tenantId,search,type,scope,purpose,page,ct);
         if(!result.Succeeded){if(result.Status==ApiCallStatus.Forbidden)return Forbid();ViewData["LoadError"]=result.UserMessage("Não foi possível carregar o catálogo.");return View(new TemplateCatalogPage([],Math.Max(1,page),12,0));}
         return View(result.Value!);
     }
@@ -506,12 +506,13 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
     public Task<IActionResult> ReopenCommentAsync(Guid tenantId,Guid draftId,Guid commentId,[FromBody]ChangeStudioCommentStateRequest request,CancellationToken ct)=>ChangeCommentStateAsync(tenantId,draftId,commentId,"reopen",request,ct);
     private async Task<IActionResult> ChangeCommentStateAsync(Guid tenantId,Guid draftId,Guid commentId,string operation,ChangeStudioCommentStateRequest request,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Unauthorized();var r=await api.SetStudioCommentStateAsync(token,tenantId,draftId,commentId,operation,request,ct);return r.Succeeded?NoContent():StatusCode(r.Status==ApiCallStatus.Conflict?409:422,new{title=r.ErrorTitle,detail=r.ErrorDetail});}
 
-    private async Task<ApiCallResult<TemplateCatalogPage>> GetCatalogAsync(string token,Guid tenantId,string? search,string? type,string? scope,int page,CancellationToken ct)
+    private async Task<ApiCallResult<TemplateCatalogPage>> GetCatalogAsync(string token,Guid tenantId,string? search,string? type,string? scope,string? purpose,int page,CancellationToken ct)
     {
         var query=new List<string>{$"page={page}"};
         if(!string.IsNullOrWhiteSpace(search))query.Add($"search={Uri.EscapeDataString(search)}");
         if(!string.IsNullOrWhiteSpace(type))query.Add($"type={Uri.EscapeDataString(type)}");
         if(!string.IsNullOrWhiteSpace(scope))query.Add($"scope={Uri.EscapeDataString(scope)}");
+        if(!string.IsNullOrWhiteSpace(purpose))query.Add($"purpose={Uri.EscapeDataString(purpose)}");
         return await SendCatalogAsync<TemplateCatalogPage>(HttpMethod.Get,$"api/v1/organizations/{tenantId}/studio/templates?{string.Join('&',query)}",token,ct);
     }
 
