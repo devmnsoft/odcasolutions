@@ -1,5 +1,26 @@
 # Status de execução
 
+## Incremento: Fontes de Solicitação e Assinatura no Inbox operacional (D-OC17) + auditoria scanner do auto-approve (D-OC16) + prévia do modelo no Estúdio (12/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `87c47b0`/`8b24769` (início) → `77c666a` (fim). 3 commits nesta janela (`b47a970`, `c785bef`, `77c666a`).
+- **Build**: solution 0 avisos / 0 erros · Domain tests **300/300 PASS** · health schema 51/51 · **Matriz de aceite 15/15 PASS (0 BLOCKED)**.
+- **Estúdio item 4** (`b47a970`): prévia do modelo antes de criar minuta — `GET studio/templates/{id}/preview` renderiza HTML com valores vazios via `ContractDocumentRenderer` (não cria contrato, não consome franquia, não usa dados de outro cliente); botão "Ver prévia" por modelo publicado + disclaimer claro.
+- **Bloco A item 4** (`c785bef`, D-OC16): auditoria do auto-approve do scanner — 4 estados distintos (verificado/ameaça/indisponível/simulado); indisponibilidade **nunca** produz `safe`; simulação só em Development com `Documents:SimulateScanner != false` + guarda dura em código; selo visível na ficha para verificação simulada; verificado com worker real 3/3 PASS.
+- **Item 17** (`77c666a`, D-OC17): fontes **Solicitação** e **Assinatura** integradas ao endpoint e à página **existentes** do Inbox operacional (mesma rota, mesma view, âncoras `#solicitacoes`/`#assinatura` na Sheet). Portão por fonte via permissão real: Solicitação = `tenant.solicitations.read` (mine = `opened_by`), Assinatura = `tenant.contracts.read` (mine = participação em `composition_revision`). `/acoes` permanece como visão complementar de ações agrupadas.
+  - Bugs latentes corrigidos na verificação (só aparecem com a query rodando): status EN dentro de CHECK PT (inbox + action center); `partially_signed` fantasma (domínio canônico `draft|confirmed`; estado parcial deriva de `signature_participants.signed_at`); negação C# `!@param` no SQL (42883); 5 CTEs do action center sem parêntese de fechamento (42601) + mapeamento Dapper snake_case; nome do documento = `COALESCE(contracts.title,'Documento gerado')` nas duas views; cauda v051 órfã dentro do bloco 051 + `DROP FUNCTION` do defasado + REVOKE obsoleto; `validTypes` aceita `services-multiple-therapies`; catálogos i18n Web (4 idiomas) com vírgulas reparados (crash de startup oculto).
+  - **Evidência comportamental** (`scripts/qa/validate-inbox-sources.ps1`, curl https:7143, MFA real via `/mfa/challenge` + código de recuperação): restrito (operador, `contracts.read=f`) → inbox org=10 só Solicitation, filtro Signature=0, action-center sem fonte signature (14); completo (admin, ambos reads) → inbox org=19 (Sol 10 + Sig 9 com título do contrato), filtro Signature=9, action-center 23. Raiz das 401 genéricas anteriores documentada: cliente PS 5.1 remove `Authorization` no redirect 307 http→https; chamada direta https resolve.
+- **Mudança de fixture documentada** (base de teste descartável): senha de `admin@odca.local` = `OdcaAdmin#Qa2026` (hash gerado pelo próprio `AspNetPasswordService`); códigos de recuperação MFA conhecidos inseridos (`ODCA-*-QA-*`, uso único).
+- **Matriz reexecutada e completada (15/15)**: `validate-acceptance-matrix.ps1` agora usa `curl.exe` sobre HTTPS (root cause das 401s) + parâmetro `ODCA_QA_MFA_CODE` para sessão MFA real. **S11** PASS (action-center mine com token MFA-verificado); **S12** PASS executado (conta restrita: banco tem 9 preparações de assinatura, inbox/filtro/action-center exibem 0 — fonte proibida inteiramente ausente); **S13** PASS com ciclo real via API como admin: `POST renewals/contracts/{id}` → `/submit` → `/formalization` (evidência `document_versions` safe, justificação, idempotency) → `/apply` = `{"applied":true,"contractVersion":2,"obligationsPreserved":true}`; request final `formalized|applied`, fora da view pendente, com linha em `contract_change_applications`. Fixture: evidência `bdfdc315…` ("Val S13 evidence") no contrato `cfd0bf87…`.
+- **Próximos passos**:
+  - Item 12: sequência de documentos derivados na ficha (aditivo, renovação, revisão).
+  - Item 3: categorias de descoberta do Estúdio.
+  - Item 7: tabela formal de homologação de salvamento (12 linhas).
+  - Estúdio item 11: publicar nova revisão preservando documentos existentes (UI).
+  - Itens 19–20: recuperação de divergência + fila de exceções.
+  - Bloco F: validação de formatos (data/moeda), design 360/768/1440px, homologação visual de PDF.
+  - Matriz fechada 15/15 nesta janela (S11–S13 via sessão MFA real + ciclo apply real).
+  - Sem push/merge/deploy automático.
+
 ## Incremento: Governança contratual — aprovações, condições vigentes, worker canônico, modelo oficial (12/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `3c944b7` (início) → `8b24769` (fim). 5 commits nesta sessão.

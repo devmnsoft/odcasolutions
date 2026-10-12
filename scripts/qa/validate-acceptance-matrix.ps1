@@ -10,7 +10,7 @@ Compativel com PowerShell 5.1 (UTF-8 BOM obrigatorio).
 $ErrorActionPreference = 'Stop'
 
 # Config de teste via variaveis de ambiente (sem credencial fixa no script)
-$api    = if ($env:ODCA_API_BASE)    { $env:ODCA_API_BASE }    else { 'http://localhost:5143' }
+$api    = if ($env:ODCA_API_BASE)    { $env:ODCA_API_BASE }    else { 'https://localhost:7143' }
 $tenant = if ($env:ODCA_TEST_TENANT) { $env:ODCA_TEST_TENANT } else { '20000000-0000-4000-8000-000000000001' }
 $pgsql  = if ($env:ODCA_PSQL)        { $env:ODCA_PSQL }        else { 'C:\Program Files\PostgreSQL\18\bin\psql.exe' }
 if (-not $env:PGPASSWORD) { $env:PGPASSWORD = '123456' }
@@ -40,17 +40,25 @@ function SqlInt($query) {
 }
 
 function Invoke-Api($method, $uri, $token, $body) {
-    $h = @{}
-    if ($token) { $h['Authorization'] = "Bearer $token" }
-    $params = @{ Method = $method; Uri = $uri; Headers = $h; TimeoutSec = 15; UseBasicParsing = $true }
-    if ($body) { $params.ContentType = 'application/json'; $params.Body = $body }
-    try {
-        $r = Invoke-WebRequest @params
-        return @{ Code = [int]$r.StatusCode; Body = $r.Content }
-    } catch {
-        $code = [int]$_.Exception.Response.StatusCode
-        return @{ Code = $code; Body = '' }
+    # curl.exe direto sobre HTTPS: PS 5.1 (Invoke-WebRequest) REMOVE o header Authorization
+    # ao seguir o redirect 307 http->https (UseHttpsRedirection emite 307 inclusive para POST).
+    $outFile = [System.IO.Path]::GetTempFileName()
+    $args_ = @('-sS', '-k', '-X', $method, '-o', $outFile, '-w', 'HTTPCODE=%{http_code}', $uri)
+    if ($token) { $args_ += @('-H', "Authorization: Bearer $token") }
+    $bodyFile = $null
+    if ($body) {
+        $bodyFile = [System.IO.Path]::GetTempFileName()
+        $body | Out-File $bodyFile -Encoding ascii -NoNewline
+        $args_ += @('-H', 'Content-Type: application/json', '--data-binary', "@$bodyFile")
     }
+    $meta = & curl.exe @args_ 2>$null
+    $code = -1
+    if ($meta -match 'HTTPCODE=(\d+)') { $code = [int]$Matches[1] }
+    $contentText = ''
+    if ((Test-Path $outFile) -and $code -ne 0) { $contentText = [System.IO.File]::ReadAllText($outFile) }
+    Remove-Item $outFile -ErrorAction SilentlyContinue
+    if ($bodyFile) { Remove-Item $bodyFile -ErrorAction SilentlyContinue }
+    return @{ Code = $code; Body = $contentText }
 }
 
 # Worker system identity
@@ -64,17 +72,30 @@ Write-Host (" API: {0} | DB: {1} | Tenant: {2}" -f $api, $dbName, $tenant)
 Write-Host "=============================================================="
 Write-Host ""
 
-# --- Obter token ---
+# --- Obter token (+ MFA real via codigo de recuperacao, uso unico) ---
+# ODCA_QA_MFA_CODE: ex. 'ODCA-OPERADOR-QA-MTX' (linha ja inserida em odca.mfa_recovery_codes).
 $QA_PWD = if ($env:ODCA_QA_PASSWORD) { $env:ODCA_QA_PASSWORD } else { 'La@RsjC5p-hmq_JpReGW' }
 $email  = if ($env:ODCA_QA_EMAIL)    { $env:ODCA_QA_EMAIL }    else { 'operador@odca.local' }
+$mfaCode = if ($env:ODCA_QA_MFA_CODE) { $env:ODCA_QA_MFA_CODE } else { '' }
 $jsonBody = '{"login":"' + $email + '","password":"' + $QA_PWD + '"}'
 $r = Invoke-Api 'POST' "$api/api/v1/auth/login" $null $jsonBody
 $token = ''
 $mfaVerified = $false
-if ($r.Code -eq 200) {
+if ($r.Code -eq 200 -and $r.Body) {
     $tok = $r.Body | ConvertFrom-Json
     $token = $tok.accessToken
-    $mfaVerified = $tok.mfaVerified
+    $mfaVerified = [bool]$tok.mfaVerified
+    if (-not $mfaVerified -and $tok.requiresMfaChallenge) {
+        if ($mfaCode) {
+            $chBody = '{"code":"' + $mfaCode + '"}'
+            $rc = Invoke-Api 'POST' "$api/api/v1/auth/mfa/challenge" $token $chBody
+            if ($rc.Code -eq 200 -and $rc.Body) {
+                $tok2 = $rc.Body | ConvertFrom-Json
+                $token = $tok2.accessToken
+                $mfaVerified = [bool]$tok2.mfaVerified
+            }
+        }
+    }
     Write-Host ("Token obtido (mfaVerified={0})" -f $mfaVerified)
 } else {
     Write-Host ("WARNING: login retornou {0} - cenarios autenticados ficarao BLOCKED" -f $r.Code)
@@ -323,12 +344,39 @@ try {
 
 # ====================================================================
 # S12: Permissoes por fonte - dados proibidos ausentes
+# Conta QA padrao (operador) tem tenant.solicitations.read=t e
+# tenant.contracts.read=f: a fonte Assinatura deve ser inteiramente
+# ausente no Inbox e no action-center, mesmo com dados no banco.
 # ====================================================================
 try {
     if (-not $token -or -not $mfaVerified) {
-        Record "S12" "Permissoes por fonte - dados proibidos ausentes" 'BLOCKED' 'Requer conta com permissao parcial (ex: so obligations.read). Implementacao: cada CTE na query condicional ao perm correspondente. Verificar em QA com conta restrita.'
+        Record "S12" "Permissoes por fonte - dados proibidos ausentes" 'BLOCKED' 'Requer sessao MFA real (ODCA_QA_MFA_CODE com codigo de recuperacao nao consumido).'
     } else {
-        Record "S12" "Permissoes por fonte - dados proibidos ausentes" 'BLOCKED' 'Conta QA tem tenant-administrator (todas as permissoes). Teste de restricao requer conta com subset. Codigo: perms.{source} checked antes de incluir CTE.'
+        $qaUserId = Sql ("SELECT id::text FROM odca.users WHERE email='{0}'" -f $email)
+        $contractsRead = Sql ("SELECT COALESCE(odca.tenant_actor_has_permission('{0}','{1}','tenant.contracts.read')::text,'false')" -f $qaUserId, $tenant)
+        if ($contractsRead -eq 'true') {
+            Record "S12" "Permissoes por fonte - dados proibidos ausentes" 'BLOCKED' ("Conta {0} tem tenant.contracts.read=true (todos os dados visiveis). Executar com conta restrita (ODCA_QA_EMAIL/ODCA_QA_PASSWORD)." -f $email)
+        } else {
+            $sigInDb = SqlInt ("SELECT COUNT(*) FROM odca.signature_preparations WHERE tenant_id='{0}' AND status IN ('draft','confirmed')" -f $tenant)
+            $rOrg = Invoke-Api 'GET' ("$api/api/v1/organizations/{0}/inbox?scope=organization&pageSize=100" -f $tenant) $token $null
+            $rSig = Invoke-Api 'GET' ("$api/api/v1/organizations/{0}/inbox?scope=organization&kind=Signature&pageSize=100" -f $tenant) $token $null
+            $rAc = Invoke-Api 'GET' ("$api/api/v1/organizations/{0}/operations/action-center?scope=organization&pageSize=100" -f $tenant) $token $null
+            $sigInInbox = 0
+            if ($rOrg.Code -eq 200) { $sigInInbox = @(($rOrg.Body | ConvertFrom-Json).items | Where-Object { $_.kind -eq 'Signature' }).Count }
+            $sigFilterTotal = if ($rSig.Code -eq 200) { [int](($rSig.Body | ConvertFrom-Json).total) } else { -1 }
+            $acHasSignature = $false
+            if ($rAc.Code -eq 200) {
+                $ac = $rAc.Body | ConvertFrom-Json
+                foreach ($cat in @('myAction', 'waitingOther', 'upcomingDeadlines', 'overdue', 'conflict', 'info')) {
+                    if (@($ac.$cat | Where-Object { $_.sourceType -eq 'signature' }).Count -gt 0) { $acHasSignature = $true }
+                }
+            }
+            if ($rOrg.Code -eq 200 -and $sigFilterTotal -eq 0 -and $sigInInbox -eq 0 -and $rAc.Code -eq 200 -and (-not $acHasSignature)) {
+                Record "S12" "Permissoes por fonte - dados proibidos ausentes" 'PASS' ("Banco tem {0} preparacoes de assinatura; inbox organizacao exibe {1} Signature; filtro kind=Signature total={2}; action-center sem fonte signature. Fonte proibida inteiramente ausente (permissao verificada no servidor)." -f $sigInDb, $sigInInbox, $sigFilterTotal)
+            } else {
+                Record "S12" "Permissoes por fonte - dados proibidos ausentes" 'FAIL' ("inbox={0} sigInInbox={1} filterTotal={2} ac={3} acHasSig={4}" -f $rOrg.Code, $sigInInbox, $sigFilterTotal, $rAc.Code, $acHasSignature)
+            }
+        }
     }
 } catch { Record "S12" "Permissoes por fonte - dados proibidos ausentes" 'FAIL' $_.Exception.Message }
 
