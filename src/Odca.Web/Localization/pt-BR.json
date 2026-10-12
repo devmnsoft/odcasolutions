@@ -149,58 +149,62 @@
   "inbox.page": "Página",
   "inbox.how_to_use": "Como usar",
   "inbox.help_body1": "A central reúne pendências das fontes oficiais. Use os filtros para priorizar seu trabalho e abra o item para consultar todo o contexto antes de agir.",
-  "inbox.help_body2": "Uma ação confirmada no módulo de origem atualiza a pendência. Se outra pessoa alterar o registro enquanto ele estiver aberto, atualize a página e confira o novo estado antes de confirmar novamente."
-"actions.cat_conflict": "Conflito"
-    "actions.cat_info": "Informação"
-    "actions.cat_my_action": "Minha ação"
-    "actions.cat_overdue": "Atrasado"
-    "actions.cat_upcoming": "Prazo próximo"
-    "actions.cat_waiting": "Aguardando outra pessoa"
-    "actions.conflicts": "Conflitos"
-    "actions.empty_body": "Você está em dia. Novas pendências aparecerão aqui."
-    "actions.empty_title": "Nenhuma pendência"
-    "actions.my_action": "Minha ação"
-    "actions.overdue": "Atrasados"
-    "actions.subtitle": "Suas pendências consolidadas por fonte e urgência"
-    "actions.title": "Central de Ações"
-    "actions.total": "Total"
-    "actions.upcoming": "Próximos prazos"
-    "actions.waiting": "Aguardando"
-"platform.template_create_subtitle": "Cadastre um novo modelo no catálogo global. O modelo fica em rascunho até ser publicado."
-    "platform.template_create_title": "Novo modelo oficial"
-    "platform.tpl_cancel": "Cancelar"
-    "platform.tpl_create_btn": "Criar modelo"
-    "platform.tpl_create_info_1": "O modelo é criado em estado de rascunho. Apenas após publicação estará disponível para as organizações."
-    "platform.tpl_create_info_2": "O conteúdo inicial é um esqueleto editável. Use o editor de templates para configurar cláusulas e campos."
-    "platform.tpl_create_info_3": "A chave oficial (official_key) é gerada automaticamente a partir do nome, ou pode ser personalizada."
-    "platform.tpl_create_info_4": "Cada publicação de revisão nova não altera contratos já emitidos a partir de revisões anteriores."
-    "platform.tpl_create_info_title": "Sobre a criação de modelos oficiais"
-    "platform.tpl_description": "Descrição / Finalidade"
-    "platform.tpl_name": "Nome do modelo"
-    "platform.tpl_purpose": "Finalidade documental (categoria)"
-    "platform.tpl_type": "Tipo de contrato"
-"sheet.alterations": "Alterações contratuais"
-    "sheet.alterations_count": "alteração(ões) em andamento"
-    "sheet.chg_approved": "Aprovado internamente"
-    "sheet.chg_await_formal": "Aguardando formalização"
-    "sheet.chg_conflict": "Conflito detectado"
-    "sheet.chg_draft": "Rascunho"
-    "sheet.chg_effective": "Data de efeito"
-    "sheet.chg_kind_amendment": "Aditivo"
-    "sheet.chg_kind_renewal": "Renovação"
-    "sheet.chg_kind_revision": "Revisão administrativa"
-    "sheet.chg_new_period": "Nova vigência proposta"
-    "sheet.chg_new_value": "Novo valor"
-    "sheet.chg_not_applied": "Formalizado — pendente de aplicação"
-    "sheet.chg_review": "Em revisão"
-    "sheet.chg_scheduled": "Agendado (efeito futuro)"
-"studio.preview_action_title": "Pronto para usar?"
-    "studio.preview_back": "Voltar ao catálogo"
-    "studio.preview_disclaimer": "Esta é uma prévia ilustrativa. Os campos entre chaves são variáveis que serão preenchidos durante o processo de criação da minuta. Este documento não é um contrato emitido nem está sujeito a assinatura."
-    "studio.preview_eyebrow": "Avaliação prévia"
-    "studio.preview_subtitle": "Visualização da estrutura do modelo com campos variáveis destacados. Nenhum dado real é utilizado."
-    "studio.preview_title": "Prévia do modelo"
-    "studio.preview_use_template": "Criar minuta com este modelo"
+  "inbox.help_body2": "Uma ação confirmada no módulo de origem atualiza a pendência. Se outra pessoa alterar o registro enquanto ele estiver aberto, atualize a página e confira o novo estado antes de confirmar novamente.",
+"actions.cat_conflict": "Conflito",
+    "actions.cat_info": "Informação",
+    "actions.cat_my_action": "Minha ação",
+    "actions.cat_overdue": "Atrasado",
+    "actions.cat_upcoming": "Prazo próximo",
+    "actions.cat_waiting": "Aguardando outra pessoa",
+    "actions.conflicts": "Conflitos",
+    "actions.empty_body": "Você está em dia. Novas pendências aparecerão aqui.",
+    "actions.empty_title": "Nenhuma pendência",
+    "actions.my_action": "Minha ação",
+    "actions.overdue": "Atrasados",
+    "actions.subtitle": "Suas pendências consolidadas por fonte e urgência",
+    "actions.title": "Central de Ações",
+    "actions.total": "Total",
+    "actions.upcoming": "Próximos prazos",
+    "actions.waiting": "Aguardando",
+"platform.template_create_subtitle": "Cadastre um novo modelo no catálogo global. O modelo fica em rascunho até ser publicado.",
+    "platform.template_create_title": "Novo modelo oficial",
+    "platform.tpl_cancel": "Cancelar",
+    "platform.tpl_create_btn": "Criar modelo",
+    "platform.tpl_create_info_1": "O modelo é criado em estado de rascunho. Apenas após publicação estará disponível para as organizações.",
+    "platform.tpl_create_info_2": "O conteúdo inicial é um esqueleto editável. Use o editor de templates para configurar cláusulas e campos.",
+    "platform.tpl_create_info_3": "A chave oficial (official_key) é gerada automaticamente a partir do nome, ou pode ser personalizada.",
+    "platform.tpl_create_info_4": "Cada publicação de revisão nova não altera contratos já emitidos a partir de revisões anteriores.",
+    "platform.tpl_create_info_title": "Sobre a criação de modelos oficiais",
+    "platform.tpl_description": "Descrição / Finalidade",
+    "platform.tpl_name": "Nome do modelo",
+    "platform.tpl_purpose": "Finalidade documental (categoria)",
+    "platform.tpl_type": "Tipo de contrato",
+"sheet.alterations": "Alterações contratuais",
+    "sheet.alterations_count": "alteração(ões) em andamento",
+    "sheet.chg_approved": "Aprovado internamente",
+    "sheet.chg_await_formal": "Aguardando formalização",
+    "sheet.chg_conflict": "Conflito detectado",
+    "sheet.chg_draft": "Rascunho",
+    "sheet.chg_effective": "Data de efeito",
+    "sheet.chg_kind_amendment": "Aditivo",
+    "sheet.chg_kind_renewal": "Renovação",
+    "sheet.chg_kind_revision": "Revisão administrativa",
+    "sheet.chg_new_period": "Nova vigência proposta",
+    "sheet.chg_new_value": "Novo valor",
+    "sheet.chg_not_applied": "Formalizado — pendente de aplicação",
+    "sheet.chg_review": "Em revisão",
+    "sheet.chg_scheduled": "Agendado (efeito futuro)",
+"studio.preview_action_title": "Pronto para usar?",
+    "studio.preview_back": "Voltar ao catálogo",
+    "studio.preview_disclaimer": "Esta é uma prévia ilustrativa. Os campos entre chaves são variáveis que serão preenchidos durante o processo de criação da minuta. Este documento não é um contrato emitido nem está sujeito a assinatura.",
+    "studio.preview_eyebrow": "Avaliação prévia",
+    "studio.preview_subtitle": "Visualização da estrutura do modelo com campos variáveis destacados. Nenhum dado real é utilizado.",
+    "studio.preview_title": "Prévia do modelo",
+    "studio.preview_use_template": "Criar minuta com este modelo",
 
-    "sheet.doc_simulated": "Verificação simulada (ambiente de teste)"
+    "sheet.doc_simulated": "Verificação simulada (ambiente de teste)",
+"inbox.action_signature": "Assinar documento",
+    "inbox.action_solicitation": "Abrir solicitação",
+    "inbox.kind_signature": "Assinatura",
+    "inbox.kind_solicitation": "Solicitação ODCA"
 }

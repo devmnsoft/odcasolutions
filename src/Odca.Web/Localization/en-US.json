@@ -149,58 +149,62 @@
   "inbox.page": "Page",
   "inbox.how_to_use": "How to use",
   "inbox.help_body1": "The center gathers pending items from official sources. Use filters to prioritize your work and open an item to check all context before acting.",
-  "inbox.help_body2": "A confirmed action in the source module updates the pending item. If someone else edits it while open, refresh the page and check the new state before confirming again."
-"actions.cat_conflict": "Conflict"
-    "actions.cat_info": "Info"
-    "actions.cat_my_action": "My action"
-    "actions.cat_overdue": "Overdue"
-    "actions.cat_upcoming": "Upcoming"
-    "actions.cat_waiting": "Waiting on someone else"
-    "actions.conflicts": "Conflicts"
-    "actions.empty_body": "You're all caught up. New items will appear here."
-    "actions.empty_title": "No pending items"
-    "actions.my_action": "My action"
-    "actions.overdue": "Overdue"
-    "actions.subtitle": "Your consolidated pending items by source and urgency"
-    "actions.title": "Action Center"
-    "actions.total": "Total"
-    "actions.upcoming": "Upcoming deadlines"
-    "actions.waiting": "Waiting"
-"platform.template_create_subtitle": "Register a new template in the global catalog. The template stays in draft until published."
-    "platform.template_create_title": "New official template"
-    "platform.tpl_cancel": "Cancel"
-    "platform.tpl_create_btn": "Create template"
-    "platform.tpl_create_info_1": "The template is created in draft state. It is only available to organizations after publication."
-    "platform.tpl_create_info_2": "Initial content is an editable skeleton. Use the template editor to configure clauses and fields."
-    "platform.tpl_create_info_3": "The official key is auto-generated from the name, or can be customized."
-    "platform.tpl_create_info_4": "Each new revision publication does not alter contracts already issued from prior revisions."
-    "platform.tpl_create_info_title": "About creating official templates"
-    "platform.tpl_description": "Description / Purpose"
-    "platform.tpl_name": "Template name"
-    "platform.tpl_purpose": "Document purpose (category)"
-    "platform.tpl_type": "Contract type"
-"sheet.alterations": "Contract amendments"
-    "sheet.alterations_count": "pending change(s)"
-    "sheet.chg_approved": "Internally approved"
-    "sheet.chg_await_formal": "Awaiting formalization"
-    "sheet.chg_conflict": "Conflict detected"
-    "sheet.chg_draft": "Draft"
-    "sheet.chg_effective": "Effective date"
-    "sheet.chg_kind_amendment": "Amendment"
-    "sheet.chg_kind_renewal": "Renewal"
-    "sheet.chg_kind_revision": "Administrative revision"
-    "sheet.chg_new_period": "Proposed new period"
-    "sheet.chg_new_value": "New value"
-    "sheet.chg_not_applied": "Formalized — pending application"
-    "sheet.chg_review": "Under review"
-    "sheet.chg_scheduled": "Scheduled (future effect)"
-"studio.preview_action_title": "Ready to use?"
-    "studio.preview_back": "Back to catalog"
-    "studio.preview_disclaimer": "This is an illustrative preview. Fields in braces are variables that will be filled during the draft creation process. This document is not an issued contract and is not subject to signature."
-    "studio.preview_eyebrow": "Pre-evaluation"
-    "studio.preview_subtitle": "View of the template structure with variable fields highlighted. No real data is used."
-    "studio.preview_title": "Template preview"
-    "studio.preview_use_template": "Create a draft with this template"
+  "inbox.help_body2": "A confirmed action in the source module updates the pending item. If someone else edits it while open, refresh the page and check the new state before confirming again.",
+"actions.cat_conflict": "Conflict",
+    "actions.cat_info": "Info",
+    "actions.cat_my_action": "My action",
+    "actions.cat_overdue": "Overdue",
+    "actions.cat_upcoming": "Upcoming",
+    "actions.cat_waiting": "Waiting on someone else",
+    "actions.conflicts": "Conflicts",
+    "actions.empty_body": "You're all caught up. New items will appear here.",
+    "actions.empty_title": "No pending items",
+    "actions.my_action": "My action",
+    "actions.overdue": "Overdue",
+    "actions.subtitle": "Your consolidated pending items by source and urgency",
+    "actions.title": "Action Center",
+    "actions.total": "Total",
+    "actions.upcoming": "Upcoming deadlines",
+    "actions.waiting": "Waiting",
+"platform.template_create_subtitle": "Register a new template in the global catalog. The template stays in draft until published.",
+    "platform.template_create_title": "New official template",
+    "platform.tpl_cancel": "Cancel",
+    "platform.tpl_create_btn": "Create template",
+    "platform.tpl_create_info_1": "The template is created in draft state. It is only available to organizations after publication.",
+    "platform.tpl_create_info_2": "Initial content is an editable skeleton. Use the template editor to configure clauses and fields.",
+    "platform.tpl_create_info_3": "The official key is auto-generated from the name, or can be customized.",
+    "platform.tpl_create_info_4": "Each new revision publication does not alter contracts already issued from prior revisions.",
+    "platform.tpl_create_info_title": "About creating official templates",
+    "platform.tpl_description": "Description / Purpose",
+    "platform.tpl_name": "Template name",
+    "platform.tpl_purpose": "Document purpose (category)",
+    "platform.tpl_type": "Contract type",
+"sheet.alterations": "Contract amendments",
+    "sheet.alterations_count": "pending change(s)",
+    "sheet.chg_approved": "Internally approved",
+    "sheet.chg_await_formal": "Awaiting formalization",
+    "sheet.chg_conflict": "Conflict detected",
+    "sheet.chg_draft": "Draft",
+    "sheet.chg_effective": "Effective date",
+    "sheet.chg_kind_amendment": "Amendment",
+    "sheet.chg_kind_renewal": "Renewal",
+    "sheet.chg_kind_revision": "Administrative revision",
+    "sheet.chg_new_period": "Proposed new period",
+    "sheet.chg_new_value": "New value",
+    "sheet.chg_not_applied": "Formalized — pending application",
+    "sheet.chg_review": "Under review",
+    "sheet.chg_scheduled": "Scheduled (future effect)",
+"studio.preview_action_title": "Ready to use?",
+    "studio.preview_back": "Back to catalog",
+    "studio.preview_disclaimer": "This is an illustrative preview. Fields in braces are variables that will be filled during the draft creation process. This document is not an issued contract and is not subject to signature.",
+    "studio.preview_eyebrow": "Pre-evaluation",
+    "studio.preview_subtitle": "View of the template structure with variable fields highlighted. No real data is used.",
+    "studio.preview_title": "Template preview",
+    "studio.preview_use_template": "Create a draft with this template",
 
-    "sheet.doc_simulated": "Simulated check (test environment)"
+    "sheet.doc_simulated": "Simulated check (test environment)",
+"inbox.action_signature": "Sign document",
+    "inbox.action_solicitation": "Open solicitation",
+    "inbox.kind_signature": "Signature",
+    "inbox.kind_solicitation": "ODCA solicitation"
 }

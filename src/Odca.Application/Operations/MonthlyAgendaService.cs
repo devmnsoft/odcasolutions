@@ -15,6 +15,10 @@ public sealed class MonthlyAgendaService(
         bool canReadTenantReviews,
         bool canReadRenewals,
         bool canReadTenantRenewals,
+        bool canReadSolicitations,
+        bool canReadTenantSolicitations,
+        bool canReadSignatures,
+        bool canReadTenantSignatures,
         MonthlyAgendaQuery query,
         CancellationToken cancellationToken)
     {
@@ -29,6 +33,8 @@ public sealed class MonthlyAgendaService(
             canReadObligations, canReadTenantObligations,
             canReadReviews, canReadTenantReviews,
             canReadRenewals, canReadTenantRenewals,
+            canReadSolicitations, canReadTenantSolicitations,
+            canReadSignatures, canReadTenantSignatures,
             query.OwnerId, from, to, cancellationToken);
 
         var kind = Enum.TryParse<OperationalWorkKind>(query.Kind, true, out var parsedKind)
@@ -37,9 +43,9 @@ public sealed class MonthlyAgendaService(
 
         var ranked = OperationalInbox.Rank(
             rows.Where(row => OperationalInboxService.CanRead(
-                    row.Kind, canReadObligations, canReadReviews, canReadRenewals))
+                    row.Kind, canReadObligations, canReadReviews, canReadRenewals, canReadSolicitations, canReadSignatures))
                 .Where(row => OperationalInboxService.CanReadTenant(
-                        row.Kind, canReadTenantObligations, canReadTenantReviews, canReadTenantRenewals)
+                        row.Kind, canReadTenantObligations, canReadTenantReviews, canReadTenantRenewals, canReadTenantSolicitations, canReadTenantSignatures)
                     || row.OwnerId == viewerId)
                 .Where(row => kind is null || row.Kind == kind)
                 .Select(row => new OperationalWorkItem(row.Kind, row.TenantId, row.SourceId, row.OwnerId, row.DueOn)),

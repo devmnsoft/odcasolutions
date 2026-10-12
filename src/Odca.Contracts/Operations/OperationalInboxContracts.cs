@@ -12,7 +12,7 @@ public sealed record OperationalInboxQuery(
 public sealed record OperationalInboxItemDto(
     string Kind,
     Guid SourceId,
-    Guid ContractId,
+    Guid? ContractId,
     string ContractTitle,
     string Title,
     Guid? OwnerId,

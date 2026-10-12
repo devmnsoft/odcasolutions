@@ -149,58 +149,62 @@
   "inbox.page": "Página",
   "inbox.how_to_use": "Cómo usar",
   "inbox.help_body1": "El centro reúne elementos pendientes de las fuentes oficiales. Use los filtros para priorizar su trabajo y abra un elemento para consultar todo el contexto antes de actuar.",
-  "inbox.help_body2": "Una acción confirmada en el módulo de origen actualiza el elemento. Si otra persona modifica el registro mientras está abierto, actualice la página y verifique el nuevo estado antes de confirmar nuevamente."
-"actions.cat_conflict": "Conflicto"
-    "actions.cat_info": "Información"
-    "actions.cat_my_action": "Mi acción"
-    "actions.cat_overdue": "Vencido"
-    "actions.cat_upcoming": "Próximo plazo"
-    "actions.cat_waiting": "Esperando a otra persona"
-    "actions.conflicts": "Conflictos"
-    "actions.empty_body": "Está al día. Los nuevos elementos aparecerán aquí."
-    "actions.empty_title": "Ningún pendiente"
-    "actions.my_action": "Mi acción"
-    "actions.overdue": "Vencidos"
-    "actions.subtitle": "Sus pendientes consolidados por fuente y urgencia"
-    "actions.title": "Centro de acciones"
-    "actions.total": "Total"
-    "actions.upcoming": "Próximos plazos"
-    "actions.waiting": "Esperando"
-"platform.template_create_subtitle": "Registre un nuevo modelo en el catálogo global. El modelo queda en borrador hasta ser publicado."
-    "platform.template_create_title": "Nuevo modelo oficial"
-    "platform.tpl_cancel": "Cancelar"
-    "platform.tpl_create_btn": "Crear modelo"
-    "platform.tpl_create_info_1": "El modelo se crea en estado de borrador. Solo estará disponible tras la publicación."
-    "platform.tpl_create_info_2": "El contenido inicial es un esqueleto editable. Use el editor para configurar cláusulas y campos."
-    "platform.tpl_create_info_3": "La clave oficial se genera automáticamente a partir del nombre, o puede personalizarse."
-    "platform.tpl_create_info_4": "Cada nueva revisión publicada no altera los contratos ya emitidos desde revisiones anteriores."
-    "platform.tpl_create_info_title": "Sobre la creación de modelos oficiales"
-    "platform.tpl_description": "Descripción / Finalidad"
-    "platform.tpl_name": "Nombre del modelo"
-    "platform.tpl_purpose": "Finalidad documental (categoría)"
-    "platform.tpl_type": "Tipo de contrato"
-"sheet.alterations": "Modificaciones contractuales"
-    "sheet.alterations_count": "modificación(es) en curso"
-    "sheet.chg_approved": "Aprobado internamente"
-    "sheet.chg_await_formal": "Pendiente de formalización"
-    "sheet.chg_conflict": "Conflicto detectado"
-    "sheet.chg_draft": "Borrador"
-    "sheet.chg_effective": "Fecha de efecto"
-    "sheet.chg_kind_amendment": "Aditivo"
-    "sheet.chg_kind_renewal": "Renovación"
-    "sheet.chg_kind_revision": "Revisión administrativa"
-    "sheet.chg_new_period": "Nuevo período propuesto"
-    "sheet.chg_new_value": "Nuevo valor"
-    "sheet.chg_not_applied": "Formalizado — pendiente de aplicación"
-    "sheet.chg_review": "En revisión"
-    "sheet.chg_scheduled": "Programado (efecto futuro)"
-"studio.preview_action_title": "¿Listo para usar?"
-    "studio.preview_back": "Volver al catálogo"
-    "studio.preview_disclaimer": "Esta es una vista previa ilustrativa. Los campos entre llaves son variables que se rellenarán durante la creación del borrador. Este documento no es un contrato emitido ni está sujeto a firma."
-    "studio.preview_eyebrow": "Evaluación previa"
-    "studio.preview_subtitle": "Vista de la estructura del modelo con los campos variables resaltados. No se usa ningún dato real."
-    "studio.preview_title": "Vista previa del modelo"
-    "studio.preview_use_template": "Crear borrador con este modelo"
+  "inbox.help_body2": "Una acción confirmada en el módulo de origen actualiza el elemento. Si otra persona modifica el registro mientras está abierto, actualice la página y verifique el nuevo estado antes de confirmar nuevamente.",
+"actions.cat_conflict": "Conflicto",
+    "actions.cat_info": "Información",
+    "actions.cat_my_action": "Mi acción",
+    "actions.cat_overdue": "Vencido",
+    "actions.cat_upcoming": "Próximo plazo",
+    "actions.cat_waiting": "Esperando a otra persona",
+    "actions.conflicts": "Conflictos",
+    "actions.empty_body": "Está al día. Los nuevos elementos aparecerán aquí.",
+    "actions.empty_title": "Ningún pendiente",
+    "actions.my_action": "Mi acción",
+    "actions.overdue": "Vencidos",
+    "actions.subtitle": "Sus pendientes consolidados por fuente y urgencia",
+    "actions.title": "Centro de acciones",
+    "actions.total": "Total",
+    "actions.upcoming": "Próximos plazos",
+    "actions.waiting": "Esperando",
+"platform.template_create_subtitle": "Registre un nuevo modelo en el catálogo global. El modelo queda en borrador hasta ser publicado.",
+    "platform.template_create_title": "Nuevo modelo oficial",
+    "platform.tpl_cancel": "Cancelar",
+    "platform.tpl_create_btn": "Crear modelo",
+    "platform.tpl_create_info_1": "El modelo se crea en estado de borrador. Solo estará disponible tras la publicación.",
+    "platform.tpl_create_info_2": "El contenido inicial es un esqueleto editable. Use el editor para configurar cláusulas y campos.",
+    "platform.tpl_create_info_3": "La clave oficial se genera automáticamente a partir del nombre, o puede personalizarse.",
+    "platform.tpl_create_info_4": "Cada nueva revisión publicada no altera los contratos ya emitidos desde revisiones anteriores.",
+    "platform.tpl_create_info_title": "Sobre la creación de modelos oficiales",
+    "platform.tpl_description": "Descripción / Finalidad",
+    "platform.tpl_name": "Nombre del modelo",
+    "platform.tpl_purpose": "Finalidad documental (categoría)",
+    "platform.tpl_type": "Tipo de contrato",
+"sheet.alterations": "Modificaciones contractuales",
+    "sheet.alterations_count": "modificación(es) en curso",
+    "sheet.chg_approved": "Aprobado internamente",
+    "sheet.chg_await_formal": "Pendiente de formalización",
+    "sheet.chg_conflict": "Conflicto detectado",
+    "sheet.chg_draft": "Borrador",
+    "sheet.chg_effective": "Fecha de efecto",
+    "sheet.chg_kind_amendment": "Aditivo",
+    "sheet.chg_kind_renewal": "Renovación",
+    "sheet.chg_kind_revision": "Revisión administrativa",
+    "sheet.chg_new_period": "Nuevo período propuesto",
+    "sheet.chg_new_value": "Nuevo valor",
+    "sheet.chg_not_applied": "Formalizado — pendiente de aplicación",
+    "sheet.chg_review": "En revisión",
+    "sheet.chg_scheduled": "Programado (efecto futuro)",
+"studio.preview_action_title": "¿Listo para usar?",
+    "studio.preview_back": "Volver al catálogo",
+    "studio.preview_disclaimer": "Esta es una vista previa ilustrativa. Los campos entre llaves son variables que se rellenarán durante la creación del borrador. Este documento no es un contrato emitido ni está sujeto a firma.",
+    "studio.preview_eyebrow": "Evaluación previa",
+    "studio.preview_subtitle": "Vista de la estructura del modelo con los campos variables resaltados. No se usa ningún dato real.",
+    "studio.preview_title": "Vista previa del modelo",
+    "studio.preview_use_template": "Crear borrador con este modelo",
 
-    "sheet.doc_simulated": "Verificación simulada (entorno de prueba)"
+    "sheet.doc_simulated": "Verificación simulada (entorno de prueba)",
+"inbox.action_signature": "Firmar documento",
+    "inbox.action_solicitation": "Abrir solicitud",
+    "inbox.kind_signature": "Firma",
+    "inbox.kind_solicitation": "Solicitud ODCA"
 }

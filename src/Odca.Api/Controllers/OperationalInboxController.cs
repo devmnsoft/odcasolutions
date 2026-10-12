@@ -36,7 +36,9 @@ public sealed class OperationalInboxController(
         var canReadObligations = await Allowed(connection, actor.Value, tenantId, "tenant.obligations.read", ct);
         var canReadReviews = await Allowed(connection, actor.Value, tenantId, "tenant.reviews.read", ct);
         var canReadRenewals = await Allowed(connection, actor.Value, tenantId, "tenant.renewals.read", ct);
-        if (!canReadObligations && !canReadReviews && !canReadRenewals)
+        var canReadSolicitations = await Allowed(connection, actor.Value, tenantId, "tenant.solicitations.read", ct);
+        var canReadSignatures = await Allowed(connection, actor.Value, tenantId, "tenant.contracts.read", ct);
+        if (!canReadObligations && !canReadReviews && !canReadRenewals && !canReadSolicitations && !canReadSignatures)
             return Forbid();
 
         var readAllObligations = await Allowed(connection, actor.Value, tenantId, "tenant.obligations.read_all", ct);
@@ -52,6 +54,10 @@ public sealed class OperationalInboxController(
             organization && canReadReviews,
             canReadRenewals,
             organization && canReadRenewals,
+            canReadSolicitations,
+            organization && canReadSolicitations,
+            canReadSignatures,
+            organization && canReadSignatures,
             new OperationalInboxQuery(scope, kind, urgency, contractId, ownerId, page, pageSize),
             ct);
         return Ok(pageDto);
@@ -74,7 +80,9 @@ public sealed class OperationalInboxController(
         var canReadObligations = await Allowed(connection, actor.Value, tenantId, "tenant.obligations.read", ct);
         var canReadReviews = await Allowed(connection, actor.Value, tenantId, "tenant.reviews.read", ct);
         var canReadRenewals = await Allowed(connection, actor.Value, tenantId, "tenant.renewals.read", ct);
-        if (!canReadObligations && !canReadReviews && !canReadRenewals)
+        var canReadSolicitations = await Allowed(connection, actor.Value, tenantId, "tenant.solicitations.read", ct);
+        var canReadSignatures = await Allowed(connection, actor.Value, tenantId, "tenant.contracts.read", ct);
+        if (!canReadObligations && !canReadReviews && !canReadRenewals && !canReadSolicitations && !canReadSignatures)
             return Forbid();
 
         var organization = scope.Equals("organization", StringComparison.OrdinalIgnoreCase);
@@ -92,6 +100,10 @@ public sealed class OperationalInboxController(
                 organization && canReadReviews,
                 canReadRenewals,
                 organization && canReadRenewals,
+                canReadSolicitations,
+                organization && canReadSolicitations,
+                canReadSignatures,
+                organization && canReadSignatures,
                 new MonthlyAgendaQuery(year, month, scope, ownerId, kind),
                 ct);
             return Ok(page);

@@ -106,6 +106,8 @@
                 <option value="Obligation" selected="@(Model.Kind=="Obligation")">@L.T("inbox.kind_obligation", _culture)</option>
                 <option value="Review" selected="@(Model.Kind=="Review")">@L.T("inbox.kind_review", _culture)</option>
                 <option value="Renewal" selected="@(Model.Kind=="Renewal")">@L.T("inbox.kind_renewal", _culture)</option>
+                <option value="Solicitation" selected="@(Model.Kind=="Solicitation")">@L.T("inbox.kind_solicitation", _culture)</option>
+                <option value="Signature" selected="@(Model.Kind=="Signature")">@L.T("inbox.kind_signature", _culture)</option>
             </select>
         </label>
         <label>@L.T("inbox.urgency", _culture)
@@ -152,6 +154,8 @@
                 "Obligation" => "inbox.kind_obligation",
                 "Review" => "inbox.kind_review",
                 "Renewal" => "inbox.kind_renewal",
+                "Solicitation" => "inbox.kind_solicitation",
+                "Signature" => "inbox.kind_signature",
                 _ => "inbox.kind_unknown"
             }, _culture);
             var urgencyLabel = L.T(item.Urgency switch
@@ -167,6 +171,8 @@
                 "Obligation" => "inbox.action_obligation",
                 "Review" => "inbox.action_review",
                 "Renewal" => "inbox.action_renewal",
+                "Solicitation" => "inbox.action_solicitation",
+                "Signature" => "inbox.action_signature",
                 _ => "inbox.action_default"
             }, _culture);
             <article class="renewal-row">

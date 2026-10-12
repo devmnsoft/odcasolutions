@@ -5700,14 +5700,9 @@ CREATE INDEX IF NOT EXISTS solicitations_contract_ix ON odca.solicitations (cont
 
 -- RLS ja cobre solicitacoes pelo tenant_id existente; contract_id nao altera isolamento.
 
-INSERT INTO odca.schema_migrations(version,name,checksum)
-VALUES(51,'Solicitacao-contract link: contract_id FK for persistent association','a3f8c1d2e4b5a6f7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1')
-ON CONFLICT(version) DO NOTHING;
-COMMIT;
--- ODCA-END 051
-
 -- Item 13: atualiza solicitacoes_open para aceitar contract_id (vinculo ao contrato).
 -- Versao com 8 parametros substitui a de 7 (DROP + CREATE OR REPLACE).
+DROP FUNCTION IF EXISTS odca.solicitations_open(uuid,uuid,text,text,text,text,uuid);
 CREATE OR REPLACE FUNCTION odca.solicitations_open(p_tenant uuid,p_actor uuid,p_service text,p_priority text,p_subject text,p_body text,p_idempotency uuid,p_contract_id uuid DEFAULT NULL)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,odca AS \\$
 DECLARE v_subject text:=btrim(coalesce(p_subject,'')); v_body text:=btrim(coalesce(p_body,''));
@@ -5748,5 +5743,10 @@ EXCEPTION WHEN unique_violation THEN
  SELECT id INTO v_existing FROM odca.solicitations WHERE tenant_id=p_tenant AND idempotency_key=p_idempotency;
  IF v_existing IS NOT NULL THEN RETURN odca.solicitation_payload(v_existing); END IF; RAISE;
 END \\$;
-REVOKE ALL ON FUNCTION odca.solicitations_open(uuid,uuid,text,text,text,text,uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION odca.solicitations_open(uuid,uuid,text,text,text,text,uuid,uuid) TO odca_app;
+
+INSERT INTO odca.schema_migrations(version,name,checksum)
+VALUES(51,'Solicitacao-contract link: contract_id FK for persistent association','a3f8c1d2e4b5a6f7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1')
+ON CONFLICT(version) DO NOTHING;
+COMMIT;
+-- ODCA-END 051

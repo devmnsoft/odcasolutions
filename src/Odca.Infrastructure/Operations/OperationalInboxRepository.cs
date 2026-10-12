@@ -30,6 +30,10 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
         bool canReadTenantReviews,
         bool canReadRenewals,
         bool canReadTenantRenewals,
+        bool canReadSolicitations,
+        bool canReadTenantSolicitations,
+        bool canReadSignatures,
+        bool canReadTenantSignatures,
         Guid? contractId,
         Guid? ownerId,
         DateOnly today,
@@ -44,6 +48,10 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
             canReadTenantReviews,
             canReadRenewals,
             canReadTenantRenewals,
+            canReadSolicitations,
+            canReadTenantSolicitations,
+            canReadSignatures,
+            canReadTenantSignatures,
             contractId,
             ownerId,
             today,
@@ -61,6 +69,10 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
         bool canReadTenantReviews,
         bool canReadRenewals,
         bool canReadTenantRenewals,
+        bool canReadSolicitations,
+        bool canReadTenantSolicitations,
+        bool canReadSignatures,
+        bool canReadTenantSignatures,
         Guid? ownerId,
         DateOnly windowStart,
         DateOnly windowEnd,
@@ -74,6 +86,10 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
             canReadTenantReviews,
             canReadRenewals,
             canReadTenantRenewals,
+            canReadSolicitations,
+            canReadTenantSolicitations,
+            canReadSignatures,
+            canReadTenantSignatures,
             contractId: null,
             ownerId,
             today: windowStart,
@@ -91,6 +107,10 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
         bool canReadTenantReviews,
         bool canReadRenewals,
         bool canReadTenantRenewals,
+        bool canReadSolicitations,
+        bool canReadTenantSolicitations,
+        bool canReadSignatures,
+        bool canReadTenantSignatures,
         Guid? contractId,
         Guid? ownerId,
         DateOnly today,
@@ -177,6 +197,51 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
                                ELSE (c.end_date - c.renewal_notice_amount)::date
                              END, c.end_date) BETWEEN CAST(@windowFrom AS date) AND CAST(@windowTo AS date)
                        )
+                 UNION ALL
+                 SELECT 'Solicitation', s.id, s.tenant_id, COALESCE(s.contract_id, '00000000-0000-0000-0000-000000000000'::uuid),
+                        COALESCE(c.title, '(sem contrato vinculado)'),
+                        s.subject, s.opened_by, so.display_name,
+                        CASE WHEN s.status IN ('aberta','triagem','em_atendimento','aguardando_cliente') THEN s.resolution_due_at::date ELSE NULL END,
+                        s.status, s.row_version::bigint
+                   FROM odca.solicitations s
+                   LEFT JOIN odca.contracts c ON c.tenant_id = s.tenant_id AND c.id = s.contract_id
+                   LEFT JOIN odca.users so ON so.id = s.opened_by
+                  WHERE s.tenant_id = @tenantId
+                    AND s.status NOT IN ('resolvida','encerrada','cancelada')
+                    AND @canReadSolicitations
+                    AND (@canReadTenantSolicitations OR s.opened_by = @viewerId)
+                    AND (CAST(@contractId AS uuid) IS NULL OR s.contract_id = @contractId)
+                    AND (CAST(@ownerId AS uuid) IS NULL OR s.opened_by = @ownerId)
+                    AND (CAST(@windowFrom AS date) IS NULL OR (CASE WHEN s.status IN ('aberta','triagem','em_atendimento','aguardando_cliente') THEN s.resolution_due_at::date ELSE NULL END) >= CAST(@windowFrom AS date))
+                    AND (CAST(@windowTo AS date) IS NULL OR (CASE WHEN s.status IN ('aberta','triagem','em_atendimento','aguardando_cliente') THEN s.resolution_due_at::date ELSE NULL END) <= CAST(@windowTo AS date))
+                 UNION ALL
+                 SELECT 'Signature', sp.id, sp.tenant_id, g.contract_id,
+                        COALESCE(c.title, 'Documento gerado'),
+                        COALESCE(c.title, 'Documento gerado'),
+                        CASE WHEN @canReadTenantSignatures THEN c.owner_id ELSE CAST(@viewerId AS uuid) END,
+                        CASE WHEN @canReadTenantSignatures THEN co.display_name ELSE vu.display_name END,
+                        NULL::date,
+                        sp.status, sp.row_version::bigint
+                   FROM odca.signature_preparations sp
+                   JOIN odca.generated_contract_versions g ON g.tenant_id = sp.tenant_id AND g.id = sp.generated_version_id
+                   LEFT JOIN odca.contracts c ON c.tenant_id = g.tenant_id AND c.id = g.contract_id
+                   LEFT JOIN odca.users co ON co.id = c.owner_id
+                   JOIN odca.users vu ON vu.id = @viewerId
+                  WHERE sp.tenant_id = @tenantId
+                    AND sp.status IN ('draft','confirmed')
+                    AND @canReadSignatures
+                    AND (@canReadTenantSignatures OR EXISTS (
+                         SELECT 1 FROM odca.signature_participants part
+                          WHERE part.preparation_id = sp.id
+                            AND part.composition_revision = sp.composition_revision
+                            AND part.identity_membership_id = (
+                                SELECT m.id FROM odca.memberships m
+                                 WHERE m.tenant_id = sp.tenant_id AND m.user_id = @viewerId LIMIT 1)))
+                    AND (CAST(@contractId AS uuid) IS NULL OR g.contract_id = @contractId)
+                    AND (CAST(@ownerId AS uuid) IS NULL
+                         OR (@canReadTenantSignatures AND c.owner_id = CAST(@ownerId AS uuid))
+                         OR (NOT @canReadTenantSignatures AND CAST(@viewerId AS uuid) = CAST(@ownerId AS uuid)))
+                    AND (CAST(@windowFrom AS date) IS NULL OR FALSE)
               ) inbox
             """;
 
@@ -197,7 +262,11 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
                 canReadReviews,
                 canReadTenantReviews,
                 canReadRenewals,
-                canReadTenantRenewals
+                canReadTenantRenewals,
+                canReadSolicitations,
+                canReadTenantSolicitations,
+                canReadSignatures,
+                canReadTenantSignatures
             },
             transaction,
             cancellationToken: cancellationToken));

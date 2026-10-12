@@ -128,7 +128,7 @@ public sealed class PlatformOperationsController(NpgsqlDataSource dataSource) : 
         if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Trim().Length < 3) return ValidationProblem("Nome deve ter pelo menos 3 caracteres.");
         if (string.IsNullOrWhiteSpace(request.ContractType)) return ValidationProblem("Tipo de contrato é obrigatório.");
 
-        var validTypes = new[] { "nda", "services", "service", "supply", "lease", "consent", "amendment" };
+        var validTypes = new[] { "nda", "services", "service", "services-multiple-therapies", "supply", "lease", "consent", "amendment" };
         if (!validTypes.Contains(request.ContractType.ToLowerInvariant()))
             return ValidationProblem($"Tipo inválido. Válidos: {string.Join(", ", validTypes)}.");
 

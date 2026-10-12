@@ -15,6 +15,10 @@ public sealed class OperationalInboxService(IOperationalInboxRepository reposito
         bool canReadTenantReviews,
         bool canReadRenewals,
         bool canReadTenantRenewals,
+        bool canReadSolicitations,
+        bool canReadTenantSolicitations,
+        bool canReadSignatures,
+        bool canReadTenantSignatures,
         OperationalInboxQuery query,
         CancellationToken cancellationToken)
     {
@@ -34,6 +38,10 @@ public sealed class OperationalInboxService(IOperationalInboxRepository reposito
             canReadTenantReviews,
             canReadRenewals,
             canReadTenantRenewals,
+            canReadSolicitations,
+            canReadTenantSolicitations,
+            canReadSignatures,
+            canReadTenantSignatures,
             query.ContractId,
             query.OwnerId,
             calendar.Today,
@@ -44,8 +52,8 @@ public sealed class OperationalInboxService(IOperationalInboxRepository reposito
         var urgencyFilter = ParseUrgency(query.Urgency);
 
         var ranked = OperationalInbox.Rank(
-            rows.Where(row => CanRead(row.Kind, canReadObligations, canReadReviews, canReadRenewals))
-                .Where(row => CanReadTenant(row.Kind, canReadTenantObligations, canReadTenantReviews, canReadTenantRenewals)
+            rows.Where(row => CanRead(row.Kind, canReadObligations, canReadReviews, canReadRenewals, canReadSolicitations, canReadSignatures))
+                .Where(row => CanReadTenant(row.Kind, canReadTenantObligations, canReadTenantReviews, canReadTenantRenewals, canReadTenantSolicitations, canReadTenantSignatures)
                     || row.OwnerId == viewerId)
                 .Select(row => new OperationalWorkItem(row.Kind, row.TenantId, row.SourceId, row.OwnerId, row.DueOn)),
             calendar.Today,
@@ -82,6 +90,12 @@ public sealed class OperationalInboxService(IOperationalInboxRepository reposito
         {
             OperationalWorkKind.Obligation => $"/organizacoes/{tenantId}/contratos/{row.ContractId}?obrigacao={row.SourceId}&from=caixa#obrigacoes",
             OperationalWorkKind.Review => $"/organizacoes/{tenantId}/contratos/{row.ContractId}?from=caixa#revisao",
+            OperationalWorkKind.Solicitation => row.ContractId is { } solicitationContract
+                ? $"/organizacoes/{tenantId}/contratos/{solicitationContract}?from=caixa#solicitacoes"
+                : $"/organizacoes/{tenantId}",
+            OperationalWorkKind.Signature => row.ContractId is { } signatureContract
+                ? $"/organizacoes/{tenantId}/contratos/{signatureContract}?from=caixa#assinatura"
+                : $"/organizacoes/{tenantId}",
             _ => $"/organizacoes/{tenantId}/contratos/{row.ContractId}?from=caixa#renovacao"
         };
         return new OperationalInboxItemDto(
@@ -109,11 +123,15 @@ public sealed class OperationalInboxService(IOperationalInboxRepository reposito
         OperationalWorkKind kind,
         bool canReadObligations,
         bool canReadReviews,
-        bool canReadRenewals) => kind switch
+        bool canReadRenewals,
+        bool canReadSolicitations,
+        bool canReadSignatures) => kind switch
         {
             OperationalWorkKind.Obligation => canReadObligations,
             OperationalWorkKind.Review => canReadReviews,
             OperationalWorkKind.Renewal => canReadRenewals,
+            OperationalWorkKind.Solicitation => canReadSolicitations,
+            OperationalWorkKind.Signature => canReadSignatures,
             _ => false
         };
 
@@ -121,11 +139,15 @@ public sealed class OperationalInboxService(IOperationalInboxRepository reposito
         OperationalWorkKind kind,
         bool canReadTenantObligations,
         bool canReadTenantReviews,
-        bool canReadTenantRenewals) => kind switch
+        bool canReadTenantRenewals,
+        bool canReadTenantSolicitations,
+        bool canReadTenantSignatures) => kind switch
         {
             OperationalWorkKind.Obligation => canReadTenantObligations,
             OperationalWorkKind.Review => canReadTenantReviews,
             OperationalWorkKind.Renewal => canReadTenantRenewals,
+            OperationalWorkKind.Solicitation => canReadTenantSolicitations,
+            OperationalWorkKind.Signature => canReadTenantSignatures,
             _ => false
         };
 }

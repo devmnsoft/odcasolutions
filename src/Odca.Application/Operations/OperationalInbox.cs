@@ -4,7 +4,9 @@ public enum OperationalWorkKind
 {
     Review,
     Obligation,
-    Renewal
+    Renewal,
+    Solicitation,
+    Signature
 }
 
 public enum OperationalUrgency

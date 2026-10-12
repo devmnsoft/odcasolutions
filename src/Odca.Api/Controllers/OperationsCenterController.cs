@@ -82,7 +82,7 @@ public sealed class OperationsCenterController(NpgsqlDataSource dataSource) : Co
                 JOIN odca.contracts c ON c.tenant_id=r.tenant_id AND c.id=r.contract_id
                 LEFT JOIN odca.users u ON u.id=r.responsible_id
                 WHERE r.tenant_id=@tenantId AND r.status NOT IN ('cancelled')
-                  AND (@mine=false OR r.responsible_id=@actor)");
+                  AND (@mine=false OR r.responsible_id=@actor))");
             names.Add("change_actions");
         }
 
@@ -94,20 +94,20 @@ public sealed class OperationsCenterController(NpgsqlDataSource dataSource) : Co
                 SELECT 'signature' AS source_type, sp.id::text AS source_id,
                     CASE
                         WHEN sp.status='draft' AND @mine=true THEN 'my_action'
-                        WHEN sp.status='partially_signed' THEN 'waiting_other'
                         ELSE 'waiting_other'
                     END AS category,
-                    dv.display_name AS context,
+                    COALESCE(sc.title, 'Documento gerado') AS context,
                     'Assinatura em andamento' AS reason,
                     NULL::text AS responsible, NULL::date AS deadline,
                     'normal' AS priority, sp.created_at AS created_at
                 FROM odca.signature_preparations sp
                 LEFT JOIN odca.generated_contract_versions dv ON dv.id=sp.generated_version_id
-                WHERE sp.tenant_id=@tenantId AND sp.status IN ('draft','confirmed','partially_signed')
+                LEFT JOIN odca.contracts sc ON sc.id=dv.contract_id AND sc.tenant_id=sp.tenant_id
+                WHERE sp.tenant_id=@tenantId AND sp.status IN ('draft','confirmed')
                   AND (@mine=false OR EXISTS (
                       SELECT 1 FROM odca.signature_participants spart
                       WHERE spart.preparation_id=sp.id AND spart.identity_membership_id=(
-                          SELECT m.id FROM odca.memberships m WHERE m.tenant_id=sp.tenant_id AND m.user_id=@actor LIMIT 1)))");
+                          SELECT m.id FROM odca.memberships m WHERE m.tenant_id=sp.tenant_id AND m.user_id=@actor LIMIT 1))))");
             names.Add("signature_actions");
         }
 
@@ -129,7 +129,7 @@ public sealed class OperationsCenterController(NpgsqlDataSource dataSource) : Co
                 FROM odca.contract_obligations o
                 LEFT JOIN odca.users ou ON ou.id=o.owner_id
                 WHERE o.tenant_id=@tenantId AND o.status NOT IN ('completed','waived','cancelled') AND o.deleted_at IS NULL
-                  AND (@mine=false OR o.owner_id=@actor)");
+                  AND (@mine=false OR o.owner_id=@actor))");
             names.Add("obligation_actions");
         }
 
@@ -140,19 +140,18 @@ public sealed class OperationsCenterController(NpgsqlDataSource dataSource) : Co
             solicitation_actions AS (
                 SELECT 'solicitation' AS source_type, s.id::text AS source_id,
                     CASE
-                        WHEN s.status='awaiting_customer' THEN 'my_action'
-                        WHEN s.status IN ('open','in_progress') THEN 'waiting_other'
-                        WHEN s.status='paused' THEN 'info'
+                        WHEN s.status='aguardando_cliente' THEN 'my_action'
+                        WHEN s.status IN ('aberta','triagem','em_atendimento') THEN 'waiting_other'
                         ELSE 'waiting_other'
                     END AS category,
                     s.subject AS context, s.service AS reason,
                     NULL::text AS responsible,
-                    CASE WHEN s.status IN ('open','in_progress','awaiting_customer')
+                    CASE WHEN s.status IN ('aberta','triagem','em_atendimento','aguardando_cliente')
                          THEN s.resolution_due_at::date ELSE NULL END AS deadline,
                     s.priority AS priority, s.opened_at AS created_at
                 FROM odca.solicitations s
-                WHERE s.tenant_id=@tenantId AND s.status NOT IN ('closed','resolved','cancelled')
-                  AND (@mine=false OR s.opened_by=@actor)");
+                WHERE s.tenant_id=@tenantId AND s.status NOT IN ('resolvida','encerrada','cancelada')
+                  AND (@mine=false OR s.opened_by=@actor))");
             names.Add("solicitation_actions");
         }
 
@@ -171,7 +170,7 @@ public sealed class OperationsCenterController(NpgsqlDataSource dataSource) : Co
                 LEFT JOIN odca.users cu ON cu.id=c.owner_id
                 WHERE c.tenant_id=@tenantId AND c.archived_at IS NULL AND c.closed_at IS NULL
                   AND c.end_date IS NOT NULL AND c.end_date <= @today + 90
-                  AND (@mine=false OR c.owner_id=@actor)");
+                  AND (@mine=false OR c.owner_id=@actor))");
             names.Add("contract_deadlines");
         }
 
@@ -200,12 +199,12 @@ OFFSET @offset LIMIT @limit";
 
         // Group by category (item 9: proper state classification)
         return Ok(new ActionCenterResponse(
-            items.Where(i => i.Category == "my_action").Select(ToDto).ToList(),
-            items.Where(i => i.Category == "waiting_other").Select(ToDto).ToList(),
-            items.Where(i => i.Category == "upcoming").Select(ToDto).ToList(),
-            items.Where(i => i.Category == "overdue").Select(ToDto).ToList(),
-            items.Where(i => i.Category == "conflict").Select(ToDto).ToList(),
-            items.Where(i => i.Category == "info").Select(ToDto).ToList(),
+            items.Where(i => i.category == "my_action").Select(ToDto).ToList(),
+            items.Where(i => i.category == "waiting_other").Select(ToDto).ToList(),
+            items.Where(i => i.category == "upcoming").Select(ToDto).ToList(),
+            items.Where(i => i.category == "overdue").Select(ToDto).ToList(),
+            items.Where(i => i.category == "conflict").Select(ToDto).ToList(),
+            items.Where(i => i.category == "info").Select(ToDto).ToList(),
             total, today, page, pageSize));
     }
 
@@ -217,8 +216,8 @@ OFFSET @offset LIMIT @limit";
     private Guid? Actor() => Guid.TryParse(User.FindFirstValue("sub"), out var id) ? id : null;
 
     private static OperationActionDto ToDto(ActionItemRow r) => new(
-        r.SourceType, r.SourceId, r.Context, r.Reason, r.Responsible,
-        r.Deadline, GetNextAction(r.SourceType, r.Category), r.Priority, r.Category);
+        r.source_type, r.source_id, r.context, r.reason, r.responsible,
+        r.deadline, GetNextAction(r.source_type, r.category), r.priority, r.category);
 
     private static string GetNextAction(string sourceType, string category) =>
         (sourceType, category) switch
@@ -241,9 +240,9 @@ OFFSET @offset LIMIT @limit";
         };
 
     private sealed record ActionItemRow(
-        string SourceType, string SourceId, string Category,
-        string Context, string Reason, string? Responsible,
-        DateOnly? Deadline, string Priority, DateTime CreatedAt);
+        string source_type, string source_id, string category,
+        string context, string reason, string? responsible,
+        DateOnly? deadline, string priority, DateTime created_at);
 
     public sealed record OperationActionDto(
         string SourceType, string SourceId, string Context, string Reason,
