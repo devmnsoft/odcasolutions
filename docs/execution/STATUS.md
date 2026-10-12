@@ -1,5 +1,22 @@
 # Status de execução
 
+## Incremento: Estúdio item 7 — homologação formal de salvamento de minuta (12 linhas) (12/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `4b92c54`. Incremento somente de evidência/documentação — zero mudança de código (nenhum projeto recompilado; build/testes não se aplicam).
+- **Entrega**: tabela de 12 cenários em `docs/execution/CONTRACT_STUDIO.md` (§ Homologação de salvamento de minuta), cada linha executada contra a aplicação real (API + Web, sessões MFA) sobre a minuta `46665c7b…` criada por API:
+  - Sucesso: PUT 200 avança `row_version` uma vez, grava valores/`last_client_revision`, 1 recibo + 1 evento `draft.saved`; barra `Alterações não salvas → Salvando → Salvo` (`studio.js`).
+  - Idempotência: replay pela `clientRevision` devolve a resposta original persistida **mesmo com corpo divergente** (o recibo do servidor vence) — duplicata jamais grava duas vezes.
+  - Falhas: 400 de tipo (mensagem por campo, `O valor de 'Início' é inválido.`) e 400 estrutural (campo definido sem ocorrência) sem tocar no banco; 409 de conflito com `currentVersion` no corpo + banner de recuperação na UI; o loop recuperar-e-repetir fechou em 200.
+  - Fora de ordem / duplo submit: "Salvo" apenas quando `localRevision===sentRevision` (resposta atrasada volta a sujo e re-salva em 150 ms; single-flight bloqueia PUT paralelo); corrida real de dois PUTs concorrentes resolveu 200/409 com um único incremento de versão.
+  - Permissão/isolamento: remoção reversível do papel em `odca.member_roles` → GET/PUT **403** por requisição (a checagem lê o banco, não o claim do token — descoberta colateral útil); 404 para draft inexistente e cross-tenant (RLS).
+  - Verdade da interface: carga inicial e reload pós-salvamento refletem o servidor — `data-version` = `row_version` e carimbo renderizado = `updated_at` no fuso local.
+- **Classificação**: comportamento provado por comandos reais da aplicação (HTTP + renderização + estado do banco); SQL usado apenas para a fixture reversível da linha 11 e para asserções de observação.
+- **Próximos passos**:
+  - Itens 19–20: recuperação de divergência + fila de exceções.
+  - Bloco F: i18n do Estúdio/plataforma (4 idiomas), validação de formatos (data/moeda), design 360/768/1440px, homologação visual de PDF.
+  - Backlog separado: as 54 falhas pré-existentes da suíte de integração (ambiente/estado) merecem incremento dedicado.
+  - Sem push/merge/deploy automático.
+
 ## Incremento: Estúdio item 11 — publicar nova revisão de modelo oficial preservando documentos existentes + fix de checksum v051 (12/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `0ff937c` (início). Commit único deste incremento (ver abaixo).
