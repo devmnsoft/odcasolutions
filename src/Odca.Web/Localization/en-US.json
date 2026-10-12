@@ -87,5 +87,17 @@
   "sheet.documents": "Recent Documents",
   "sheet.solicitations": "Related ODCA Requests",
   "sheet.history": "Contract History",
-  "sheet.actions": "Lifecycle Actions"
+  "sheet.actions": "Lifecycle Actions",
+  "sheet.subnav_aria": "Sheet sections",
+  "sheet.nav_details": "Details",
+  "sheet.nav_obligations": "Obligations",
+  "sheet.nav_renewal": "Renewal",
+  "sheet.nav_review": "Review",
+  "sheet.nav_drafts": "Drafts",
+  "sheet.nav_signature": "Signature",
+  "sheet.nav_documents": "Documents",
+  "sheet.nav_solicitations": "Requests",
+  "sheet.nav_history": "History",
+  "sheet.nav_actions": "Actions",
+  "sheet.nav_renewals_center": "Renewals Center"
 }

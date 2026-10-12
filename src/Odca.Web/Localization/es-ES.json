@@ -87,5 +87,17 @@
   "sheet.documents": "Documentos recientes",
   "sheet.solicitations": "Solicitudes ODCA relacionadas",
   "sheet.history": "Historial del contrato",
-  "sheet.actions": "Acciones del ciclo de vida"
+  "sheet.actions": "Acciones del ciclo de vida",
+  "sheet.subnav_aria": "Secciones de la ficha",
+  "sheet.nav_details": "Detalles",
+  "sheet.nav_obligations": "Obligaciones",
+  "sheet.nav_renewal": "Renovación",
+  "sheet.nav_review": "Revisión",
+  "sheet.nav_drafts": "Borradores",
+  "sheet.nav_signature": "Firma",
+  "sheet.nav_documents": "Documentos",
+  "sheet.nav_solicitations": "Solicitudes",
+  "sheet.nav_history": "Historial",
+  "sheet.nav_actions": "Acciones",
+  "sheet.nav_renewals_center": "Centro de renovaciones"
 }

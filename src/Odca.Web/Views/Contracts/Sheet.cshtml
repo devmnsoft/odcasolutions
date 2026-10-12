@@ -149,24 +149,24 @@
 </header>
 
 <!-- SUBNAV STICKY COM ARIA-CURRENT -->
-<nav class="sheet-subnav" aria-label="Seções da ficha">
-    <a href="#detalhes">Detalhes</a>
-    <a href="#obrigacoes">Obrigações</a>
-    <a href="#renovacao">Renovação</a>
-    <a href="#revisao">Revisão</a>
-    <a href="#minutas">Minutas</a>
-    <a href="#assinatura">Assinatura</a>
-    <a href="#documentos">Documentos</a>
+<nav class="sheet-subnav" aria-label="@L.T("sheet.subnav_aria", _culture)">
+    <a href="#detalhes">@L.T("sheet.nav_details", _culture)</a>
+    <a href="#obrigacoes">@L.T("sheet.nav_obligations", _culture)</a>
+    <a href="#renovacao">@L.T("sheet.nav_renewal", _culture)</a>
+    <a href="#revisao">@L.T("sheet.nav_review", _culture)</a>
+    <a href="#minutas">@L.T("sheet.nav_drafts", _culture)</a>
+    <a href="#assinatura">@L.T("sheet.nav_signature", _culture)</a>
+    <a href="#documentos">@L.T("sheet.nav_documents", _culture)</a>
     @if (sheet.Solicitations is { Count: > 0 })
     {
-        <a href="#solicitacoes">Solicitações</a>
+        <a href="#solicitacoes">@L.T("sheet.nav_solicitations", _culture)</a>
     }
     @if (Model.CanReadHistory)
     {
-        <a href="#historico">Histórico</a>
+        <a href="#historico">@L.T("sheet.nav_history", _culture)</a>
     }
-    <a href="#acoes">Ações</a>
-    <a asp-controller="Renewals" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-counterparty="@sheet.Title">Central de renovações</a>
+    <a href="#acoes">@L.T("sheet.nav_actions", _culture)</a>
+    <a asp-controller="Renewals" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-counterparty="@sheet.Title">@L.T("sheet.nav_renewals_center", _culture)</a>
 </nav>
 
 @if (!string.IsNullOrWhiteSpace(notice))
