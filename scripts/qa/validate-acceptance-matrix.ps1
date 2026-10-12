@@ -109,20 +109,34 @@ try {
     $tplPair = Sql ("SELECT ct.id::text || '|' || ctv.id::text FROM odca.contract_templates ct JOIN odca.contract_template_versions ctv ON ctv.template_id=ct.id WHERE ct.owner_tenant_id='{0}' AND ct.status='published' ORDER BY ctv.created_at DESC LIMIT 1" -f $tenant)
     $memberId = Sql ("SELECT user_id::text FROM odca.memberships WHERE tenant_id='{0}' AND status='active' LIMIT 1" -f $tenant)
     if ($fixtureContract -and $tplPair -and $memberId) {
-        $tplParts = $tplPair.Split('|')
-        $tplId = $tplParts[0]; $tplVerId = $tplParts[1]
-        $draftContent = '{}'
-        $draftFields = '[]'
-        $draftResult = Sql ("INSERT INTO odca.contract_drafts(tenant_id,contract_id,source_template_id,source_template_version_id,content,fields,created_by,updated_by) VALUES('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{6}') RETURNING id::text" -f $tenant, $fixtureContract, $tplId, $tplVerId, $draftContent, $draftFields, $memberId)
-        if ($draftResult) {
-            $reloaded = Sql ("SELECT content FROM odca.contract_drafts WHERE id='{0}'" -f $draftResult)
+        # Verificar se ja existe draft para este contrato (unique tenant_id+contract_id)
+        $existingDraft = Sql ("SELECT id::text FROM odca.contract_drafts WHERE tenant_id='{0}' AND contract_id='{1}' LIMIT 1" -f $tenant, $fixtureContract)
+        if ($existingDraft -and $existingDraft.Length -gt 8) {
+            # Cenario de retomada: draft ja existe, verificar que conteudo persiste
+            $reloaded = Sql ("SELECT content FROM odca.contract_drafts WHERE id='{0}'" -f $existingDraft)
             if ($reloaded -ne '') {
-                Record "S2" "Rascunho salvo - retomada apos sessao" 'PASS' ("Draft {0} criado; conteudo preservado apos 'encerramento': {1}" -f $draftResult, $reloaded)
+                $shortId = $existingDraft.Substring(0, 8)
+                $shortContent = if ($reloaded.Length -gt 40) { $reloaded.Substring(0, 40) } else { $reloaded }
+                Record "S2" "Rascunho salvo - retomada apos sessao" 'PASS' ("Draft $($shortId) persistente; conteudo apos 'encerramento': $($shortContent)")
             } else {
-                Record "S2" "Rascunho salvo - retomada apos sessao" 'FAIL' 'Draft criado mas leitura retornou vazio'
+                Record "S2" "Rascunho salvo - retomada apos sessao" 'FAIL' "Leitura retornou vazio"
+            }
+        } elseif ($tplPair -and $memberId) {
+            $tplParts = $tplPair.Split('|')
+            $tplId = $tplParts[0]; $tplVerId = $tplParts[1]
+            $draftResult = Sql ("INSERT INTO odca.contract_drafts(tenant_id,contract_id,source_template_id,source_template_version_id,content,fields,created_by,updated_by) VALUES('{0}','{1}','{2}','{3}','{}','[]','{4}','{4}') RETURNING id::text" -f $tenant, $fixtureContract, $tplId, $tplVerId, $memberId)
+            if ($draftResult -and $draftResult.Length -gt 8) {
+                $reloaded = Sql ("SELECT content FROM odca.contract_drafts WHERE id='{0}'" -f $draftResult)
+                if ($reloaded -ne '') {
+                    Record "S2" "Rascunho salvo - retomada apos sessao" 'PASS' ("Draft $($draftResult.Substring(0,8)) criado; conteudo preservado: $($reloaded)")
+                } else {
+                    Record "S2" "Rascunho salvo - retomada apos sessao" 'FAIL' 'Draft criado mas leitura retornou vazio'
+                }
+            } else {
+                Record "S2" "Rascunho salvo - retomada apos sessao" 'FAIL' 'Nao conseguiu criar draft fixture'
             }
         } else {
-            Record "S2" "Rascunho salvo - retomada apos sessao" 'FAIL' 'Nao conseguiu criar draft fixture'
+            Record "S2" "Rascunho salvo - retomada apos sessao" 'BLOCKED' 'Sem template publicado'
         }
     } else {
         Record "S2" "Rascunho salvo - retomada apos sessao" 'BLOCKED' 'Sem contrato fixture (S1 falhou)'
