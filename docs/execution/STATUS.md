@@ -1,5 +1,30 @@
 # Status de execução
 
+## Incremento: Central operacional corrigida + vínculo solicitação-contrato + matriz comportamental (12/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `a2ccb42` (início) → `324cd00` (fim). 3 commits nesta sessão.
+- **Build**: 0W/0E (Odca.Api, Odca.Web, Odca.Infrastructure).
+- **Bloco B/7-10 — OperationsCenterController REESCRITO**:
+  - Autorização por fonte separada: cada CTE (renewal, signature, obligation, solicitation, contract) condicional ao seu respectivo permission (`tenant.renewals.read`, `tenant.contracts.read`, `tenant.obligations.read/read_all`, `tenant.solicitations.read`).
+  - "Minhas" vs "Organização": obrigações filtram por `owner_id`; renovações por `responsible_id`; solicitações por `opened_by`; assinaturas por participação real (membership → signature_participants). Anteriormente "mine" = toda a organização para solicitações.
+  - Categorias corrigidas: solicitação pausada → `info` (não mais `upcoming`); data de efeito ≠ prazo de decisão; prioridade crítica para atrasos.
+  - Paginação: `page`/`pageSize` parâmetros + `COUNT(*)` do conjunto autorizado + `OFFSET/LIMIT`. Ordenação determinística (priority → deadline → created_at DESC).
+- **Bloco C/13 — Vínculo persistente solicitação→contrato**:
+  - Migration v051: `solicitations.contract_id uuid REFERENCES odca.contracts(id)` + índice parcial.
+  - Função `odca.solicitations_open` atualizada (8 params, `p_contract_id DEFAULT NULL`) com validação: contrato deve pertencer ao tenant.
+  - API controller passa `contractId`; Web controller aceita `contractContext`; formulário na ficha envia hidden field.
+  - Repository da ficha agora filtra `WHERE s.contract_id=@contractId` (não mais tenant genérico).
+- **Item 3 — Matriz de aceite reescrita (comportamental)**:
+  - Anterior: 15 cenários estruturais (coluna existe, contagem > 0).
+  - Nova: fixture própria (INSERT), ação executada (UPDATE/função), releitura, verificação de conflito/hash/idempotência, limpeza implícita.
+  - Resultado: **12 PASS, 0 FAIL, 3 BLOCKED** (S11/S12/S13 com causa: API fora do ar, conta sem permissão parcial, sem alteração aplicada ainda).
+  - Credenciais via `$env:` (sem fixas no script); PS 5.1 compatível.
+- **Próximos passos**:
+  - Item 12: integrar novas fontes (Signature, Solicitation, Contract) na view do Inbox existente.
+  - Item 4: auditoria do auto-approve em Development no DocumentWorker.
+  - Item 22: reconciliar direitos comerciais (OCR/Reviews na matriz).
+  - P0 (complemento): aprovações vinculadas à versão + condições vigentes + identidade signatários.
+
 ## Evolução completa da operação contratual — incremento integrado: integridade + jornada + SaaS + localização + matriz de aceite 15/15 (11–12/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `818f039` (início) → `fe92857` (fim). 9 commits, árvore limpa, sem push/merge/deploy.
