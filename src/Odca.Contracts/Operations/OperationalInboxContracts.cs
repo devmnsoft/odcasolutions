@@ -105,7 +105,8 @@ public sealed record ContractSheetDto(
     DateOnly? ClosedOn = null,
     string? ClosureReason = null,
     ContractSheetSignatureDto? Signature = null,
-    IReadOnlyList<ContractSheetSolicitationDto>? Solicitations = null);
+    IReadOnlyList<ContractSheetSolicitationDto>? Solicitations = null,
+    IReadOnlyList<ContractSheetChangeDto>? PendingChanges = null);
 
 /// <summary>Solicitação ODCA projetada na ficha do contrato (Bloco B/9).</summary>
 public sealed record ContractSheetSolicitationDto(
@@ -160,6 +161,19 @@ public sealed record CreateSheetRenewalProposalRequest(
     string Reason,
     long ContractVersion,
     Guid? ResponsibleId,
+    decimal? ProposedValue,
+    string? Currency);
+
+/// <summary>Alteração contratual projetada na ficha para separar condições vigentes de propostas (Item 10).</summary>
+public sealed record ContractSheetChangeDto(
+    Guid Id,
+    string Kind,
+    string Status,
+    string ApplicationStatus,
+    DateOnly? EffectiveOn,
+    string Reason,
+    DateOnly? ProposedStartDate,
+    DateOnly? ProposedEndDate,
     decimal? ProposedValue,
     string? Currency);
 

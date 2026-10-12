@@ -268,6 +268,73 @@
     }
 </section>
 
+<!-- SEÇÃO ALTERAÇÕES PENDENTES / CONDIÇÕES E EFEITOS (Item 10) -->
+@if (sheet.PendingChanges is { Count: > 0 })
+{
+    <section id="alteracoes" class="renewal-list" aria-label="Alterações contratuais pendentes">
+        <div class="section-heading">
+            <h2>@L.T("sheet.alterations", _culture)</h2>
+            <span>@sheet.PendingChanges.Count @L.T("sheet.alterations_count", _culture)</span>
+        </div>
+        @foreach (var chg in sheet.PendingChanges)
+        {
+            var badgeClass = chg.Status switch
+            {
+                "draft" => "badge-draft",
+                "in_review" => "badge-review",
+                "internally_approved" => "badge-approved",
+                "awaiting_formalization" => "badge-formalize",
+                "formalized" => "badge-scheduled",
+                "conflict" => "badge-conflict",
+                _ => "badge-info"
+            };
+            var statusLabel = chg.Status switch
+            {
+                "draft" => L.T("sheet.chg_draft", _culture),
+                "in_review" => L.T("sheet.chg_review", _culture),
+                "internally_approved" => L.T("sheet.chg_approved", _culture),
+                "awaiting_formalization" => L.T("sheet.chg_await_formal", _culture),
+                "formalized" => chg.ApplicationStatus == "scheduled" ? L.T("sheet.chg_scheduled", _culture) : L.T("sheet.chg_not_applied", _culture),
+                "conflict" => L.T("sheet.chg_conflict", _culture),
+                _ => chg.Status
+            };
+            var kindLabel = chg.Kind switch
+            {
+                "renewal" => L.T("sheet.chg_kind_renewal", _culture),
+                "amendment" => L.T("sheet.chg_kind_amendment", _culture),
+                "revision" => L.T("sheet.chg_kind_revision", _culture),
+                _ => chg.Kind
+            };
+            <article class="renewal-row">
+                <div>
+                    <span class="status-label @(badgeClass)">@kindLabel · @statusLabel</span>
+                    <h3>@(chg.Reason ?? "—")</h3>
+                    @if (chg.EffectiveOn is not null)
+                    {
+                        <p>@L.T("sheet.chg_effective", _culture): <strong>@chg.EffectiveOn.Value.ToString("dd/MM/yyyy")</strong></p>
+                    }
+                </div>
+                <dl>
+                    @if (chg.ProposedStartDate is not null || chg.ProposedEndDate is not null)
+                    {
+                        <div>
+                            <dt>@L.T("sheet.chg_new_period", _culture)</dt>
+                            <dd>@(chg.ProposedStartDate?.ToString("dd/MM/yyyy") ?? "—") → @(chg.ProposedEndDate?.ToString("dd/MM/yyyy") ?? "indeterminado")</dd>
+                        </div>
+                    }
+                    @if (chg.ProposedValue is not null)
+                    {
+                        <div>
+                            <dt>@L.T("sheet.chg_new_value", _culture)</dt>
+                            <dd>@chg.ProposedValue.Value.ToString("N2") @(chg.Currency ?? "")</dd>
+                        </div>
+                    }
+                </dl>
+            </article>
+        }
+    </section>
+}
+
 <!-- SEÇÃO RENOVAÇÃO -->
 <section id="renovacao" class="renewal-cards" aria-label="Indicadores de vigência e renovação">
     <div>

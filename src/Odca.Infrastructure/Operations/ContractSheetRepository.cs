@@ -290,6 +290,22 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             ServiceLabel: r.ServiceType switch { "revisao" => "Revisão", "adaptacao" => "Adaptação", "esclarecimento" => "Esclarecimento", "suporte_tecnico" => "Suporte técnico", _ => r.ServiceType }))
             .ToArray();
 
+        // Item 10: Alterações pendentes/agendadas (separar condições vigentes de propostas)
+        var changeRows = await connection.QueryAsync<SheetChangeRow>(new CommandDefinition("""
+            SELECT r.id AS Id, r.kind AS Kind, r.status AS Status, r.application_status AS ApplicationStatus,
+                   r.effective_on AS EffectiveOn, r.reason AS Reason,
+                   r.proposed_start_date AS ProposedStartDate, r.proposed_end_date AS ProposedEndDate,
+                   r.proposed_value AS ProposedValue, r.currency AS Currency
+              FROM odca.contract_change_requests r
+             WHERE r.tenant_id=@tenantId AND r.contract_id=@contractId
+               AND r.status NOT IN ('cancelled','applied')
+               AND r.application_status NOT IN ('applied')
+             ORDER BY r.created_at DESC LIMIT 10
+            """, new { tenantId, contractId }, transaction, cancellationToken: cancellationToken));
+        var pendingChanges = changeRows.Select(r => new ContractSheetChangeDto(
+            r.Id, r.Kind, r.Status, r.ApplicationStatus, r.EffectiveOn, r.Reason,
+            r.ProposedStartDate, r.ProposedEndDate, r.ProposedValue, r.Currency)).ToArray();
+
         return new ContractSheetDto(
             header.ContractId,
             header.Title,
@@ -317,7 +333,8 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             ClosedOn: header.ClosedOn,
             ClosureReason: header.ClosureReason,
             Signature: signature,
-            Solicitations: solicitations);
+            Solicitations: solicitations,
+            PendingChanges: pendingChanges);
     }
 
     private sealed record SheetHeader(
@@ -340,6 +357,12 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
 
     private sealed record SheetSolicitationRow(
         Guid Id, string Subject, string ServiceType, string Priority, string Status, DateOnly? SlaDueOn);
+
+    private sealed record SheetChangeRow(
+        Guid Id, string Kind, string Status, string ApplicationStatus,
+        DateOnly? EffectiveOn, string Reason,
+        DateOnly? ProposedStartDate, DateOnly? ProposedEndDate,
+        decimal? ProposedValue, string? Currency);
 
     private sealed class ContractSheetDocumentRow
     {
