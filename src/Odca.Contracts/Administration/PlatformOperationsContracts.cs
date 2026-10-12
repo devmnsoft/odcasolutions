@@ -35,6 +35,25 @@ public sealed record CreateOfficialTemplateRequest(
     string Fields,
     string? OfficialKey);
 
+// Nova revisão de modelo oficial (Estúdio item 11): leitura do conteúdo da revisão atual
+// para edição e publicação de uma revisão imutável N+1 que não altera revisões anteriores
+// nem documentos já emitidos (minutas/versões geradas ficam pinadas à versão de origem).
+public sealed record TemplateRevisionCurrent(
+    string OfficialKey,
+    string Name,
+    string Description,
+    string ContractType,
+    string Status,
+    int CurrentRevision,
+    string Content,
+    string Fields);
+
+public sealed record TemplateRevisionPublishRequest(
+    string Summary,
+    string Content,
+    string Fields,
+    int? ExpectedRevision);
+
 // Busca global de usuários (identidade + vínculos por organização).
 public sealed record PlatformUserLink(
     Guid? TenantId,

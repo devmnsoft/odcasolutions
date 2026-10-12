@@ -5677,13 +5677,13 @@ VALUES(50,'Idempotencia: formalization replay and outbox dedup by source','512a8
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 050
--- ODCA-MIGRATION 051 CHECKSUM a3f8c1d2e4b5a6f7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1
+-- ODCA-MIGRATION 051 CHECKSUM d9951f97d49f319c25120c18a801ca4d18732b6629841b055e48e970ebd4df28
 BEGIN;
 SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
 
 DO \\$
 DECLARE
-    expected_checksum constant char(64) := 'a3f8c1d2e4b5a6f7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1';
+    expected_checksum constant char(64) := 'd9951f97d49f319c25120c18a801ca4d18732b6629841b055e48e970ebd4df28';
     recorded_checksum char(64);
 BEGIN
     SELECT checksum INTO recorded_checksum FROM odca.schema_migrations WHERE version = 51;
@@ -5746,7 +5746,7 @@ END \\$;
 GRANT EXECUTE ON FUNCTION odca.solicitations_open(uuid,uuid,text,text,text,text,uuid,uuid) TO odca_app;
 
 INSERT INTO odca.schema_migrations(version,name,checksum)
-VALUES(51,'Solicitacao-contract link: contract_id FK for persistent association','a3f8c1d2e4b5a6f7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1')
+VALUES(51,'Solicitacao-contract link: contract_id FK for persistent association','d9951f97d49f319c25120c18a801ca4d18732b6629841b055e48e970ebd4df28')
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 051

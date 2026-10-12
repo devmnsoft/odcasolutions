@@ -1,0 +1,320 @@
+@model Odca.Contracts.Administration.TemplateRevisionCurrent
+@using Odca.Contracts.Administration
+@{
+    ViewData["Title"] = "Nova revisão de modelo";
+}
+<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-action="Index">Biblioteca de modelos</a><span>/</span><span aria-current="page">Nova revisão</span></nav>
+<header class="page-heading">
+    <div>
+        <p class="eyebrow">Administração global · Revisão de modelo</p>
+        <h1>Nova revisão — @Model.Name</h1>
+        <p class="muted">Revisão atual: @Model.CurrentRevision · tipo <code>@Model.ContractType</code> · chave <code>@Model.OfficialKey</code></p>
+    </div>
+    <a class="button button-quiet" asp-action="Index">← Voltar à biblioteca</a>
+</header>
+
+@if (TempData["Success"] is string successMsg) { <div class="alert alert-success" role="status">@successMsg</div> }
+@if (TempData["Error"] is string errorMsg) { <div class="alert alert-error" role="alert">@errorMsg</div> }
+
+<section class="panel" style="margin-bottom:1.5rem; border-left:4px solid #059669;">
+    <strong>Efeito da publicação.</strong>
+    <p style="margin:.25rem 0 0;">Publicar a revisão @((Model.CurrentRevision + 1)) cria uma <strong>nova versão imutável</strong> do modelo. Minutas, versões geradas e contratos já emitidos continuam fixados à revisão @Model.CurrentRevision (snapshot imutável com referência à versão de origem) — nenhum documento existente é alterado. Novas minutas passam a nascer da revisão @((Model.CurrentRevision + 1)).</p>
+</section>
+
+<form method="post" asp-action="NewRevision" asp-route-key="@Model.OfficialKey" id="revisionForm" data-prevent-double-submit>
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="expectedRevision" value="@Model.CurrentRevision" />
+
+    <div class="card" style="margin-bottom:1.5rem;">
+        <label style="display:block; font-weight:600;">
+            Resumo da mudança * <small class="muted">(obrigatório, 5–500 caracteres — fica registrado na auditoria)</small>
+            <textarea name="summary" rows="2" minlength="5" maxlength="500" required style="width:100%; margin-top:.25rem;" placeholder="Ex.: ajuste do prazo de aviso prévio na cláusula 3 e inclusão de campo de cobrança"></textarea>
+        </label>
+    </div>
+
+    <div class="template-editor-grid">
+        <div class="card">
+            <h3>Campos Variáveis do Modelo</h3>
+            <p class="muted" style="font-size:0.875rem;">Campos dinâmicos disponíveis ao operador ao preencher a minuta.</p>
+
+            <div style="background:#f8fafc; padding:1rem; border-radius:6px; border:1px solid #e2e8f0; margin-bottom:1rem;">
+                <h4 style="margin-top:0; font-size:0.95rem;">+ Adicionar Novo Campo</h4>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:0.5rem;">
+                    <div>
+                        <label style="font-size:0.8rem; font-weight:600;">Identificador:</label>
+                        <input type="text" id="newFieldId" placeholder="identificador_unico" style="width:100%; font-size:0.85rem;" />
+                    </div>
+                    <div>
+                        <label style="font-size:0.8rem; font-weight:600;">Rótulo exibido:</label>
+                        <input type="text" id="newFieldLabel" placeholder="Nome Completo" style="width:100%; font-size:0.85rem;" />
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:0.5rem;">
+                    <div>
+                        <label style="font-size:0.8rem; font-weight:600;">Tipo de Dado:</label>
+                        <select id="newFieldType" style="width:100%; font-size:0.85rem;">
+                            <option value="ShortText">Texto Curto</option>
+                            <option value="LongText">Texto Longo</option>
+                            <option value="BrazilianDocument">CPF ou CNPJ</option>
+                            <option value="Currency">Moeda (R$)</option>
+                            <option value="Date">Data</option>
+                            <option value="Number">Número</option>
+                            <option value="Choice">Seleção de Opções</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:0.8rem; font-weight:600;">Opções (separadas por vírgula):</label>
+                        <input type="text" id="newFieldChoices" placeholder="Opção 1, Opção 2" style="width:100%; font-size:0.85rem;" />
+                    </div>
+                </div>
+                <div class="template-field-options">
+                    <label>Origem do preenchimento
+                        <select id="newFieldOrigin">
+                            <option value="manual">Entrada manual</option>
+                            <option value="organization">Organização/clínica</option>
+                            <option value="patient">Paciente</option>
+                            <option value="contractor">Contratante/responsável financeiro</option>
+                            <option value="representative">Representante</option>
+                        </select>
+                    </label>
+                    <label>Propriedade do cadastro
+                        <select id="newFieldProperty"><option value="">Não mapear</option></select>
+                    </label>
+                    <label>Obrigatório quando o campo
+                        <select id="newFieldController"><option value="">Sempre, se estiver marcado como obrigatório</option></select>
+                    </label>
+                    <label>Valores que ativam a condição
+                        <input type="text" id="newFieldWhenValues" placeholder="Sim" />
+                    </label>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem;">
+                    <label style="font-size:0.85rem;"><input type="checkbox" id="newFieldRequired" checked /> Campo Obrigatório</label>
+                    <button type="button" id="addFieldBtn" class="button button-quiet" style="font-size:0.85rem;">+ Incluir Campo</button>
+                </div>
+            </div>
+
+            <h4>Campos Cadastrados:</h4>
+            <div id="fieldsList" style="display:flex; flex-direction:column; gap:0.5rem; max-height:250px; overflow-y:auto; padding-right:0.25rem;"></div>
+            <textarea name="fieldsJson" id="fieldsJsonInput" style="display:none;">@Model.Fields</textarea>
+        </div>
+
+        <div class="card" style="display:flex; flex-direction:column;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                <h3 style="margin:0;">Conteúdo Estruturado do Modelo</h3>
+                <span class="badge badge-muted">Legal Design</span>
+            </div>
+            <p class="muted" style="font-size:0.875rem;">Texto das cláusulas da nova revisão. Clique em um campo à esquerda para inseri-lo no texto.</p>
+            <div id="editorLossBanner" class="error" role="alert" style="display:none; font-size:0.85rem; margin-bottom:0.75rem;"></div>
+
+            <label style="font-weight:600; font-size:0.85rem; margin-bottom:0.25rem;">
+                Texto Simples com Marcadores (ex: Use {{identificador_do_campo}} para variáveis):
+            </label>
+            <textarea id="textEditor" rows="14" style="width:100%; font-family:monospace; font-size:0.9rem; line-height:1.4; padding:0.75rem; border-radius:4px; border:1px solid #cbd5e1;"></textarea>
+            <textarea name="contentJson" id="contentJsonInput" style="display:none;">@Model.Content</textarea>
+        </div>
+    </div>
+
+    <div class="button-row" style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #e2e8f0; padding-top:1rem; margin-top:1.5rem;">
+        <a class="button button-quiet" asp-action="Index">Cancelar</a>
+        <button type="submit" class="button" style="background:#059669; color:#fff;"
+                onclick="return confirm('Publicar a revisão @(Model.CurrentRevision + 1)? Documentos emitidos a partir de revisões anteriores não são alterados.')"
+                data-prevent-double-submit>
+            ✓ Publicar revisão @(Model.CurrentRevision + 1)
+        </button>
+    </div>
+</form>
+
+<script type="module">
+    import { collectEditorLosses, convertTextToStructuredJson, structuredJsonToText } from '@Url.Content("~/js/template-editor-document.js")';
+    let fieldsData = [];
+    try { fieldsData = JSON.parse(document.getElementById('fieldsJsonInput').value || '[]'); } catch (e) { fieldsData = []; }
+    let fieldsDirty = false;
+
+    function renderFieldsList() {
+        const list = document.getElementById('fieldsList');
+        list.replaceChildren();
+        if (fieldsData.length === 0) {
+            const p = document.createElement('p');
+            p.className = 'muted'; p.style.fontSize = '0.85rem'; p.textContent = 'Nenhum campo variável configurado.';
+            list.appendChild(p);
+        }
+        fieldsData.forEach((f, idx) => {
+            const item = document.createElement('div');
+            item.style.cssText = 'display:flex; justify-content:space-between; align-items:center; background:#fff; padding:0.5rem 0.75rem; border:1px solid #e2e8f0; border-radius:4px;';
+            const infoDiv = document.createElement('div');
+            const strong = document.createElement('strong'); strong.textContent = f.label || f.id;
+            infoDiv.appendChild(strong); infoDiv.appendChild(document.createTextNode(' '));
+            const code = document.createElement('code');
+            code.style.cssText = 'font-size:0.75rem; background:#e0f2fe; padding:2px 4px; border-radius:3px; color:#0369a1;';
+            code.textContent = `{{${f.id}}}`;
+            infoDiv.appendChild(code);
+            const span = document.createElement('span');
+            span.style.cssText = 'font-size:0.75rem; color:#64748b; margin-left:0.5rem;';
+            const originLabel = { organization: "Organização", patient: "Paciente", contractor: "Contratante", representative: "Representante", manual: "Manual" };
+            const origin = f.origin || f.Origin || "manual";
+            const property = f.sourceProperty || f.SourceProperty;
+            const controller = f.requiredWhenFieldId || f.RequiredWhenFieldId;
+            const whenValues = f.requiredWhenAnyOf || f.RequiredWhenAnyOf || [];
+            const condition = controller ? `; obrigatório quando ${controller} = ${whenValues.join(" ou ")}` : "";
+            const help = f.help || f.Help || "";
+            span.textContent = `[${f.type}${f.required ? ", Obrigatório" : ""}, ${originLabel[origin] || origin}${property ? " · " + property : ""}${condition}${help ? " · ajuda: " + help : ""}]`;
+            infoDiv.appendChild(span);
+            item.appendChild(infoDiv);
+            const btnDiv = document.createElement('div');
+            btnDiv.style.cssText = 'display:flex; gap:0.25rem;';
+            const insertBtn = document.createElement('button');
+            insertBtn.type = 'button'; insertBtn.className = 'button button-quiet';
+            insertBtn.style.cssText = 'padding:2px 6px; font-size:0.75rem;';
+            insertBtn.textContent = 'Inserir'; insertBtn.title = 'Inserir no cursor do texto';
+            insertBtn.addEventListener('click', () => insertFieldToken(f.id));
+            btnDiv.appendChild(insertBtn);
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button'; removeBtn.className = 'button button-quiet';
+            removeBtn.style.cssText = 'padding:2px 6px; font-size:0.75rem; color:#ef4444;';
+            removeBtn.textContent = '×'; removeBtn.title = 'Remover campo';
+            removeBtn.addEventListener('click', () => removeField(idx));
+            btnDiv.appendChild(removeBtn);
+            item.appendChild(btnDiv);
+            list.appendChild(item);
+        });
+        document.getElementById('fieldsJsonInput').value = JSON.stringify(fieldsData);
+        if (typeof refreshControllers === "function") refreshControllers();
+    }
+
+    function slugify(text) {
+        return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+            .replace(/[^a-z0-9_.-]/g, "_").replace(/^_+|_+$/g, "").replace(/__+/g, "_").substring(0, 50);
+    }
+
+    const labelInput = document.getElementById('newFieldLabel');
+    const idInput = document.getElementById('newFieldId');
+    let idManuallyEdited = false;
+    idInput.addEventListener('input', () => { idManuallyEdited = Boolean(idInput.value.trim()); });
+    labelInput.addEventListener('input', () => {
+        if (!idManuallyEdited) {
+            let slug = slugify(labelInput.value);
+            if (slug && !/^[a-zA-Z]/.test(slug)) slug = 'f_' + slug;
+            idInput.value = slug;
+        }
+    });
+
+    const propertyCatalog = {
+        patient: [["fullName", "Nome"], ["preferredName", "Nome social"], ["birthDate", "Nascimento"], ["identifierValue", "Documento"], ["identifierType", "Tipo de documento"], ["email", "E-mail"], ["phone", "Telefone"], ["address", "Endereço"]],
+        organization: [["displayName", "Nome"], ["businessCode", "Documento"]],
+        representative: [["fullName", "Nome"], ["identifierValue", "Documento"], ["relationship", "Relação"]],
+        contractor: [["fullName", "Nome"], ["identifierValue", "Documento"], ["email", "E-mail"], ["phone", "Telefone"], ["address", "Endereço"]]
+    };
+    const originInput = document.getElementById('newFieldOrigin');
+    const propertyInput = document.getElementById('newFieldProperty');
+    const controllerInput = document.getElementById('newFieldController');
+    const refreshPropertyChoices = () => {
+        const origin = originInput.value;
+        propertyInput.replaceChildren(new Option(origin === "manual" ? "Entrada manual, sem cadastro" : "Selecione a propriedade", ""));
+        for (const [value, label] of propertyCatalog[origin] || []) propertyInput.append(new Option(label, value));
+        propertyInput.disabled = origin === "manual";
+    };
+    const refreshControllers = () => {
+        const current = controllerInput.value;
+        controllerInput.replaceChildren(new Option("Sempre, se estiver marcado como obrigatório", ""));
+        for (const field of fieldsData) controllerInput.append(new Option(field.label || field.id, field.id));
+        if ([...controllerInput.options].some(option => option.value === current)) controllerInput.value = current;
+    };
+    originInput.addEventListener("change", refreshPropertyChoices);
+    refreshPropertyChoices();
+
+    const addFieldBtn = document.getElementById('addFieldBtn');
+    if (addFieldBtn) addFieldBtn.addEventListener('click', addNewField);
+
+    function addNewField() {
+        const typeInput = document.getElementById('newFieldType');
+        const choicesInput = document.getElementById('newFieldChoices');
+        const reqInput = document.getElementById('newFieldRequired');
+        const rawId = (idInput.value || '').trim();
+        const label = (labelInput.value || '').trim() || rawId;
+        let id = rawId || slugify(label);
+        if (id && !/^[a-zA-Z]/.test(id)) id = 'f_' + id;
+        const type = typeInput.value;
+        const required = reqInput.checked;
+        const rawChoices = (choicesInput.value || '').split(',').map(s => s.trim()).filter(Boolean);
+        if (!id) { alert('Informe o identificador ou rótulo do campo.'); return; }
+        if (fieldsData.some(f => f.id === id)) { alert('Já existe um campo com este identificador.'); return; }
+        const origin = originInput.value || "manual";
+        const property = propertyInput.value;
+        const controller = controllerInput.value;
+        const whenValues = (document.getElementById('newFieldWhenValues').value || '').split(',').map(item => item.trim()).filter(Boolean);
+        if (origin !== 'manual' && !property) { alert('Selecione a propriedade do cadastro.'); return; }
+        if (controller === id) { alert('Um campo não pode condicionar a si mesmo.'); return; }
+        if (controller && whenValues.length === 0) { alert('Informe ao menos um valor que torna o campo obrigatório.'); return; }
+        const help = (document.getElementById('newFieldHelp')?.value || '').trim();
+        const newF = { id, label, type, required, origin };
+        if (property) newF.sourceProperty = property;
+        if (controller) { newF.requiredWhenFieldId = controller; newF.requiredWhenAnyOf = whenValues; }
+        if (type === 'Choice' && rawChoices.length > 0) newF.choices = rawChoices;
+        if (help) newF.help = help;
+        fieldsData.push(newF);
+        fieldsDirty = true;
+        idInput.value = ''; labelInput.value = ''; choicesInput.value = '';
+        document.getElementById('newFieldHelp')?.removeAttribute('value');
+        idManuallyEdited = false;
+        renderFieldsList();
+    }
+
+    function removeField(index) { fieldsData.splice(index, 1); fieldsDirty = true; renderFieldsList(); }
+
+    function insertFieldToken(fieldId) {
+        const editor = document.getElementById('textEditor');
+        const token = `{{${fieldId}}}`;
+        const startPos = editor.selectionStart; const endPos = editor.selectionEnd;
+        editor.value = editor.value.substring(0, startPos) + token + editor.value.substring(endPos);
+        editor.selectionStart = startPos + token.length; editor.selectionEnd = startPos + token.length;
+        editor.focus();
+    }
+
+    let baselineText = '';
+    let originalContentRaw = '';
+    let originalFieldsRaw = '';
+    (function initEditor() {
+        originalContentRaw = document.getElementById('contentJsonInput').value;
+        originalFieldsRaw = document.getElementById('fieldsJsonInput').value;
+        renderFieldsList();
+        try {
+            const parsed = JSON.parse(originalContentRaw || '{}');
+            if (parsed.content && Array.isArray(parsed.content)) {
+                document.getElementById('textEditor').value = structuredJsonToText(parsed);
+            }
+            const issues = collectEditorLosses(parsed);
+            if (issues.length > 0) {
+                const banner = document.getElementById('editorLossBanner');
+                banner.innerHTML = '<strong>Editor limitado:</strong> este modelo usa recursos que o texto simples não preserva: <ul style="margin:0.25rem 0 0 1.1rem; padding:0;">' +
+                    issues.map(i => `<li>${i}</li>`).join('') + '</ul> Sem alteração no texto, o original é mantido na nova revisão.';
+                banner.style.display = 'block';
+            }
+        } catch (e) { console.error('Erro ao inicializar texto do modelo:', e); }
+        baselineText = document.getElementById('textEditor').value;
+
+        document.getElementById('revisionForm').addEventListener('submit', function (e) {
+            refreshControllers();
+            const text = document.getElementById('textEditor').value;
+            let originalOk = false;
+            let issues = [];
+            try {
+                const parsed = JSON.parse(originalContentRaw || '{}');
+                originalOk = Boolean(parsed) && Array.isArray(parsed.content);
+                issues = collectEditorLosses(parsed);
+            } catch (_) { /* conteúdo original inválido: a conversão compatível segue */ }
+            if ((text === baselineText && originalOk) || (issues.length > 0 && text !== baselineText && originalOk)) {
+                if (issues.length > 0 && text !== baselineText) {
+                    e.preventDefault();
+                    const banner = document.getElementById('editorLossBanner');
+                    banner.style.display = 'block';
+                    banner.textContent = 'A alteração não foi aplicada. O editor não preserva esta estrutura; a publicação foi bloqueada para não converter o modelo.';
+                    return;
+                }
+                document.getElementById('contentJsonInput').value = originalContentRaw;
+            } else {
+                document.getElementById('contentJsonInput').value = JSON.stringify(convertTextToStructuredJson(text));
+            }
+            document.getElementById('fieldsJsonInput').value = fieldsDirty ? JSON.stringify(fieldsData) : originalFieldsRaw;
+        });
+    })();
+</script>

@@ -42,6 +42,10 @@
           }
           </ul>
         </details>
+        @if (published)
+        {
+          <a class="button button-quiet" style="display:block; margin-bottom:.5rem;" asp-action="NewRevision" asp-route-key="@item.OfficialKey">Nova revisão</a>
+        }
         <form method="post" asp-action="Status" asp-route-key="@item.OfficialKey" data-prevent-double-submit>
           @Html.AntiForgeryToken()
           <input type="hidden" name="action" value="@(published ? "retire" : "publish")" />

@@ -5677,3 +5677,76 @@ VALUES(50,'Idempotencia: formalization replay and outbox dedup by source','512a8
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 050
+-- ODCA-MIGRATION 051 CHECKSUM d9951f97d49f319c25120c18a801ca4d18732b6629841b055e48e970ebd4df28
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
+
+DO \\$
+DECLARE
+    expected_checksum constant char(64) := 'd9951f97d49f319c25120c18a801ca4d18732b6629841b055e48e970ebd4df28';
+    recorded_checksum char(64);
+BEGIN
+    SELECT checksum INTO recorded_checksum FROM odca.schema_migrations WHERE version = 51;
+    IF recorded_checksum IS NOT NULL AND recorded_checksum <> expected_checksum THEN
+        RAISE EXCEPTION 'ODCA migration 051 checksum mismatch: stored %, expected %', recorded_checksum, expected_checksum;
+    END IF;
+END
+\\$;
+
+-- Item 13: vinculo persistente de solicitacoes ao contrato.
+-- Nullable para preservar solicitacoes antigas sem contrato; NOT NULL apenas quando ha contrato associado.
+ALTER TABLE odca.solicitations ADD COLUMN IF NOT EXISTS contract_id uuid REFERENCES odca.contracts(id);
+CREATE INDEX IF NOT EXISTS solicitations_contract_ix ON odca.solicitations (contract_id) WHERE contract_id IS NOT NULL;
+
+-- RLS ja cobre solicitacoes pelo tenant_id existente; contract_id nao altera isolamento.
+
+-- Item 13: atualiza solicitacoes_open para aceitar contract_id (vinculo ao contrato).
+-- Versao com 8 parametros substitui a de 7 (DROP + CREATE OR REPLACE).
+DROP FUNCTION IF EXISTS odca.solicitations_open(uuid,uuid,text,text,text,text,uuid);
+CREATE OR REPLACE FUNCTION odca.solicitations_open(p_tenant uuid,p_actor uuid,p_service text,p_priority text,p_subject text,p_body text,p_idempotency uuid,p_contract_id uuid DEFAULT NULL)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,odca AS \\$
+DECLARE v_subject text:=btrim(coalesce(p_subject,'')); v_body text:=btrim(coalesce(p_body,''));
+ v_plan text; v_policy odca.sla_policies%rowtype; v_number bigint; v_existing uuid; v_id uuid;
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM odca.users WHERE id=p_actor AND is_platform_administrator AND NOT is_deleted)
+  AND odca.tenant_actor_has_permission(p_actor,p_tenant,'tenant.solicitations.manage') IS DISTINCT FROM true
+ THEN RETURN jsonb_build_object('error','Permissao insuficiente.','code','solicitations.permission'); END IF;
+ IF length(v_subject)<3 OR length(v_subject)>200 THEN RETURN jsonb_build_object('error','Assunto deve ter entre 3 e 200 caracteres.','code','solicitations.validation_subject'); END IF;
+ IF length(v_body)<10 OR length(v_body)>8000 THEN RETURN jsonb_build_object('error','Descricao deve ter entre 10 e 8000 caracteres.','code','solicitations.validation_body'); END IF;
+ IF p_service IS NULL OR p_service NOT IN('revisao','adaptacao','esclarecimento','suporte_tecnico')
+  OR p_priority IS NULL OR p_priority NOT IN('baixa','normal','alta','critica') OR p_idempotency IS NULL
+ THEN RETURN jsonb_build_object('error','Servico, prioridade ou chave de idempotencia invalidos.','code','solicitations.validation_fields'); END IF;
+ IF p_contract_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM odca.contracts WHERE id=p_contract_id AND tenant_id=p_tenant)
+ THEN RETURN jsonb_build_object('error','Contrato nao pertence a esta organizacao.','code','solicitations.contract_mismatch'); END IF;
+ SELECT pv.code INTO v_plan FROM odca.subscriptions s JOIN odca.plan_versions pv ON pv.id=s.plan_version_id
+  WHERE s.tenant_id=p_tenant AND s.status='active';
+ IF v_plan IS NULL OR (p_service<>'suporte_tecnico' AND v_plan<>'enterprise')
+ THEN RETURN jsonb_build_object('error','Central de solicitacoes disponivel apenas no plano Enterprise.','code','solicitations.plan.required'); END IF;
+ SELECT id INTO v_existing FROM odca.solicitations WHERE tenant_id=p_tenant AND idempotency_key=p_idempotency;
+ IF v_existing IS NOT NULL THEN RETURN odca.solicitation_payload(v_existing); END IF;
+ PERFORM pg_advisory_xact_lock(hashtext('odca.solicitations'),hashtext(p_tenant::text));
+ SELECT coalesce(max(number),0)+1 INTO v_number FROM odca.solicitations WHERE tenant_id=p_tenant;
+ SELECT * INTO STRICT v_policy FROM odca.sla_policies
+  WHERE plan_code=v_plan AND service=p_service AND priority=p_priority AND enabled;
+ INSERT INTO odca.solicitations(tenant_id,number,service,priority,subject,body,opened_by,idempotency_key,
+  sla_policy_id,sla_timezone,sla_calendar,sla_business_start,sla_business_end,first_response_due_at,resolution_due_at,contract_id)
+ VALUES(p_tenant,v_number,p_service,p_priority,v_subject,v_body,p_actor,p_idempotency,
+  v_policy.id,v_policy.timezone,v_policy.calendar,v_policy.business_start,v_policy.business_end,
+  odca.sla_add_business_minutes(now(),v_policy.first_response_minutes,v_policy.timezone,v_policy.calendar,v_policy.business_start,v_policy.business_end),
+  odca.sla_add_business_minutes(now(),v_policy.resolution_minutes,v_policy.timezone,v_policy.calendar,v_policy.business_start,v_policy.business_end),
+  p_contract_id)
+ RETURNING id INTO v_id;
+ INSERT INTO odca.solicitation_events(tenant_id,solicitation_id,actor_user_id,event_type,details)
+ VALUES(p_tenant,v_id,p_actor,'abertura',jsonb_build_object('servico',p_service,'prioridade',p_priority));
+ RETURN odca.solicitation_payload(v_id);
+EXCEPTION WHEN unique_violation THEN
+ SELECT id INTO v_existing FROM odca.solicitations WHERE tenant_id=p_tenant AND idempotency_key=p_idempotency;
+ IF v_existing IS NOT NULL THEN RETURN odca.solicitation_payload(v_existing); END IF; RAISE;
+END \\$;
+GRANT EXECUTE ON FUNCTION odca.solicitations_open(uuid,uuid,text,text,text,text,uuid,uuid) TO odca_app;
+
+INSERT INTO odca.schema_migrations(version,name,checksum)
+VALUES(51,'Solicitacao-contract link: contract_id FK for persistent association','d9951f97d49f319c25120c18a801ca4d18732b6629841b055e48e970ebd4df28')
+ON CONFLICT(version) DO NOTHING;
+COMMIT;
+-- ODCA-END 051

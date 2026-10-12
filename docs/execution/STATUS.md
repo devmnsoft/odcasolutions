@@ -1,5 +1,23 @@
 # Status de execução
 
+## Incremento: Estúdio item 11 — publicar nova revisão de modelo oficial preservando documentos existentes + fix de checksum v051 (12/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `0ff937c` (início). Commit único deste incremento (ver abaixo).
+- **Build**: solution 0 avisos / 0 erros · Domain **300/300 PASS** · `MigrationChecksumTests` **35/35 PASS** (após o fix abaixo; falhava no HEAD).
+- **Item 11**: o superadmin agora publica **nova revisão (N+1)** de um modelo oficial pela UI, com a garantia explícita de que documentos emitidos de revisões anteriores não mudam (minutas/versões geradas ficam pinadas por snapshot + `source_template_version_id`):
+  - API: `GET api/v1/platform/template-catalog/{key}/revision/current` (conteúdo/campos da revisão atual para edição) e `POST api/v1/platform/template-catalog/{key}/revisions` — transação única com `FOR UPDATE`, exigindo modelo publicado, resumo obrigatório (5–500, vai para auditoria), JSON validado server-side (objeto/array) e concorrência otimista por `expectedRevision` (409 `template.revision_conflict`). Grava: INSERT em `contract_template_versions` (N+1), UPDATE `current_version`/`official_revision`/`row_version` e evento `platform.template.revision_published`.
+  - Web: botão "Nova revisão" na biblioteca da plataforma (somente publicados), página `/administracao/biblioteca/{key}/nova-revisao` com o mesmo editor do Estúdio (campos variáveis + texto simples com marcadores + banner de perda de estrutura), caixa de efeito da publicação e confirmação no submit. Erro/conflito recarrega o estado do servidor. Rótulos PT-hardcoded conforme convenção das views de plataforma (i18n do Estúdio segue no Bloco F).
+  - DTOs: `TemplateRevisionCurrent` e `TemplateRevisionPublishRequest` em `Odca.Contracts.Administration`; 2 métodos no `OdcaApiClient`.
+  - **Evidência comportamental** (apps reais, sessão MFA admin, modelo global `nda-mutual`, tenant 0001): minuta criada **antes** via `POST studio/drafts` fixou a linha global v1 (`4817b61e…`, snapshot byte-idêntico — SHA `bd695afc…`); publicação da revisão 2 pelo **formulário Web** (302 + alerta "Revisão 2 publicada" no index); após: v1 imutável (SHA idêntico antes/depois), `current_version=official_revision=2`, v2 contém a edição do título, auditoria gravada; a minuta pré permaneceu pinada em v1 com hash intacto; nova minuta criada **depois** fixou v2 (`8e2fde44…`); POST concorrente com `expectedRevision=1` → 409; página reaberta mostra "revisão atual 2" e botão "Publicar revisão 3".
+- **Fix lateral (pré-existente no HEAD, descoberto na validação)**: o canonical `database/odca.sql` terminava em **v050** enquanto `DatabaseSchema.CurrentVersion=51` — o bloco v051 (link solicitação→contrato do item 13/17) só existia no release `odca-v051.sql`, com checksum placeholder (`a3f8c1d2…`) inconsistente com o corpo (`d9951f97…`). Corrigido: bloco v051 anexado ao canonical (EOL CRLF preservado), release regenerada **byte-idêntica** ao canonical, os 3 checksums do bloco atualizados (header/DO/INSERT) — verificado por `MigrationChecksumTests` 35/35. Histórico dos bancos locais ajustado (`odca_test_disposable.schema_migrations` v051 → novo checksum). Sem mudança de comportamento da aplicação.
+- **Classificação da suíte de integração**: com e sem este incremento (A/B, banco fresco `odca_test_local` em cada execução), **mesma lista exata de 54 falhas** (111/165 passam) — todas pré-existentes/ambientais no HEAD (ex.: `ApiHostStartupTests` usa connection string sem senha contra um PG com SCRAM; classes com estado acumulado na ordem serial de execução). Zero regressão deste incremento.
+- **Próximos passos**:
+  - Item 7: tabela formal de homologação de salvamento (12 linhas).
+  - Itens 19–20: recuperação de divergência + fila de exceções.
+  - Bloco F: i18n do Estúdio/plataforma (4 idiomas), validação de formatos (data/moeda), design 360/768/1440px, homologação visual de PDF.
+  - Backlog separado: as 54 falhas pré-existentes da suíte de integração (ambiente/estado) merecem um incremento dedicado.
+  - Sem push/merge/deploy automático.
+
 ## Incremento: Item 3 — categorias de descoberta na biblioteca do Estúdio (12/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `6667f62` (início). Commit único deste incremento (ver abaixo).

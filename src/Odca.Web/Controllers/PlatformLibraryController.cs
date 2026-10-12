@@ -68,6 +68,52 @@ public sealed class PlatformLibraryController(OdcaApiClient api) : Controller
         return View("Create", new { name, description, contractType, documentPurpose });
     }
 
+    [HttpGet("{key}/nova-revisao")]
+    public async Task<IActionResult> NewRevision(string key, CancellationToken ct)
+    {
+        ViewData["Title"] = "Nova revisão de modelo";
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+        var result = await api.GetTemplateRevisionCurrentAsync(token, key, ct);
+        if (!result.Succeeded)
+        {
+            TempData["Error"] = result.UserMessage("Não foi possível carregar a revisão atual do modelo.");
+            return RedirectToAction(nameof(Index));
+        }
+        return View(result.Value!);
+    }
+
+    [HttpPost("{key}/nova-revisao")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> NewRevisionPost(string key, string summary, string contentJson, string fieldsJson, int expectedRevision, CancellationToken ct)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+        var normalizedSummary = summary?.Trim() ?? string.Empty;
+        if (normalizedSummary.Length is < 5 or > 500)
+        {
+            TempData["Error"] = "Informe um resumo da mudança entre 5 e 500 caracteres.";
+            var current = await api.GetTemplateRevisionCurrentAsync(token, key, ct);
+            if (current.Succeeded) return View(current.Value!);
+            return RedirectToAction(nameof(Index));
+        }
+
+        var result = await api.PublishTemplateRevisionAsync(
+            token, key, new TemplateRevisionPublishRequest(normalizedSummary, contentJson, fieldsJson, expectedRevision), ct);
+        if (result.Succeeded)
+        {
+            var newRevision = expectedRevision + 1;
+            TempData["Success"] = $"Revisão {newRevision} publicada. Documentos emitidos a partir de revisões anteriores permanecem intactos (fixados à versão de origem).";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // Conflito ou falha: recarrega o estado do servidor para o superadmin repetir a partir do ponto atual.
+        TempData["Error"] = result.UserMessage("A revisão não foi publicada; verifique a mensagem do servidor.");
+        var reloaded = await api.GetTemplateRevisionCurrentAsync(token, key, ct);
+        if (reloaded.Succeeded) return View(reloaded.Value!);
+        return RedirectToAction(nameof(Index));
+    }
+
     [HttpPost("{key}/status")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Status(string key, string action, string? reason, CancellationToken ct)

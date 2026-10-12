@@ -80,6 +80,135 @@ public sealed class PlatformOperationsController(NpgsqlDataSource dataSource) : 
         return Ok(root.Clone());
     }
 
+    [HttpGet("api/v1/platform/template-catalog/{key}/revision/current")]
+    public async Task<IActionResult> CurrentRevision(string key, CancellationToken ct)
+    {
+        var actor = Actor(); if (actor is null) return Unauthorized();
+        await using var c = await dataSource.OpenConnectionAsync(ct);
+        var row = await c.QueryFirstOrDefaultAsync<TemplateRevisionCurrentRow>(new CommandDefinition("""
+            SELECT t.name AS Name, COALESCE(t.description,'') AS Description, t.contract_type AS ContractType,
+                   t.status AS Status, t.official_revision AS CurrentRevision,
+                   v.content::text AS Content, v.fields::text AS Fields
+              FROM odca.contract_templates t
+              JOIN odca.contract_template_versions v ON v.template_id = t.id AND v.version_number = t.current_version
+             WHERE t.owner_tenant_id IS NULL AND t.scope='global' AND t.official_key=@key
+            """, new { key = key.Trim() }, cancellationToken: ct));
+        if (row is null) return NotFound(new { error = $"Modelo oficial '{key}' não encontrado.", code = "catalog.not_found" });
+        return Ok(new
+        {
+            officialKey = key.Trim(),
+            row.Name,
+            row.Description,
+            row.ContractType,
+            row.Status,
+            row.CurrentRevision,
+            row.Content,
+            row.Fields
+        });
+    }
+
+    [HttpPost("api/v1/platform/template-catalog/{key}/revisions")]
+    public async Task<IActionResult> PublishRevision(string key, [FromBody] TemplateRevisionPublishRequest request, CancellationToken ct)
+    {
+        var actor = Actor(); if (actor is null) return Unauthorized();
+        var summary = request.Summary?.Trim() ?? string.Empty;
+        if (summary.Length is < 5 or > 500)
+            return ValidationProblem("O resumo da mudança deve ter entre 5 e 500 caracteres.");
+
+        string contentJson, fieldsJson;
+        try
+        {
+            using (var contentDoc = JsonDocument.Parse(request.Content ?? "{}"))
+            {
+                if (contentDoc.RootElement.ValueKind is not JsonValueKind.Object)
+                    return ValidationProblem("Conteúdo inválido: esperado um objeto JSON estruturado.");
+                contentJson = contentDoc.RootElement.GetRawText();
+            }
+            using (var fieldsDoc = JsonDocument.Parse(request.Fields ?? "[]"))
+            {
+                if (fieldsDoc.RootElement.ValueKind is not JsonValueKind.Array)
+                    return ValidationProblem("Campos inválidos: esperado um array JSON.");
+                fieldsJson = fieldsDoc.RootElement.GetRawText();
+            }
+        }
+        catch (JsonException)
+        {
+            return ValidationProblem("Conteúdo/campos não são JSON válido.");
+        }
+
+        await using var c = await dataSource.OpenConnectionAsync(ct);
+        await EnsurePlatformGuc(c, actor.Value, ct);
+        int newRevision; Guid newVersionId;
+        await using var tx = await c.BeginTransactionAsync(ct);
+        try
+        {
+            var locked = await c.QueryFirstOrDefaultAsync<TemplateRevisionLockRow>(new CommandDefinition("""
+                SELECT t.id AS Id, t.status AS Status, t.official_revision AS Revision, t.current_version AS CurrentVersion
+                  FROM odca.contract_templates t
+                 WHERE t.owner_tenant_id IS NULL AND t.scope='global' AND t.official_key=@key
+                 FOR UPDATE
+                """, new { key = key.Trim() }, tx, cancellationToken: ct));
+            if (locked is null)
+            {
+                await tx.RollbackAsync(ct);
+                return NotFound(new { error = $"Modelo oficial '{key}' não encontrado.", code = "catalog.not_found" });
+            }
+            if (!string.Equals(locked.Status, "published", StringComparison.Ordinal))
+            {
+                await tx.RollbackAsync(ct);
+                return Conflict(new { error = "Apenas modelos publicados no catálogo aceitam nova revisão.", code = "template.not_published" });
+            }
+            if (request.ExpectedRevision is not null && locked.Revision != request.ExpectedRevision.Value)
+            {
+                await tx.RollbackAsync(ct);
+                return Conflict(new
+                {
+                    error = $"A revisão atual é {locked.Revision}; a publicação baseou-se em {request.ExpectedRevision}. Recarregue a revisão e repita o salvamento.",
+                    code = "template.revision_conflict"
+                });
+            }
+
+            newRevision = locked.Revision + 1;
+            newVersionId = Guid.NewGuid();
+            await c.ExecuteAsync(new CommandDefinition("""
+                INSERT INTO odca.contract_template_versions(id, template_id, version_number, content_schema_version, content, fields, created_by, published_at)
+                VALUES(@versionId, @id, @newVersionNumber, 1, @content::jsonb, @fields::jsonb, @actor, now());
+                UPDATE odca.contract_templates
+                   SET current_version=@newVersionNumber,
+                       official_revision=official_revision+1,
+                       row_version=row_version+1
+                 WHERE id=@id;
+                INSERT INTO odca.audit_events(scope_type, tenant_id, actor_user_id, action, entity_type, entity_id, result, metadata)
+                VALUES('platform', NULL, @actor, 'platform.template.revision_published', 'contract_template', @id, 'success',
+                       jsonb_build_object('officialKey',@key,'newRevision',@newRevision,'summary',@summary))
+                """, new
+                {
+                    versionId = newVersionId,
+                    id = locked.Id,
+                    newVersionNumber = locked.CurrentVersion + 1,
+                    content = contentJson,
+                    fields = fieldsJson,
+                    actor = actor.Value,
+                    key = key.Trim(),
+                    newRevision,
+                    summary
+                }, tx, cancellationToken: ct));
+            await tx.CommitAsync(ct);
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+
+        return Ok(new { officialKey = key.Trim(), newRevision, newVersionId });
+    }
+
+    private sealed record TemplateRevisionCurrentRow(
+        string Name, string Description, string ContractType, string Status, int CurrentRevision, string Content, string Fields);
+
+    private sealed record TemplateRevisionLockRow(Guid Id, string Status, int Revision, int CurrentVersion);
+
     [HttpGet("api/v1/platform/users")]
     public async Task<IActionResult> SearchUsers([FromQuery] string? search, [FromQuery] int limit = 50, CancellationToken ct = default)
     {
