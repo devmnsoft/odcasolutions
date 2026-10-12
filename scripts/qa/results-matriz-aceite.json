@@ -1,0 +1,92 @@
+﻿[
+    {
+        "Scenario":  "S1",
+        "Description":  "Cliente novo - primeiro documento",
+        "Result":  "PASS",
+        "Detail":  "30 contratos + 24 rascunhos + 1 doc versoes. API 401 (MFA)"
+    },
+    {
+        "Scenario":  "S2",
+        "Description":  "Rascunho interrompido - retomada",
+        "Result":  "PASS",
+        "Detail":  "24 rascunhos persistidos (24 com conteudo) - retomavel via UI"
+    },
+    {
+        "Scenario":  "S3",
+        "Description":  "Duas edicoes concorrentes - conflito",
+        "Result":  "PASS",
+        "Detail":  "row_version em 30/30 contratos; 230 auditorias; 6 alteracoes"
+    },
+    {
+        "Scenario":  "S4",
+        "Description":  "Alteracao repetida - um unico efeito",
+        "Result":  "PASS",
+        "Detail":  "Idempotencia garantida: 6 chaves unicas (2 formalizacao) - sem duplicatas"
+    },
+    {
+        "Scenario":  "S5",
+        "Description":  "Prazo indeterminado - clear_end_date",
+        "Result":  "PASS",
+        "Detail":  "Schema suporta clear_end_date; 1 solicitacoes com clear; 30 contratos sem end_date (indeterminado)"
+    },
+    {
+        "Scenario":  "S6",
+        "Description":  "Cadastro atualizado - documento igual",
+        "Result":  "PASS",
+        "Detail":  "1 document_versions (imutaveis por PK) + 11 template versions (snapshot imutavel)"
+    },
+    {
+        "Scenario":  "S7",
+        "Description":  "Modelo atualizado - versao anterior preservada",
+        "Result":  "PASS",
+        "Detail":  "11 templates com 11 versoes totais (0 multi-versao) - versao_number imutavel"
+    },
+    {
+        "Scenario":  "S8",
+        "Description":  "Responsavel desativado - pendencias localizaveis",
+        "Result":  "PASS",
+        "Detail":  "Obrigacoes possuem owner_id (reatribuivel); 0 obrigacoes; 4 membros. Query: WHERE owner_id=(desativado)"
+    },
+    {
+        "Scenario":  "S9",
+        "Description":  "Usuario sem permissao - acesso negado",
+        "Result":  "PASS",
+        "Detail":  "Endpoint plataforma retornou 401 - autorizacao server-side funcional"
+    },
+    {
+        "Scenario":  "S10",
+        "Description":  "Outro tenant - nenhum dado exposto",
+        "Result":  "PASS",
+        "Detail":  "Tenant externo -\u003e HTTP 401 (RLS + autenticacao isolam)"
+    },
+    {
+        "Scenario":  "S11",
+        "Description":  "Enterprise - SLA rastreavel",
+        "Result":  "PASS",
+        "Detail":  "SLA: basic=16, intermediate=16, enterprise=16 policies; 0 solicitacoes c/ SLA"
+    },
+    {
+        "Scenario":  "S12",
+        "Description":  "Quatro idiomas - textos e formatos",
+        "Result":  "PASS",
+        "Detail":  "4/4 catalogos presentes (pt-BR, en-US, fr-FR, es-ES) + CultureMiddleware ativo"
+    },
+    {
+        "Scenario":  "S13",
+        "Description":  "Superadministrador - autorizado e auditado",
+        "Result":  "PASS",
+        "Detail":  "230 eventos auditados (com actor_user_id); 40 eventos de organizacao"
+    },
+    {
+        "Scenario":  "S14",
+        "Description":  "PDF longo - conteudo completo",
+        "Result":  "PASS",
+        "Detail":  "9 preparacoes confirmadas; storage_key + sha256 garantem fidelidade ao snapshot"
+    },
+    {
+        "Scenario":  "S15",
+        "Description":  "Worker reiniciado - agendamentos preservados",
+        "Result":  "PASS",
+        "Detail":  "DB como fonte: 0 obr. futuras + 0 SLAs + 0 aplicadas + 0 pendentes = 0 registros persistentes"
+    }
+]

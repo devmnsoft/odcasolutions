@@ -1226,6 +1226,48 @@
             Encerrar ≠ arquivar: encerrar registra o fim da relação contratual (data + motivo) e também arquiva. Contratos encerrados não podem ser duplicados.
         </p>
     }
+
+    <!-- NOVA SOLICITACAO ODCA A PARTIR DO CONTRATO (Item 19) -->
+    <details data-dirty-form style="margin-top:1rem;">
+        <summary class="button button-quiet">Abrir solicitação ODCA</summary>
+        <div class="details-subpanel">
+            <form id="new-solicitation-form" class="form-stack" method="post"
+                  asp-controller="Solicitacoes" asp-action="Create"
+                  asp-route-tenantId="@tenantId"
+                  data-context="contract" data-contract-id="@sheet.ContractId"
+                  data-contract-title="@sheet.Title">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="contractContext" value="@sheet.ContractId" />
+                <label>Serviço
+                    <select name="service" required>
+                        <option value="" disabled selected>Selecione o serviço</option>
+                        <option value="revisao">Revisão documental</option>
+                        <option value="adaptacao">Adaptação de modelo</option>
+                        <option value="esclarecimento">Esclarecimento contratual</option>
+                        <option value="suporte_tecnico">Suporte técnico</option>
+                    </select>
+                </label>
+                <label>Prioridade
+                    <select name="priority">
+                        <option value="normal" selected>Normal</option>
+                        <option value="alta">Alta</option>
+                        <option value="critica">Crítica</option>
+                        <option value="baixa">Baixa</option>
+                    </select>
+                </label>
+                <label>Assunto
+                    <input type="text" name="subject" required minlength="5" maxlength="300"
+                           value="@($"Relação ao contrato: {sheet.Title}")" />
+                </label>
+                <label>Descrição
+                    <textarea name="body" rows="3" required minlength="10" maxlength="5000"
+                              placeholder="Descreva sua solicitação…"></textarea>
+                </label>
+                <p class="muted"><small>A solicitação será registrada com SLA conforme o plano da organização. O suporte técnico está disponível em todos os planos.</small></p>
+                <button class="button button-primary" type="submit">Enviar solicitação</button>
+            </form>
+        </div>
+    </details>
 </section>
 
 <!-- DRAWER DE HISTÓRICO DE OBRIGAÇÕES -->
