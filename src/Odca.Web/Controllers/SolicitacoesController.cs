@@ -46,10 +46,11 @@ public sealed class SolicitacoesController(OdcaApiClient api, IUserTenantContext
 
     [HttpPost("nova")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(Guid tenantId, string service, string? priority, string subject, string body, CancellationToken ct)
+    public async Task<IActionResult> Create(Guid tenantId, string service, string? priority, string subject, string body, string? contractContext, CancellationToken ct)
     {
         var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
-        var result = await api.OpenSolicitationAsync(token, tenantId, new OpenSolicitationRequest(service, priority, subject, body, Guid.NewGuid()), ct);
+        Guid? contractId = Guid.TryParse(contractContext, out var cid) ? cid : null;
+        var result = await api.OpenSolicitationAsync(token, tenantId, new OpenSolicitationRequest(service, priority, subject, body, Guid.NewGuid(), contractId), ct);
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         if (!result.Succeeded)
         {

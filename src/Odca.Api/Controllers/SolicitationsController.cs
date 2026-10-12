@@ -49,8 +49,8 @@ public sealed class SolicitationsController(NpgsqlDataSource dataSource) : Contr
         if (string.IsNullOrWhiteSpace(request.Service) || string.IsNullOrWhiteSpace(request.Subject) || string.IsNullOrWhiteSpace(request.Body) || request.Body.Trim().Length < 10 || request.IdempotencyKey == Guid.Empty) return ValidationProblem();
         await using var c = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(c, actor.Value, tenantId, "tenant.solicitations.manage", ct)) return Forbid();
-        return await EnvelopeResult(c, "SELECT odca.solicitations_open(@tenant,@actor,@service,@priority,@subject,@body,@key)::text",
-            new { tenant = tenantId, actor, service = request.Service.Trim(), priority = string.IsNullOrWhiteSpace(request.Priority) ? "normal" : request.Priority.Trim(), subject = request.Subject.Trim(), body = request.Body.Trim(), key = request.IdempotencyKey }, ct);
+        return await EnvelopeResult(c, "SELECT odca.solicitations_open(@tenant,@actor,@service,@priority,@subject,@body,@key,@contractId)::text",
+            new { tenant = tenantId, actor, service = request.Service.Trim(), priority = string.IsNullOrWhiteSpace(request.Priority) ? "normal" : request.Priority.Trim(), subject = request.Subject.Trim(), body = request.Body.Trim(), key = request.IdempotencyKey, contractId = request.ContractId }, ct);
     }
 
     [HttpPost("{solicitationId:guid}/messages")]

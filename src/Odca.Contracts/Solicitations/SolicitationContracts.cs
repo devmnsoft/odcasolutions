@@ -2,7 +2,7 @@ namespace Odca.Contracts.Solicitations;
 
 /// <summary>Seção C: abertura de solicitação cliente -> ODCA. A chave de idempotência evita
 /// duplicatas em reenvio do formulário.</summary>
-public sealed record OpenSolicitationRequest(string Service, string? Priority, string Subject, string Body, Guid IdempotencyKey);
+public sealed record OpenSolicitationRequest(string Service, string? Priority, string Subject, string Body, Guid IdempotencyKey, Guid? ContractId = null);
 
 public sealed record SolicitationMessageRequest(string Body, long RowVersion, Guid? TenantId = null);
 
