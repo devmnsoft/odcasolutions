@@ -107,7 +107,33 @@ public sealed record ContractSheetDto(
     string? ClosureReason = null,
     ContractSheetSignatureDto? Signature = null,
     IReadOnlyList<ContractSheetSolicitationDto>? Solicitations = null,
-    IReadOnlyList<ContractSheetChangeDto>? PendingChanges = null);
+    IReadOnlyList<ContractSheetChangeDto>? PendingChanges = null,
+    IReadOnlyList<ContractSheetDerivedDocumentDto>? DerivedDocuments = null);
+
+/// <summary>
+/// Versão gerada na ficha do contrato (item 12: sequência de documentos derivados).
+/// Quando existe alteração com generated_version_id nesta versão, traz origem (kind/razão),
+/// quem aplicou e o delta before→after das condições comerciais registradas na aplicação.
+/// </summary>
+public sealed record ContractSheetDerivedDocumentDto(
+    Guid VersionId,
+    int VersionNumber,
+    DateTimeOffset GeneratedAt,
+    string ReviewStatus,
+    string? Sha256Prefix,
+    string? DerivedFromKind = null,
+    DateOnly? EffectiveOn = null,
+    string? OriginReason = null,
+    DateTimeOffset? AppliedAt = null,
+    string? AppliedByName = null,
+    DateOnly? BeforeStart = null,
+    DateOnly? BeforeEnd = null,
+    decimal? BeforeValue = null,
+    string? BeforeCurrency = null,
+    DateOnly? AfterStart = null,
+    DateOnly? AfterEnd = null,
+    decimal? AfterValue = null,
+    string? AfterCurrency = null);
 
 /// <summary>Solicitação ODCA projetada na ficha do contrato (Bloco B/9).</summary>
 public sealed record ContractSheetSolicitationDto(

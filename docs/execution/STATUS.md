@@ -1,5 +1,25 @@
 # Status de execução
 
+## Incremento: Item 12 — sequência de documentos derivados na ficha (aditivo/renovação/revisão) + fix de transação latente na Sheet (12/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `2fd53c8` (início). Commit único deste incremento (ver abaixo).
+- **Build**: solution 0 avisos / 0 erros · Domain tests **300/300 PASS** · catálogos i18n (4 idiomas) parseando limpo.
+- **Item 12**: nova seção `#derivados` na FICHA do contrato exibe a sequência completa de versões geradas do documento, em ordem, com origem quando derivada de alteração:
+  - DTO `ContractSheetDerivedDocumentDto` (versão, data de geração, review_status, prefixo SHA-256 canônico, kind/effective_on/razão de origem, quem/quando aplicou, delta before→after de vigência e valor).
+  - Query no `ContractSheetRepository` (mesma transação de leitura da ficha): `generated_contract_versions` LEFT JOIN LATERAL em `contract_change_requests` por `generated_version_id` (+ `contract_change_applications` para before/after e aplicador). Sem nova tabela/migração — dados já existiam.
+  - View `Sheet.cshtml`: link na subnav condicional + seção com badge por versão, rótulo de status de revisão, "Geração direta (minuta ou modelo)" quando sem origem, motivo/data de efeito/"Aplicada em … por …" e linhas "Vigência: antes → depois" / "Valor: antes → depois".
+  - i18n: 16 chaves novas × 4 idiomas (pt/en/fr/es), reutilizando `sheet.chg_*` existente onde fazia sentido.
+  - **Bug latente corrigido (descoberto na validação)**: `ContractSheetRepository.GetAsync` tinha `CommitAsync` no meio do método (linha 226 em HEAD) — as queries seguintes (solicitações, alterações pendentes) rodavam sobre transação já finalizada → Npgsql `Transaction is already completed` → **500 em TODA ficha**. Commit movido para o fim da coleta de dados. Corroborado: antes da correção a ficha real retornava 500; depois, 200 com as seções.
+  - **Evidência comportamental** (API real, sessão MFA admin): caso direto (tenant 0001/contrato 421d0ecd → v1 "gerado", sem origem, sha prefix); caso derivado (tenant e5f78b3c/contrato ed122873 → v2 "Derivado de Renovação", effective 06/10/2026, aplicada em 06/10/2026 por "Admin C Auditoria", vigência 06/10/2026–31/03/2027 → 01/04/2027–31/03/2028, valor 15.000,50 BRL → 18.000,00 BRL). Renderização Web (login+MFA via cookie, GET `/organizacoes/{tenant}/contratos/{contract}`) confirmou seção, subnav, rótulos e deltas nos dois casos (pt-BR).
+- **Mudança de fixture documentada** (base de teste descartável): `admin@odca.local` ganhou membership ativa + role `tenant-administrator` no tenant `e5f78b3c…` para validar a ficha cross-tenant do caso derivado.
+- **Próximos passos**:
+  - Item 3: categorias de descoberta do Estúdio.
+  - Item 7: tabela formal de homologação de salvamento (12 linhas).
+  - Estúdio item 11: publicar nova revisão preservando documentos existentes (UI).
+  - Itens 19–20: recuperação de divergência + fila de exceções.
+  - Bloco F: validação de formatos (data/moeda), design 360/768/1440px, homologação visual de PDF.
+  - Sem push/merge/deploy automático.
+
 ## Incremento: Fontes de Solicitação e Assinatura no Inbox operacional (D-OC17) + auditoria scanner do auto-approve (D-OC16) + prévia do modelo no Estúdio (12/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `87c47b0`/`8b24769` (início) → `77c666a` (fim). 3 commits nesta janela (`b47a970`, `c785bef`, `77c666a`).

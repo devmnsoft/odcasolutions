@@ -223,8 +223,6 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             }
         }
 
-        await transaction.CommitAsync(cancellationToken);
-
         var unit = string.Equals(header.NoticeUnit, "calendar_months", StringComparison.Ordinal)
             ? RenewalNoticeUnit.CalendarMonths
             : RenewalNoticeUnit.CalendarDays;
@@ -306,6 +304,43 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             r.Id, r.Kind, r.Status, r.ApplicationStatus, r.EffectiveOn, r.Reason,
             r.ProposedStartDate, r.ProposedEndDate, r.ProposedValue, r.Currency)).ToArray();
 
+        // Sequência de versões geradas do contrato (item 12) com origem em alteração vinculada (r.generated_version_id).
+        var derivedRows = await connection.QueryAsync<SheetDerivedDocumentRow>(new CommandDefinition("""
+            SELECT v.id AS VersionId, v.version_number AS VersionNumber, v.created_at AS GeneratedAt,
+                   v.review_status AS ReviewStatus, left(v.canonical_sha256, 12) AS Sha256Prefix,
+                   o.kind AS DerivedFromKind, o.effective_on AS EffectiveOn, o.reason AS OriginReason,
+                   o.applied_at AS AppliedAt, o.applied_by_name AS AppliedByName,
+                   o.before_start AS BeforeStart, o.before_end AS BeforeEnd, o.before_value AS BeforeValue, o.before_currency AS BeforeCurrency,
+                   o.after_start AS AfterStart, o.after_end AS AfterEnd, o.after_value AS AfterValue, o.after_currency AS AfterCurrency
+            FROM odca.generated_contract_versions v
+            LEFT JOIN LATERAL (
+              SELECT r.kind AS kind, r.effective_on AS effective_on, r.reason AS reason,
+                     a.applied_at AS applied_at, u.display_name AS applied_by_name,
+                     (a.before_data->>'startDate')::date AS before_start,
+                     (a.before_data->>'endDate')::date AS before_end,
+                     (a.before_data->>'value')::numeric(18,2) AS before_value,
+                     a.before_data->>'currency' AS before_currency,
+                     (a.after_data->>'startDate')::date AS after_start,
+                     (a.after_data->>'endDate')::date AS after_end,
+                     (a.after_data->>'value')::numeric(18,2) AS after_value,
+                     a.after_data->>'currency' AS after_currency
+              FROM odca.contract_change_requests r
+              LEFT JOIN odca.contract_change_applications a ON a.tenant_id=r.tenant_id AND a.request_id=r.id
+              LEFT JOIN odca.users u ON u.id=a.applied_by
+              WHERE r.tenant_id=v.tenant_id AND r.generated_version_id=v.id
+              ORDER BY r.created_at DESC LIMIT 1
+            ) o ON true
+            WHERE v.tenant_id=@tenantId AND v.contract_id=@contractId
+            ORDER BY v.version_number ASC, v.created_at ASC
+            """, new { tenantId, contractId }, transaction, cancellationToken: cancellationToken));
+        var derivedDocuments = derivedRows.Select(r => new ContractSheetDerivedDocumentDto(
+            r.VersionId, r.VersionNumber, ToUtcOffset(r.GeneratedAt), r.ReviewStatus, r.Sha256Prefix,
+            r.DerivedFromKind, r.EffectiveOn, r.OriginReason, ToUtcOffset(r.AppliedAt), r.AppliedByName,
+            r.BeforeStart, r.BeforeEnd, r.BeforeValue, r.BeforeCurrency,
+            r.AfterStart, r.AfterEnd, r.AfterValue, r.AfterCurrency)).ToArray();
+
+        await transaction.CommitAsync(cancellationToken);
+
         return new ContractSheetDto(
             header.ContractId,
             header.Title,
@@ -334,7 +369,8 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             ClosureReason: header.ClosureReason,
             Signature: signature,
             Solicitations: solicitations,
-            PendingChanges: pendingChanges);
+            PendingChanges: pendingChanges,
+            DerivedDocuments: derivedDocuments);
     }
 
     private sealed record SheetHeader(
@@ -363,6 +399,13 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
         DateOnly? EffectiveOn, string Reason,
         DateOnly? ProposedStartDate, DateOnly? ProposedEndDate,
         decimal? ProposedValue, string? Currency);
+
+    private sealed record SheetDerivedDocumentRow(
+        Guid VersionId, int VersionNumber, DateTime GeneratedAt, string ReviewStatus, string? Sha256Prefix,
+        string? DerivedFromKind, DateOnly? EffectiveOn, string? OriginReason,
+        DateTime? AppliedAt, string? AppliedByName,
+        DateOnly? BeforeStart, DateOnly? BeforeEnd, decimal? BeforeValue, string? BeforeCurrency,
+        DateOnly? AfterStart, DateOnly? AfterEnd, decimal? AfterValue, string? AfterCurrency);
 
     private sealed class ContractSheetDocumentRow
     {

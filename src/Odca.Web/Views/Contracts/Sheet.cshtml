@@ -157,6 +157,10 @@
     <a href="#minutas">@L.T("sheet.nav_drafts", _culture)</a>
     <a href="#assinatura">@L.T("sheet.nav_signature", _culture)</a>
     <a href="#documentos">@L.T("sheet.nav_documents", _culture)</a>
+    @if (sheet.DerivedDocuments is { Count: > 0 })
+    {
+        <a href="#derivados">@L.T("sheet.nav_derived", _culture)</a>
+    }
     @if (sheet.Solicitations is { Count: > 0 })
     {
         <a href="#solicitacoes">@L.T("sheet.nav_solicitations", _culture)</a>
@@ -1111,6 +1115,108 @@
         }
     }
 </section>
+
+<!-- SEÇÃO SEQUÊNCIA DE DOCUMENTOS DERIVADOS (Item 12) -->
+@if (sheet.DerivedDocuments is { Count: > 0 })
+{
+    <section id="derivados" class="renewal-list" aria-label="Sequência de documentos">
+        <div class="list-header">
+            <h2>@L.T("sheet.derived", _culture)</h2>
+            <span>@sheet.DerivedDocuments.Count @L.T("sheet.derived_count", _culture)</span>
+        </div>
+        @foreach (var d in sheet.DerivedDocuments)
+        {
+            var reviewLabel = d.ReviewStatus switch
+            {
+                "generated" => L.T("sheet.review_generated", _culture),
+                "submitted" => L.T("sheet.chg_review", _culture),
+                "internally_approved" => L.T("sheet.chg_approved", _culture),
+                "externally_signed" => L.T("sheet.chg_externally_signed", _culture),
+                _ => d.ReviewStatus
+            };
+            var kindLabel = d.DerivedFromKind switch
+            {
+                "renewal" => L.T("sheet.chg_kind_renewal", _culture),
+                "amendment" => L.T("sheet.chg_kind_amendment", _culture),
+                "revision" => L.T("sheet.chg_kind_revision", _culture),
+                _ => d.DerivedFromKind ?? ""
+            };
+            var hasDelta = d.BeforeStart is not null || d.BeforeEnd is not null || d.BeforeValue is not null
+                            || d.AfterStart is not null || d.AfterEnd is not null || d.AfterValue is not null;
+            <article class="renewal-row">
+                <div>
+                    <span class="status-label">v@(d.VersionNumber)</span>
+                    <span class="status-label badge-muted">@reviewLabel</span>
+                    <h3>@(string.IsNullOrWhiteSpace(kindLabel)
+                        ? L.T("sheet.derived_direct", _culture)
+                        : $"{L.T("sheet.derived_from", _culture)} {kindLabel}")</h3>
+                    @if (!string.IsNullOrWhiteSpace(d.Sha256Prefix))
+                    {
+                        <p class="muted" title="SHA-256 canônico">@d.Sha256Prefix…</p>
+                    }
+                </div>
+                <dl>
+                    <div>
+                        <dt>@L.T("sheet.derived_generated", _culture)</dt>
+                        <dd>@d.GeneratedAt.ToString("dd/MM/yyyy HH:mm")</dd>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(kindLabel))
+                    {
+                        @if (!string.IsNullOrWhiteSpace(d.OriginReason))
+                        {
+                            <div><dt>@L.T("sheet.chg_reason", _culture)</dt><dd>@d.OriginReason</dd></div>
+                        }
+                        @if (d.EffectiveOn is not null)
+                        {
+                            <div>
+                                <dt>@L.T("sheet.chg_effective", _culture)</dt>
+                                <dd>@d.EffectiveOn.Value.ToString("dd/MM/yyyy")</dd>
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(d.AppliedByName) && d.AppliedAt is not null)
+                        {
+                            <div>
+                                <dt>@L.T("sheet.derived_applied_on", _culture)</dt>
+                                <dd>@d.AppliedAt.Value.ToString("dd/MM/yyyy HH:mm") @L.T("sheet.derived_applied_by", _culture) <strong>@d.AppliedByName</strong></dd>
+                            </div>
+                        }
+                        @if (hasDelta)
+                        {
+                            var beforePeriod = (d.BeforeStart is not null || d.BeforeEnd is not null)
+                                ? $"{(d.BeforeStart?.ToString("dd/MM/yyyy") ?? "—")} → {(d.BeforeEnd?.ToString("dd/MM/yyyy") ?? "indeterminado")}"
+                                : null;
+                            var afterPeriod = (d.AfterStart is not null || d.AfterEnd is not null)
+                                ? $"{(d.AfterStart?.ToString("dd/MM/yyyy") ?? "—")} → {(d.AfterEnd?.ToString("dd/MM/yyyy") ?? "indeterminado")}"
+                                : null;
+                            var beforeValue = d.BeforeValue is not null
+                                ? $"{d.BeforeValue.Value.ToString("N2")} {(d.BeforeCurrency ?? "")}".TrimEnd()
+                                : null;
+                            var afterValue = d.AfterValue is not null
+                                ? $"{d.AfterValue.Value.ToString("N2")} {(d.AfterCurrency ?? "")}".TrimEnd()
+                                : null;
+                            <div>
+                                <dt>@L.T("sheet.derived_change", _culture)</dt>
+                                <dd>
+                                    @if (beforePeriod is not null || afterPeriod is not null)
+                                    {
+                                        <span>@L.T("sheet.derived_period", _culture): @(beforePeriod ?? "—") → @(afterPeriod ?? "—")</span><br />
+                                    }
+                                    @if (beforeValue is not null || afterValue is not null)
+                                    {
+                                        <span>@L.T("sheet.derived_value", _culture): @(beforeValue ?? "—") → @(afterValue ?? "—")</span>
+                                    }
+                                </dd>
+                            </div>
+                        }
+                    }
+                </dl>
+                <div class="next-action">
+                    <span class="status-label muted" title="@d.VersionId">@d.VersionId.ToString().Substring(0, 8)…</span>
+                </div>
+            </article>
+        }
+    </section>
+}
 
 <!-- SEÇÃO SOLICITAÇÕES ODCA RELACIONADAS AO CONTRATO -->
 @if (sheet.Solicitations is { Count: > 0 })
