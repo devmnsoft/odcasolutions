@@ -1,5 +1,6 @@
 @model Odca.Web.Models.ContractSheetViewModel
 @{
+    var _culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
     var tenantId = ViewData["TenantId"];
     var sheet = Model.Sheet;
     var notice = TempData["ContractSheetNotice"] as string;
@@ -185,7 +186,7 @@
 <!-- SEÇÃO DETALHES DO CONTRATO (B.3.2c) -->
 <section id="detalhes" class="renewal-list" aria-label="Detalhes do contrato">
     <div class="list-header">
-        <h2>Detalhes do contrato</h2>
+        <h2>@L.T("sheet.details", _culture)</h2>
         @if (Model.CanManageContracts)
         {
             <span class="muted">Alterações ficam registradas no histórico e na auditoria.</span>
@@ -369,7 +370,7 @@
 <!-- SEÇÃO REVISÃO E MINUTA EM ANDAMENTO -->
 <section id="revisao" class="renewal-list">
     <div class="list-header">
-        <h2>Revisão e Minuta em Andamento</h2>
+        <h2>@L.T("sheet.review", _culture)</h2>
         @if (sheet.DraftId.HasValue)
         {
             <div class="form-actions-row">
@@ -538,7 +539,7 @@
 <!-- SEÇÃO OBRIGAÇÕES -->
 <section id="obrigacoes" class="renewal-list">
     <div class="list-header">
-        <h2>Obrigações contratuais</h2>
+        <h2>@L.T("sheet.obligations", _culture)</h2>
         <div class="form-actions-row">
             <a class="button button-quiet" asp-controller="Obligations" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId">Ver na central de obrigações</a>
             <span>@sheet.OpenObligations.Count aberta(s)</span>
@@ -780,7 +781,7 @@
 <!-- SEÇÃO MINUTAS SUGERIDAS -->
 <section id="minutas" class="renewal-list">
     <div class="list-header">
-        <h2>Minutas operacionais sugeridas</h2>
+        <h2>@L.T("sheet.drafts", _culture)</h2>
     </div>
     <p class="muted">
         Modelos são pontos de partida operacionais recomendados pelo contexto contratual. Revisar antes de usar; não constituem parecer jurídico nem garantia de conformidade.
@@ -826,7 +827,7 @@
 <!-- SEÇÃO ASSINATURA (B.3.2c) -->
 <section id="assinatura" class="renewal-list" aria-label="Assinaturas do documento gerado">
     <div class="list-header">
-        <h2>Assinaturas</h2>
+        <h2>@L.T("sheet.signatures", _culture)</h2>
         @if (sheet.Signature is not null)
         {
             <span class="muted">Versão @sheet.Signature.VersionNumber · @ReviewStatusLabel(sheet.Signature.ReviewStatus)</span>
@@ -998,7 +999,7 @@
 <!-- SEÇÃO DOCUMENTOS RECENTES -->
 <section id="documentos" class="renewal-list">
     <div class="list-header">
-        <h2>Documentos recentes</h2>
+        <h2>@L.T("sheet.documents", _culture)</h2>
         <span>@sheet.Documents.Count documento(s)</span>
     </div>
     @if (sheet.Documents.Count == 0)
@@ -1045,7 +1046,7 @@
 {
     <section id="solicitacoes" class="renewal-list">
         <div class="list-header">
-            <h2>Solicitações ODCA relacionadas</h2>
+            <h2>@L.T("sheet.solicitations", _culture)</h2>
             <span>@sheet.Solicitations.Count solicitação(ões)</span>
         </div>
         @foreach (var sol in sheet.Solicitations)
@@ -1077,7 +1078,7 @@
 {
     <section id="historico" class="renewal-list" aria-label="Histórico do contrato">
         <div class="list-header">
-            <h2>Histórico do contrato</h2>
+            <h2>@L.T("sheet.history", _culture)</h2>
             <span>@Model.EventTotal evento(s)</span>
         </div>
 
@@ -1130,7 +1131,7 @@
 <!-- SEÇÃO AÇÕES DO CICLO DE VIDA (B.3.2c) -->
 <section id="acoes" class="renewal-list" aria-label="Ações do ciclo de vida do contrato">
     <div class="list-header">
-        <h2>Ações do ciclo de vida</h2>
+        <h2>@L.T("sheet.actions", _culture)</h2>
         <span class="muted">Registro com auditoria · sem exclusão física de contratos emitidos ou assinados</span>
     </div>
 

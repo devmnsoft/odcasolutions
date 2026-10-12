@@ -78,5 +78,14 @@
   "action.submit": "Enviar",
   "action.send": "Enviar",
   "action.download": "Descargar",
-  "action.upload": "Subir archivo"
+  "action.upload": "Subir archivo",
+  "sheet.details": "Detalles del contrato",
+  "sheet.review": "Revisión y borrador en curso",
+  "sheet.obligations": "Obligaciones contractuales",
+  "sheet.drafts": "Borradores operativos sugeridos",
+  "sheet.signatures": "Firmas",
+  "sheet.documents": "Documentos recientes",
+  "sheet.solicitations": "Solicitudes ODCA relacionadas",
+  "sheet.history": "Historial del contrato",
+  "sheet.actions": "Acciones del ciclo de vida"
 }

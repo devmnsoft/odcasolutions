@@ -78,5 +78,14 @@
   "action.submit": "Submit",
   "action.send": "Send",
   "action.download": "Download",
-  "action.upload": "Upload File"
+  "action.upload": "Upload File",
+  "sheet.details": "Contract Details",
+  "sheet.review": "Review & Draft in Progress",
+  "sheet.obligations": "Contractual Obligations",
+  "sheet.drafts": "Suggested Operational Drafts",
+  "sheet.signatures": "Signatures",
+  "sheet.documents": "Recent Documents",
+  "sheet.solicitations": "Related ODCA Requests",
+  "sheet.history": "Contract History",
+  "sheet.actions": "Lifecycle Actions"
 }
