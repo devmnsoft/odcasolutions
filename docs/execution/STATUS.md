@@ -1,5 +1,21 @@
 # Status de execução
 
+## Incremento: Bloco E item 19 — recuperação de divergência + expiração de sessão na Caixa/Ficha (12/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `27e2574`. Build 0W/0E (warnings-as-errors). Suíte de integração em `odca_test_local` reconstruído do zero: **idêntica à linha de base** — 111 aprovados / 54 falhas pré-existentes de ambiente (zero nova regressão deste incremento).
+- **Entrega**: `docs/execution/D-OC18_RECURPERACAO_DIVERGENCIA_SESSAO.md`. Comportamento provado contra a aplicação real (API + Web, sessões MFA, banco QA):
+  - **Expiração de sessão**: invalidação real de sessões no banco (`odca.sessions.revoked_at`, mesmo caminho de validação da expiração) → GET devolve 302 para `/entrar?ReturnUrl=<página>`; o destino é preservado em três saltos (login → `mfa/desafio?returnUrl=` → hidden input do desafio) e, após o MFA, o redirecionamento volta **exatamente** para a página de origem (reaberta com 200). O middleware de estágio de segurança agora envia super-admin sem MFA para `/mfa/desafio?returnUrl=<caminho+query>`.
+  - **Divergência (409)**: mensagens dedicadas com instrução de recarga na ação de obrigação (novo código de API `obligation.version.conflict`) e na proposta de renovação/aditivo (código `contract.version.conflict`); "definir vista padrão" da Caixa deixa de devolver 409 vazio (redireciona ao índice com mensagem). Em todos os casos: 302 + mensagem renderizada + banco intacto.
+  - **Fetch**: as quatro frentes (`studio.js`, `imports.js`, `obligations.js`, drawer da Ficha) detectam `redirected`/401 antes de parsear JSON — mensagem clara de "Sessão expirada" no lugar de SyntaxError e redirect para `/entrar?ReturnUrl=<página atual>`.
+- **Classificação**: provado por comandos reais da aplicação (HTTP + renderização + estado do banco); SQL usado apenas para forçar a invalidação das sessões (teste A) e criar a linha-fixture da vista (teste D).
+- **Descoberta (pré-existente, agendada separadamente)**: salvar vista da Caixa devolve 500 — o BFF envia `listingType="inbox"` mas a constraint canônica só permite `('obligations','reviews','contracts')`; por isso `saved_work_views` estava vazia em todos os tenants. Requer migração ou alinhamento de contrato.
+- **Próximos passos**:
+  - Item 20: fila de exceções (Bloco E).
+  - Correção do 500 das saved-views `inbox` (migração v052 ou alinhamento de contrato).
+  - Bloco F: i18n (4 idiomas), validação de formatos, design 360/768/1440px, homologação visual de PDF.
+  - Backlog separado: as 54 falhas pré-existentes da suíte de integração (ambiente/estado).
+  - Sem push/merge/deploy automático.
+
 ## Incremento: Estúdio item 7 — homologação formal de salvamento de minuta (12 linhas) (12/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `4b92c54`. Incremento somente de evidência/documentação — zero mudança de código (nenhum projeto recompilado; build/testes não se aplicam).

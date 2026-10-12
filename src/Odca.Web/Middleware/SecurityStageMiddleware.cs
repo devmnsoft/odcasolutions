@@ -51,8 +51,10 @@ public sealed class SecurityStageMiddleware(RequestDelegate next)
 
         if (context.User.IsInRole("SuperAdministrator") && context.User.FindFirstValue("mfa_verified") != "true")
         {
-            context.Response.Redirect(
-                context.User.FindFirstValue("requires_mfa_enrollment") == "true" ? "/mfa/inscricao" : "/mfa/desafio");
+            var challenge = context.User.FindFirstValue("requires_mfa_enrollment") == "true"
+                ? "/mfa/inscricao"
+                : $"/mfa/desafio?returnUrl={Uri.EscapeDataString((context.Request.Path.Value ?? string.Empty) + context.Request.QueryString.Value)}";
+            context.Response.Redirect(challenge);
             return;
         }
 

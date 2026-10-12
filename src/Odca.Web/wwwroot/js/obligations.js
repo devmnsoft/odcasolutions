@@ -31,6 +31,7 @@ for (const button of document.querySelectorAll('.obligation-detail')) {
     panel?.focus();
     try {
       const response = await fetch(button.dataset.historyUrl, { headers: { Accept: 'application/json' } });
+      if (response.redirected || response.status === 401) { history.replaceChildren(Object.assign(document.createElement('p'), { textContent: 'Sessão expirada. Você será redirecionado ao login.' })); setTimeout(() => window.location.assign('/entrar?ReturnUrl=' + encodeURIComponent(window.location.pathname + window.location.search)), 1200); return; }
       if (!response.ok) throw new Error('history_request_failed');
       const result = await response.json();
       if (result.events.length === 0) {

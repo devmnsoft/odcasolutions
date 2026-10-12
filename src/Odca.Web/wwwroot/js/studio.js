@@ -465,6 +465,7 @@ if (studio) {
     activeRequest = fetch(studio.dataset.saveUrl, { method: "PUT", headers: { "Content-Type": "application/json", ...(token ? { "RequestVerificationToken": token } : {}) }, body: JSON.stringify({ content, fields, values: cleanValues, expectedVersion: version, clientRevision: requestId }) });
     try {
       const response = await activeRequest;
+      if (response.redirected || response.status === 401) { state.textContent = "Sessão expirada. Entre novamente para continuar."; state.dataset.state = "failed"; window.location.assign("/entrar?ReturnUrl=" + encodeURIComponent(window.location.pathname + window.location.search)); return; }
       if (response.status === 409) { conflict = true; state.textContent = "Conflito"; state.dataset.state = "conflict"; studio.querySelector("[data-conflict]").hidden = false; return; }
       if (!response.ok) {
         const problem = await response.json().catch(() => ({}));

@@ -11,6 +11,7 @@
             @Html.AntiForgeryToken()
             <div asp-validation-summary="ModelOnly" class="validation" role="alert"></div>
             <label asp-for="Code"></label>
+            <input type="hidden" asp-for="ReturnUrl" />
             <input asp-for="Code" inputmode="numeric" autocomplete="one-time-code" autofocus />
             <span asp-validation-for="Code" class="validation"></span>
             <button class="button button-primary" type="submit">Verificar</button>

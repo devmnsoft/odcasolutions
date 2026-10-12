@@ -291,6 +291,13 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         var result = await api.PerformObligationActionAsync(token, tenantId, id, operation, request, ct);
         if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (result.Status == ApiCallStatus.Conflict)
+        {
+            TempData["ContractSheetError"] = result.ErrorCode == "obligation.version.conflict"
+                ? "A obrigação foi alterada em outra sessão. Recarregue a página e reaplique a ação."
+                : result.UserMessage("Não foi possível atualizar a obrigação.");
+            return Redirect(BuildReturnUrl(tenantId, contractId, "#obrigacoes", from, year, month, scope, kind, urgency, viewId, obrigacao));
+        }
 
         TempData[result.Succeeded ? "ContractSheetNotice" : "ContractSheetError"] = result.Succeeded
             ? $"Ação '{operation}' executada com sucesso na obrigação."
@@ -486,6 +493,13 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         var result = await api.CreateRenewalProposalAsync(token, tenantId, contractId, request, ct);
         if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (result.Status == ApiCallStatus.Conflict)
+        {
+            TempData["ContractSheetError"] = result.ErrorCode == "contract.version.conflict"
+                ? "O contrato foi alterado em outra sessão. Recarregue a página e reaplique a alteração."
+                : result.UserMessage("Não foi possível registrar a proposta.");
+            return Redirect(BuildReturnUrl(tenantId, contractId, "#renovacao", from, year, month, scope, kindFilter, urgency, viewId, obrigacao));
+        }
 
         TempData[result.Succeeded ? "ContractSheetNotice" : "ContractSheetError"] = result.Succeeded
             ? "Proposta de alteração/renovação registrada com sucesso na ficha."

@@ -302,7 +302,7 @@ public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContex
 
     [Authorize]
     [HttpGet("mfa/desafio")]
-    public IActionResult MfaChallenge() => View(new MfaChallengeViewModel());
+    public IActionResult MfaChallenge(string? returnUrl = null) => View(new MfaChallengeViewModel { ReturnUrl = SafeReturnUrl(returnUrl) });
 
     [Authorize]
     [HttpPost("mfa/desafio")]
@@ -336,7 +336,8 @@ public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContex
         }
 
         await SignInAsync(result.Value!);
-        return RedirectToAction("Index", "Home");
+        var target = SafeReturnUrl(model.ReturnUrl);
+        return string.IsNullOrWhiteSpace(target) ? RedirectToAction("Index", "Home") : Redirect(target);
     }
 
     [Authorize]
@@ -382,7 +383,7 @@ public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContex
 
         if (response.RequiresMfaChallenge)
         {
-            return RedirectToAction(nameof(MfaChallenge));
+            return RedirectToAction(nameof(MfaChallenge), new { returnUrl });
         }
 
         if (!string.IsNullOrWhiteSpace(returnUrl))

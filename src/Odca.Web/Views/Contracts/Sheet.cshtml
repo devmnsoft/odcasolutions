@@ -1518,6 +1518,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!content) return;
                 content.textContent = '';
 
+                if (response.redirected || response.status === 401) {
+                    content.textContent = 'Sessão expirada. Você será redirecionado ao login.';
+                    setTimeout(() => window.location.assign('/entrar?ReturnUrl=' + encodeURIComponent(window.location.pathname + window.location.search)), 1200);
+                    return;
+                }
+
                 if (response.status === 403) {
                     const alert = document.createElement('div');
                     alert.className = 'validation-summary';

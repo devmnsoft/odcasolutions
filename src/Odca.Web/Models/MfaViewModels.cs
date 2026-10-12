@@ -24,6 +24,9 @@ public sealed class MfaChallengeViewModel
     [StringLength(32, MinimumLength = 6, ErrorMessage = "Informe um código válido.")]
     [Display(Name = "Código MFA")]
     public string Code { get; set; } = string.Empty;
+
+    /// <summary>Página de destino original, preservada da autenticação expirada até a conclusão do MFA.</summary>
+    public string? ReturnUrl { get; set; }
 }
 
 public sealed class MfaRecoveryCodesViewModel

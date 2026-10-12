@@ -20,6 +20,7 @@ button?.addEventListener('click', async () => {
   try {
     const csrf = workspace.querySelector('input[name="__RequestVerificationToken"]').value;
     const response = await fetch(workspace.dataset.saveUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrf }, body: JSON.stringify({ idempotencyKey: crypto.randomUUID(), contractVersion: Number(workspace.dataset.contractVersion), decisions }) });
+    if (response.redirected || response.status === 401) { message.textContent = 'Sessão expirada. Entre novamente para salvar a revisão.'; window.location.assign('/entrar?ReturnUrl=' + encodeURIComponent(window.location.pathname + window.location.search)); return; }
     const result = await response.json();
     if (!response.ok) throw new Error(result.detail || result.title || 'Não foi possível salvar.');
     dirty = false;

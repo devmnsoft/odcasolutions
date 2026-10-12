@@ -135,8 +135,8 @@ public sealed class InboxController(OdcaApiClient api) : Controller
         if (result.Status == ApiCallStatus.NotFound) return NotFound();
         if (result.Status == ApiCallStatus.Conflict)
         {
-            TempData["SavedViewError"] = "A vista foi alterada em outra sessão (versão divergente).";
-            return StatusCode(409);
+            TempData["SavedViewError"] = "A vista foi alterada em outra sessão (versão divergente). Recarregue a caixa e defina a vista novamente.";
+            return RedirectToAction(nameof(Index), new { tenantId });
         }
 
         TempData[result.Succeeded ? "SavedViewNotice" : "SavedViewError"] = result.Succeeded
