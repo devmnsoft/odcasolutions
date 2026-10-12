@@ -201,4 +201,6 @@
     "studio.preview_subtitle": "Vue de la structure du modèle avec les champs variables mis en évidence. Aucune donnée réelle n'est utilisée."
     "studio.preview_title": "Aperçu du modèle"
     "studio.preview_use_template": "Créer un brouillon avec ce modèle"
+
+    "sheet.doc_simulated": "Vérification simulée (environnement de test)"
 }

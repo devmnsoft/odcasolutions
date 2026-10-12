@@ -201,4 +201,6 @@
     "studio.preview_subtitle": "Visualização da estrutura do modelo com campos variáveis destacados. Nenhum dado real é utilizado."
     "studio.preview_title": "Prévia do modelo"
     "studio.preview_use_template": "Criar minuta com este modelo"
+
+    "sheet.doc_simulated": "Verificação simulada (ambiente de teste)"
 }

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Dapper;
+using Microsoft.Extensions.Configuration;
 using Npgsql;
 using Odca.Application.Documents;
 
@@ -30,14 +31,20 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
         if (item is null) return false;
         await connection.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenant,false)", new { tenant = item.TenantId.ToString() }, cancellationToken: ct));
         var scanner = configuration["Documents:MalwareScannerExecutable"];
+        // Item 4 (Bloco A): a indisponibilidade do scanner NÃO produz evidência de segurança.
+        // Só a simulação explícita em Development resulta em 'safe', e ela é identificável
+        // pelo engine 'simulated-scanner-dev' (nunca ativa fora de Development, mesmo com flag).
+        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "";
+        var simulate = env == "Development" && configuration.GetValue("Documents:SimulateScanner", true);
+        if (simulate)
+        {
+            logger.LogWarning("Verificação de segurança SIMULADA em Development (resultado de teste, não é auditoria real): versão {VersionId}.", item.Id);
+            await ScanResult(connection, item.Id, "safe", "simulated-scanner-dev", ct);
+            return true;
+        }
         if (string.IsNullOrWhiteSpace(scanner))
         {
-            // Development: no external scanner available — auto-approve so the
-            // formalization evidence journey works end-to-end without ClamAV.
-            // Production always configures a real scanner binary.
-            var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "";
-            var status = env == "Development" ? "safe" : "scan_failed";
-            await ScanResult(connection, item.Id, status, env == "Development" ? "auto-approved-dev" : "scanner-not-configured", ct);
+            await ScanResult(connection, item.Id, "scan_failed", "scanner-not-configured", ct);
             return true;
         }
         var path = StoragePath(item.StorageKey);
@@ -48,17 +55,9 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "";
-            if (env == "Development")
-            {
-                logger.LogWarning("Scanner falhou em dev; auto-aprovando: {ErrorType}", ex.GetType().Name);
-                await ScanResult(connection, item.Id, "safe", "auto-approved-dev", ct);
-            }
-            else
-            {
-                logger.LogWarning("Análise da versão {VersionId} falhou sem expor conteúdo: {ErrorType}", item.Id, ex.GetType().Name);
-                await ScanResult(connection, item.Id, "scan_failed", "scanner-failed", ct);
-            }
+            // Verificação indisponível em qualquer ambiente: nunca vira 'safe'.
+            logger.LogWarning("Análise da versão {VersionId} indisponível sem expor conteúdo: {ErrorType}", item.Id, ex.GetType().Name);
+            await ScanResult(connection, item.Id, "scan_failed", "scanner-unavailable", ct);
         }
         return true;
     }

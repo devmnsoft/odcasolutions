@@ -201,4 +201,6 @@
     "studio.preview_subtitle": "View of the template structure with variable fields highlighted. No real data is used."
     "studio.preview_title": "Template preview"
     "studio.preview_use_template": "Create a draft with this template"
+
+    "sheet.doc_simulated": "Simulated check (test environment)"
 }

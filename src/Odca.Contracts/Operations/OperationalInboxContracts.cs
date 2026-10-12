@@ -57,7 +57,8 @@ public sealed record ContractSheetDocumentDto(
     Guid VersionId,
     string Name,
     string SafetyState,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    string? SecurityEngine = null);
 
 public sealed record ContractSheetReviewDto(
     Guid ReviewId,

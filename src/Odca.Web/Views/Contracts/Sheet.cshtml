@@ -1080,6 +1080,10 @@
             <article class="renewal-row">
                 <div>
                     <span class="status-label">@document.SafetyState</span>
+                    @if (document.SafetyState == "safe" && document.SecurityEngine == "simulated-scanner-dev")
+                    {
+                        <span class="status-label badge-muted" title="Engine: simulated-scanner-dev">@L.T("sheet.doc_simulated", _culture)</span>
+                    }
                     <h3>@document.Name</h3>
                 </div>
                 <dl>

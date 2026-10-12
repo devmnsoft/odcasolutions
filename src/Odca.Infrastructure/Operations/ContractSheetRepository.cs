@@ -67,7 +67,7 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
         var documentRows = (await connection.QueryAsync<ContractSheetDocumentRow>(new CommandDefinition(
             """
             SELECT d.id AS DocumentId, v.id AS VersionId, d.title AS Name,
-                   v.security_status AS SafetyState, v.uploaded_at AS UpdatedAt
+                   v.security_status AS SafetyState, v.security_engine AS SecurityEngine, v.uploaded_at AS UpdatedAt
               FROM odca.contract_documents d
               JOIN odca.document_versions v
                 ON v.document_id = d.id AND v.tenant_id = d.tenant_id
@@ -84,7 +84,7 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
             cancellationToken: cancellationToken))).AsList();
 
         var documents = documentRows
-            .Select(d => new ContractSheetDocumentDto(d.DocumentId, d.VersionId, d.Name, d.SafetyState, ToUtcOffset(d.UpdatedAt)))
+            .Select(d => new ContractSheetDocumentDto(d.DocumentId, d.VersionId, d.Name, d.SafetyState, ToUtcOffset(d.UpdatedAt), d.SecurityEngine))
             .ToList();
 
         var reviewRow = await connection.QuerySingleOrDefaultAsync<ContractSheetReviewRow>(new CommandDefinition(
@@ -370,6 +370,7 @@ public sealed class ContractSheetRepository(NpgsqlDataSource dataSource) : ICont
         public Guid VersionId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string SafetyState { get; set; } = string.Empty;
+        public string? SecurityEngine { get; set; }
         public DateTime UpdatedAt { get; set; }
     }
 

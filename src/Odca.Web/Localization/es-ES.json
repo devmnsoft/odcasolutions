@@ -201,4 +201,6 @@
     "studio.preview_subtitle": "Vista de la estructura del modelo con los campos variables resaltados. No se usa ningún dato real."
     "studio.preview_title": "Vista previa del modelo"
     "studio.preview_use_template": "Crear borrador con este modelo"
+
+    "sheet.doc_simulated": "Verificación simulada (entorno de prueba)"
 }
