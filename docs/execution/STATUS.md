@@ -1,5 +1,37 @@
 # Status de execução
 
+## Incremento: Governança contratual — aprovações, condições vigentes, worker canônico, modelo oficial (12/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `3c944b7` (início) → `8b24769` (fim). 5 commits nesta sessão.
+- **Build**: 0W/0E. Matriz: **12 PASS, 0 FAIL, 3 BLOCKED**.
+- **Estúdio item 2** (`4fac709`): Superadmin cria modelo oficial via interface.
+  - `POST api/v1/platform/templates`: cria global draft com official_key auto-gerada, validação de tipo, uniqueness check.
+  - `GET/POST administracao/biblioteca/novo`: form nome/tipo/descricao/finalidade.
+  - Botão "+ Novo modelo" na biblioteca; 13 keys i18n × 4 idiomas.
+- **Bloco B/7-B/9** (`97f3b9f`): Documento D-OC15 — vinculação aprovação→versão + critérios.
+  - Formalização exige `evidence_version_id` (document_version com sha256 + security_status='safe').
+  - Apply valida `base_contract_version == current_version`; CAS row_version; idempotency key.
+  - Revisão administrativa: delta comercial bloqueado na aplicação (revStart/End/Value vs Old).
+  - Permissões granulares: prepare/read/decide/formalize/apply/cancel (segregação por função).
+- **Item 10** (`0db80a8`): Condições vigentes vs propostas na ficha do contrato.
+  - `ContractSheetChangeDto`: kind, status, application_status, effective_on, proposed values.
+  - Repository consulta change_requests ativas (não cancelled/applied) LIMIT 10.
+  - View: seção entre detalhes e renovação com badge por estado, data de efeito, nova vigência.
+  - Antes da aplicação: condições atuais visíveis; depois: alteração sai e fica no histórico.
+- **Item 11** (`2081924`): Worker aplica mesma regra canônica que ApplyCore.
+  - Gap encontrado: worker NÃO checar delta comercial em kind=revision.
+  - Corrigido: revStart/revEnd/revValue comparados com OldStart/OldEnd/OldValue.
+  - Se divergem: status=conflict (mesmo comportamento do manual).
+- **Matriz S2 fix** (`8b24769`): Handler para unique constraint `(tenant_id, contract_id)`.
+  - Se draft já existe → verifica persistência do conteúdo (cenário real de retomada).
+- **Próximos passos**:
+  - Item 12: sequência de documentos derivados na ficha (aditivo, renovação, revisão).
+  - Item 14/15: completar papéis dos participantes + identidade signatário na UI.
+  - Item 17: integrar fontes novas (Signature, Solicitation) no OperationalInboxRepository.
+  - Item 23: validação visual PDFs + design em 360/768/1440px.
+  - Estúdio item 4: prévia do modelo antes de criar minuta.
+  - Estúdio item 11: criação de nova revisão sem alterar documentos existentes (UI para publicar revisão).
+
 ## Incremento: Central operacional corrigida + vínculo solicitação-contrato + matriz comportamental (12/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `a2ccb42` (início) → `324cd00` (fim). 3 commits nesta sessão.
