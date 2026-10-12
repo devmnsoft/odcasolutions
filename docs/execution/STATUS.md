@@ -1,5 +1,17 @@
 # Status de execução
 
+## Evolução completa da operação contratual — incremento integrado: integridade + jornada + SaaS + localização + matriz de aceite 15/15 (11–12/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `818f039` (início) → `fe92857` (fim). 9 commits, árvore limpa, sem push/merge/deploy.
+- **Baseline validado**: Build 3 projects 0W/0E · Domain 300/0 · Data validation 17/17 · **Matriz de aceite 15/15 PASS**.
+- **Bloco A (corrections)**: 4 fixes em `RenewalCenterController` — (1) remoção de OR confuso entre versão solicitação × versão-base; (2) validação de estado resultante em Create; (3) moeda correta no INSERT de histórico; (4) revalidação defensiva de revisão administrativa. Estado D-OC14 documentado (`ESTADOS_DEFICAO_CONSISTENTE.md`).
+- **Bloco B (jornada)**: (B/7) `OperationsCenterController` — endpoint action-center agregando 5 fontes em 5 categorias com próxima ação; (B/9) Ficha do contrato ampliada com seção "Solicitações ODCA" (top 10 ativas por tenant + DTO + query) e formulário "Abrir solicitação ODCA" com contexto do contrato; (B/11) Comparação de versões reescrita com 5 seções categorizadas, CSS diff visual, disclaimer jurídico.
+- **Bloco C/D (SaaS)**: Endpoint de ativação de tenant (`POST /customers/{id}/activate`); Matriz de planos/benefícios documentada (`MATRIZ_PLANOS_BENEFICIOS.md`) com 3 planos × módulos × limites × SLA × operações × upgrade/downgrade.
+- **Bloco D (localização)**: Infraestrutura i18n completa — `LocalizationService` singleton, `CultureMiddleware` (cookie `odca_lang`), `NavContext.Localizer` delegate, `_Layout` traduzido, 4 catálogos JSON (pt-BR/en-US/fr-FR/es-ES, ~100 keys cada), `AccountController.SetLanguage`. Sheet.cshtml: headers (9 keys) + subnav (12 keys) localizados nos 4 idiomas.
+- **Bloco E/F (validação)**: `validate-e-data.ps1` 17/17 PASS (integridade referencial, idempotência, consistência); `validate-acceptance-matrix.ps1` 15/15 PASS (cenários do prompt: cliente novo, rascunho, concorrência, idempotência, prazo indeterminado, snapshot, template versioning, responsável desativado, permissão, isolamento, SLA, idiomas, auditoria, PDF, worker restart).
+- **Entrega**: `EVIDENCIAS_ENTREGA_20261012.md` com os 9 itens exigidos pelo prompt item 28.
+- **Próximos passos**: C/14 (estender `@L.T()` para as 60+ views restantes), C/23 (revisão editorial/termos), C/16 (design responsivo 360/768/1440), E/24 (homologação PDF visual). Sem push/merge/deploy automático.
+
 ## Fase de aprofundamento sobre `2a6fc43` — reauditoria da entrega recente (Blocos A+B+C) + início da integridade contratual (Bloco A′) (10/10/2026)
 
 - **Base reconfirmada**: `codex/s00-foundation` @ `2a6fc43` (árvore limpa). O commit já incorpora Blocos A (`62ba38f`), B (`2412875`) e C (`4875c67`+`2a6fc43`, v046). Os dois commits finais ("novos ajustes") contêm exatamente o Bloco C (24 arquivos; o volume é o snapshot `odca-v046.sql`). Dados, snapshots e histórico preservados.
