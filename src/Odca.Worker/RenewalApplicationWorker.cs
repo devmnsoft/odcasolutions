@@ -95,6 +95,24 @@ public sealed class RenewalApplicationWorker(
             return;
         }
 
+        // Item 11: mesma regra canônica do ApplyCore — revisão administrativa não pode introduzir delta comercial
+        if (change.Kind == "revision")
+        {
+            var revStart = change.StartDate ?? change.OldStart;
+            var revEnd = change.ClearEnd ? (DateOnly?)null : (change.EndDate ?? change.OldEnd);
+            var revValue = change.Value ?? change.OldValue;
+            if (revStart != change.OldStart || revEnd != change.OldEnd || revValue != change.OldValue)
+            {
+                var revConflicts = await connection.ExecuteAsync(new CommandDefinition(
+                    "UPDATE odca.contract_change_requests SET status='conflict',application_status='failed',row_version=row_version+1,updated_at=now() WHERE tenant_id=@tenantId AND id=@id AND row_version=@version AND application_status='scheduled'",
+                    new { tenantId = candidate.TenantId, id = candidate.Id, version = candidate.RowVersion },
+                    transaction, cancellationToken: cancellationToken));
+                if (revConflicts == 1) await transaction.CommitAsync(cancellationToken);
+                else await transaction.RollbackAsync(cancellationToken);
+                return;
+            }
+        }
+
         var updatedContracts = await connection.ExecuteAsync(new CommandDefinition(
             "UPDATE odca.contracts SET start_date=COALESCE(@start,start_date),end_date=CASE WHEN @clearEnd THEN NULL ELSE COALESCE(@end,end_date) END,value=COALESCE(@value,value),currency=CASE WHEN @value IS NULL THEN currency ELSE @currency END,version=CASE WHEN @kind='revision' THEN version ELSE version+1 END,updated_at=now() WHERE tenant_id=@tenantId AND id=@contractId AND version=@expectedVersion",
             new { start = change.StartDate, end = change.EndDate, value = change.Value, currency = change.Currency, clearEnd = change.ClearEnd, kind = change.Kind, tenantId = candidate.TenantId, contractId = change.ContractId, expectedVersion = change.BaseVersion },
