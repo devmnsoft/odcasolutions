@@ -1,5 +1,6 @@
 @model Odca.Web.Models.InboxWorkspaceViewModel
 @{
+    var _culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
     var tenantId = ViewData["TenantId"];
     var notice = TempData["SavedViewNotice"] as string;
     var error = TempData["SavedViewError"] as string ?? Model.Error;
@@ -7,12 +8,12 @@
 }
 <header class="renewal-heading">
     <div>
-        <p class="eyebrow">Central operacional</p>
-        <h1>Central de pendências</h1>
-        <p class="muted">Encontre a próxima atividade e abra o contexto na fonte oficial para tratá-la com segurança.</p>
+        <p class="eyebrow">@L.T("inbox.eyebrow", _culture)</p>
+        <h1>@L.T("inbox.title", _culture)</h1>
+        <p class="muted">@L.T("inbox.subtitle", _culture)</p>
     </div>
     <div class="form-actions-row">
-        <a class="button button-quiet" asp-controller="Agenda" asp-action="Index" asp-route-tenantId="@tenantId">Abrir agenda</a>
+        <a class="button button-quiet" asp-controller="Agenda" asp-action="Index" asp-route-tenantId="@tenantId">@L.T("inbox.open_agenda", _culture)</a>
     </div>
 </header>
 
@@ -33,25 +34,25 @@
 @if (Model.Page.Overdue > 0)
 {
     <div class="banner-notice-warning" role="status">
-        <strong>⚠ @Model.Page.Overdue item(ns) atrasado(s)</strong>
+        <strong>⚠ @Model.Page.Overdue @L.T("inbox.overdue_items", _culture)</strong>
         <a class="button button-quiet"
            asp-action="Index" asp-route-tenantId="@tenantId"
            asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind"
-           asp-route-urgency="Overdue" asp-route-viewId="@currentViewId">Ver atrasadas</a>
+           asp-route-urgency="Overdue" asp-route-viewId="@currentViewId">@L.T("inbox.view_overdue", _culture)</a>
     </div>
 }
 
-<section class="inbox-summary-cards" aria-label="Resumo">
+<section class="inbox-summary-cards" aria-label="@L.T("inbox.aria_summary", _culture)">
     <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="Overdue" asp-route-viewId="@currentViewId">
-        <strong>@Model.Page.Overdue</strong><span>Atrasadas</span>
+        <strong>@Model.Page.Overdue</strong><span>@L.T("inbox.summary_overdue", _culture)</span>
     </a>
     <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="DueToday" asp-route-viewId="@currentViewId">
-        <strong>@Model.Page.DueToday</strong><span>Vencem hoje</span>
+        <strong>@Model.Page.DueToday</strong><span>@L.T("inbox.summary_today", _culture)</span>
     </a>
     <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="DueThisWeek" asp-route-viewId="@currentViewId">
-        <strong>@Model.Page.DueThisWeek</strong><span>Nesta semana</span>
+        <strong>@Model.Page.DueThisWeek</strong><span>@L.T("inbox.summary_week", _culture)</span>
     </a>
-    <span><strong>@Model.Page.Total</strong><span>Itens visíveis</span></span>
+    <span><strong>@Model.Page.Total</strong><span>@L.T("inbox.summary_visible", _culture)</span></span>
 </section>
 
 <!-- VISTAS PESSOAIS -->
@@ -87,37 +88,37 @@
 }
 
 <details class="filter-panel" open>
-    <summary>Filtros da caixa</summary>
+    <summary>@L.T("inbox.filters", _culture)</summary>
     <form method="get" class="renewal-filters">
         @if (currentViewId.HasValue)
         {
             <input type="hidden" name="viewId" value="@currentViewId.Value" />
         }
-        <label>Escopo
+        <label>@L.T("inbox.scope", _culture)
             <select name="scope">
-                <option value="mine" selected="@(Model.Scope=="mine")">Minhas pendências</option>
-                <option value="organization" selected="@(Model.Scope=="organization")">Organização</option>
+                <option value="mine" selected="@(Model.Scope=="mine")">@L.T("inbox.scope_mine", _culture)</option>
+                <option value="organization" selected="@(Model.Scope=="organization")">@L.T("inbox.scope_org", _culture)</option>
             </select>
         </label>
-        <label>Tipo
+        <label>@L.T("inbox.type", _culture)
             <select name="kind">
-                <option value="">Todos</option>
-                <option value="Obligation" selected="@(Model.Kind=="Obligation")">Obrigação</option>
-                <option value="Review" selected="@(Model.Kind=="Review")">Revisão</option>
-                <option value="Renewal" selected="@(Model.Kind=="Renewal")">Renovação</option>
+                <option value="">@L.T("inbox.type_all", _culture)</option>
+                <option value="Obligation" selected="@(Model.Kind=="Obligation")">@L.T("inbox.kind_obligation", _culture)</option>
+                <option value="Review" selected="@(Model.Kind=="Review")">@L.T("inbox.kind_review", _culture)</option>
+                <option value="Renewal" selected="@(Model.Kind=="Renewal")">@L.T("inbox.kind_renewal", _culture)</option>
             </select>
         </label>
-        <label>Urgência
+        <label>@L.T("inbox.urgency", _culture)
             <select name="urgency">
-                <option value="">Todas</option>
-                <option value="Overdue" selected="@(Model.Urgency=="Overdue")">Atrasada</option>
-                <option value="DueToday" selected="@(Model.Urgency=="DueToday")">Hoje</option>
-                <option value="DueThisWeek" selected="@(Model.Urgency=="DueThisWeek")">Semana</option>
-                <option value="Upcoming" selected="@(Model.Urgency=="Upcoming")">Próximas</option>
+                <option value="">@L.T("inbox.urgency_all", _culture)</option>
+                <option value="Overdue" selected="@(Model.Urgency=="Overdue")">@L.T("inbox.urgency_overdue", _culture)</option>
+                <option value="DueToday" selected="@(Model.Urgency=="DueToday")">@L.T("inbox.urgency_today", _culture)</option>
+                <option value="DueThisWeek" selected="@(Model.Urgency=="DueThisWeek")">@L.T("inbox.urgency_week", _culture)</option>
+                <option value="Upcoming" selected="@(Model.Urgency=="Upcoming")">@L.T("inbox.urgency_upcoming", _culture)</option>
             </select>
         </label>
-        <button class="button button-primary" type="submit">Aplicar</button>
-        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">Limpar</a>
+        <button class="button button-primary" type="submit">@L.T("inbox.apply", _culture)</button>
+        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">@L.T("inbox.clear", _culture)</a>
     </form>
 
     <!-- FORMULÁRIO PARA SALVAR VISTA -->
@@ -138,45 +139,45 @@
     @if (Model.Page.Items.Count == 0)
     {
         <div class="empty-state">
-            <strong>Nada pendente neste recorte</strong>
-            <p>Ajuste o escopo ou o tipo. A caixa reflete as pendências vigentes sem inventar tarefas.</p>
+            <strong>@L.T("inbox.empty_title", _culture)</strong>
+            <p>@L.T("inbox.empty_body", _culture)</p>
         </div>
     }
     else
     {
         foreach (var item in Model.Page.Items)
         {
-            var kindLabel = item.Kind switch
+            var kindLabel = L.T(item.Kind switch
             {
-                "Obligation" => "Obrigação",
-                "Review" => "Revisão",
-                "Renewal" => "Renovação",
-                _ => item.Kind
-            };
-            var urgencyLabel = item.Urgency switch
+                "Obligation" => "inbox.kind_obligation",
+                "Review" => "inbox.kind_review",
+                "Renewal" => "inbox.kind_renewal",
+                _ => "inbox.kind_unknown"
+            }, _culture);
+            var urgencyLabel = L.T(item.Urgency switch
             {
-                "Overdue" => "Atrasada",
-                "DueToday" => "Prazo hoje",
-                "DueThisWeek" => "Prazo nesta semana",
-                "Upcoming" => "Próxima",
-                _ => "Sem prazo"
-            };
-            var actionLabel = item.Kind switch
+                "Overdue" => "inbox.urgency_overdue",
+                "DueToday" => "inbox.urgency_today_label",
+                "DueThisWeek" => "inbox.urgency_week_label",
+                "Upcoming" => "inbox.urgency_upcoming_label",
+                _ => "inbox.no_deadline"
+            }, _culture);
+            var actionLabel = L.T(item.Kind switch
             {
-                "Obligation" => "Abrir obrigação",
-                "Review" => "Abrir revisão",
-                "Renewal" => "Abrir decisão de renovação",
-                _ => "Abrir origem"
-            };
+                "Obligation" => "inbox.action_obligation",
+                "Review" => "inbox.action_review",
+                "Renewal" => "inbox.action_renewal",
+                _ => "inbox.action_default"
+            }, _culture);
             <article class="renewal-row">
                 <div>
                     <span class="status-label">@kindLabel · @urgencyLabel</span>
                     <h3>@item.Title</h3>
-                    <p>@item.ContractTitle · @(item.OwnerName ?? "Sem responsável")</p>
+                    <p>@item.ContractTitle · @(item.OwnerName ?? L.T("inbox.no_owner", _culture))</p>
                 </div>
                 <dl>
-                    <div><dt>Prazo</dt><dd>@(item.DueOn?.ToString("dd/MM/yyyy") ?? "Sem data")</dd></div>
-                    <div><dt>Situação</dt><dd>@item.Status</dd></div>
+                    <div><dt>@L.T("inbox.due", _culture)</dt><dd>@(item.DueOn?.ToString("dd/MM/yyyy") ?? L.T("inbox.no_date", _culture))</dd></div>
+                    <div><dt>@L.T("inbox.status", _culture)</dt><dd>@item.Status</dd></div>
                 </dl>
                 <div class="next-action"><a class="button button-quiet" href="@item.OpenUrl">@actionLabel</a></div>
             </article>
@@ -184,22 +185,22 @@
     }
 </section>
 
-<nav class="pagination" aria-label="Paginação">
+<nav class="pagination" aria-label="@L.T("inbox.pagination", _culture)">
     @if (Model.Page.Page > 1)
     {
-        <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-page="@(Model.Page.Page-1)" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@currentViewId">Anterior</a>
+        <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-page="@(Model.Page.Page-1)" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@currentViewId">@L.T("inbox.prev", _culture)</a>
     }
-    <span>Página @Model.Page.Page</span>
+    <span>@L.T("inbox.page", _culture) @Model.Page.Page</span>
     @if (Model.Page.Page * Model.Page.PageSize < Model.Page.Total)
     {
-        <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-page="@(Model.Page.Page+1)" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@currentViewId">Próxima</a>
+        <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-page="@(Model.Page.Page+1)" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@currentViewId">@L.T("inbox.next", _culture)</a>
     }
 </nav>
 
 <details class="filter-panel">
-    <summary>Como usar</summary>
+    <summary>@L.T("inbox.how_to_use", _culture)</summary>
     <div class="details-content">
-        <p>A central reúne pendências das fontes oficiais. Use os filtros para priorizar seu trabalho e abra o item para consultar todo o contexto antes de agir.</p>
-        <p>Uma ação confirmada no módulo de origem atualiza a pendência. Se outra pessoa alterar o registro enquanto ele estiver aberto, atualize a página e confira o novo estado antes de confirmar novamente.</p>
+        <p>@L.T("inbox.help_body1", _culture)</p>
+        <p>@L.T("inbox.help_body2", _culture)</p>
     </div>
 </details>
