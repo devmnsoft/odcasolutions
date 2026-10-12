@@ -121,6 +121,50 @@ public sealed class PlatformOperationsController(NpgsqlDataSource dataSource) : 
         return Ok(rows);
     }
 
+    [HttpPost("api/v1/platform/templates")]
+    public async Task<IActionResult> CreateTemplate([FromBody] CreateOfficialTemplateRequest request, CancellationToken ct)
+    {
+        var actor = Actor(); if (actor is null) return Unauthorized();
+        if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Trim().Length < 3) return ValidationProblem("Nome deve ter pelo menos 3 caracteres.");
+        if (string.IsNullOrWhiteSpace(request.ContractType)) return ValidationProblem("Tipo de contrato é obrigatório.");
+
+        var validTypes = new[] { "nda", "services", "service", "supply", "lease", "consent", "amendment" };
+        if (!validTypes.Contains(request.ContractType.ToLowerInvariant()))
+            return ValidationProblem($"Tipo inválido. Válidos: {string.Join(", ", validTypes)}.");
+
+        var officialKey = string.IsNullOrWhiteSpace(request.OfficialKey)
+            ? request.Name.Trim().ToLowerInvariant().Replace(' ', '-')
+            : request.OfficialKey.Trim().ToLowerInvariant();
+
+        // Check official_key uniqueness among global templates
+        await using var c = await dataSource.OpenConnectionAsync(ct);
+        await EnsurePlatformGuc(c, actor.Value, ct);
+        var keyExists = await c.ExecuteScalarAsync<bool>(new CommandDefinition(
+            "SELECT EXISTS(SELECT 1 FROM odca.contract_templates WHERE owner_tenant_id IS NULL AND scope='global' AND official_key=@key AND archived_at IS NULL)",
+            new { key = officialKey }, cancellationToken: ct));
+        if (keyExists)
+            return Conflict(new { error = $"official_key '{officialKey}' já existe no catálogo oficial.", code = "template.key_exists" });
+
+        var templateId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        await using var tx = await c.BeginTransactionAsync(ct);
+        try
+        {
+            await c.ExecuteAsync(new CommandDefinition(@"
+                INSERT INTO odca.contract_templates(id, owner_tenant_id, name, description, contract_type, scope, status, current_version, author_id, official_key, document_purpose)
+                VALUES(@templateId, NULL, @name, @description, @contractType, 'global', 'draft', 1, @actor, @officialKey, @purpose);
+                INSERT INTO odca.contract_template_versions(id, template_id, version_number, content_schema_version, content, fields, created_by)
+                VALUES(@versionId, @templateId, 1, 1, @content::jsonb, @fields::jsonb, @actor);
+                INSERT INTO odca.audit_events(scope_type, tenant_id, actor_user_id, action, entity_type, entity_id, result, metadata)
+                VALUES('platform', NULL, @actor, 'platform.template.created', 'contract_template', @templateId, 'success', jsonb_build_object('name',@name,'type',@contractType,'officialKey',@officialKey))
+            ", new { templateId, versionId, name = request.Name.Trim(), description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(), contractType = request.ContractType.ToLowerInvariant(), actor = actor.Value, officialKey = officialKey, purpose = string.IsNullOrWhiteSpace(request.DocumentPurpose) ? null : request.DocumentPurpose.Trim(), content = request.Content, fields = request.Fields }, tx, cancellationToken: ct));
+            await tx.CommitAsync(ct);
+        }
+        catch { await tx.RollbackAsync(ct); throw; }
+
+        return Created($"api/v1/platform/templates/{templateId}", new { id = templateId, officialKey, status = "draft", message = "Modelo criado em rascunho. Publique para torná-lo disponível." });
+    }
+
     private static async Task EnsurePlatformGuc(NpgsqlConnection c, Guid actor, CancellationToken ct) =>
         await c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.user_id',@actor::text,false)", new { actor }, cancellationToken: ct));
 

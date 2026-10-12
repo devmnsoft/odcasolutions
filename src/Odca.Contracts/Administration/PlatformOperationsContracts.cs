@@ -25,6 +25,16 @@ public sealed record TemplateCatalogStatusRequest(
     string Action,
     string Reason);
 
+// Criação de modelo oficial (superadmin cria linha global em rascunho).
+public sealed record CreateOfficialTemplateRequest(
+    string Name,
+    string? Description,
+    string ContractType,
+    string? DocumentPurpose,
+    string Content,
+    string Fields,
+    string? OfficialKey);
+
 // Busca global de usuários (identidade + vínculos por organização).
 public sealed record PlatformUserLink(
     Guid? TenantId,

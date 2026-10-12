@@ -30,6 +30,44 @@ public sealed class PlatformLibraryController(OdcaApiClient api) : Controller
         return View(result.Value!);
     }
 
+    [HttpGet("novo")]
+    public async Task<IActionResult> Create(CancellationToken ct)
+    {
+        ViewData["Title"] = "Novo modelo oficial";
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+        return View();
+    }
+
+    [HttpPost("novo")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreatePost(string name, string? description, string contractType, string? documentPurpose, CancellationToken ct)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+
+        if (string.IsNullOrWhiteSpace(name) || name.Trim().Length < 3)
+        {
+            TempData["Error"] = "Nome deve ter pelo menos 3 caracteres.";
+            return View("Create", new { name, description, contractType, documentPurpose });
+        }
+
+        // Minimal default content: empty sections array with one placeholder section.
+        var content = @"{""schema"":""odca-contract/v1"",""sections"":[{""id"":""clausula-1"",""title"":""Cláusula 1"",""body"":""[Conteúdo inicial — edite este modelo para adicionar as cláusulas definitivas.]""}]}";
+        var fields = "[]";
+
+        var result = await api.CreateOfficialTemplateAsync(token,
+            new CreateOfficialTemplateRequest(name.Trim(), description?.Trim(), contractType, documentPurpose?.Trim(), content, fields, null), ct);
+
+        if (result.Succeeded)
+        {
+            TempData["Success"] = "Modelo criado em rascunho. Publique-o para torná-lo disponível às organizações.";
+            return RedirectToAction(nameof(Index));
+        }
+        TempData["Error"] = result.UserMessage("Não foi possível criar o modelo.");
+        return View("Create", new { name, description, contractType, documentPurpose });
+    }
+
     [HttpPost("{key}/status")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Status(string key, string action, string? reason, CancellationToken ct)

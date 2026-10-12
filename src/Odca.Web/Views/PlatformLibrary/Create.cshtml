@@ -1,0 +1,67 @@
+@{
+    var _culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    var name = ViewBag.name as string ?? "";
+    var description = ViewBag.description as string ?? "";
+    var contractType = ViewBag.contractType as string ?? "services";
+    var documentPurpose = ViewBag.documentPurpose as string ?? "";
+}
+<header class="renewal-heading">
+    <div>
+        <p class="eyebrow">Plataforma</p>
+        <h1>@L.T("platform.template_create_title", _culture)</h1>
+        <p class="muted">@L.T("platform.template_create_subtitle", _culture)</p>
+    </div>
+</header>
+
+@if (TempData["Error"] is string errMsg && !string.IsNullOrWhiteSpace(errMsg))
+{
+    <div class="validation-summary" role="alert">@errMsg</div>
+}
+
+<form method="post" asp-action="CreatePost" class="form-stack" id="create-template-form">
+    @Html.AntiForgeryToken()
+
+    <label>@L.T("platform.tpl_name", _culture)
+        <input type="text" name="name" value="@name" required minlength="3" maxlength="200"
+               placeholder="Ex: Contrato de Serviços Terapêuticos — Fisioterapia" />
+    </label>
+
+    <label>@L.T("platform.tpl_description", _culture)
+        <textarea name="description" rows="3" maxlength="1000"
+                  placeholder="Para que serve este modelo? Em quais contextos será utilizado?">@description</textarea>
+    </label>
+
+    <label>@L.T("platform.tpl_type", _culture)
+        <select name="contractType" required>
+            <option value="services" selected="@(contractType=="services")">Serviços / Terapias</option>
+            <option value="service" selected="@(contractType=="service")">Serviço único</option>
+            <option value="services-multiple-therapies" selected="@(contractType=="services-multiple-therapies")">Múltiplas terapias</option>
+            <option value="nda" selected="@(contractType=="nda")">Acordo de confidencialidade (NDA)</option>
+            <option value="supply" selected="@(contractType=="supply")">Fornecimento</option>
+            <option value="lease" selected="@(contractType=="lease")">Locação</option>
+            <option value="consent" selected="@(contractType=="consent")">Consentimento</option>
+            <option value="amendment" selected="@(contractType=="amendment")">Aditivo genérico</option>
+        </select>
+    </label>
+
+    <label>@L.T("platform.tpl_purpose", _culture)
+        <input type="text" name="documentPurpose" value="@documentPurpose" maxlength="100"
+               placeholder="Ex: care_agreement, confidentiality, consent" />
+        <small class="muted">Usado para categorização e descoberta. Valores comuns: care_agreement, confidentiality, consent, service_agreement, supply, lease.</small>
+    </label>
+
+    <div class="form-actions-row">
+        <button type="submit" class="button button-primary">@L.T("platform.tpl_create_btn", _culture)</button>
+        <a class="button button-quiet" asp-action="Index">@L.T("platform.tpl_cancel", _culture)</a>
+    </div>
+</form>
+
+<div class="muted" style="margin-top:2rem;">
+    <h3>@L.T("platform.tpl_create_info_title", _culture)</h3>
+    <ul>
+        <li>@L.T("platform.tpl_create_info_1", _culture)</li>
+        <li>@L.T("platform.tpl_create_info_2", _culture)</li>
+        <li>@L.T("platform.tpl_create_info_3", _culture)</li>
+        <li>@L.T("platform.tpl_create_info_4", _culture)</li>
+    </ul>
+</div>

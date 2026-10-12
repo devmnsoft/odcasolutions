@@ -16,7 +16,7 @@
     };
 }
 <nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-controller="Home" asp-action="Index">Visão global</a><span>/</span><span aria-current="page">Biblioteca de modelos</span></nav>
-<header class="page-heading"><div><p class="eyebrow">Administração global</p><h1>Biblioteca de modelos</h1><p>Catálogo oficial mantido pela plataforma: nove modelos carregados por código e publicados para todas as organizações. Publicar e retirar exigem justificativa e ficam auditados.</p></div></header>
+<header class="page-heading"><div><p class="eyebrow">Administração global</p><h1>Biblioteca de modelos</h1><p>Catálogo oficial mantido pela plataforma: nove modelos carregados por código e publicados para todas as organizações. Publicar e retirar exigem justificativa e ficam auditados.</p></div><a class="button button-primary" asp-action="Create">+ Novo modelo</a></header>
 @if(TempData["Success"] is string ok){<div class="alert alert-success" role="status">@ok</div>}
 @if(TempData["Error"] is string err){<div class="alert alert-error" role="alert">@err</div>}
 <div class="responsive-table panel"><table>
