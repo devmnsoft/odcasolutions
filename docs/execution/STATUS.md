@@ -1,5 +1,14 @@
 # Status de execução
 
+## Incremento: Bloco F — homologação visual de PDFs (D-OC25) (13/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `08d14d5`. Build da solution (`Odca.sln`) **0W/0E**. Domain **355/355 PASS** (353 + 2 novos: separador final de tabela e quebra de token longo). Suíte de integração: **54 falhas / 116 aprovados / 170 — idêntica à linha de base ambiental** (zero nova regressão).
+- **Entrega**: `docs/execution/D-OC25_HOMOLOGACAO_PDF.md`. Homologação visual da camada de impressão pelos caminhos reais (login+MFA na API, minuta rica criada/salva/generada via endpoints, PDF baixado e inspecionado página a página via Ghostscript, overflow medido por pixels): **aprovada com 5 defeitos reais corrigidos** — (1) "Versao" sem acento e separador divergente na capa do preview; (2) título em maiúsculas só na capa (corpo/preview no caso autoral); (3) "SUMARIO" sem acento; (4) URL longa de 108 chars estourando a margem direita (medido x=1133 > margem 1127) → `Wrap()` divide tokens indivisíveis; (5) pipe fantasma após a última cela de cada linha de tabela. Renderer `odca-pdf-2` → **`odca-pdf-3`** (convenção D-A4: saída mudou ⇒ versão nova; artefatos antigos imutáveis e baixáveis). Integridade revalidada pós-fix: sha256 do download == banco, replay idêntico em bytes, `/Producer` certo. Achados operacionais documentados (413 de cota ao regenerar sem creditar o movimento `pdf:<versionId>`; gs no Windows exige barra direta em `-sOutputFile`).
+- **Bloco F encerrado** (QA+MFA, decisões versionadas/hashes, papéis/assinantes, formatos canônicos, i18n fim-a-fim, responsivo do sistema inteiro e agora a homologação visual de PDF). Próximos passos:
+  - Extensão natural: localização server-side da API (erros em PT hoje; códigos de erro estáveis) + bag para áreas fora do Estúdio.
+  - Backlog separado: incremento dedicado às 54 falhas pré-existentes da suíte de integração; dedup cosmética das regras duplicadas de `.studio-grid` em max-width:1100px.
+  - Sem push/merge/deploy automático.
+
 ## Incremento: Bloco F — responsivo 360/768/1440px do sistema inteiro (D-OC24) (13/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `598413e`. Build da solution (`Odca.sln`) **0W/0E**. Domain **353/353 PASS** · paridade de catálogos **4/4 PASS**. Suíte de integração: **54 falhas / 116 aprovados / 170 — idêntica à linha de base ambiental** (zero nova regressão).

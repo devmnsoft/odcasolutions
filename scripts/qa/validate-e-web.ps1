@@ -572,7 +572,7 @@ AND NOT EXISTS(SELECT 1 FROM odca.member_roles mr WHERE mr.tenant_id='$TC' AND m
             $pj = $pg.Body | ConvertFrom-Json
             Assert 'S1.pdf_completed' ($pg.Code -eq 200 -and (JGet $pj 'status') -eq 'completed' -and (JGet $pj 'replayed') -eq 'False') (Snip $pg.Body)
             $renderer = Sql "SELECT coalesce(pdf_renderer_version,'none')||'|'||coalesce(pdf_sha256,'none') FROM odca.generated_contract_versions WHERE id='$verA';"
-            Assert 'S1.renderer_odca_pdf_2' ($renderer.StartsWith('odca-pdf-2|')) $renderer
+            Assert 'S1.renderer_odca_pdf_3' ($renderer.StartsWith('odca-pdf-3|')) $renderer
             $shaDb = $renderer.Split('|')[1]
 
             $dl = Invoke-ApiBytes 'GET' ("$api/api/v1/organizations/$TC/studio/versions/$verA/pdf") $script:tok $null
@@ -580,11 +580,11 @@ AND NOT EXISTS(SELECT 1 FROM odca.member_roles mr WHERE mr.tenant_id='$TC' AND m
             $shaPdf = Sha256Hex $dl.Bytes
             Assert 'S1.pdf_sha256_confere_banco' ($shaPdf -eq $shaDb) ("pdf=$shaPdf db=$shaDb")
             $pdfText = [Text.Encoding]::GetEncoding('ISO-8859-1').GetString($dl.Bytes)
-            Assert 'S1.pdf_producer_odca_pdf_2' $pdfText.Contains('/Producer (ODCA Solutions (odca-pdf-2))') ''
+            Assert 'S1.pdf_producer_odca_pdf_3' $pdfText.Contains('/Producer (ODCA Solutions (odca-pdf-3))') ''
             Assert 'S1.pdf_info_presente' $pdfText.Contains('/Info ') ''
             Assert 'S1.pdf_capa_cnpj_congelado' $pdfText.Contains('CNPJ 12.345.678/0001-95') ''
             Assert 'S1.pdf_sem_cnpj_vivo' (-not $pdfText.Contains('VAL-E-TMP')) ''
-            Assert 'S1.pdf_sumario_presente' $pdfText.Contains('SUMARIO') ''
+            Assert 'S1.pdf_sumario_presente' $pdfText.Contains('SUMÁRIO') ''
             $cdMatch = [regex]::Match($pdfText, '/CreationDate \(D:(\d{14})Z\)')
             $createdAtUtc = Sql "SELECT to_char(created_at AT TIME ZONE 'UTC','YYYYMMDDHH24MISS') FROM odca.generated_contract_versions WHERE id='$verA';"
             Assert 'S1.pdf_creationdate_do_snapshot' ($cdMatch.Success -and $cdMatch.Groups[1].Value -eq $createdAtUtc) ("pdf=" + $cdMatch.Groups[1].Value + ' criado=' + $createdAtUtc)

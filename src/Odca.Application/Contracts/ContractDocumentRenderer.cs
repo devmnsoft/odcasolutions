@@ -9,7 +9,7 @@ namespace Odca.Application.Contracts;
 /// <summary>Creates safe derived representations of the validated canonical document.</summary>
 public static class ContractDocumentRenderer
 {
-    public const string PdfRendererVersion = "odca-pdf-2";
+    public const string PdfRendererVersion = "odca-pdf-3";
 
     /// <summary>Section D (D2): organization metadata used to build the cover page and the
     /// table of contents. They are emitted only when the document is "adequate" for them
@@ -51,11 +51,14 @@ public static class ContractDocumentRenderer
             lines.Add(new SimplePdf.Line(c.OrganizationName.ToUpperInvariant(), SimplePdf.Style.Org));
             if (!string.IsNullOrWhiteSpace(c.OrganizationTaxId)) lines.Add(new SimplePdf.Line("CNPJ " + FormatTaxId(c.OrganizationTaxId), SimplePdf.Style.MetaCentered));
             lines.Add(SimplePdf.Line.Blank()); lines.Add(SimplePdf.Line.Blank());
-            lines.Add(new SimplePdf.Line(c.Title.ToUpperInvariant(), SimplePdf.Style.Title));
-            lines.Add(new SimplePdf.Line($"Versao {c.Version} - Emitido em {c.IssuedAt.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)}", SimplePdf.Style.MetaCentered));
+            // D-OC25: título no caso autoral (o preview HTML não aplica caixa alta ao
+            // título da capa) e a linha de versão/data com acento e separador fiéis ao
+            // preview ("Versão N · Emitido em dd/MM/yyyy").
+            lines.Add(new SimplePdf.Line(c.Title, SimplePdf.Style.Title));
+            lines.Add(new SimplePdf.Line($"Versão {c.Version} · Emitido em {c.IssuedAt.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)}", SimplePdf.Style.MetaCentered));
             if (!string.IsNullOrWhiteSpace(c.Author)) lines.Add(new SimplePdf.Line("Emitido por " + c.Author, SimplePdf.Style.MetaCentered));
             lines.Add(SimplePdf.Line.PageBreak());
-            lines.Add(new SimplePdf.Line("SUMARIO", SimplePdf.Style.TocTitle));
+            lines.Add(new SimplePdf.Line("SUMÁRIO", SimplePdf.Style.TocTitle));
             foreach (var entry in CollectTocEntries(model)) lines.Add(new SimplePdf.Line("  " + entry, SimplePdf.Style.Normal));
             lines.Add(SimplePdf.Line.PageBreak());
         }
@@ -210,7 +213,25 @@ public static class ContractDocumentRenderer
             if (TryGetChildren(node, out var calloutChildren)) foreach (var calloutChild in calloutChildren) Flatten(calloutChild, values, definitions, lines, depth + 1, true);
             return;
         }
-        if (type is "paragraph" or "heading" or "listItem" or "tableRow")
+        if (type == "tableRow")
+        {
+            // D-OC25: separador "  |  " apenas ENTRE celas — antes havia um pipe
+            // fantasma após a última cela de cada linha.
+            var line = new StringBuilder();
+            if (TryGetChildren(node, out var cells))
+            {
+                var cellList = new List<JsonElement>();
+                foreach (var cell in cells) cellList.Add(cell);
+                for (var i = 0; i < cellList.Count; i++)
+                {
+                    CollectText(cellList[i], values, definitions, line);
+                    if (i + 1 < cellList.Count) line.Append("  |  ");
+                }
+            }
+            lines.Add(new SimplePdf.Line(line.ToString(), inCallout ? SimplePdf.Style.CalloutBody : SimplePdf.Style.Normal, inCallout));
+            return;
+        }
+        if (type is "paragraph" or "heading" or "listItem")
         {
             var line = new StringBuilder(type == "listItem" ? "\u2022 " : "");
             CollectText(node, values, definitions, line);
@@ -234,7 +255,6 @@ public static class ContractDocumentRenderer
         if (type == "text") line.Append(node.GetProperty("text").GetString());
         else if (type == "field") line.Append(Display(node.GetProperty("fieldId").GetString()!, values, definitions));
         else if (TryGetChildren(node, out var children)) foreach (var child in children) CollectText(child, values, definitions, line);
-        if (type == "tableCell") line.Append("  |  ");
     }
 
     private static string SafeHtmlEncode(string? text)
@@ -411,7 +431,19 @@ public static class ContractDocumentRenderer
             if (text.Length == 0) return [string.Empty];
             var usable = PageWidth - 2 * MarginX - indent;
             var width = Math.Max(8, (int)(usable / (size * 0.52)));
-            var words = text.Split(' ');
+            // D-OC25: palavras indivisíveis mais largas que a linha (URLs, identificadores
+            // longos) são divididas em blocos fixos para nunca estourar a margem direita.
+            var words = new List<string>();
+            foreach (var raw in text.Split(' '))
+            {
+                var word = raw;
+                while (word.Length > width)
+                {
+                    words.Add(word[..width]);
+                    word = word[width..];
+                }
+                words.Add(word);
+            }
             var result = new List<string>();
             var line = "";
             foreach (var word in words)

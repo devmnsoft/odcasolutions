@@ -241,7 +241,40 @@ public sealed class StructuredContractDocumentTests
         Assert.DoesNotContain("/CreationDate", textWithout);
         // Com capa a data vem do snapshot da versão, formatada D:yyyyMMddHHmmssZ.
         Assert.Contains("/CreationDate (D:20261009120000Z)", textWith);
-        Assert.Contains("SUMARIO", textWith);
+        Assert.Contains("SUMÁRIO", textWith);
+        // D-OC25: a capa é fiel ao preview HTML — sumário com acento, título no caso
+        // autoral (sem caixa alta) e linha de versão/data com acento e separador "·".
+        Assert.DoesNotContain("SUMARIO", textWith);
+        Assert.Contains("Versão 1 · Emitido em 09/10/2026", textWith);
+        Assert.DoesNotContain("CONTRATO", textWith);
+        Assert.Contains("Contrato", textWith);
+    }
+
+    [Fact]
+    public void PdfTableRowsDoNotEmitTrailingCellSeparator()
+    {
+        const string content = """{"type":"document","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"text","text":"Descrição"}]},{"type":"tableCell","content":[{"type":"text","text":"Atenção"}]}]}]}]}""";
+
+        var pdf = ContractDocumentRenderer.ToPdf(content, "[]", "[]", "Documento", 1);
+        var latin = System.Text.Encoding.Latin1.GetString(pdf);
+
+        Assert.Contains("Descrição  |  Atenção", latin);
+        Assert.DoesNotContain("Atenção  |", latin);
+    }
+
+    [Fact]
+    public void PdfWrapsLongUnbreakableTokensWithoutCrossingRightMargin()
+    {
+        var token = new string('a', 130);
+        var content = "{\"type\":\"document\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Consulta por protocolo em " + token + "\"}]}]}";
+
+        var pdf = ContractDocumentRenderer.ToPdf(content, "[]", "[]", "Documento", 1);
+        var latin = System.Text.Encoding.Latin1.GetString(pdf);
+
+        // Largura Normal (10pt, sem indentação) = 93 chars: o token vira blocos 93 + 37.
+        Assert.Contains("(" + token[..93] + ")", latin);
+        Assert.Contains("(" + token[93..] + ")", latin);
+        Assert.DoesNotContain("(" + token + ")", latin);
     }
 
     [Theory]
