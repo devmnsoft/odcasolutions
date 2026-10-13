@@ -29,7 +29,7 @@
     <header class="studio-head">
         <div><p class="eyebrow">@L.T("studio.e_studio_eyebrow",_culture)</p><h1>@Model.Title</h1><span class="status-chip">@L.T("studio.e_status_editing",_culture)</span></div>
         <div class="studio-actions">
-            <span><span class="save-state" data-save-state data-state="saved" role="status">@L.T("studio.ed_state_saved",_culture)</span><small data-saved-at> @Model.UpdatedAt.ToLocalTime().ToString("g")</small></span>
+            <span><span class="save-state" data-save-state data-state="saved" role="status">@L.T("studio.ed_state_saved",_culture)</span><small data-saved-at> @CulturedTime.DateTime(Model.UpdatedAt,_culture)</small></span>
             <button class="button button-link" type="button" data-save>@L.T("action.save",_culture)</button>
             <button class="button button-link" type="button" data-reading aria-pressed="false">@L.T("studio.e_btn_reading",_culture)</button>
             <button class="button button-link" type="button" data-open-compare>@L.T("studio.e_btn_compare",_culture)</button>

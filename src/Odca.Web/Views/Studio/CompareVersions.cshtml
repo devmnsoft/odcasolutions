@@ -21,7 +21,7 @@
                     @foreach (var v in Model.Versions)
                     {
                         <option value="@v.Id" selected="@(v.Id == Model.BeforeId)">
-                            v@v.Number · @(v.Author) · @v.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                            v@v.Number · @(v.Author) · @CulturedTime.DateTime(v.CreatedAt,culture)
                         </option>
                     }
                 </select>
@@ -31,7 +31,7 @@
                     @foreach (var v in Model.Versions)
                     {
                         <option value="@v.Id" selected="@(v.Id == Model.AfterId)">
-                            v@v.Number · @(v.Author) · @v.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                            v@v.Number · @(v.Author) · @CulturedTime.DateTime(v.CreatedAt,culture)
                         </option>
                     }
                 </select>
@@ -76,7 +76,7 @@
 
         <div class="card compare-summary">
             <h2>@L.T("studio.cmpv_summary", culture)</h2>
-            <p class="muted">@L.T("studio.cmpv_sum_between", culture) <strong>v@Model.Comparison.Before.Number</strong> (@Model.Comparison.Before.Author, @Model.Comparison.Before.CreatedAt.ToString("dd/MM/yyyy")) @L.T("studio.cmpv_sum_and", culture) <strong>v@Model.Comparison.After.Number</strong> (@Model.Comparison.After.Author, @Model.Comparison.After.CreatedAt.ToString("dd/MM/yyyy")).</p>
+            <p class="muted">@L.T("studio.cmpv_sum_between", culture) <strong>v@Model.Comparison.Before.Number</strong> (@Model.Comparison.Before.Author, @CulturedTime.Date(Model.Comparison.Before.CreatedAt,culture)) @L.T("studio.cmpv_sum_and", culture) <strong>v@Model.Comparison.After.Number</strong> (@Model.Comparison.After.Author, @CulturedTime.Date(Model.Comparison.After.CreatedAt,culture)).</p>
             <ul class="compare-counts">
                 @if (metadata.Count > 0) { <li><span class="badge badge-muted">@metadata.Count</span> @L.T("studio.cnt_metadata", culture)</li> }
                 @if (fields.Count > 0) { <li><span class="badge badge-info">@fields.Count</span> @L.T("studio.cnt_fields", culture)</li> }

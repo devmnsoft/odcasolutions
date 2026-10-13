@@ -1,5 +1,19 @@
 # Status de execução
 
+## Incremento: Bloco F — validação de formatos (data/moeda) do Estúdio (D-OC22) (13/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `0dbb640`. Build da solution **0W/0E**. Domain **353/353 PASS** (antes 302; +51 novos). Paridade de catálogos **4/4 PASS**. Suíte de integração em `odca_test_local`: **54 falhas / 116 aprovados / 170 — idêntica à linha de base ambiental** (zero nova regressão).
+- **Entrega**: `docs/execution/D-OC22_FORMATOS_DATA_MOEDA.md`. Formatos canônicos inalterados (data ISO `yyyy-MM-dd` com dia real de calendário; moeda não-negativa até 2 casas; número assinado até 6 casas; entrada pt-BR/invariante normalizada); o que mudou foi a **cobertura, a exibição de metadados e o encadeamento das mensagens**:
+  - **Matriz de testes** nova (`DateCurrencyValidationMatrixTests`, 51 fatos): datas bissextas/extremos, dias inexistentes (2026-02-31, 1900-02-29), formatos não-ISO, número (±, 6 casas, ambiguidade, leading zero), normalização pt-BR×invariante (`R$` sem espaço, NBSP, `+`, precisão), opcional malformado falha em Structural, mensagem do save com label do campo.
+  - **Timestamps de UI seguem a língua ativa** (helper novo `Odca.Web.Common.CulturedTime` = `ShortDatePattern` da cultura + 24h; fallback pt-BR): Index/Edit/Version/CompareVersions + chrome do `studio.js` (savedAt/histórico/comentários via `window.OdcaI18n.culture`). Camada de documento (papel/PDF) segue canônica pt-BR — preview == saída (D-OC5). Bônus: `ToLocalTime()` removido no Edit (divergia das demais views fora de UTC).
+  - **Mensagem por campo chega ao Estúdio**: `StudioController.Save` propaga `ValidationErrors` para `detail` (padrão do Generate) — antes o save devolvia `{title:null,detail:null}` e mostrava falha genérica. API: `JsonException` no save vira 400 `ValidationProblem` (antes 500 não mapeado).
+  - **Evidência fim-a-fim na aplicação real** (Web `:7144`, login + MFA REV21A, catálogo oficial instalado pelo endpoint real, minuta real): data `2026-02-31` → 422 "O valor de 'Início' é inválido."; moeda `1.250` → 422 "…ambíguo…"; `1.250,50`+`2026-12-31` → 200 com `1250.50`/`2026-12-31` persistidos. Nas 4 línguas: chrome inverte dia/mês só em en-US (`13/10` ↔ `10/13`, fr/es em ordem dia/mes) e o papel em en-US manteve `1.234,56` (pt-BR canônico; `1,234.56` ausente). Evidências em `%TEMP%\sv-format-evidence\`.
+- **Próximos passos**:
+  - Bloco F restante: responsivo 360/768/1440px, homologação visual de PDF.
+  - Extensão natural: localização server-side da API (erros em PT hoje; códigos de erro estáveis) + áreas fora do Estúdio (bag e regra de prefixo já prontos).
+  - Backlog separado: as 54 falhas pré-existentes da suíte de integração (ambiente/estado).
+  - Sem push/merge/deploy automático.
+
 ## Incremento: Bloco F — i18n fim-a-fim do Estúdio em 4 idiomas (D-OC21) (13/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `4b14f4a`. Build da solution **0W/0E**. Domain **302/302 PASS** · paridade de catálogos **4/4 PASS** (novo teste, sem banco). Suíte de integração em `odca_test_local`: **54 falhas / 116 aprovados / 170** — os 54 são a linha de base ambiental conhecida; os 116 = 112 prévios + 4 novos de paridade (zero nova regressão).
@@ -11,7 +25,7 @@
   - Dados ≠ UI: conteúdo-semente documental do novo modelo e nomes/sufixos persistidos permanecem como conteúdo; sufixo "— cópia editável" aplicado e checado pela mesma chave traduzida.
   - **Evidência fim-a-fim na aplicação real** (Web `:7144`, login admin + MFA REV21A, cookie `odca_lang` trocado na sessão): para cada uma das 4 culturas, Index e Modelos/novo renderizam os bytes traduzidos esperados, as negativas PT estão ausentes em en/fr/es (o check en-US falhava antes da conversão do controller e passou depois) e o bag inline nasce com a cultura certa (pt 34 929 / en 30 562 / fr 37 336 / es 33 766 chars); evidências HTML em `%TEMP%\sv-i18n-evidence\`. Grep final: resíduo PT apenas em comentários de código e conteúdo-semente documental.
 - **Próximos passos**:
-  - Bloco F restante: validação de formatos (data/moeda), responsivo 360/768/1440px, homologação visual de PDF.
+  - ~~Bloco F restante: validação de formatos (data/moeda)~~ — entregue em D-OC22. Restante: responsivo 360/768/1440px, homologação visual de PDF.
   - Extensão natural: localização server-side da API (erros em PT hoje) + áreas fora do Estúdio (bag e regra de prefixo já prontos).
   - Backlog separado: as 54 falhas pré-existentes da suíte de integração (ambiente/estado).
   - Sem push/merge/deploy automático.
