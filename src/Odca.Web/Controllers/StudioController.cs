@@ -12,8 +12,10 @@ namespace Odca.Web.Controllers;
 
 [Authorize]
 [Route("organizacoes/{tenantId:guid}/estudio")]
-public sealed class StudioController(OdcaApiClient api, IConfiguration configuration, IUserTenantContext tenantContext) : Controller
+public sealed class StudioController(OdcaApiClient api, IConfiguration configuration, IUserTenantContext tenantContext, Odca.Web.Localization.LocalizationService loc) : Controller
 {
+    private string? Culture => HttpContext.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] as string;
+    private string L(string key, params string[] args) => loc.T(key, Culture, args);
     [HttpGet("")]
     public async Task<IActionResult> Index(Guid tenantId,string? search,string? type,string? scope,string? purpose,Guid? patientId,int page=1,CancellationToken ct=default)
     {
@@ -21,10 +23,10 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         var access = await tenantContext.GetAccessAsync(tenantId, ct);
         var isSuperAdmin = User.IsInRole("SuperAdministrator") || User.HasClaim("role", "SuperAdministrator") || (User.FindFirst("permissions")?.Value.Contains("tenant:all") == true);
         var canManage = isSuperAdmin || (access?.HasPermission("tenant.templates.manage") ?? false);
-        ViewData["Title"]="Modelos de contrato";ViewData["TenantId"]=tenantId;ViewData["Search"]=search;ViewData["Type"]=type;ViewData["Scope"]=scope;ViewData["Purpose"]=purpose;ViewData["PatientId"]=patientId;
+        ViewData["Title"]=L("studio.cat_title");ViewData["TenantId"]=tenantId;ViewData["Search"]=search;ViewData["Type"]=type;ViewData["Scope"]=scope;ViewData["Purpose"]=purpose;ViewData["PatientId"]=patientId;
         ViewData["CanManageTemplates"]=canManage;
         var result=await GetCatalogAsync(token,tenantId,search,type,scope,purpose,page,ct);
-        if(!result.Succeeded){if(result.Status==ApiCallStatus.Forbidden)return Forbid();ViewData["LoadError"]=result.UserMessage("Não foi possível carregar o catálogo.");return View(new TemplateCatalogPage([],Math.Max(1,page),12,0));}
+        if(!result.Succeeded){if(result.Status==ApiCallStatus.Forbidden)return Forbid();ViewData["LoadError"]=result.UserMessage(L("studio.cat_load_error_title"));return View(new TemplateCatalogPage([],Math.Max(1,page),12,0));}
         return View(result.Value!);
     }
 
@@ -38,7 +40,7 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         if (!result.Succeeded)
         {
             if (result.Status == ApiCallStatus.Forbidden) return Forbid();
-            TempData["PreviewError"] = result.UserMessage("Não foi possível gerar a prévia.");
+            TempData["PreviewError"] = result.UserMessage(L("studio.ctl_preview_fail"));
             return RedirectToAction(nameof(Index), new { tenantId });
         }
         return View(result.Value!);
@@ -81,7 +83,7 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         if (string.IsNullOrWhiteSpace(model.Name))
         {
             model.TenantId = tenantId;
-            model.ErrorMessage = "O nome do modelo é obrigatório.";
+            model.ErrorMessage = L("studio.ctl_name_required");
             return View("TemplateEdit", model);
         }
 
@@ -93,7 +95,7 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         catch
         {
             model.TenantId = tenantId;
-            model.ErrorMessage = "O conteúdo do modelo possui formato JSON inválido.";
+            model.ErrorMessage = L("studio.ctl_content_json_invalid");
             return View("TemplateEdit", model);
         }
 
@@ -105,7 +107,7 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         catch
         {
             model.TenantId = tenantId;
-            model.ErrorMessage = "Os campos variáveis possuem formato JSON inválido.";
+            model.ErrorMessage = L("studio.ctl_fields_json_invalid");
             return View("TemplateEdit", model);
         }
 
@@ -114,11 +116,11 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         if (!r.Succeeded)
         {
             model.TenantId = tenantId;
-            model.ErrorMessage = r.ErrorDetail ?? r.ErrorTitle ?? "Não foi possível criar o modelo.";
+            model.ErrorMessage = r.ErrorDetail ?? r.ErrorTitle ?? L("studio.ctl_create_fail");
             return View("TemplateEdit", model);
         }
 
-        TempData["StudioSuccess"] = "Modelo criado como rascunho com sucesso! Você pode continuar editando ou publicá-lo.";
+        TempData["StudioSuccess"] = L("studio.ctl_create_draft_ok");
         return RedirectToAction(nameof(EditTemplate), new { tenantId, templateId = r.Value!.Id });
     }
 
@@ -128,8 +130,9 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
     {
         var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
         var name = string.IsNullOrWhiteSpace(model.Name) ? "Modelo" : model.Name.Trim();
-        if (!name.EndsWith("— cópia editável", StringComparison.Ordinal))
-            name = $"{name} — cópia editável";
+        var suffix = L("studio.copy_suffix");
+        if (!name.EndsWith(suffix, StringComparison.Ordinal))
+            name = $"{name} {suffix}";
         JsonElement contentEl;
         JsonElement fieldsEl;
         try
@@ -140,7 +143,7 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         catch (JsonException)
         {
             model.TenantId = tenantId;
-            model.ErrorMessage = "A cópia não foi criada porque o conteúdo enviado é inválido. O modelo original não foi alterado.";
+            model.ErrorMessage = L("studio.ctl_copy_invalid");
             return View("TemplateEdit", model);
         }
 
@@ -148,11 +151,11 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         if (!created.Succeeded)
         {
             model.TenantId = tenantId;
-            model.ErrorMessage = "A cópia não foi criada e o modelo original permanece como estava. " + (created.ErrorDetail ?? created.ErrorTitle ?? "Tente novamente.");
+            model.ErrorMessage = L("studio.ctl_copy_failed_prefix") + (created.ErrorDetail ?? created.ErrorTitle ?? L("common.ttry_again"));
             return View("TemplateEdit", model);
         }
 
-        TempData["StudioSuccess"] = "Cópia editável criada. O modelo original não foi alterado e continua recuperável.";
+        TempData["StudioSuccess"] = L("studio.ctl_copy_ok");
         return RedirectToAction(nameof(EditTemplate), new { tenantId, templateId = created.Value!.Id });
     }
 
@@ -167,7 +170,7 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         var r = await api.GetStudioTemplateAsync(token, tenantId, templateId, ct);
         if (!r.Succeeded || r.Value is null)
         {
-            TempData["StudioError"] = r.UserMessage("Não foi possível carregar o modelo.");
+            TempData["StudioError"] = r.UserMessage(L("studio.ctl_load_fail"));
             return RedirectToAction(nameof(Index), new { tenantId });
         }
 
@@ -205,7 +208,7 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         {
             model.TenantId = tenantId;
             model.TemplateId = templateId;
-            model.ErrorMessage = "O conteúdo do modelo possui formato JSON inválido.";
+            model.ErrorMessage = L("studio.ctl_content_json_invalid");
             return View("TemplateEdit", model);
         }
 
@@ -218,7 +221,7 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         {
             model.TenantId = tenantId;
             model.TemplateId = templateId;
-            model.ErrorMessage = "Os campos variáveis possuem formato JSON inválido.";
+            model.ErrorMessage = L("studio.ctl_fields_json_invalid");
             return View("TemplateEdit", model);
         }
 
@@ -239,12 +242,12 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
                 }
             }
             model.ErrorMessage = r.Status == ApiCallStatus.Conflict
-                ? "O modelo mudou em outra sessão. A edição local foi mantida e a versão do servidor está abaixo para comparação. A revisão deste formulário não foi substituída."
-                : r.ErrorDetail ?? r.ErrorTitle ?? "Não foi possível salvar o modelo.";
+                ? L("studio.ctl_conflict_edit")
+                : r.ErrorDetail ?? r.ErrorTitle ?? L("studio.ctl_save_fail");
             return View("TemplateEdit", model);
         }
 
-        TempData["StudioSuccess"] = "Rascunho do modelo atualizado com sucesso.";
+        TempData["StudioSuccess"] = L("studio.ctl_save_draft_ok");
         return RedirectToAction(nameof(EditTemplate), new { tenantId, templateId });
     }
 
@@ -259,7 +262,7 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
 
         if (effectiveRowVersion <= 0)
         {
-            TempData["StudioError"] = "Versão do modelo inválida ou desatualizada. Recarregue a página.";
+            TempData["StudioError"] = L("studio.ctl_stale_version");
             return RedirectToAction(nameof(EditTemplate), new { tenantId, templateId });
         }
 
@@ -275,7 +278,7 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
             {
                 model.TenantId = tenantId;
                 model.TemplateId = templateId;
-                model.ErrorMessage = "O conteúdo do modelo possui formato estruturado inválido.";
+                model.ErrorMessage = L("studio.ctl_content_structured_invalid");
                 return View("TemplateEdit", model);
             }
 
@@ -288,7 +291,7 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
             {
                 model.TenantId = tenantId;
                 model.TemplateId = templateId;
-                model.ErrorMessage = "Os campos variáveis possuem formato inválido.";
+                model.ErrorMessage = L("studio.ctl_fields_invalid");
                 return View("TemplateEdit", model);
             }
 
@@ -317,7 +320,7 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
                         model.ServerDescription = current.Value.Description;
                         model.ServerRowVersion = current.Value.RowVersion;
                     }
-                    model.ErrorMessage = "O modelo mudou em outra sessão e a publicação não foi realizada. A edição local foi mantida, inclusive a versão usada para gravar. A versão do servidor está disponível só para comparação.";
+                    model.ErrorMessage = L("studio.ctl_conflict_publish");
                     return View("TemplateEdit", model);
                 }
             }
@@ -325,7 +328,7 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
             {
                 model.TenantId = tenantId;
                 model.TemplateId = templateId;
-                model.ErrorMessage = "A etapa de salvamento falhou e a publicação não foi iniciada. " + (saveRes.ErrorDetail ?? saveRes.ErrorTitle ?? "Tente novamente. O conteúdo digitado permanece neste formulário.");
+                model.ErrorMessage = L("studio.ctl_save_failed_prefix") + (saveRes.ErrorDetail ?? saveRes.ErrorTitle ?? L("studio.ctl_retry_suffix"));
                 return View("TemplateEdit", model);
             }
         }
@@ -333,7 +336,7 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         var r = await api.PublishStudioTemplateAsync(token, tenantId, templateId, effectiveRowVersion, ct);
         if (r.Succeeded)
         {
-            TempData["StudioSuccess"] = $"Modelo publicado na revisão {r.Value!.RowVersion} e disponível para emissão.";
+            TempData["StudioSuccess"] = L("studio.ctl_publish_ok", r.Value!.RowVersion.ToString(System.Globalization.CultureInfo.InvariantCulture));
             return RedirectToAction(nameof(Index), new { tenantId });
         }
 
@@ -342,7 +345,7 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
             var current = await api.GetStudioTemplateAsync(token, tenantId, templateId, ct);
             if (current.Succeeded && current.Value!.Status == "published")
             {
-                TempData["StudioSuccess"] = $"O modelo já está publicado na revisão {current.Value.RowVersion}. Nenhuma publicação adicional foi feita.";
+                TempData["StudioSuccess"] = L("studio.ctl_already_published", current.Value.RowVersion.ToString(System.Globalization.CultureInfo.InvariantCulture));
                 return RedirectToAction(nameof(Index), new { tenantId });
             }
         }
@@ -351,9 +354,10 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         model.TemplateId = templateId;
         model.RowVersion = effectiveRowVersion;
         model.Status = "draft";
+        var errText = r.ErrorDetail ?? r.ErrorTitle ?? r.Status.ToString();
         model.ErrorMessage = savedBeforePublish
-            ? $"A etapa de salvamento foi concluída na revisão {effectiveRowVersion}. A etapa de publicação falhou: {r.ErrorDetail ?? r.ErrorTitle ?? r.Status.ToString()}. O modelo continua como rascunho. Publique novamente; o conteúdo salvo permanece neste formulário."
-            : $"A etapa de publicação falhou: {r.ErrorDetail ?? r.ErrorTitle ?? r.Status.ToString()}. O modelo não foi publicado.";
+            ? L("studio.ctl_publish_saved_but_failed", effectiveRowVersion.ToString(System.Globalization.CultureInfo.InvariantCulture), errText)
+            : L("studio.ctl_publish_failed", errText);
         return View("TemplateEdit", model);
     }
 
@@ -378,17 +382,17 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         var expectedVersion = rowVersion > 0 ? rowVersion : (long.TryParse(Request.Form["RowVersion"], out var parsed) ? parsed : 0);
         if (expectedVersion <= 0)
         {
-            TempData["StudioError"] = "Versão do modelo inválida ou desatualizada. Recarregue a página.";
+            TempData["StudioError"] = L("studio.ctl_stale_version");
             return RedirectToAction(nameof(EditTemplate), new { tenantId, templateId });
         }
         var r = await api.ArchiveStudioTemplateAsync(token, tenantId, templateId, expectedVersion, ct);
         if (r.Succeeded)
         {
-            TempData["StudioSuccess"] = "Modelo arquivado com sucesso.";
+            TempData["StudioSuccess"] = L("studio.ctl_archive_ok");
         }
         else
         {
-            TempData["StudioError"] = r.ErrorDetail ?? r.ErrorTitle ?? "Não foi possível arquivar o modelo.";
+            TempData["StudioError"] = r.ErrorDetail ?? r.ErrorTitle ?? L("studio.ctl_archive_fail");
         }
         return RedirectToAction(nameof(EditTemplate), new { tenantId, templateId });
     }
@@ -398,8 +402,8 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
         var result=await SendCatalogAsync<OfficialTemplateInstallResponse>(HttpMethod.Post,$"api/v1/organizations/{tenantId}/studio/templates/official",token,ct);
         TempData[result.Succeeded?"StudioSuccess":"StudioError"]=result.Succeeded
-            ? (result.Value!.Installed==0?$"Os {result.Value.AlreadyPresent} modelos oficiais já estavam disponíveis.":$"{result.Value.Installed} modelo(s) oficial(is) publicado(s) para esta organização.")
-            : result.ErrorDetail??result.ErrorTitle??"Não foi possível instalar a biblioteca oficial.";
+            ? (result.Value!.Installed==0?L("studio.ctl_lib_some_present",result.Value.AlreadyPresent.ToString(System.Globalization.CultureInfo.InvariantCulture)):L("studio.ctl_lib_installed",result.Value.Installed.ToString(System.Globalization.CultureInfo.InvariantCulture)))
+            : result.ErrorDetail??result.ErrorTitle??L("studio.ctl_lib_install_fail");
         return RedirectToAction(nameof(Index),new{tenantId,search,type,scope});
     }
     [HttpPost("modelos/{templateId:guid}/duplicar")]
@@ -408,15 +412,15 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
         var result=await SendCatalogAsync<TemplateMutationResponse>(HttpMethod.Post,$"api/v1/organizations/{tenantId}/studio/templates/{templateId}/duplicate",token,ct);
         TempData[result.Succeeded?"StudioSuccess":"StudioError"]=result.Succeeded
-            ?"Cópia particular criada como rascunho. Publique-a depois de revisar o conteúdo."
-            :result.ErrorDetail??result.ErrorTitle??"Não foi possível duplicar o modelo.";
+            ?L("studio.ctl_duplicate_ok")
+            :result.ErrorDetail??result.ErrorTitle??L("studio.ctl_duplicate_fail");
         return RedirectToAction(nameof(Index),new{tenantId,search,type,scope});
     }
     [HttpPost("minutas")]
     public async Task<IActionResult> Create(Guid tenantId,Guid templateId,string title,string? reference,Guid? patientId,string? contractorSource,CancellationToken ct)
     {
         var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var result=await api.CreateStudioDraftAsync(token,tenantId,new(templateId,title,reference,patientId,ContractorSource:string.IsNullOrWhiteSpace(contractorSource)?null:contractorSource.Trim()),ct);
-        if(!result.Succeeded){TempData["StudioError"]=result.ErrorDetail??result.ErrorTitle??"Não foi possível criar a minuta.";return RedirectToAction(nameof(Index),new{tenantId,patientId});}
+        if(!result.Succeeded){TempData["StudioError"]=result.ErrorDetail??result.ErrorTitle??L("studio.ctl_draft_create_fail");return RedirectToAction(nameof(Index),new{tenantId,patientId});}
         var id=result.Value.GetProperty("id").GetGuid();return RedirectToAction(nameof(Edit),new{tenantId,draftId=id});
     }
     [HttpGet("minutas/{draftId:guid}")]
@@ -425,8 +429,8 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var result=await api.GetStudioDraftAsync(token,tenantId,draftId,ct);
         if(!result.Succeeded)return result.Status==ApiCallStatus.NotFound?NotFound():View("~/Views/Shared/ServiceUnavailable.cshtml");
         var conference=await api.GetDocumentConferenceAsync(token,tenantId,draftId,ct);
-        ViewData["Title"]="Estúdio de contratos";ViewData["TenantId"]=tenantId;
-        ViewData["Conference"]=conference.Value;ViewData["ConferenceError"]=conference.Succeeded?null:conference.UserMessage("Não foi possível carregar a conferência documental.");
+        ViewData["Title"]=L("studio.title_edit_page");ViewData["TenantId"]=tenantId;
+        ViewData["Conference"]=conference.Value;ViewData["ConferenceError"]=conference.Succeeded?null:conference.UserMessage(L("studio.ctl_conference_load_fail"));
         return View(result.Value);
     }
     [HttpPost("minutas/{draftId:guid}/confirmar-paciente")]
@@ -435,8 +439,8 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();
         var result=await api.ConfirmDraftPatientAsync(token,tenantId,draftId,new(expectedDraftVersion,expectedPatientVersion,acceptedKeys??[],acknowledgeRemaining),ct);
         TempData[result.Succeeded?"StudioSuccess":"StudioError"]=result.Succeeded
-            ?"Atualização cadastral registrada. Valores manuais foram preservados e as confirmações dos campos atualizados foram invalidadas. Versões já emitidas não foram alteradas."
-            :result.UserMessage("O cadastro ou a minuta mudou novamente. Refaça a conferência.");
+            ?L("studio.ctl_registry_updated")
+            :result.UserMessage(L("studio.ctl_conference_redo"));
         return RedirectToAction(nameof(Edit),new{tenantId,draftId});
     }
     [HttpPut("minutas/{draftId:guid}")]
@@ -444,25 +448,25 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
     {var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Unauthorized();var r=await api.SaveStudioDraftAsync(token,tenantId,draftId,request,ct);return r.Succeeded?Json(r.Value):StatusCode(r.Status==ApiCallStatus.Conflict?409:422,new{title=r.ErrorTitle,detail=r.ErrorDetail});}
     [HttpPost("minutas/{draftId:guid}/gerar")]
     public async Task<IActionResult> Generate(Guid tenantId,Guid draftId,long expectedVersion,Guid idempotencyKey,CancellationToken ct)
-    {var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var r=await api.GenerateStudioVersionAsync(token,tenantId,draftId,new(idempotencyKey,expectedVersion),ct);string?pendings=null;if(!r.Succeeded&&r.ValidationErrors is not null&&r.ValidationErrors.TryGetValue("pendingFields",out var pendingFields)&&pendingFields.Length>0)pendings=string.Join(" ",pendingFields);TempData[r.Succeeded?"StudioSuccess":"StudioError"]=r.Succeeded?$"Versão {r.Value!.Number} gerada com hash {r.Value.Sha256[..12]}…":string.IsNullOrEmpty(pendings)?r.ErrorDetail??"Preencha e confirme os campos obrigatórios.":$"A geração foi bloqueada porque há campos obrigatórios pendentes. {pendings}";return RedirectToAction(nameof(Edit),new{tenantId,draftId});}
+    {var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var r=await api.GenerateStudioVersionAsync(token,tenantId,draftId,new(idempotencyKey,expectedVersion),ct);string?pendings=null;if(!r.Succeeded&&r.ValidationErrors is not null&&r.ValidationErrors.TryGetValue("pendingFields",out var pendingFields)&&pendingFields.Length>0)pendings=string.Join(" ",pendingFields);TempData[r.Succeeded?"StudioSuccess":"StudioError"]=r.Succeeded?L("studio.ctl_version_generated",r.Value!.Number.ToString(System.Globalization.CultureInfo.InvariantCulture),r.Value.Sha256[..12]):string.IsNullOrEmpty(pendings)?r.ErrorDetail??L("studio.ctl_fill_confirm_fields"):L("studio.ctl_generation_blocked",pendings);return RedirectToAction(nameof(Edit),new{tenantId,draftId});}
     [HttpGet("versoes/{versionId:guid}")]
     public async Task<IActionResult> Version(Guid tenantId,Guid versionId,int historyPage=1,int? beforeRevision=null,int? afterRevision=null,CancellationToken ct=default)
-    {var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var r=await api.GetStudioVersionAsync(token,tenantId,versionId,ct);if(r.Status==ApiCallStatus.Forbidden)return Forbid();if(r.Status==ApiCallStatus.NotFound)return NotFound();if(!r.Succeeded)return View("~/Views/Shared/ServiceUnavailable.cshtml");var reviewers=await api.GetStudioReviewersAsync(token,tenantId,ct);var history=await api.GetSignaturePreparationHistoryAsync(token,tenantId,versionId,historyPage,ct);ApiCallResult<SignatureCompositionComparison>? comparison=null;if(beforeRevision is int before&&afterRevision is int after)comparison=await api.CompareSignaturePreparationsAsync(token,tenantId,versionId,before,after,ct);ViewData["Title"]=$"{r.Value!.Title} · versão {r.Value.Number}";ViewData["TenantId"]=tenantId;ViewData["Reviewers"]=reviewers.Succeeded?reviewers.Value:Array.Empty<StudioReviewerItem>();ViewData["ReviewersError"]=reviewers.Succeeded?null:reviewers.UserMessage("Falha ao consultar responsáveis. Tente novamente.");ViewData["PreparationHistory"]=history.Value;ViewData["PreparationComparison"]=comparison?.Value;ViewData["PreparationComparisonError"]=comparison is {Succeeded:false}?comparison.UserMessage("Não foi possível comparar as composições selecionadas."):null;return View(r.Value);}
+    {var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var r=await api.GetStudioVersionAsync(token,tenantId,versionId,ct);if(r.Status==ApiCallStatus.Forbidden)return Forbid();if(r.Status==ApiCallStatus.NotFound)return NotFound();if(!r.Succeeded)return View("~/Views/Shared/ServiceUnavailable.cshtml");var reviewers=await api.GetStudioReviewersAsync(token,tenantId,ct);var history=await api.GetSignaturePreparationHistoryAsync(token,tenantId,versionId,historyPage,ct);ApiCallResult<SignatureCompositionComparison>? comparison=null;if(beforeRevision is int before&&afterRevision is int after)comparison=await api.CompareSignaturePreparationsAsync(token,tenantId,versionId,before,after,ct);ViewData["Title"]=L("studio.title_version_page",r.Value!.Title,r.Value.Number.ToString(System.Globalization.CultureInfo.InvariantCulture));ViewData["TenantId"]=tenantId;ViewData["Reviewers"]=reviewers.Succeeded?reviewers.Value:Array.Empty<StudioReviewerItem>();ViewData["ReviewersError"]=reviewers.Succeeded?null:reviewers.UserMessage(L("studio.ctl_reviewers_error"));ViewData["PreparationHistory"]=history.Value;ViewData["PreparationComparison"]=comparison?.Value;ViewData["PreparationComparisonError"]=comparison is {Succeeded:false}?comparison.UserMessage(L("studio.ctl_compare_compositions_fail")):null;return View(r.Value);}
     [HttpPost("versoes/{versionId:guid}/pdf")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> GeneratePdf(Guid tenantId,Guid versionId,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var r=await api.GenerateStudioPdfAsync(token,tenantId,versionId,ct);TempData[r.Succeeded?"StudioSuccess":"StudioError"]=r.Succeeded?"PDF final gerado e protegido no armazenamento privado.":r.UserMessage("Não foi possível gerar o PDF.");return RedirectToAction(nameof(Version),new{tenantId,versionId});}
+    public async Task<IActionResult> GeneratePdf(Guid tenantId,Guid versionId,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var r=await api.GenerateStudioPdfAsync(token,tenantId,versionId,ct);TempData[r.Succeeded?"StudioSuccess":"StudioError"]=r.Succeeded?L("studio.ctl_pdf_ok"):r.UserMessage(L("studio.ctl_pdf_generate_fail"));return RedirectToAction(nameof(Version),new{tenantId,versionId});}
     [HttpGet("versoes/{versionId:guid}/pdf")]
     public async Task<IActionResult> DownloadPdf(Guid tenantId,Guid versionId,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();using var response=await api.DownloadStudioPdfAsync(token,tenantId,versionId,ct);if(response.StatusCode==System.Net.HttpStatusCode.Forbidden)return Forbid();if(!response.IsSuccessStatusCode)return response.StatusCode==System.Net.HttpStatusCode.NotFound?NotFound():StatusCode((int)response.StatusCode);var bytes=await response.Content.ReadAsByteArrayAsync(ct);return File(bytes,"application/pdf",response.Content.Headers.ContentDisposition?.FileNameStar??"documento.pdf");}
     [HttpPost("versoes/{versionId:guid}/participantes")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SaveParticipants(Guid tenantId,Guid versionId,long expectedVersion,bool confirm,List<SignatureParticipantInput> participants,Guid? operationId,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var r=await api.SaveSignaturePreparationAsync(token,tenantId,versionId,new(expectedVersion,confirm,participants,operationId),ct);TempData[r.Succeeded?"StudioSuccess":"StudioError"]=r.Succeeded?(confirm?"Composição conferida. Nenhum envio ou assinatura foi realizado.":"Preparação salva para continuar depois."):r.UserMessage("Não foi possível salvar a preparação.");if(!r.Succeeded&&operationId is Guid key)TempData["PreparationOperationId"]=key.ToString();return RedirectToAction(nameof(Version),new{tenantId,versionId});}
+    public async Task<IActionResult> SaveParticipants(Guid tenantId,Guid versionId,long expectedVersion,bool confirm,List<SignatureParticipantInput> participants,Guid? operationId,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var r=await api.SaveSignaturePreparationAsync(token,tenantId,versionId,new(expectedVersion,confirm,participants,operationId),ct);TempData[r.Succeeded?"StudioSuccess":"StudioError"]=r.Succeeded?(confirm?L("studio.ctl_composition_confirmed"):L("studio.ctl_preparation_saved")):r.UserMessage(L("studio.ctl_preparation_save_fail"));if(!r.Succeeded&&operationId is Guid key)TempData["PreparationOperationId"]=key.ToString();return RedirectToAction(nameof(Version),new{tenantId,versionId});}
     [HttpPost("versoes/{versionId:guid}/participantes/reabrir")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ReopenParticipants(Guid tenantId,Guid versionId,long expectedVersion,string justification,Guid operationId,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var r=await api.ReopenSignaturePreparationAsync(token,tenantId,versionId,new(expectedVersion,justification,operationId),ct);TempData[r.Succeeded?"StudioSuccess":"StudioError"]=r.Succeeded?"Preparação reaberta. A confirmação anterior foi preservada no histórico e uma nova conferência será necessária.":r.UserMessage("Não foi possível reabrir a preparação.");if(!r.Succeeded){TempData["ReopenOperationId"]=operationId.ToString();TempData["ReopenJustification"]=justification;}return RedirectToAction(nameof(Version),new{tenantId,versionId});}
+    public async Task<IActionResult> ReopenParticipants(Guid tenantId,Guid versionId,long expectedVersion,string justification,Guid operationId,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var r=await api.ReopenSignaturePreparationAsync(token,tenantId,versionId,new(expectedVersion,justification,operationId),ct);TempData[r.Succeeded?"StudioSuccess":"StudioError"]=r.Succeeded?L("studio.ctl_reopened"):r.UserMessage(L("studio.ctl_reopen_fail"));if(!r.Succeeded){TempData["ReopenOperationId"]=operationId.ToString();TempData["ReopenJustification"]=justification;}return RedirectToAction(nameof(Version),new{tenantId,versionId});}
     [HttpPost("versoes/{versionId:guid}/solicitar-revisao")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RequestReview(Guid tenantId,Guid versionId,Guid reviewerId,DateTimeOffset? dueAt,string? instructions,Guid idempotencyKey,CancellationToken ct)
-    {var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var r=await api.SubmitStudioReviewAsync(token,tenantId,new(versionId,reviewerId,dueAt,instructions,idempotencyKey),ct);TempData[r.Succeeded?"StudioSuccess":"StudioError"]=r.Succeeded?"Solicitação registrada e notificação interna criada. Nenhum envio externo foi confirmado.":r.UserMessage("Não foi possível solicitar a revisão.");if(!r.Succeeded){TempData["ReviewReviewerId"]=reviewerId.ToString();TempData["ReviewDueAt"]=dueAt?.ToString("O");TempData["ReviewInstructions"]=instructions;TempData["ReviewIdempotencyKey"]=idempotencyKey.ToString();}return r.Succeeded?RedirectToAction("Detail","Reviews",new{tenantId,reviewId=r.Value!.ReviewId}):RedirectToAction(nameof(Version),new{tenantId,versionId});}
+    {var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var r=await api.SubmitStudioReviewAsync(token,tenantId,new(versionId,reviewerId,dueAt,instructions,idempotencyKey),ct);TempData[r.Succeeded?"StudioSuccess":"StudioError"]=r.Succeeded?L("studio.ctl_review_requested"):r.UserMessage(L("studio.ctl_review_request_fail"));if(!r.Succeeded){TempData["ReviewReviewerId"]=reviewerId.ToString();TempData["ReviewDueAt"]=dueAt?.ToString("O");TempData["ReviewInstructions"]=instructions;TempData["ReviewIdempotencyKey"]=idempotencyKey.ToString();}return r.Succeeded?RedirectToAction("Detail","Reviews",new{tenantId,reviewId=r.Value!.ReviewId}):RedirectToAction(nameof(Version),new{tenantId,versionId});}
     [HttpPost("minutas/{draftId:guid}/gerar-json")]
     public async Task<IActionResult> GenerateJson(Guid tenantId,Guid draftId,[FromBody]GenerateVersionRequest request,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Unauthorized();var r=await api.GenerateStudioVersionAsync(token,tenantId,draftId,request,ct);return r.Succeeded?Json(r.Value):StatusCode(r.Status==ApiCallStatus.Conflict?409:422,new{title=r.ErrorTitle,detail=r.ErrorDetail});}
     [HttpGet("revisores")]
@@ -482,7 +486,7 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         if(versionsResult.Status==ApiCallStatus.Forbidden)return Forbid();
         if(!versionsResult.Succeeded||versionsResult.Value is null){Response.StatusCode=503;return View("ServiceUnavailable");}
         var versions=versionsResult.Value.OrderByDescending(v=>v.Number).ThenByDescending(v=>v.CreatedAt).ToList();
-        ViewData["TenantId"]=tenantId;ViewData["DraftId"]=draftId;ViewData["Title"]="Comparar versões";
+        ViewData["TenantId"]=tenantId;ViewData["DraftId"]=draftId;ViewData["Title"]=L("studio.cmpv_title");
         if(versions.Count>=2)
         {
             var afterId=after??versions[0].Id;
@@ -518,7 +522,7 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
 
     private async Task<ApiCallResult<T>> SendCatalogAsync<T>(HttpMethod method,string path,string token,CancellationToken ct)
     {
-        var baseUrl=configuration["Api:BaseUrl"]??throw new InvalidOperationException("Api:BaseUrl não foi configurada.");
+        var baseUrl=configuration["Api:BaseUrl"]??throw new InvalidOperationException(L("studio.ctl_api_base_url_missing"));
         using var http=new HttpClient{BaseAddress=new Uri(baseUrl),Timeout=TimeSpan.FromSeconds(15)};
         using var message=new HttpRequestMessage(method,path);
         message.Headers.Authorization=new AuthenticationHeaderValue("Bearer",token);
@@ -529,6 +533,6 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
             return new ApiCallResult<T>(ApiCallStatus.Success,value);
         }
         var status=response.StatusCode==System.Net.HttpStatusCode.Forbidden?ApiCallStatus.Forbidden:response.StatusCode==System.Net.HttpStatusCode.Conflict?ApiCallStatus.Conflict:response.StatusCode==System.Net.HttpStatusCode.NotFound?ApiCallStatus.NotFound:ApiCallStatus.InvalidRequest;
-        return new ApiCallResult<T>(status,default,"Não foi possível concluir a operação.");
+        return new ApiCallResult<T>(status,default,L("studio.ctl_operation_incomplete"));
     }
 }

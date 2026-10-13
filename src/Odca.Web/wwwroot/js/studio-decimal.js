@@ -1,3 +1,5 @@
+const t = (window.OdcaI18n && window.OdcaI18n.t) || ((k) => k);
+
 export const isStoredCurrency = value => /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(value);
 
 export const formatCurrency = value => {
@@ -17,14 +19,14 @@ export const isPartialDecimal = raw => {
 export const parseDecimal = (raw, currency) => {
   let text = String(raw ?? "").trim().replace(/\u00A0/g, "");
   if (/^r\$/i.test(text)) text = text.slice(2).trim();
-  if (!text) return { ok: false, error: "Informe um valor." };
-  if (/[a-zA-Z\s]/.test(text)) return { ok: false, error: "Informe apenas o valor numérico." };
+  if (!text) return { ok: false, error: t('studio.dec_required') };
+  if (/[a-zA-Z\s]/.test(text)) return { ok: false, error: t('studio.dec_numeric_only') };
   let negative = false;
   if (text.startsWith("+")) text = text.slice(1);
   else if (text.startsWith("-")) { negative = true; text = text.slice(1); }
-  if (!text) return { ok: false, error: "O valor numérico é inválido." };
-  if (negative && currency) return { ok: false, error: "Valor monetário negativo não é permitido." };
-  if (!/^[\d.,]+$/.test(text)) return { ok: false, error: "O valor numérico é inválido." };
+  if (!text) return { ok: false, error: t('studio.dec_invalid') };
+  if (negative && currency) return { ok: false, error: t('studio.dec_negative_currency') };
+  if (!/^[\d.,]+$/.test(text)) return { ok: false, error: t('studio.dec_invalid') };
   const comma = text.lastIndexOf(",");
   const dot = text.lastIndexOf(".");
   let integer = "";
@@ -43,28 +45,28 @@ export const parseDecimal = (raw, currency) => {
     fraction = text.slice(split + 1);
     integer = groups(text.slice(0, split), groupSeparator);
     if (integer === null || fraction.length === 0 || text.indexOf(decimalSeparator) !== split)
-      return { ok: false, error: "Separe milhar e decimal de forma explícita." };
+      return { ok: false, error: t('studio.dec_separator_explicit') };
   } else if (comma < 0 && dot < 0) {
-    if (text.length > 1 && text.startsWith("0")) return { ok: false, error: "O valor numérico é inválido." };
+    if (text.length > 1 && text.startsWith("0")) return { ok: false, error: t('studio.dec_invalid') };
     integer = text;
   } else {
     const separator = comma >= 0 ? "," : ".";
     const pieces = text.split(separator);
     const tail = pieces.at(-1);
-    if (pieces.length === 2 && tail.length === 3) return { ok: false, error: "Valor ambíguo. Use 1.250,00 ou 1250.00." };
+    if (pieces.length === 2 && tail.length === 3) return { ok: false, error: t('studio.dec_ambiguous') };
     if (pieces.length === 2) {
       integer = pieces[0];
       fraction = tail;
       if (!/^\d+$/.test(integer) || !/^\d+$/.test(fraction) || integer.length === 0 || (integer.length > 1 && integer.startsWith("0")))
-        return { ok: false, error: "O valor numérico é inválido." };
+        return { ok: false, error: t('studio.dec_invalid') };
     } else {
       integer = groups(text, separator);
-      if (integer === null) return { ok: false, error: "O separador de milhar está inconsistente." };
+      if (integer === null) return { ok: false, error: t('studio.dec_group_inconsistent') };
     }
   }
-  if (integer.length > 1 && integer.startsWith("0")) return { ok: false, error: "O valor numérico é inválido." };
-  if (currency && fraction.length > 2) return { ok: false, error: "A moeda aceita no máximo duas casas decimais." };
-  if (!currency && fraction.length > 6) return { ok: false, error: "O número excede seis casas decimais." };
+  if (integer.length > 1 && integer.startsWith("0")) return { ok: false, error: t('studio.dec_invalid') };
+  if (currency && fraction.length > 2) return { ok: false, error: t('studio.dec_currency_max2') };
+  if (!currency && fraction.length > 6) return { ok: false, error: t('studio.dec_number_max6') };
   const canonical = currency
     ? `${integer}.${(fraction + "00").slice(0, 2)}`
     : `${negative ? "-" : ""}${integer}${fraction ? "." + fraction : ""}`;

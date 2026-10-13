@@ -7,16 +7,16 @@
 <section class="narrow">
     <header class="page-heading">
         <div>
-            <p class="eyebrow">Estúdio</p>
-            <h1>@L.T("action.filter", culture)</h1>
-            <p class="muted">Diferenças objetivas entre duas versões geradas da mesma minuta.</p>
+            <p class="eyebrow">@L.T("studio.eyebrow", culture)</p>
+            <h1>@L.T("studio.cmpv_title", culture)</h1>
+            <p class="muted">@L.T("studio.cmpv_subtitle", culture)</p>
         </div>
     </header>
 
     <div class="card">
         <form method="get" class="form-grid" action="/organizacoes/@tenantId/estudio/comparar-versoes">
             <input type="hidden" name="draftId" value="@draftId" />
-            <label>Versão anterior
+            <label>@L.T("studio.cmpv_before_label", culture)
                 <select name="before">
                     @foreach (var v in Model.Versions)
                     {
@@ -26,7 +26,7 @@
                     }
                 </select>
             </label>
-            <label>Versão posterior
+            <label>@L.T("studio.cmpv_after_label", culture)
                 <select name="after">
                     @foreach (var v in Model.Versions)
                     {
@@ -45,20 +45,20 @@
     @if (Model.Versions.Count < 2)
     {
         <div class="empty-state">
-            <strong>Sem o que comparar</strong>
-            <p>Gere ao menos duas versões da minuta para visualizar a diferença.</p>
+            <strong>@L.T("studio.cmpv_nothing_title", culture)</strong>
+            <p>@L.T("studio.cmpv_nothing_body", culture)</p>
         </div>
     }
     else if (Model.Comparison is null)
     {
         <div class="empty-state">
-            <strong>Selecione as versões</strong>
-            <p>Escolha uma versão anterior e uma posterior e clique em Comparar.</p>
+            <strong>@L.T("studio.cmpv_select_title", culture)</strong>
+            <p>@L.T("studio.cmpv_select_body", culture)</p>
         </div>
     }
     else if (Model.Comparison.Changes.Count == 0)
     {
-        <div class="card"><p class="success">Nenhuma diferença entre as versões selecionadas.</p></div>
+        <div class="card"><p class="success">@L.T("studio.cmpv_no_diff", culture)</p></div>
     }
     else
     {
@@ -70,35 +70,35 @@
         var textChanged = Model.Comparison.Changes.Where(c => c.Category is "text" or "formatting").ToList();
 
         <div class="callout callout-info" role="note">
-            <strong>Comparação objetiva.</strong>
-            <span>As diferenças abaixo são descritivas e não constituem análise jurídica de validade ou efeito contratual. Para avaliar implicações jurídicas, consulte o profissional responsável.</span>
+            <strong>@L.T("studio.cmpv_callout_title", culture)</strong>
+            <span>@L.T("studio.cmpv_callout_body", culture)</span>
         </div>
 
         <div class="card compare-summary">
-            <h2>Resumo</h2>
-            <p class="muted">Comparação entre <strong>v@Model.Comparison.Before.Number</strong> (@Model.Comparison.Before.Author, @Model.Comparison.Before.CreatedAt.ToString("dd/MM/yyyy")) e <strong>v@Model.Comparison.After.Number</strong> (@Model.Comparison.After.Author, @Model.Comparison.After.CreatedAt.ToString("dd/MM/yyyy")).</p>
+            <h2>@L.T("studio.cmpv_summary", culture)</h2>
+            <p class="muted">@L.T("studio.cmpv_sum_between", culture) <strong>v@Model.Comparison.Before.Number</strong> (@Model.Comparison.Before.Author, @Model.Comparison.Before.CreatedAt.ToString("dd/MM/yyyy")) @L.T("studio.cmpv_sum_and", culture) <strong>v@Model.Comparison.After.Number</strong> (@Model.Comparison.After.Author, @Model.Comparison.After.CreatedAt.ToString("dd/MM/yyyy")).</p>
             <ul class="compare-counts">
-                @if (metadata.Count > 0) { <li><span class="badge badge-muted">@metadata.Count</span> Metadados administrativos</li> }
-                @if (fields.Count > 0) { <li><span class="badge badge-info">@fields.Count</span> Campos e dados</li> }
-                @if (textAdded.Count > 0) { <li><span class="badge badge-success">@textAdded.Count</span> Texto adicionado</li> }
-                @if (textRemoved.Count > 0) { <li><span class="badge badge-danger">@textRemoved.Count</span> Texto removido</li> }
-                @if (textChanged.Count > 0) { <li><span class="badge badge-warning">@textChanged.Count</span> Texto modificado</li> }
+                @if (metadata.Count > 0) { <li><span class="badge badge-muted">@metadata.Count</span> @L.T("studio.cnt_metadata", culture)</li> }
+                @if (fields.Count > 0) { <li><span class="badge badge-info">@fields.Count</span> @L.T("studio.cnt_fields", culture)</li> }
+                @if (textAdded.Count > 0) { <li><span class="badge badge-success">@textAdded.Count</span> @L.T("studio.cnt_added", culture)</li> }
+                @if (textRemoved.Count > 0) { <li><span class="badge badge-danger">@textRemoved.Count</span> @L.T("studio.cnt_removed", culture)</li> }
+                @if (textChanged.Count > 0) { <li><span class="badge badge-warning">@textChanged.Count</span> @L.T("studio.cnt_changed", culture)</li> }
             </ul>
         </div>
 
         @if (metadata.Count > 0)
         {
             <div class="card">
-                <h2>Metadados administrativos</h2>
+                <h2>@L.T("studio.cnt_metadata", culture)</h2>
                 <div class="responsive-table"><table>
-                    <thead><tr><th>Campo</th><th>Anterior</th><th>Posterior</th></tr></thead>
+                    <thead><tr><th>@L.T("studio.th_field", culture)</th><th>@L.T("studio.th_previous", culture)</th><th>@L.T("studio.th_later", culture)</th></tr></thead>
                     <tbody>
                         @foreach (var ch in metadata)
                         {
                             <tr>
-                                <td data-label="Campo">@ch.Reference</td>
-                                <td data-label="Anterior" class="diff-before">@(ch.Before ?? "—")</td>
-                                <td data-label="Posterior" class="diff-after">@(ch.After ?? "—")</td>
+                                <td data-label="@L.T("studio.th_field", culture)">@ch.Reference</td>
+                                <td data-label="@L.T("studio.th_previous", culture)" class="diff-before">@(ch.Before ?? "—")</td>
+                                <td data-label="@L.T("studio.th_later", culture)" class="diff-after">@(ch.After ?? "—")</td>
                             </tr>
                         }
                     </tbody>
@@ -109,16 +109,16 @@
         @if (fields.Count > 0)
         {
             <div class="card">
-                <h2>Dados das partes, valores e prazos</h2>
+                <h2>@L.T("studio.sec_fields", culture)</h2>
                 <div class="responsive-table"><table>
-                    <thead><tr><th>Campo</th><th>Anterior</th><th>Posterior</th></tr></thead>
+                    <thead><tr><th>@L.T("studio.th_field", culture)</th><th>@L.T("studio.th_previous", culture)</th><th>@L.T("studio.th_later", culture)</th></tr></thead>
                     <tbody>
                         @foreach (var ch in fields)
                         {
                             <tr>
-                                <td data-label="Campo">@ch.Reference</td>
-                                <td data-label="Anterior" class="diff-before">@(ch.Before ?? "—")</td>
-                                <td data-label="Posterior" class="diff-after">@(ch.After ?? "—")</td>
+                                <td data-label="@L.T("studio.th_field", culture)">@ch.Reference</td>
+                                <td data-label="@L.T("studio.th_previous", culture)" class="diff-before">@(ch.Before ?? "—")</td>
+                                <td data-label="@L.T("studio.th_later", culture)" class="diff-after">@(ch.After ?? "—")</td>
                             </tr>
                         }
                     </tbody>
@@ -129,35 +129,35 @@
         @if (textAdded.Count > 0 || textRemoved.Count > 0 || textChanged.Count > 0)
         {
             <div class="card">
-                <h2>Conteúdo documental</h2>
+                <h2>@L.T("studio.sec_content", culture)</h2>
                 <div class="responsive-table"><table>
-                    <thead><tr><th>Tipo</th><th>Referência</th><th>Anterior</th><th>Posterior</th></tr></thead>
+                    <thead><tr><th>@L.T("studio.th_type", culture)</th><th>@L.T("studio.th_reference", culture)</th><th>@L.T("studio.th_previous", culture)</th><th>@L.T("studio.th_later", culture)</th></tr></thead>
                     <tbody>
                         @foreach (var ch in textAdded)
                         {
                             <tr class="row-added">
-                                <td data-label="Tipo"><span class="badge badge-success">Adicionado</span></td>
-                                <td data-label="Referência">@ch.Reference</td>
-                                <td data-label="Anterior">—</td>
-                                <td data-label="Posterior" class="diff-after">@ch.After</td>
+                                <td data-label="@L.T("studio.th_type", culture)"><span class="badge badge-success">@L.T("studio.badge_added", culture)</span></td>
+                                <td data-label="@L.T("studio.th_reference", culture)">@ch.Reference</td>
+                                <td data-label="@L.T("studio.th_previous", culture)">—</td>
+                                <td data-label="@L.T("studio.th_later", culture)" class="diff-after">@ch.After</td>
                             </tr>
                         }
                         @foreach (var ch in textRemoved)
                         {
                             <tr class="row-removed">
-                                <td data-label="Tipo"><span class="badge badge-danger">Removido</span></td>
-                                <td data-label="Referência">@ch.Reference</td>
-                                <td data-label="Anterior" class="diff-before">@ch.Before</td>
-                                <td data-label="Posterior">—</td>
+                                <td data-label="@L.T("studio.th_type", culture)"><span class="badge badge-danger">@L.T("studio.badge_removed", culture)</span></td>
+                                <td data-label="@L.T("studio.th_reference", culture)">@ch.Reference</td>
+                                <td data-label="@L.T("studio.th_previous", culture)" class="diff-before">@ch.Before</td>
+                                <td data-label="@L.T("studio.th_later", culture)">—</td>
                             </tr>
                         }
                         @foreach (var ch in textChanged)
                         {
                             <tr class="row-modified">
-                                <td data-label="Tipo"><span class="badge badge-warning">Modificado</span></td>
-                                <td data-label="Referência">@ch.Reference</td>
-                                <td data-label="Anterior" class="diff-before">@(ch.Before ?? "—")</td>
-                                <td data-label="Posterior" class="diff-after">@(ch.After ?? "—")</td>
+                                <td data-label="@L.T("studio.th_type", culture)"><span class="badge badge-warning">@L.T("studio.badge_modified", culture)</span></td>
+                                <td data-label="@L.T("studio.th_reference", culture)">@ch.Reference</td>
+                                <td data-label="@L.T("studio.th_previous", culture)" class="diff-before">@(ch.Before ?? "—")</td>
+                                <td data-label="@L.T("studio.th_later", culture)" class="diff-after">@(ch.After ?? "—")</td>
                             </tr>
                         }
                     </tbody>

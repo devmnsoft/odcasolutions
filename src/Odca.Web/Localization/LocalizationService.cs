@@ -26,16 +26,26 @@ public sealed class LocalizationService
 
     public IReadOnlyList<string> SupportedLanguages => _supportedLanguages;
 
-    public string T(string key, string? culture = null)
+    /// <summary>Returns the whole resolved catalog for a supported culture (no fallback merge needed: catalogs are parity-checked).</summary>
+    public IReadOnlyDictionary<string, string> Catalog(string? culture)
+    {
+        var code = ResolveCultureCode(culture) ?? "pt-BR";
+        return _catalogs.TryGetValue(code, out var catalog) ? catalog : _catalogs["pt-BR"];
+    }
+
+    public string T(string key, string? culture = null, params string[] args)
     {
         var code = ResolveCultureCode(culture) ?? "pt-BR";
         if (_catalogs.TryGetValue(code, out var catalog) && catalog.TryGetValue(key, out var value))
-            return value;
+            return ApplyArgs(value, args);
         // Fallback to pt-BR
         if (_catalogs.TryGetValue("pt-BR", out var fallback) && fallback.TryGetValue(key, out var fallbackValue))
-            return fallbackValue;
+            return ApplyArgs(fallbackValue, args);
         return key;
     }
+
+    private static string ApplyArgs(string value, string[] args)
+        => args.Length == 0 ? value : string.Format(CultureInfo.InvariantCulture, value, args);
 
     public static string? ResolveCultureCode(string? preferred)
     {

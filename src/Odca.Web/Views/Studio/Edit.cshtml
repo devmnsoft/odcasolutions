@@ -3,19 +3,21 @@
 @{
     var tenantId = (Guid)ViewData["TenantId"]!;
     var conference = ViewData["Conference"] as Odca.Contracts.Studio.DocumentConferenceResponse;
-    ViewData["OrganizationName"] = "Organização selecionada";
+    var _culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["OrganizationName"] = L.T("common.org_selected", _culture);
 }
-<ol class="journey" aria-label="Etapas do documento">
-    <li class="is-done"><span>1</span> Modelo</li>
-    <li class="is-done"><span>2</span> Partes</li>
-    <li class="@(conference?.PatientReconfirmationRequired == true ? null : "is-current")"><span>3</span> Campos</li>
-    <li class="@(conference?.PatientReconfirmationRequired == true ? "is-current" : null)"><span>4</span> Conferência</li>
-    <li><span>5</span> Revisão e emissão</li>
+@await Html.PartialAsync("_I18nBag")
+<ol class="journey" aria-label="@L.T("studio.e_journey_aria",_culture)">
+    <li class="is-done"><span>1</span> @L.T("studio.e_journey_model",_culture)</li>
+    <li class="is-done"><span>2</span> @L.T("studio.e_journey_parties",_culture)</li>
+    <li class="@(conference?.PatientReconfirmationRequired == true ? null : "is-current")"><span>3</span> @L.T("studio.e_journey_fields",_culture)</li>
+    <li class="@(conference?.PatientReconfirmationRequired == true ? "is-current" : null)"><span>4</span> @L.T("studio.e_journey_conference",_culture)</li>
+    <li><span>5</span> @L.T("studio.e_journey_review",_culture)</li>
 </ol>
-<p class="next-step">Próximo passo: @(conference?.CanGenerate == true ? "gerar a versão e encaminhar à revisão." : conference?.PatientReconfirmationRequired == true ? "comparar o cadastro e escolher quais valores atualizar." : "preencher e confirmar os campos pendentes. O estado do salvamento aparece ao lado.")</p>
+<p class="next-step">@L.T("studio.e_next_prefix",_culture) @(conference?.CanGenerate == true ? L.T("studio.e_next_generate",_culture) : conference?.PatientReconfirmationRequired == true ? L.T("studio.e_next_conference",_culture) : L.T("studio.e_next_fields",_culture))</p>
 @if (Model.RequiresOdcaApproval)
 {
-    <div class="error" role="alert" data-pending-odca-approval><strong>Modelo cirúrgico pendente de aprovação ODCA.</strong> Esta minuta pode ser editada e gerada, mas o preparativo de assinatura permanece bloqueado até a ODCA liberar o modelo (plano Enterprise · seção C do plano).</div>
+    <div class="error" role="alert" data-pending-odca-approval><strong>@L.T("studio.e_odca_title",_culture)</strong> @L.T("studio.e_odca_body",_culture)</div>
 }
 <div class="studio" data-studio data-save-url="@Url.Action("Save",new{tenantId,draftId=Model.Id})"
      data-draft-url="@Url.Action("Edit",new{tenantId,draftId=Model.Id})"
@@ -25,13 +27,13 @@
      data-generate-url="@Url.Action("GenerateJson",new{tenantId,draftId=Model.Id})" data-reviewers-url="@Url.Action("Reviewers",new{tenantId})" data-submit-url="@Url.Action("SubmitReview",new{tenantId})"
      data-checklist-url="@Url.Action("Checklist",new{tenantId,draftId=Model.Id})" data-version="@Model.Version">
     <header class="studio-head">
-        <div><p class="eyebrow">Estúdio de contratos · Minuta</p><h1>@Model.Title</h1><span class="status-chip">Em edição</span></div>
+        <div><p class="eyebrow">@L.T("studio.e_studio_eyebrow",_culture)</p><h1>@Model.Title</h1><span class="status-chip">@L.T("studio.e_status_editing",_culture)</span></div>
         <div class="studio-actions">
-            <span><span class="save-state" data-save-state data-state="saved" role="status">Salvo</span><small data-saved-at> @Model.UpdatedAt.ToLocalTime().ToString("g")</small></span>
-            <button class="button button-link" type="button" data-save>Salvar</button>
-            <button class="button button-link" type="button" data-reading aria-pressed="false">Modo de leitura</button>
-            <button class="button button-link" type="button" data-open-compare>Comparar</button>
-            <button class="button button-primary" type="button" data-open-checklist>Encaminhar à revisão</button>
+            <span><span class="save-state" data-save-state data-state="saved" role="status">@L.T("studio.ed_state_saved",_culture)</span><small data-saved-at> @Model.UpdatedAt.ToLocalTime().ToString("g")</small></span>
+            <button class="button button-link" type="button" data-save>@L.T("action.save",_culture)</button>
+            <button class="button button-link" type="button" data-reading aria-pressed="false">@L.T("studio.e_btn_reading",_culture)</button>
+            <button class="button button-link" type="button" data-open-compare>@L.T("studio.e_btn_compare",_culture)</button>
+            <button class="button button-primary" type="button" data-open-checklist>@L.T("studio.e_btn_submit_review",_culture)</button>
         </div>
     </header>
     @if (TempData["StudioSuccess"] is string ok) { <div class="success">@ok</div> }
@@ -40,49 +42,49 @@
     @if (conference is not null)
     {
         <section class="card" aria-labelledby="conference-title">
-            <div class="section-heading"><div><p class="eyebrow">Conferência antes da geração</p><h2 id="conference-title">Dados utilizados no documento</h2></div><span class="status-chip">@(conference.CanGenerate?"Pronto para gerar":"Conferência pendente")</span></div>
+            <div class="section-heading"><div><p class="eyebrow">@L.T("studio.conf_eyebrow",_culture)</p><h2 id="conference-title">@L.T("studio.conf_title",_culture)</h2></div><span class="status-chip">@(conference.CanGenerate?L.T("studio.conf_ready",_culture):L.T("studio.conf_pending",_culture))</span></div>
             <div class="summary-grid">
-                <article><span>Paciente</span><strong>@(conference.PatientName??"Não vinculado")</strong></article>
-                <article><span>Representante</span><strong>@(conference.RepresentativeName??"Não aplicável")</strong></article>
-                <article><span>Organização</span><strong>@conference.Organization</strong></article>
-                <article><span>Modelo / versão</span><strong>@conference.Template · v@(conference.TemplateVersion)</strong></article>
-                <article><span>Tipo documental</span><strong>@conference.DocumentType</strong></article>
-                <article><span>Revisão</span><strong>@conference.ReviewStatus</strong></article>
+                <article><span>@L.T("studio.conf_patient",_culture)</span><strong>@(conference.PatientName??L.T("studio.conf_none_linked",_culture))</strong></article>
+                <article><span>@L.T("studio.conf_representative",_culture)</span><strong>@(conference.RepresentativeName??L.T("studio.conf_na",_culture))</strong></article>
+                <article><span>@L.T("studio.conf_organization",_culture)</span><strong>@conference.Organization</strong></article>
+                <article><span>@L.T("studio.conf_template_label",_culture)</span><strong>@conference.Template · v@(conference.TemplateVersion)</strong></article>
+                <article><span>@L.T("studio.conf_doc_type",_culture)</span><strong>@conference.DocumentType</strong></article>
+                <article><span>@L.T("studio.conf_review",_culture)</span><strong>@conference.ReviewStatus</strong></article>
             </div>
-            <h3>Pendências</h3>
-            @if (conference.PendingItems.Count == 0) { <p class="success" role="status">Nenhuma pendência impeditiva. Próxima ação: gerar a versão.</p> }
-            else { <p class="muted">Erros que bloqueiam a geração da versão:</p> <ul class="check-list">@foreach(var item in conference.PendingItems){<li><strong>@item.Message</strong><br/><span>@item.Reason</span><br/><small>Corrigir em: @item.CorrectionTarget · @(item.CanCorrect?"Você possui permissão para corrigir.":"Solicite a uma pessoa autorizada.")</small></li>}</ul> }
-            @if (conference.Warnings is not null && conference.Warnings.Count > 0) { <h4>Alertas e informações</h4> <p class="muted">Avisos que não bloqueiam a emissão; avalie antes de gerar.</p> <ul class="check-list">@foreach(var item in conference.Warnings){<li><strong>@item.Message</strong><br/><span>@item.Reason</span><br/><small>Origem: @item.CorrectionTarget</small></li>}</ul> }
+            <h3>@L.T("studio.conf_pending_h",_culture)</h3>
+            @if (conference.PendingItems.Count == 0) { <p class="success" role="status">@L.T("studio.conf_pending_ok",_culture)</p> }
+            else { <p class="muted">@L.T("studio.conf_pending_errors",_culture)</p> <ul class="check-list">@foreach(var item in conference.PendingItems){<li><strong>@item.Message</strong><br/><span>@item.Reason</span><br/><small>@L.T("studio.conf_correct_at",_culture) @item.CorrectionTarget · @(item.CanCorrect?L.T("studio.conf_can_correct",_culture):L.T("studio.conf_ask_authorized",_culture))</small></li>}</ul> }
+            @if (conference.Warnings is not null && conference.Warnings.Count > 0) { <h4>@L.T("studio.conf_warnings_h",_culture)</h4> <p class="muted">@L.T("studio.conf_warnings_p",_culture)</p> <ul class="check-list">@foreach(var item in conference.Warnings){<li><strong>@item.Message</strong><br/><span>@item.Reason</span><br/><small>@L.T("studio.conf_warning_origin",_culture) @item.CorrectionTarget</small></li>}</ul> }
             @if (conference.PatientReconfirmationRequired)
             {
-                <h3>Reconfirmação cadastral</h3>
-                @if(conference.PatientChanges.Count==0){<p>O cadastro recebeu uma nova versão, mas os dados exibidos no documento continuam iguais. Confirme explicitamente a versão atual para prosseguir.</p>}
+                <h3>@L.T("studio.conf_reconf_h",_culture)</h3>
+                @if(conference.PatientChanges.Count==0){<p>@L.T("studio.conf_reconf_same",_culture)</p>}
                 else {
-                    var changeLabels = new Dictionary<string, string>(StringComparer.Ordinal) { ["fullName"] = "Nome", ["preferredName"] = "Nome social", ["birthDate"] = "Nascimento", ["email"] = "E-mail", ["phone"] = "Telefone", ["address"] = "Endereço", ["identifierType"] = "Tipo de documento", ["identifierValue"] = "Documento", ["representative"] = "Representante" };
-                    <p>Marque somente os valores que devem substituir o preenchimento automático. Valores manuais permanecem. A confirmação dos campos atualizados será invalidada. Versões já emitidas não mudam.</p>
-                    <div class="responsive-table"><table><thead><tr><th>Atualizar</th><th>Dado</th><th>Na minuta</th><th>Cadastro atual</th></tr></thead><tbody>@foreach(var change in conference.PatientChanges){<tr><td><input type="checkbox" name="acceptedKeys" value="@change.Field" form="patient-refresh" aria-label="Atualizar @(changeLabels.GetValueOrDefault(change.Field, change.Field))" /></td><td>@(changeLabels.GetValueOrDefault(change.Field, change.Field))</td><td>@(change.Before??"Não informado")</td><td>@(change.After??"Não informado")</td></tr>}</tbody></table></div>
+                    var changeLabels = new Dictionary<string, string>(StringComparer.Ordinal) { ["fullName"] = L.T("studio.fl_full_name",_culture), ["preferredName"] = L.T("studio.fl_preferred_name",_culture), ["birthDate"] = L.T("studio.fl_birth_date",_culture), ["email"] = L.T("studio.fl_email",_culture), ["phone"] = L.T("studio.fl_phone",_culture), ["address"] = L.T("studio.fl_address",_culture), ["identifierType"] = L.T("studio.fl_id_type",_culture), ["identifierValue"] = L.T("studio.fl_id_value",_culture), ["representative"] = L.T("studio.fl_representative",_culture) };
+                    <p>@L.T("studio.conf_reconf_intro",_culture)</p>
+                    <div class="responsive-table"><table><thead><tr><th>@L.T("studio.conf_th_update",_culture)</th><th>@L.T("studio.conf_th_data",_culture)</th><th>@L.T("studio.conf_th_draft",_culture)</th><th>@L.T("studio.conf_th_registry",_culture)</th></tr></thead><tbody>@foreach(var change in conference.PatientChanges){<tr><td><input type="checkbox" name="acceptedKeys" value="@change.Field" form="patient-refresh" aria-label="@L.T("studio.conf_th_update",_culture) @(changeLabels.GetValueOrDefault(change.Field, change.Field))" /></td><td>@(changeLabels.GetValueOrDefault(change.Field, change.Field))</td><td>@(change.Before??L.T("studio.conf_not_informed",_culture))</td><td>@(change.After??L.T("studio.conf_not_informed",_culture))</td></tr>}</tbody></table></div>
                 }
-                @if(conference.CanEdit && conference.CurrentPatientVersion is long currentVersion){<form id="patient-refresh" method="post" asp-action="ConfirmPatient" asp-route-tenantId="@tenantId" asp-route-draftId="@Model.Id">@Html.AntiForgeryToken()<input type="hidden" name="expectedDraftVersion" value="@conference.DraftVersion"/><input type="hidden" name="expectedPatientVersion" value="@currentVersion"/>@if(conference.PatientChanges.Count>0){<label class="check-line"><input type="checkbox" name="acknowledgeRemaining" value="true" required /> Confirmo que os itens não marcados permanecem como estão na minuta.</label>}<button class="button button-primary" type="submit">Atualizar dados selecionados</button></form>}
+                @if(conference.CanEdit && conference.CurrentPatientVersion is long currentVersion){<form id="patient-refresh" method="post" asp-action="ConfirmPatient" asp-route-tenantId="@tenantId" asp-route-draftId="@Model.Id">@Html.AntiForgeryToken()<input type="hidden" name="expectedDraftVersion" value="@conference.DraftVersion"/><input type="hidden" name="expectedPatientVersion" value="@currentVersion"/>@if(conference.PatientChanges.Count>0){<label class="check-line"><input type="checkbox" name="acknowledgeRemaining" value="true" required /> @L.T("studio.conf_ack_checkbox",_culture)</label>}<button class="button button-primary" type="submit">@L.T("studio.conf_update_btn",_culture)</button></form>}
             }
-            <details class="help"><summary>Como usar</summary><p>Resolva as pendências nos locais indicados. Se o paciente mudou, compare os dados e confirme a versão atual. Uma nova alteração antes da geração será recusada pelo servidor.</p></details>
+            <details class="help"><summary>@L.T("common.how_to_use",_culture)</summary><p>@L.T("studio.conf_help_body",_culture)</p></details>
         </section>
     }
-    <div class="conflict-banner" data-conflict hidden role="alert"><strong>Existe uma revisão mais recente no servidor.</strong> Seu conteúdo local foi preservado. <a href="@Url.Action("Edit",new{tenantId,draftId=Model.Id})" target="_blank" rel="noopener">Consultar versão do servidor</a> <button type="button" class="button button-link" data-retry>Repetir após recuperar</button></div>
+    <div class="conflict-banner" data-conflict hidden role="alert"><strong>@L.T("studio.cb_title",_culture)</strong> @L.T("studio.cb_body",_culture) <a href="@Url.Action("Edit",new{tenantId,draftId=Model.Id})" target="_blank" rel="noopener">@L.T("studio.cb_link",_culture)</a> <button type="button" class="button button-link" data-retry>@L.T("studio.cb_retry",_culture)</button></div>
     <div class="studio-grid">
-        <aside class="studio-side"><h2>Seções</h2><nav data-sections aria-label="Seções do documento"></nav><button class="side-link" type="button" data-tab="history">Histórico de versões</button><details class="help"><summary>Como usar</summary><p>Edite o texto, confirme campos e acompanhe o salvamento. Compare retratos imutáveis antes de encaminhar.</p></details></aside>
+        <aside class="studio-side"><h2>@L.T("studio.side_sections",_culture)</h2><nav data-sections aria-label="@L.T("studio.side_sections_aria",_culture)"></nav><button class="side-link" type="button" data-tab="history">@L.T("studio.side_history",_culture)</button><details class="help"><summary>@L.T("common.how_to_use",_culture)</summary><p>@L.T("studio.side_help_body",_culture)</p></details></aside>
         <main class="studio-document">
-            <div class="editor-toolbar" aria-label="Ferramentas de edição"><button type="button" data-command="bold"><strong>N</strong></button><button type="button" data-command="italic"><em>I</em></button><button type="button" data-command="underline"><u>S</u></button><button type="button" data-add="paragraph">Parágrafo</button><button type="button" data-add="heading">Título</button><button type="button" data-add="pageBreak">Quebra de página</button><label>Zoom<select data-zoom><option>100</option><option>125</option><option>150</option></select></label></div>
-            <div class="paper" data-document aria-label="Documento estruturado"></div>
+            <div class="editor-toolbar" aria-label="@L.T("studio.tb_aria",_culture)"><button type="button" data-command="bold"><strong>N</strong></button><button type="button" data-command="italic"><em>I</em></button><button type="button" data-command="underline"><u>S</u></button><button type="button" data-add="paragraph">@L.T("studio.tb_paragraph",_culture)</button><button type="button" data-add="heading">@L.T("studio.tb_heading",_culture)</button><button type="button" data-add="pageBreak">@L.T("studio.tb_pagebreak",_culture)</button><label>@L.T("studio.tb_zoom",_culture)<select data-zoom><option>100</option><option>125</option><option>150</option></select></label></div>
+            <div class="paper" data-document aria-label="@L.T("studio.doc_aria",_culture)"></div>
         </main>
         <aside class="studio-side studio-context">
-            <div class="context-tabs" role="tablist"><button type="button" role="tab" aria-selected="true" data-tab="fields">Campos</button><button type="button" role="tab" data-tab="comments">Comentários <span class="tab-count" data-comment-count aria-label="pendências abertas">0</span></button><button type="button" role="tab" data-tab="checklist">Checklist</button></div>
-            <section data-panel="fields"><h2>Campos inteligentes <span data-pending-count>0</span></h2><p class="muted">Valores confirmados ficam no retrato da versão.</p><div data-fields></div></section>
-            <section data-panel="comments" hidden><h2>Pendências e comentários</h2><p class="muted">Acompanhe conversas vinculadas à revisão sem alterar a versão documental.</p><label class="toggle"><input type="checkbox" data-resolved> Exibir abertos e resolvidos</label><div data-comments></div><form data-comment-form><label>Referência<input name="reference" maxlength="200" placeholder="section:clausula-1" required></label><label>Comentário<textarea name="body" maxlength="4000" required></textarea></label><button class="button button-link" type="submit">Comentar</button></form></section>
-            <section data-panel="checklist" hidden><h2>Checklist pré-revisão</h2><p class="muted">Validação operacional; não constitui parecer jurídico.</p><div data-checklist></div></section>
-            <section data-panel="history" hidden><h2>Versões</h2><div data-history></div></section>
+            <div class="context-tabs" role="tablist"><button type="button" role="tab" aria-selected="true" data-tab="fields">@L.T("studio.tab_fields",_culture)</button><button type="button" role="tab" data-tab="comments">@L.T("studio.tab_comments",_culture) <span class="tab-count" data-comment-count aria-label="@L.T("studio.tab_comments_aria",_culture)">0</span></button><button type="button" role="tab" data-tab="checklist">@L.T("studio.tab_checklist",_culture)</button></div>
+            <section data-panel="fields"><h2>@L.T("studio.panel_fields_h",_culture) <span data-pending-count>0</span></h2><p class="muted">@L.T("studio.panel_fields_p",_culture)</p><div data-fields></div></section>
+            <section data-panel="comments" hidden><h2>@L.T("studio.panel_comments_h",_culture)</h2><p class="muted">@L.T("studio.panel_comments_p",_culture)</p><label class="toggle"><input type="checkbox" data-resolved> @L.T("studio.panel_comments_toggle",_culture)</label><div data-comments></div><form data-comment-form><label>@L.T("studio.cf_reference",_culture)<input name="reference" maxlength="200" placeholder="section:clausula-1" required></label><label>@L.T("studio.cf_comment",_culture)<textarea name="body" maxlength="4000" required></textarea></label><button class="button button-link" type="submit">@L.T("studio.cf_comment_btn",_culture)</button></form></section>
+            <section data-panel="checklist" hidden><h2>@L.T("studio.panel_checklist_h",_culture)</h2><p class="muted">@L.T("studio.panel_checklist_p",_culture)</p><div data-checklist></div></section>
+            <section data-panel="history" hidden><h2>@L.T("studio.panel_history_h",_culture)</h2><div data-history></div></section>
         </aside>
     </div>
-    <dialog data-compare-dialog class="studio-dialog"><form method="dialog"><button class="dialog-close" aria-label="Fechar">×</button></form><h2>Comparar versões</h2><div class="compare-controls"><label>Anterior<select data-before></select></label><label>Posterior<select data-after></select></label><button class="button button-link" type="button" data-run-compare>Comparar</button></div><div class="diff-filters" data-diff-filters></div><div data-comparison class="comparison"></div></dialog>
+    <dialog data-compare-dialog class="studio-dialog"><form method="dialog"><button class="dialog-close" aria-label="@L.T("action.close",_culture)">×</button></form><h2>@L.T("studio.cmp_dialog_title",_culture)</h2><div class="compare-controls"><label>@L.T("studio.cmp_before",_culture)<select data-before></select></label><label>@L.T("studio.cmp_after",_culture)<select data-after></select></label><button class="button button-link" type="button" data-run-compare>@L.T("studio.e_btn_compare",_culture)</button></div><div class="diff-filters" data-diff-filters></div><div data-comparison class="comparison"></div></dialog>
     <form method="post" asp-action="Generate" asp-route-tenantId="@tenantId" asp-route-draftId="@Model.Id" data-generate-form hidden>@Html.AntiForgeryToken()<input type="hidden" name="expectedVersion" value="@Model.Version"/><input type="hidden" name="idempotencyKey" value="@Guid.NewGuid()"/></form>
     <script type="application/json" id="studio-content">@Html.Raw(Model.Content.GetRawText().Replace("</", "<\\/", StringComparison.Ordinal))</script>
     <script type="application/json" id="studio-fields">@Html.Raw(Model.Fields.GetRawText().Replace("</", "<\\/", StringComparison.Ordinal))</script>

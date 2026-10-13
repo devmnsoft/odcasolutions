@@ -1,3 +1,5 @@
+const t = (window.OdcaI18n && window.OdcaI18n.t) || ((k) => k);
+
 export function extractInlineText(node) {
   if (!node) return "";
   if (node.type === "text") {
@@ -124,22 +126,22 @@ export function findEditorLosses(doc, issues) {
     if (!node || typeof node !== "object") return;
     if (node.type === "text") {
       const marks = node.marks || [];
-      if (marks.length > 1) issues.add("marcações combinadas no mesmo trecho");
-      if (marks.some(mark => !["bold", "italic", "underline"].includes(mark))) issues.add("marcação não suportada pelo editor");
+      if (marks.length > 1) issues.add(t('studio.loss_combined_marks'));
+      if (marks.some(mark => !["bold", "italic", "underline"].includes(mark))) issues.add(t('studio.loss_unsupported_mark'));
       const txt = node.text || "";
-      if (txt.includes("*")) issues.add("texto contém \"*\" que o editor pode reinterpretar");
-      if (txt.includes("<u>")) issues.add("texto contém \"<u>\" que o editor reinterpretará");
+      if (txt.includes("*")) issues.add(t('studio.loss_asterisk'));
+      if (txt.includes("<u>")) issues.add(t('studio.loss_u_tag'));
     }
     if (node.type === "paragraph" && node.alignment && node.alignment !== "justify")
-      issues.add("alinhamentos diferentes de justificado");
+      issues.add(t('studio.loss_alignment'));
     if (node.type === "heading" && (node.level < 1 || node.level > 3))
-      issues.add("títulos fora dos níveis 1 a 3");
+      issues.add(t('studio.loss_heading_level'));
     if (node.type === "tableCell" && Array.isArray(node.content) && node.content.length > 1)
-      issues.add("células de tabela com mais de um bloco");
+      issues.add(t('studio.loss_table_blocks'));
     if (node.type === "listItem" && (node.content || []).some(child => child && (child.type === "bulletList" || child.type === "orderedList")))
-      issues.add("listas aninhadas");
+      issues.add(t('studio.loss_nested_lists'));
     if (!["document", "paragraph", "heading", "text", "field", "bulletList", "orderedList", "listItem", "table", "tableRow", "tableCell", "pageBreak"].includes(node.type))
-      issues.add("bloco que o editor não representa");
+      issues.add(t('studio.loss_unknown_block'));
     for (const child of node.content || []) walk(child);
   };
   walk(doc);
@@ -163,6 +165,6 @@ export function collectEditorLosses(doc) {
   const issues = new Set();
   findEditorLosses(doc, issues);
   if (doc && Array.isArray(doc.content) && !documentRoundTrips(doc))
-    issues.add("estrutura que o editor de texto não reproduz");
+    issues.add(t('studio.loss_structure'));
   return [...issues];
 }

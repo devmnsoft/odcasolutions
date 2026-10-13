@@ -27,4 +27,8 @@
     <ProjectReference Include="..\..\src\Odca.Worker\Odca.Worker.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\..\src\Odca.Web\Localization\*.json" Link="Localization\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

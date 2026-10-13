@@ -1,5 +1,21 @@
 # Status de execução
 
+## Incremento: Bloco F — i18n fim-a-fim do Estúdio em 4 idiomas (D-OC21) (13/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `4b14f4a`. Build da solution **0W/0E**. Domain **302/302 PASS** · paridade de catálogos **4/4 PASS** (novo teste, sem banco). Suíte de integração em `odca_test_local`: **54 falhas / 116 aprovados / 170** — os 54 são a linha de base ambiental conhecida; os 116 = 112 prévios + 4 novos de paridade (zero nova regressão).
+- **Entrega**: `docs/execution/D-OC21_I18N_ESTUDIO_FIM_A_FIM.md`. Área do Estúdio (6 views + 3 JS + `StudioController`) 100% localizada em pt-BR/en-US/fr-FR/es-ES:
+  - Catálogos 223 → **749 chaves × 4 idiomas** (526 novas, todas `studio.*`/`common.*`), paridade exata de conjunto coberta por `LocalizationCatalogParityTests` (parse achatado não-vazio, sentinelas do bag por cultura, whitespace intencional preservado).
+  - `LocalizationService`: `T(key, culture, params args)` + `Catalog(culture)`; novo partial `_I18nBag.cshtml` emite o bag inline por página (`window.odcaI18n`, filtrado por prefixo `studio.`/`common.`) — zero request extra; JS consome via alias `window.OdcaI18n.t` com fallback de identidade (páginas fora do escopo, ex.: `PlatformLibrary/NewRevision`, seguem em PT de forma consistente).
+  - Conversão das 6 views (incluindo JS inline) e dos 3 scripts (`studio.js` ~50 strings, `studio-decimal.js`, `template-editor-document.js`); reuso de chaves existentes antes de criar novas; bugs de chave existentes corrigidos no caminho (`nav.templates`→`studio.nav_catalog`, h1 da comparação `action.filter`→`studio.cmpv_title`).
+  - **`StudioController`**: ~50 strings visíveis ao usuário (títulos `ViewData["Title"]` que alimentam `<title>`/topbar, validações, conflitos de publicação, TempData de sucesso/falha, geração/PDF/preparação/revisão) localizadas via cultura da própria request (`CultureMiddleware.ItemsKey`) — sem isso o `<title>` vazava PT em todas as culturas.
+  - Dados ≠ UI: conteúdo-semente documental do novo modelo e nomes/sufixos persistidos permanecem como conteúdo; sufixo "— cópia editável" aplicado e checado pela mesma chave traduzida.
+  - **Evidência fim-a-fim na aplicação real** (Web `:7144`, login admin + MFA REV21A, cookie `odca_lang` trocado na sessão): para cada uma das 4 culturas, Index e Modelos/novo renderizam os bytes traduzidos esperados, as negativas PT estão ausentes em en/fr/es (o check en-US falhava antes da conversão do controller e passou depois) e o bag inline nasce com a cultura certa (pt 34 929 / en 30 562 / fr 37 336 / es 33 766 chars); evidências HTML em `%TEMP%\sv-i18n-evidence\`. Grep final: resíduo PT apenas em comentários de código e conteúdo-semente documental.
+- **Próximos passos**:
+  - Bloco F restante: validação de formatos (data/moeda), responsivo 360/768/1440px, homologação visual de PDF.
+  - Extensão natural: localização server-side da API (erros em PT hoje) + áreas fora do Estúdio (bag e regra de prefixo já prontos).
+  - Backlog separado: as 54 falhas pré-existentes da suíte de integração (ambiente/estado).
+  - Sem push/merge/deploy automático.
+
 ## Incremento: Correção do 500 nas saved-views da Caixa — migração v052 (13/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `dd62d67`. Build da solution **0W/0E**. Domain **302/302 PASS** · `MigrationChecksumTests` **36/36 PASS** (35 anteriores + 1 novo). Suíte de integração em `odca_test_local`: **54 falhas / 112 aprovados / 166 — idêntica à linha de base ambiental** (54/111/165) mais o novo teste aprovado; zero nova regressão.

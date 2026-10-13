@@ -1,0 +1,10 @@
+@{
+    var culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] ?? "pt-BR";
+    var bag = L.Catalog(culture)
+        .Where(kv => kv.Key.StartsWith("studio.", StringComparison.Ordinal) || kv.Key.StartsWith("common.", StringComparison.Ordinal))
+        .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
+}
+<script>window.odcaI18n={culture:@System.Text.Json.JsonSerializer.Serialize(culture),t:@System.Text.Json.JsonSerializer.Serialize(bag)};</script>
+<script>
+(function(){var b=window.odcaI18n||{culture:"pt-BR",t:{}};window.OdcaI18n={culture:b.culture,t:function(key){var m=b.t[key];if(m==null)return key;var args=[].slice.call(arguments,1);if(!args.length)return m;return m.replace(/\{(\d+)\}/g,function(_,i){return args[Number(i)]!=null?args[Number(i)]:_+i+"};});})();
+</script>

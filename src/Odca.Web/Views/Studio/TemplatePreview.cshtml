@@ -3,8 +3,8 @@
     var _culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
     var tenantId = ViewData["TenantId"];
 }
-<nav class="breadcrumb" aria-label="Navegação">
-    <a asp-action="Index" asp-route-tenantId="@tenantId">@L.T("nav.templates", _culture)</a>
+<nav class="breadcrumb" aria-label="@L.T("common.breadcrumb_aria", _culture)">
+    <a asp-action="Index" asp-route-tenantId="@tenantId">@L.T("studio.nav_catalog", _culture)</a>
     <span>/</span>
     <span aria-current="page">@L.T("studio.preview_title", _culture): @Model.Name</span>
 </nav>
