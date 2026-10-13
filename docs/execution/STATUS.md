@@ -1,5 +1,17 @@
 # Status de execução
 
+## Incremento: Bloco F — responsivo 360/768/1440px do Estúdio (D-OC23) (13/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `386edc2`. Build da solution **0W/0E**. Domain **353/353 PASS** · paridade de catálogos **4/4 PASS**. Suíte de integração: **54 falhas / 116 aprovados / 170 — idêntica à linha de base ambiental** (zero nova regressão).
+- **Entrega**: `docs/execution/D-OC23_RESPONSIVO_ESTUDIO.md`. Matriz das 6 páginas do Estúdio × viewports exatos 360/768/1440px (18 combinações) auditada com harness próprio (msedge headless + CDP via Node 24, `Emulation.setDeviceMetricsOverride`, sessão MFA real, screenshots full-page): **18/18 `overflow=0px · elements=0 · jsErrors=0` → RESPONSE-CLEAN**.
+- **4 defeitos de layout corrigidos**: (1) model-editar@360 53px — grids inline imunes a media queries + `min-width:auto` dos itens → classes `.form-grid.tpl-meta`/`.tpl-pair` com colapso ≤768 e `minmax(0,1fr)`; (2) version@360 56px — hash SHA-256 em `<code>` não quebrava → `overflow-wrap:anywhere`; (3) edit@1440 16px — coluna central `minmax(35rem,1fr)` excedia o disponível (~1072px) → `minmax(0,1fr)`; (4) edit@360 4px — margem negativa `clamp` (24px) ≠ padding do shell (20px) → `-1.25rem`.
+- **Bug pré-existente descoberto e corrigido**: o bag inline `_I18nBag.cshtml` (Edit/TemplateEdit/Version) gerava JS quebrado em todas as cargas — o JSON saía HTML-encodado (`&quot;`) e no ambiente as referências **não são decodificadas dentro de `<script>`** (demonstrado por teste controlado), além de a IIFE ter syntax error próprio (string não terminada). `window.odcaI18n`/`OdcaI18n` nunca existiam → strings dinâmicos exibiam chaves cruas. Correção: `UnsafeRelaxedJsonEscaping` + `Html.Raw` (padrão canônico, robusto aos dois comportamentos de decodificação) + fix do tail da IIFE. Evidência pós-fix: `t('studio.preview_title')="Prévia do modelo"` na página real, bag sem entidades (45.599→31.318 chars pt-BR), jsErrors 12/18 → 0/18.
+- **Próximos passos**:
+  - Bloco F restante: homologação visual de PDF.
+  - Extensão natural: localização server-side da API (erros em PT hoje; códigos de erro estáveis) + áreas fora do Estúdio (bag e regra de prefixo já prontos).
+  - Backlog separado: as 54 falhas pré-existentes da suíte de integração (ambiente/estado).
+  - Sem push/merge/deploy automático.
+
 ## Incremento: Bloco F — validação de formatos (data/moeda) do Estúdio (D-OC22) (13/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `0dbb640`. Build da solution **0W/0E**. Domain **353/353 PASS** (antes 302; +51 novos). Paridade de catálogos **4/4 PASS**. Suíte de integração em `odca_test_local`: **54 falhas / 116 aprovados / 170 — idêntica à linha de base ambiental** (zero nova regressão).

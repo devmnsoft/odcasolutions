@@ -3,8 +3,15 @@
     var bag = L.Catalog(culture)
         .Where(kv => kv.Key.StartsWith("studio.", StringComparison.Ordinal) || kv.Key.StartsWith("common.", StringComparison.Ordinal))
         .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
+    // D-OC23: Chromium nao decodifica entidades HTML dentro de <script>; com o
+    // encoding padrao do Razor (&quot;) o JS quebrava e window.odcaI18n/OdcaI18n
+    // nunca existiam. Emite JSON com escapamento seguro de JavaScript (\" e
+    // \u003C/\u003E/\u0026) via Html.Raw.
+    var jsonOpts = new System.Text.Json.JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+    var cultureJson = System.Text.Json.JsonSerializer.Serialize(culture, jsonOpts);
+    var bagJson = System.Text.Json.JsonSerializer.Serialize(bag, jsonOpts);
 }
-<script>window.odcaI18n={culture:@System.Text.Json.JsonSerializer.Serialize(culture),t:@System.Text.Json.JsonSerializer.Serialize(bag)};</script>
+<script>window.odcaI18n={culture:@Html.Raw(cultureJson),t:@Html.Raw(bagJson)};</script>
 <script>
-(function(){var b=window.odcaI18n||{culture:"pt-BR",t:{}};window.OdcaI18n={culture:b.culture,t:function(key){var m=b.t[key];if(m==null)return key;var args=[].slice.call(arguments,1);if(!args.length)return m;return m.replace(/\{(\d+)\}/g,function(_,i){return args[Number(i)]!=null?args[Number(i)]:_+i+"};});})();
+(function(){var b=window.odcaI18n||{culture:"pt-BR",t:{}};window.OdcaI18n={culture:b.culture,t:function(key){var m=b.t[key];if(m==null)return key;var args=[].slice.call(arguments,1);if(!args.length)return m;return m.replace(/\{(\d+)\}/g,function(_,i){return args[Number(i)]!=null?args[Number(i)]:_+i+"";});}};})();
 </script>

@@ -75,7 +75,7 @@
             </div>
         </div>
 
-        <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr; gap: 1rem;">
+        <div class="form-grid tpl-meta">
             <label style="display: block;">
                 <strong>@L.T("studio.tpl_name_label",_culture)</strong>
                 <input asp-for="Name" required maxlength="160" placeholder="@L.T("studio.tpl_name_ph",_culture)" style="width: 100%;" />
@@ -116,7 +116,7 @@
 
             <div style="background: #f8fafc; padding: 1rem; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 1rem;">
                 <h4 style="margin-top: 0; font-size: 0.95rem;">@L.T("studio.tpl_add_field_h",_culture)</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <div class="tpl-pair">
                     <div>
                         <label style="font-size: 0.8rem; font-weight: 600;">@L.T("studio.tpl_field_id_label",_culture)</label>
                         <input type="text" id="newFieldId" placeholder="identificador_unico" style="width: 100%; font-size: 0.85rem;" />
@@ -126,7 +126,7 @@
                         <input type="text" id="newFieldLabel" placeholder="@L.T("studio.tpl_label_ph",_culture)" style="width: 100%; font-size: 0.85rem;" />
                     </div>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <div class="tpl-pair">
                     <div>
                         <label style="font-size: 0.8rem; font-weight: 600;">@L.T("studio.tpl_field_type_label",_culture)</label>
                         <select id="newFieldType" style="width: 100%; font-size: 0.85rem;">
