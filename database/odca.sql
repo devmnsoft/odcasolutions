@@ -5677,13 +5677,13 @@ VALUES(50,'Idempotencia: formalization replay and outbox dedup by source','512a8
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 050
--- ODCA-MIGRATION 051 CHECKSUM d9951f97d49f319c25120c18a801ca4d18732b6629841b055e48e970ebd4df28
+-- ODCA-MIGRATION 051 CHECKSUM 1f8eaf7e802419d64ae1f45bc60b0031b7f600a9173db8cfb584a7c06241069a
 BEGIN;
 SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
 
-DO \\$
+DO $odca$
 DECLARE
-    expected_checksum constant char(64) := 'd9951f97d49f319c25120c18a801ca4d18732b6629841b055e48e970ebd4df28';
+    expected_checksum constant char(64) := '1f8eaf7e802419d64ae1f45bc60b0031b7f600a9173db8cfb584a7c06241069a';
     recorded_checksum char(64);
 BEGIN
     SELECT checksum INTO recorded_checksum FROM odca.schema_migrations WHERE version = 51;
@@ -5691,7 +5691,7 @@ BEGIN
         RAISE EXCEPTION 'ODCA migration 051 checksum mismatch: stored %, expected %', recorded_checksum, expected_checksum;
     END IF;
 END
-\\$;
+$odca$;
 
 -- Item 13: vinculo persistente de solicitacoes ao contrato.
 -- Nullable para preservar solicitacoes antigas sem contrato; NOT NULL apenas quando ha contrato associado.
@@ -5704,7 +5704,7 @@ CREATE INDEX IF NOT EXISTS solicitations_contract_ix ON odca.solicitations (cont
 -- Versao com 8 parametros substitui a de 7 (DROP + CREATE OR REPLACE).
 DROP FUNCTION IF EXISTS odca.solicitations_open(uuid,uuid,text,text,text,text,uuid);
 CREATE OR REPLACE FUNCTION odca.solicitations_open(p_tenant uuid,p_actor uuid,p_service text,p_priority text,p_subject text,p_body text,p_idempotency uuid,p_contract_id uuid DEFAULT NULL)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,odca AS \\$
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,odca AS $fn$
 DECLARE v_subject text:=btrim(coalesce(p_subject,'')); v_body text:=btrim(coalesce(p_body,''));
  v_plan text; v_policy odca.sla_policies%rowtype; v_number bigint; v_existing uuid; v_id uuid;
 BEGIN
@@ -5742,11 +5742,11 @@ BEGIN
 EXCEPTION WHEN unique_violation THEN
  SELECT id INTO v_existing FROM odca.solicitations WHERE tenant_id=p_tenant AND idempotency_key=p_idempotency;
  IF v_existing IS NOT NULL THEN RETURN odca.solicitation_payload(v_existing); END IF; RAISE;
-END \\$;
+END $fn$;
 GRANT EXECUTE ON FUNCTION odca.solicitations_open(uuid,uuid,text,text,text,text,uuid,uuid) TO odca_app;
 
 INSERT INTO odca.schema_migrations(version,name,checksum)
-VALUES(51,'Solicitacao-contract link: contract_id FK for persistent association','d9951f97d49f319c25120c18a801ca4d18732b6629841b055e48e970ebd4df28')
+VALUES(51,'Solicitacao-contract link: contract_id FK for persistent association','1f8eaf7e802419d64ae1f45bc60b0031b7f600a9173db8cfb584a7c06241069a')
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 051
@@ -5778,3 +5778,38 @@ VALUES(52,'Saved work views: allow inbox listing type','bb9690bb14f4773fcf9cecfd
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 052
+-- ODCA-MIGRATION 053 CHECKSUM 6aac915a94439996b51ae39c6855bc8bad52aaaffd589b8e6082d773cdc3d4a4
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
+
+DO $odca$
+DECLARE
+    expected_checksum constant char(64) := '6aac915a94439996b51ae39c6855bc8bad52aaaffd589b8e6082d773cdc3d4a4';
+    recorded_checksum char(64);
+BEGIN
+    SELECT checksum INTO recorded_checksum FROM odca.schema_migrations WHERE version = 53;
+    IF recorded_checksum IS NOT NULL AND recorded_checksum <> expected_checksum THEN
+        RAISE EXCEPTION 'ODCA migration 053 checksum mismatch: stored %, expected %', recorded_checksum, expected_checksum;
+    END IF;
+END
+$odca$;
+
+-- D-OC26: o seeding do catalogo oficial roda como a role da aplicacao e grava um evento
+-- de auditoria de escopo platform (action template.official_catalog_seeded); a policy
+-- anterior apenas admitia actions 'identity.%'. A action de seed passa a ser admitida,
+-- mantendo o restante restrito.
+
+DROP POLICY IF EXISTS platform_security_insert ON odca.audit_events;
+CREATE POLICY platform_security_insert ON odca.audit_events FOR INSERT TO odca_app
+    WITH CHECK
+    (
+        scope_type = 'platform'
+        AND tenant_id IS NULL
+        AND (action LIKE 'identity.%' OR action = 'template.official_catalog_seeded')
+    );
+
+INSERT INTO odca.schema_migrations(version,name,checksum)
+VALUES(53,'Official catalog seed: admit template.official_catalog_seeded in platform audit policy','6aac915a94439996b51ae39c6855bc8bad52aaaffd589b8e6082d773cdc3d4a4')
+ON CONFLICT(version) DO NOTHING;
+COMMIT;
+-- ODCA-END 053

@@ -8,7 +8,7 @@ using System.Net.Http.Json;
 
 namespace Odca.IntegrationTests;
 
-public sealed class ApiHostStartupTests
+public sealed class ApiHostStartupTests(DatabaseFixture database) : IClassFixture<DatabaseFixture>
 {
     [Fact]
     public void ApiMarkerIdentifiesTheApiExecutableAssembly()
@@ -80,9 +80,12 @@ public sealed class ApiHostStartupTests
         Assert.Contains(expectedMessage, exception.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
-    private static Dictionary<string, string?> ValidConfiguration() => new()
+    // O host de teste abre conexão real no bootstrap (seeding do catálogo oficial);
+    // o fixture garante banco migrado e a role de aplicação pronta, na mesma
+    // convenção ODCA_TEST_* do resto da suíte.
+    private Dictionary<string, string?> ValidConfiguration() => new()
     {
-        ["ConnectionStrings:Database"] = "Host=localhost;Database=odca_test_startup",
+        ["ConnectionStrings:Database"] = database.AppConnectionString,
         ["Jwt:Issuer"] = "odca-api-host-tests",
         ["Jwt:Audience"] = "odca-api-host-tests",
         ["Jwt:SigningKey"] = "host-test-key-with-at-least-thirty-two-bytes",

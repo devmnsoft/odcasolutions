@@ -420,9 +420,38 @@ public sealed class MigrationChecksumTests
         DatabaseMigrator.ValidateChecksums(previous);
         DatabaseMigrator.ValidateChecksums(snapshot);
         DatabaseMigrator.ValidateChecksums(canonical);
-        for (var version = 1; version <= 51; version++)
+        for (var version = 1; version <= 50; version++)
             Assert.Equal(MigrationBlock(previous, version), MigrationBlock(canonical, version));
+        // v051 shipped with malformed dollar quotes (double backslash before the quote
+        // tag) that PostgreSQL rejects with 42601, so no fresh database could apply the
+        // released file. The immutable snapshot keeps the defective package for audit;
+        // the canonical installer carries the repaired body and the migrator re-stamps
+        // databases still holding the defective checksum.
+        Assert.Contains("ODCA-MIGRATION 051 CHECKSUM d9951f97d49f319c25120c18a801ca4d18732b6629841b055e48e970ebd4df28", previous, StringComparison.Ordinal);
+        Assert.Contains("DO \\\\$", previous, StringComparison.Ordinal);
+        Assert.DoesNotContain("ODCA-MIGRATION 052", previous, StringComparison.Ordinal);
+        Assert.Contains("ODCA-MIGRATION 051 CHECKSUM 1f8eaf7e802419d64ae1f45bc60b0031b7f600a9173db8cfb584a7c06241069a", canonical, StringComparison.Ordinal);
+        Assert.NotEqual(File.ReadAllBytes(FindSql()), File.ReadAllBytes(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v051.sql")));
         Assert.Contains("CHECK(listing_type IN('obligations','reviews','contracts','inbox'))", snapshot, StringComparison.Ordinal);
         Assert.DoesNotContain("ODCA-MIGRATION 053", snapshot, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReleaseV053ExtendsPlatformAuditPolicyForOfficialCatalogSeed()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var previous = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v052.sql")).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v053.sql")).Replace("\r\n", "\n");
+        DatabaseMigrator.ValidateChecksums(previous);
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        DatabaseMigrator.ValidateChecksums(canonical);
+        for (var version = 1; version <= 52; version++)
+            Assert.Equal(MigrationBlock(previous, version), MigrationBlock(canonical, version));
+        // D-OC26: o seeding do catálogo oficial grava 'template.official_catalog_seeded'
+        // como auditoria de escopo platform; a policy anterior só admitia 'identity.%'
+        // e o INSERT falhava com 42501 quando a API roda como a role da aplicação.
+        Assert.Contains("action LIKE 'identity.%' OR action = 'template.official_catalog_seeded'", canonical, StringComparison.Ordinal);
+        Assert.Contains("action LIKE 'identity.%' OR action = 'template.official_catalog_seeded'", snapshot, StringComparison.Ordinal);
+        Assert.DoesNotContain("ODCA-MIGRATION 054", snapshot, StringComparison.Ordinal);
     }
 }

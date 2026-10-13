@@ -50,8 +50,12 @@ public static class DependencyInjection
         services.AddSingleton(provider =>
         {
             var currentConfiguration = provider.GetRequiredService<IConfiguration>();
-            var connectionString = currentConfiguration.GetConnectionString("Database")
-                ?? throw new InvalidOperationException("ConnectionStrings:Database não foi configurada.");
+            var connectionString = currentConfiguration.GetConnectionString("Database");
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new InvalidOperationException("ConnectionStrings:Database não foi configurada.");
+            }
+
             return NpgsqlDataSource.Create(connectionString);
         });
         services.AddSingleton<IClock, SystemClock>();

@@ -1,5 +1,20 @@
 # Status de execução
 
+## Incremento: Estabilização da suíte de integração (D-OC26) (13/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `6a32a34`. Build da solution (`Odca.sln`) **0W/0E**. Domain **355/355 PASS**. Suíte de integração em `odca_test_integration` zerado: **173/173 PASS — zero falhas** (linha de base herdada: 54F/116P/170; total 170→173 com +3 fatos novos). Runner reutilizável commitado: `scripts/qa/run-integration-tests.ps1 [-FreshDb]`.
+- **Entrega**: `docs/execution/D-OC26_ESTABILIZACAO_INTEGRACAO.md`. Os 54F nunca haviam sido dissecados (banco de teste longevo + mascaramento por ordem de execução); em banco zerado as falhas colapsam em **5 causas raiz reais**, todas corrigidas e provadas:
+  - **F1 — v051 saiu com dollar-quoting corrompido** (`DO … \\$;` / `AS \\$ … END \\$;`, sintaxe inválida): qualquer banco novo morria na migração 51. Canônico reparado in place com checksum novo **H = `1f8eaf7e802419d64ae1f45bc60b0031b7f600a9173db8cfb584a7c06241069a`**; `odca-v051.sql` imutável (pacote defeituoso preservado para auditoria); `odca-v052.sql` regenerada byte-idêntica ao canônico pós-reparo; migrator ganha `KnownDefectivePackage` (`d9951f97… → H`) com reafirmação idempotente (DROP fn 7-args / CREATE OR REPLACE 8-args fiel ao corpo publicado + restamp). Prova comportamental: disposable com linha 51 presa em `d9951f97…` reconciliado no `Bootstrap migrate` → restamp para H, função 8-args íntegra, `/health/ready` 503→200 sem restart.
+  - **F2** — connection string vazia/caixa gerava ANE do Npgsql na materialização de hosted service antes da mensagem amigável → guard `IsNullOrWhiteSpace` na factory DI.
+  - **F3** — `ApiHostStartupTests` partia de DB hardcodado (`odca_test_startup`) → hermetizado com o `DatabaseFixture` (mesmo contrato `ODCA_TEST_*`).
+  - **F4** — pins pré-v038 de catálogos (7/7/7 módulos): v038 tornou `module.reviews` exclusivo do Enterprise; decisão de produto mantida (canônico = 6/6/7) → pins corrigidos com comentário citando o v038 (`S00FlowTests`, `HierarchicalAdministrationTests`).
+  - **F5 — seeding do catálogo oficial esbarrava em RLS** (42501) só em banco novo: policy `platform_security_insert` admitia apenas `action LIKE 'identity.%'` e o seeder grava `'template.official_catalog_seeded'` como app-role (5 retries → boot falha). Migração **v053** estende a policy (checksum **K = `6aac915a94439996b51ae39c6855bc8bad52aaaffd589b8e6082d773cdc3d4a4`**), `CurrentVersion` 53, release `odca-v053.sql` byte-idêntica; alternativas rejeitadas documentadas (renomear action sob `identity.%`; wrapper definer).
+- **Gates**: build **0W/0E** · Domain **355/355** · Integração **173/173** em banco zerado via runner commitado (`FRESH-DB-OK → BUILD-OK → TEST-EXIT=0`) · disposable reconciliado (v051=H, v053 aplicada, policy estendida visível em `pg_policies`).
+- **Próximos passos**:
+  - Extensão natural (escolha do usuário): localização server-side da API (erros em PT hoje; códigos estáveis) + bag i18n além do Estúdio.
+  - Backlog cosmético: dedup das regras duplicadas de `.studio-grid` em max-width:1100px.
+  - Sem push/merge/deploy automático.
+
 ## Incremento: Bloco F — homologação visual de PDFs (D-OC25) (13/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `08d14d5`. Build da solution (`Odca.sln`) **0W/0E**. Domain **355/355 PASS** (353 + 2 novos: separador final de tabela e quebra de token longo). Suíte de integração: **54 falhas / 116 aprovados / 170 — idêntica à linha de base ambiental** (zero nova regressão).
