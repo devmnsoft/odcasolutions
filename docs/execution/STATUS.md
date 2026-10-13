@@ -1,5 +1,18 @@
 # Status de execução
 
+## Incremento: Bloco F — responsivo 360/768/1440px do sistema inteiro (D-OC24) (13/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `598413e`. Build da solution (`Odca.sln`) **0W/0E**. Domain **353/353 PASS** · paridade de catálogos **4/4 PASS**. Suíte de integração: **54 falhas / 116 aprovados / 170 — idêntica à linha de base ambiental** (zero nova regressão).
+- **Entrega**: `docs/execution/D-OC24_RESPONSIVO_SISTEMA.md`. Matriz do sistema inteiro — **57 páginas reais** (Estúdio ×11, organizacional ×22, conta ×5, plataforma ×10, públicas ×3 na sessão + 4 anônimas sem sessão) × viewports exatos 360/768/1440px = **171 combinações** com o mesmo harness CDP do D-OC23 (msedge headless, sessão MFA real, screenshots full-page): **171/171 `overflow=0px · elements=0 · jsErrors=0` → RESPONSE-CLEAN**.
+- **4 causas raiz de layout corrigidas** (combos quebrados na pré-auditoria: ficha@360 +153px; central-solicitações @360/@768 +461/+53px; atendimento ODCA @360/@768 +609/+201px; aprovações @360 +213px; documentos @360/@768 +528/+356px; `/cliente`@360 +207px): (1) track `1fr` de `.renewal-row` inchada por token SHA-256 inquebrável (medido 471.625px num container de 305px) → `min-width:0` nos filhos + `overflow-wrap`; (2) o padrão cards ≤768 esconde o `thead` com absolute+clip, mas a tabela anônima shrink-to-fit dentro dele (ths ainda `table-cell`) inflamava a área rolável do documento — o overflow era exatamente borda-direita do thead − viewport → `position:relative` no scroller + thead 1×1px `overflow:hidden`; (3) classe `.table-responsive` usada em `Documents/Index` e `Onboarding/CustomerHome` **não existe no site.css** → substituída pela convenção `.table-scroll` (a página `/cliente` não era coberta antes → adicionada com `/primeiros-passos`); (4) `.studio-filter` sem wrap transbordando o form em 768px (9–11 campos) → `flex-wrap:wrap`.
+- **Bug JS pré-existente corrigido**: o `_ValidationScriptsPartial` carregava jquery.validate/unobtrusive **sem que nada no app carregasse o jQuery core** → 2× `ReferenceError: jQuery is not defined` em toda carga de `/privacidade` (afetava também MFA ×2, registro e confirmação de e-mail). Adicionado `lib/jquery/dist/jquery.min.js` ao partial; jsErrors 2→0 em todas as larguras nas duas rodadas.
+- **Lição de processo**: views Razor são pré-compiladas no assembly — edição de `.cshtml` exige `dotnet build` antes da verificação em runtime (na primeira re-roda só o CSS surtiu efeito).
+- **Próximos passos**:
+  - Bloco F restante: homologação visual de PDF.
+  - Extensão natural: localização server-side da API (erros em PT hoje; códigos de erro estáveis) + áreas fora do Estúdio (bag e regra de prefixo já prontos).
+  - Backlog separado: as 54 falhas pré-existentes da suíte de integração (ambiente/estado); dedup cosmética das regras duplicadas de `.studio-grid` em max-width:1100px.
+  - Sem push/merge/deploy automático.
+
 ## Incremento: Bloco F — responsivo 360/768/1440px do Estúdio (D-OC23) (13/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `386edc2`. Build da solution **0W/0E**. Domain **353/353 PASS** · paridade de catálogos **4/4 PASS**. Suíte de integração: **54 falhas / 116 aprovados / 170 — idêntica à linha de base ambiental** (zero nova regressão).
