@@ -220,5 +220,7 @@
 "inbox.action_signature": "Sign document",
     "inbox.action_solicitation": "Open solicitation",
     "inbox.kind_signature": "Signature",
-    "inbox.kind_solicitation": "ODCA solicitation"
+    "inbox.kind_solicitation": "ODCA solicitation",
+    "inbox.kind_exception": "Exceptions",
+    "inbox.action_exception": "Open exception"
 }

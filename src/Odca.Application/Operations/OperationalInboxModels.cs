@@ -11,7 +11,10 @@ public sealed record OperationalInboxRow(
     string? OwnerName,
     DateOnly? DueOn,
     string Status,
-    long Version);
+    long Version,
+    // Item 20: ancora de navegação para projeções derivadas (exceções apontam para a fonte de origem).
+    // Nula nos kinds nativos; 'renovacao'/'solicitacoes' nas exceções.
+    string? Anchor = null);
 
 public sealed record TenantCalendarContext(string TimeZoneId, DateOnly Today);
 

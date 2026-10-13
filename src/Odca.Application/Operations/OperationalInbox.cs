@@ -6,7 +6,8 @@ public enum OperationalWorkKind
     Obligation,
     Renewal,
     Solicitation,
-    Signature
+    Signature,
+    Exception
 }
 
 public enum OperationalUrgency

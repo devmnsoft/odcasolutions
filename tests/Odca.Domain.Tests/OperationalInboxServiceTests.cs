@@ -136,12 +136,46 @@ public sealed class OperationalInboxServiceTests
     public void InvalidMonthIsRejected() =>
         Assert.Throws<ArgumentOutOfRangeException>(() => MonthlyAgendaWindow.ForMonth(2026, 13));
 
+    [Fact]
+    public async Task ExceptionRowsPassThroughEvenWithoutSourceReadPermissions()
+    {
+        // Item 20: a visibilidade da excecao e decidida pela branch de origem no repositorio
+        // (mesma porta de permissao do kind de origem); o servico nao refiltra por kind.
+        var service = new OperationalInboxService(new FakeInboxRepository(
+        [
+            Row(OperationalWorkKind.Exception, Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaae1"), Other, Today, anchor: "renovacao")
+        ]));
+
+        var page = await service.QueryAsync(Tenant, Viewer, false, false, false, false, false, false, false, false, false, false, new OperationalInboxQuery(Kind: "Exception"), default);
+
+        var item = Assert.Single(page.Items);
+        Assert.Equal("Exception", item.Kind);
+        Assert.Equal($"/organizacoes/{Tenant}/contratos/{Contract}?from=caixa#renovacao", item.OpenUrl);
+    }
+
+    [Fact]
+    public void MapRoutesExceptionsToTheirSourceAnchorWithOrphanFallback()
+    {
+        var withContract = OperationalInboxService.Map(
+            Row(OperationalWorkKind.Exception, Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaae2"), Other, Today, anchor: "solicitacoes"),
+            Today, Tenant);
+        Assert.Equal($"/organizacoes/{Tenant}/contratos/{Contract}?from=caixa#solicitacoes", withContract.OpenUrl);
+        Assert.Equal("DueToday", withContract.Urgency);
+
+        var orphan = new OperationalInboxRow(
+            OperationalWorkKind.Exception, Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaae3"), Tenant, null,
+            "(sem contrato vinculado)", "Sem assunto", Other, "Nome", Today.AddDays(-2), "aberta", 1, "solicitacoes");
+        var dto = OperationalInboxService.Map(orphan, Today, Tenant);
+        Assert.Equal($"/organizacoes/{Tenant}", dto.OpenUrl);
+        Assert.Equal("Overdue", dto.Urgency);
+    }
+
     private static OperationalInboxRow Row(
         OperationalWorkKind kind,
         Guid source,
         Guid owner,
         DateOnly? due,
-        long sourceVersion = 1) =>
+        long sourceVersion = 1, string? anchor = null) =>
         new(
             Kind: kind,
             SourceId: source,
@@ -153,7 +187,8 @@ public sealed class OperationalInboxServiceTests
             OwnerName: "Nome",
             DueOn: due,
             Status: "open",
-            Version: sourceVersion);
+            Version: sourceVersion,
+            Anchor: anchor);
 
     private sealed class FakeInboxRepository(IReadOnlyList<OperationalInboxRow> rows)
         : IOperationalInboxRepository, IMonthlyAgendaRepository

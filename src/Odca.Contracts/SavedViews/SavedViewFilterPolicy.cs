@@ -108,7 +108,7 @@ public static class SavedViewFilterPolicy
                 }
             }
             if (((listingType is "obligations" or "inbox") && key == "scope" && value is not ("mine" or "organization")) ||
-                (listingType == "inbox" && key == "kind" && value is not ("Obligation" or "Review" or "Renewal" or "Solicitation" or "Signature")) ||
+                (listingType == "inbox" && key == "kind" && value is not ("Obligation" or "Review" or "Renewal" or "Solicitation" or "Signature" or "Exception")) ||
                 (listingType == "obligations" && key == "category" && !ObligationCategories.Contains(value)) ||
                 (listingType == "obligations" && key == "status" && !ObligationStatuses.Contains(value)))
             {

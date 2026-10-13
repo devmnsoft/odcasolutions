@@ -1,5 +1,19 @@
 # Status de execução
 
+## Incremento: Bloco E item 20 — fila de exceções na Caixa Operacional (13/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `090439a`. Build da solution **0W/0E**. Domain **302/302 PASS** (incluindo 2 fatos novos). Suíte de integração em `odca_test_local`: **idêntica à linha de base** — 111 aprovados / 54 falhas pré-existentes de ambiente (zero nova regressão).
+- **Entrega**: `docs/execution/D-OC19_FILA_DE_EXCECOES.md`. Comportamento provado contra a aplicação real (API + Web, sessões MFA, banco QA):
+  - Novo kind **`Exception`** na Caixa Operacional — **sem migração, sem endpoint novo e sem permissão própria** (projeção de leitura; a visibilidade é decidida pela branch de origem com a porta do kind de origem): (a) change request em `conflict`/aplicação falhada → gate `tenant.renewals.read`, urgência `DueToday`, abre `…?from=caixa#renovacao`; (b) solicitação ativa com brecha de SLA registrada → gate `tenant.solicitations.read`, urgência `Overdue` (data da primeira brecha), abre `#solicitacoes` ou raiz do tenant quando sem contrato.
+  - Regras: solicitações **com** brecha saem da lista nativa `Solicitation` e vivem só na fila (anti-duplicação); a agenda mensal não contém a fila (sentinel de window idêntico ao do kind `Signature`); vistas salvas aceitam `kind=Exception`; filtro/rótulos da UI nos 4 idiomas.
+  - Evidência T1–T7 por HTTP real: baseline zerada → fixtures reversíveis → 2 itens com campos byte-exatos (urgências, âncoras, fallback órfão) → portes por dono/permissão (admin mine=2, operador mine=0, operador org-scope=2) → renderização web (label `Exceções · Atrasada`, âncora `#renovacao`, opção no filtro) → restore com fila de volta a zero.
+- **Fora por critério pré-definido**: `notification_outbox.status='failed'` não alimenta a fila (sem dono nem permissão limpa) — registrada como fonte candidata futura.
+- **Próximos passos**:
+  - Correção do 500 das saved-views `inbox` (migração v052 ou alinhamento de contrato BFF/API) — defeito pré-existente descoberto no item 19.
+  - Bloco F: i18n 4 idiomas (homologação fim-a-fim), validação de formatos (data/moeda), responsivo 360/768/1440px, homologação visual de PDF.
+  - Backlog separado: as 54 falhas pré-existentes da suíte de integração (ambiente/estado).
+  - Sem push/merge/deploy automático.
+
 ## Incremento: Bloco E item 19 — recuperação de divergência + expiração de sessão na Caixa/Ficha (12/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `27e2574`. Build 0W/0E (warnings-as-errors). Suíte de integração em `odca_test_local` reconstruído do zero: **idêntica à linha de base** — 111 aprovados / 54 falhas pré-existentes de ambiente (zero nova regressão deste incremento).

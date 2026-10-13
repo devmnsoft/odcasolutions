@@ -96,6 +96,12 @@ public sealed class OperationalInboxService(IOperationalInboxRepository reposito
             OperationalWorkKind.Signature => row.ContractId is { } signatureContract
                 ? $"/organizacoes/{tenantId}/contratos/{signatureContract}?from=caixa#assinatura"
                 : $"/organizacoes/{tenantId}",
+            // Item 20: exceções abrem a fonte que as originou (renovação/aditivo ou solicitações).
+            OperationalWorkKind.Exception
+                when row.Anchor is "renovacao" or "solicitacoes"
+                     && row.ContractId is { } exceptionContract && exceptionContract != Guid.Empty
+                => $"/organizacoes/{tenantId}/contratos/{exceptionContract}?from=caixa#{row.Anchor}",
+            OperationalWorkKind.Exception => $"/organizacoes/{tenantId}",
             _ => $"/organizacoes/{tenantId}/contratos/{row.ContractId}?from=caixa#renovacao"
         };
         return new OperationalInboxItemDto(
@@ -127,11 +133,14 @@ public sealed class OperationalInboxService(IOperationalInboxRepository reposito
         bool canReadSolicitations,
         bool canReadSignatures) => kind switch
         {
+            // Item 20: a visibilidade da exceção é decidida pela branch de origem no repositório
+            // (mesma porta de permissão do kind de origem), nunca por uma permissão própria.
             OperationalWorkKind.Obligation => canReadObligations,
             OperationalWorkKind.Review => canReadReviews,
             OperationalWorkKind.Renewal => canReadRenewals,
             OperationalWorkKind.Solicitation => canReadSolicitations,
             OperationalWorkKind.Signature => canReadSignatures,
+            OperationalWorkKind.Exception => true,
             _ => false
         };
 
@@ -148,6 +157,7 @@ public sealed class OperationalInboxService(IOperationalInboxRepository reposito
             OperationalWorkKind.Renewal => canReadTenantRenewals,
             OperationalWorkKind.Solicitation => canReadTenantSolicitations,
             OperationalWorkKind.Signature => canReadTenantSignatures,
+            OperationalWorkKind.Exception => true,
             _ => false
         };
 }
