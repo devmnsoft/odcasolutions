@@ -5750,3 +5750,31 @@ VALUES(51,'Solicitacao-contract link: contract_id FK for persistent association'
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 051
+-- ODCA-MIGRATION 052 CHECKSUM bb9690bb14f4773fcf9cecfd049a089aa93baaff2c56766023ca9afe1dcc86cd
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
+
+DO $odca$
+DECLARE
+    expected_checksum constant char(64) := 'bb9690bb14f4773fcf9cecfd049a089aa93baaff2c56766023ca9afe1dcc86cd';
+    recorded_checksum char(64);
+BEGIN
+    SELECT checksum INTO recorded_checksum FROM odca.schema_migrations WHERE version = 52;
+    IF recorded_checksum IS NOT NULL AND recorded_checksum <> expected_checksum THEN
+        RAISE EXCEPTION 'ODCA migration 052 checksum mismatch: stored %, expected %', recorded_checksum, expected_checksum;
+    END IF;
+END
+$odca$;
+
+-- Saved views da caixa operacional: o contrato da aplicacao (SavedViewFilterPolicy e o BFF
+-- InboxController.SaveView) ja aceita listing_type='inbox'; a restricao canonica nunca foi
+-- ampliada quando a caixa entrou em producao e o INSERT do Create devolvia 23514 -> 500.
+ALTER TABLE odca.saved_work_views DROP CONSTRAINT IF EXISTS saved_work_views_listing_type_check;
+ALTER TABLE odca.saved_work_views ADD CONSTRAINT saved_work_views_listing_type_check
+    CHECK(listing_type IN('obligations','reviews','contracts','inbox'));
+
+INSERT INTO odca.schema_migrations(version,name,checksum)
+VALUES(52,'Saved work views: allow inbox listing type','bb9690bb14f4773fcf9cecfd049a089aa93baaff2c56766023ca9afe1dcc86cd')
+ON CONFLICT(version) DO NOTHING;
+COMMIT;
+-- ODCA-END 052

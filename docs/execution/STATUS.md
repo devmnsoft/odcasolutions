@@ -1,5 +1,18 @@
 # Status de execução
 
+## Incremento: Correção do 500 nas saved-views da Caixa — migração v052 (13/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `dd62d67`. Build da solution **0W/0E**. Domain **302/302 PASS** · `MigrationChecksumTests` **36/36 PASS** (35 anteriores + 1 novo). Suíte de integração em `odca_test_local`: **54 falhas / 112 aprovados / 166 — idêntica à linha de base ambiental** (54/111/165) mais o novo teste aprovado; zero nova regressão.
+- **Entrega**: `docs/execution/D-OC20_SAVED_VIEWS_INBOX_V052.md`. Fecha a descoberta do item 19 (D-OC18): salvar vista pessoal na Caixa devolvia 500 — o BFF envia `listingType="inbox"` mas a constraint canônica de `saved_work_views` só admitia `('obligations','reviews','contracts')` (por isso a tabela estava vazia em todos os tenants). Zero mudança de código de aplicação — a camada já era inbox-aware (`SavedViewFilterPolicy`); o gap era só do schema:
+  - Migração **v052** (canônico + release byte-idêntica, padrão dos blocos v050/v051): DROP/ADD idempotente de `saved_work_views_listing_type_check` com os 4 valores + registro em `schema_migrations`; `DatabaseSchema.CurrentVersion` 51 → 52. DDL histórico não reescrito.
+  - Aplicada pelo runner real (`Bootstrap migrate`); o health gate exigiu a nova versão (`ready` 503 → 200 após migrar, sem restart).
+  - Evidência T1–T5 por HTTP real (apps reais, sessões MFA): **reprodução exata do defeito pelo formulário Web agora devolve 302** com `viewId` + aviso TempData renderizado; CRUD completo pela API (list/get/rename `row_version`→2/409 com versão obsoleta/`isDefault`); **vista padrão se aplica sozinha** (GET `/caixa` sem filtros → 302 OpenView); negativos: tipo inválido 400 e mesmo nome coexistindo entre `obligations`/`inbox` (uq já isola por `listing_type`); limpeza com zero resíduo.
+  - Nota operacional: cada desafio MFA consome um código de recuperação — registrar "um código por fluxo" (a primeira execução da suíte falhou por reuso).
+- **Próximos passos**:
+  - Bloco F: i18n 4 idiomas fim-a-fim (homologação), validação de formatos (data/moeda), responsivo 360/768/1440px, homologação visual de PDF.
+  - Backlog separado: as 54 falhas pré-existentes da suíte de integração (ambiente/estado).
+  - Sem push/merge/deploy automático.
+
 ## Incremento: Bloco E item 20 — fila de exceções na Caixa Operacional (13/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `090439a`. Build da solution **0W/0E**. Domain **302/302 PASS** (incluindo 2 fatos novos). Suíte de integração em `odca_test_local`: **idêntica à linha de base** — 111 aprovados / 54 falhas pré-existentes de ambiente (zero nova regressão).

@@ -410,4 +410,19 @@ public sealed class MigrationChecksumTests
         Assert.Contains("ODCA-MIGRATION 042 CHECKSUM 901a50fc9b4cf02bc18189b602df973102ae754f27926511700281eadb75ee9e", canonical, StringComparison.Ordinal);
         Assert.NotEqual(File.ReadAllBytes(FindSql()), File.ReadAllBytes(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v042.sql")));
     }
+
+    [Fact]
+    public void ReleaseV052AllowsInboxListingTypeWithoutRewritingEarlierMigrations()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var previous = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v051.sql")).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v052.sql")).Replace("\r\n", "\n");
+        DatabaseMigrator.ValidateChecksums(previous);
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        DatabaseMigrator.ValidateChecksums(canonical);
+        for (var version = 1; version <= 51; version++)
+            Assert.Equal(MigrationBlock(previous, version), MigrationBlock(canonical, version));
+        Assert.Contains("CHECK(listing_type IN('obligations','reviews','contracts','inbox'))", snapshot, StringComparison.Ordinal);
+        Assert.DoesNotContain("ODCA-MIGRATION 053", snapshot, StringComparison.Ordinal);
+    }
 }
