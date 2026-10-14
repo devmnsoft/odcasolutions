@@ -2,6 +2,8 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.DependencyInjection;
+using Odca.Api.Localization;
 using Odca.Application.Onboarding;
 using Odca.Contracts.Onboarding;
 
@@ -35,8 +37,15 @@ public sealed class OnboardingController(
             cancellationToken);
         if (!result.Succeeded || result.RegistrationId is null)
         {
-            return ValidationProblem(new ValidationProblemDetails(
-                new Dictionary<string, string[]> { ["registration"] = [.. result.Errors] }));
+            // D-OC27: textos canônicos do CustomerOnboardingService resolvidos por mapa reverso.
+            var culture = this.Culture();
+            var localizer = HttpContext.RequestServices.GetRequiredService<Odca.Configuration.Localization.LocalizationService>();
+            return ValidationProblem(new ValidationProblemDetails
+            {
+                Title = this.T("api.validation.invalid_fields"),
+                Extensions = { ["code"] = "api.onboarding.registration_invalid" },
+                Errors = { ["registration"] = [.. result.Errors.Select(error => ApiMessages.Localize(localizer, error, culture) ?? error)] }
+            });
         }
 
         return Accepted(new StartCustomerRegistrationResponse(
@@ -57,8 +66,14 @@ public sealed class OnboardingController(
             cancellationToken);
         if (!result.Succeeded)
         {
-            return ValidationProblem(new ValidationProblemDetails(
-                new Dictionary<string, string[]> { ["token"] = [.. result.Errors] }));
+            var culture = this.Culture();
+            var localizer = HttpContext.RequestServices.GetRequiredService<Odca.Configuration.Localization.LocalizationService>();
+            return ValidationProblem(new ValidationProblemDetails
+            {
+                Title = this.T("api.validation.invalid_fields"),
+                Extensions = { ["code"] = "api.onboarding.confirm_invalid" },
+                Errors = { ["token"] = [.. result.Errors.Select(error => ApiMessages.Localize(localizer, error, culture) ?? error)] }
+            });
         }
 
         return Ok(new ConfirmCustomerRegistrationResponse(

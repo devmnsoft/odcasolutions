@@ -2,7 +2,9 @@ using System.Security.Claims;
 using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using Odca.Api.Localization;
 using Odca.Application.Tenancy;
 using Odca.Contracts.DocumentImports;
 
@@ -23,10 +25,7 @@ public sealed partial class ContractImportsController(
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
         if (from.HasValue && to.HasValue && from.Value > to.Value)
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
-            {
-                ["to"] = ["A data final deve ser igual ou posterior à data inicial."]
-            }));
+            return this.Field("to", "api.validation.date_range");
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(connection, actor.Value, tenantId, "tenant.imports.read", ct)) return Forbid();
         await using var tx = await connection.BeginTransactionAsync(ct); await SetTenant(connection, tenantId, tx, ct);
@@ -42,15 +41,13 @@ public sealed partial class ContractImportsController(
         catch (TimeZoneConfigurationException exception)
         {
             LogTimeZoneConfigurationUnavailable(logger, exception, tenantId, exception.Error);
-            return Problem(statusCode: StatusCodes.Status503ServiceUnavailable,
-                title: "A configuração de data da organização está indisponível.",
-                detail: "Contate o administrador para corrigir o fuso horário configurado.");
+            // D-OC27: texto por chave; código wire aditivo.
+            return new ObjectResult(new ProblemDetails { Title = this.T("api.imports.timezone_unavailable"), Detail = this.T("api.imports.timezone_unavailable.detail"), Status = 503, Extensions = { ["code"] = "imports.timezone_unavailable" } }) { StatusCode = 503 };
         }
         catch (InvalidOperationException exception)
         {
             LogInvalidLocalRange(logger, exception, tenantId);
-            return Problem(statusCode: StatusCodes.Status422UnprocessableEntity,
-                title: "O intervalo informado não pode ser convertido no fuso da organização.");
+            return this.Status(StatusCodes.Status422UnprocessableEntity, "api.imports.range_not_convertible");
         }
         var args = new { tenantId, status, requester, actor = actor.Value, mine, awaitingReview, range.FromInclusive, range.ToExclusive };
         const string filter = """
@@ -137,7 +134,7 @@ public sealed partial class ContractImportsController(
         var prior = await connection.ExecuteScalarAsync<Guid?>(new CommandDefinition(
             "SELECT id FROM odca.contract_imports WHERE tenant_id=@tenantId AND document_version_id=@VersionId",
             new { tenantId, source.VersionId }, tx, cancellationToken: ct));
-        if (prior.HasValue) { await tx.CommitAsync(ct); return Conflict(new { title = "Documento já registrado para importação.", importId = prior }); }
+        if (prior.HasValue) { await tx.CommitAsync(ct); return Conflict(new { title = this.T("api.imports.already_registered"), code = "imports.already_registered", importId = prior }); }
         var state = State(source.SecurityStatus, source.JobStatus);
         var id = Guid.NewGuid();
         await connection.ExecuteAsync(new CommandDefinition("""
@@ -192,20 +189,23 @@ public sealed partial class ContractImportsController(
             """, new { tenantId, importId }, tx, cancellationToken: ct));
         if (item is null) return NotFound();
         if (item.Status == "confirmed") { await tx.CommitAsync(ct); return Ok(new ContractImportResult(importId, item.ResultContractId!.Value, item.Status, true)); }
-        if (item.ReviewVersion != request.ReviewVersion) return Conflict(new { title = "A revisão foi alterada em outra sessão.", currentVersion = item.ReviewVersion });
-        if (item.SecurityStatus != "safe" || (item.ExtractionStatus is not null && item.ExtractionStatus != "ready_for_review")) return Conflict(new { title = "O documento ainda não está aprovado e pronto para confirmação." });
+        if (item.ReviewVersion != request.ReviewVersion) return Conflict(new { title = this.T("api.imports.review_changed"), code = "imports.review.conflict", currentVersion = item.ReviewVersion });
+        if (item.SecurityStatus != "safe" || (item.ExtractionStatus is not null && item.ExtractionStatus != "ready_for_review")) return OdcaErrors.Conflict(this, "api.imports.not_ready_for_confirmation");
         var pending = await c.ExecuteScalarAsync<int>(new CommandDefinition("""
             SELECT count(*)::integer FROM odca.extraction_suggestions s JOIN odca.extraction_results r ON r.id=s.result_id AND r.tenant_id=s.tenant_id
             JOIN odca.contract_imports i ON i.extraction_job_id=r.job_id AND i.tenant_id=r.tenant_id
             WHERE i.tenant_id=@tenantId AND i.id=@importId AND s.review_status='pending'
             """, new { tenantId, importId }, tx, cancellationToken: ct));
-        if (pending > 0) return UnprocessableEntity(new { title = "Revise todas as sugestões antes de confirmar.", issues = new[] { new ImportValidationIssue("unreviewed-suggestions", ImportIssueSeverity.Blocking, "Há sugestões ainda não revisadas.") } });
+        // D-OC27: títulos e mensagens de issue por chave; códigos wire das issues preservados.
+        var culture = this.Culture();
+        var localizer = HttpContext.RequestServices.GetRequiredService<Odca.Configuration.Localization.LocalizationService>();
+        if (pending > 0) return UnprocessableEntity(new { title = this.T("api.imports.unreviewed_suggestions"), issues = new[] { new ImportValidationIssue("unreviewed-suggestions", ImportIssueSeverity.Blocking, this.T("api.imports.issue_unreviewed")) } });
         var contract = await c.QuerySingleOrDefaultAsync<ContractForValidation>(new CommandDefinition(
             "SELECT title AS Title,start_date AS StartDate,end_date AS EndDate,value AS Value,currency AS Currency,renewal_notice_days AS RenewalNoticeDays FROM odca.contracts WHERE tenant_id=@tenantId AND id=@ContractId",
             new { tenantId, item.ContractId }, tx, cancellationToken: ct));
         var issues = Validate(contract);
         if (issues.Any(issue => issue.Severity == ImportIssueSeverity.Blocking))
-            return UnprocessableEntity(new { title = "Corrija as inconsistências bloqueantes antes de confirmar.", issues });
+            return UnprocessableEntity(new { title = this.T("api.imports.blocking_issues"), issues = LocalizeIssues(issues, localizer, culture) });
         await c.ExecuteAsync(new CommandDefinition("""
             UPDATE odca.contract_imports SET status='confirmed',current_step='confirmation',result_contract_id=@ContractId,
                    confirmed_by=@actor,confirmed_at=now(),updated_at=now(),review_version=review_version+1
@@ -225,7 +225,11 @@ public sealed partial class ContractImportsController(
         var normalized = NormalizeManualData(request);
         var issues = Validate(new ContractForValidation(normalized.Title, normalized.StartDate, normalized.EndDate, normalized.Value, normalized.Currency, null));
         if (issues.Any(issue => issue.Severity == ImportIssueSeverity.Blocking))
-            return UnprocessableEntity(new { title = "Corrija os dados antes de continuar.", issues });
+        {
+            var culture = this.Culture();
+            var localizer = HttpContext.RequestServices.GetRequiredService<Odca.Configuration.Localization.LocalizationService>();
+            return UnprocessableEntity(new { title = this.T("api.imports.fix_data"), issues = LocalizeIssues(issues, localizer, culture) });
+        }
 
         await using var c = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(c, actor.Value, tenantId, "tenant.imports.manage", ct)) return Forbid();
@@ -237,10 +241,10 @@ public sealed partial class ContractImportsController(
              WHERE i.tenant_id=@tenantId AND i.id=@importId FOR UPDATE OF i
             """, new { tenantId, importId }, tx, cancellationToken: ct));
         if (item is null) return NotFound();
-        if (item.Status is "confirmed" or "cancelled") return Conflict(new { title = "A importação já foi encerrada." });
-        if (item.SecurityStatus != "safe") return Conflict(new { title = "Aguarde a inspeção de segurança do documento." });
+        if (item.Status is "confirmed" or "cancelled") return OdcaErrors.Conflict(this, "api.imports.already_closed");
+        if (item.SecurityStatus != "safe") return OdcaErrors.Conflict(this, "api.imports.security_pending");
         if (item.ReviewVersion != normalized.ReviewVersion)
-            return Conflict(new { title = "Os dados foram alterados em outra sessão.", currentVersion = item.ReviewVersion });
+            return Conflict(new { title = this.T("api.imports.data_changed"), code = "imports.data.conflict", currentVersion = item.ReviewVersion });
 
         await c.ExecuteAsync(new CommandDefinition("""
             UPDATE odca.contracts
@@ -270,7 +274,7 @@ public sealed partial class ContractImportsController(
             INSERT INTO odca.contract_import_events(tenant_id,import_id,actor_id,event_type)
             SELECT @tenantId,@importId,@actor,'import_cancelled' WHERE EXISTS(SELECT 1 FROM odca.contract_imports WHERE tenant_id=@tenantId AND id=@importId AND status='cancelled');
             """, new { tenantId, importId, actor }, tx, cancellationToken: ct));
-        await tx.CommitAsync(ct); return changed == 0 ? Conflict(new { title = "A importação confirmada não pode ser cancelada." }) : NoContent();
+        await tx.CommitAsync(ct); return changed == 0 ? OdcaErrors.Conflict(this, "api.imports.confirmed_cannot_cancel") : NoContent();
     }
 
 
@@ -301,6 +305,15 @@ public sealed partial class ContractImportsController(
         Reference = string.IsNullOrWhiteSpace(request.Reference) ? null : request.Reference.Trim(),
         Currency = string.IsNullOrWhiteSpace(request.Currency) ? null : request.Currency.Trim().ToUpperInvariant()
     };
+
+    // D-OC27: mensagens canônicas das issues resolvidas por mapa reverso; texto desconhecido volta como veio.
+    private static System.Collections.Generic.List<ImportValidationIssue> LocalizeIssues(
+        IReadOnlyList<ImportValidationIssue> issues,
+        Odca.Configuration.Localization.LocalizationService localizer,
+        string culture) => issues.Select(issue =>
+            ApiMessages.Localize(localizer, issue.Message, culture) is { } translated
+                ? issue with { Message = translated }
+                : issue).AsList();
 
     private Guid? Actor() => Guid.TryParse(User.FindFirstValue("sub"), out var id) ? id : null;
     private static Task<bool> Allowed(NpgsqlConnection c, Guid actor, Guid tenant, string permission, CancellationToken ct) => c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT odca.tenant_actor_has_permission(@actor,@tenant,@permission)", new { actor, tenant, permission }, cancellationToken: ct));

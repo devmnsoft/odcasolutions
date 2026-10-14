@@ -1,11 +1,14 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
 using Odca.Api.Controllers;
 using Odca.Application.Common;
 using Odca.Application.Patients;
 using Odca.Contracts.Patients;
+using Odca.Configuration.Localization;
 
 namespace Odca.Domain.Tests;
 
@@ -85,9 +88,17 @@ public sealed class PatientsControllerTests
     private static PatientsController Controller(IPatientRepository repository)
     {
         var controller = new PatientsController(repository, new FixedClock());
+        // D-OC27: os erros resolvem o LocalizationService via HttpContext.RequestServices;
+        // fora do host o teste provê um serviço mínimo (catálogos reais na raiz de output).
+        var services = new ServiceCollection();
+        services.AddSingleton(new LocalizationService());
+        services.AddSingleton<ProblemDetailsFactory>(new DefaultProblemDetailsFactory(
+            Microsoft.Extensions.Options.Options.Create(new ApiBehaviorOptions()),
+            Microsoft.Extensions.Options.Options.Create(new ProblemDetailsOptions())));
         controller.ControllerContext.HttpContext = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", Guid.NewGuid().ToString())], "test"))
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", Guid.NewGuid().ToString())], "test")),
+            RequestServices = services.BuildServiceProvider()
         };
         return controller;
     }

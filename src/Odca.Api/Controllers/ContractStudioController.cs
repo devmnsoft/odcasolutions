@@ -9,7 +9,9 @@ using System.Text.Json.Serialization;
 using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using Odca.Api.Localization;
 using Odca.Application.Contracts;
 using Odca.Application.Tenancy;
 using Odca.Contracts.Studio;
@@ -34,8 +36,8 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     [HttpPost("templates")]
     public async Task<IActionResult> CreateTemplate(Guid tenantId,[FromBody] CreateTemplateRequest request,CancellationToken ct)
     {
-        var actor=Actor();if(actor is null)return Unauthorized();if(string.IsNullOrWhiteSpace(request.Name)||request.Scope is not ("private" or "consultancy"))return ValidationProblem();
-        try{Validate(request.Content.GetRawText(),request.Fields.GetRawText(),"[]",ContractValidationMode.Structural);}catch(InvalidDataException e){return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"template",[e.Message]}}));}
+        var actor=Actor();if(actor is null)return Unauthorized();if(string.IsNullOrWhiteSpace(request.Name)||request.Scope is not ("private" or "consultancy"))return this.Invalid("api.studio.template_name_scope_invalid");
+        try{Validate(request.Content.GetRawText(),request.Fields.GetRawText(),"[]",ContractValidationMode.Structural);}catch(InvalidDataException e){return this.CanonicalField("template",e.Message);}
         await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.templates.manage",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);var id=Guid.NewGuid();var versionId=Guid.NewGuid();
         await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.contract_templates(id,owner_tenant_id,name,description,contract_type,scope,author_id) VALUES(@id,@tenantId,@name,@description,@contractType,@scope,@actor); INSERT INTO odca.contract_template_versions(id,template_id,version_number,content,fields,created_by) VALUES(@versionId,@id,1,@content::jsonb,@fields::jsonb,@actor); INSERT INTO odca.audit_events(scope_type,tenant_id,actor_user_id,action,entity_type,entity_id,result,metadata) VALUES('tenant',@tenantId,@actor,'template.created','contract_template',@id,'success',jsonb_build_object('scope',@scope))",new{id,tenantId,name=request.Name.Trim(),request.Description,request.ContractType,request.Scope,actor,versionId,content=request.Content.GetRawText(),fields=request.Fields.GetRawText()},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Created($"/api/v1/organizations/{tenantId}/studio/templates/{id}",new TemplateMutationResponse(id,1,1,"draft"));
     }
@@ -43,15 +45,15 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     [HttpPut("templates/{templateId:guid}")]
     public async Task<IActionResult> UpdateTemplate(Guid tenantId,Guid templateId,[FromBody] UpdateTemplateRequest request,CancellationToken ct)
     {
-        var actor=Actor();if(actor is null)return Unauthorized();try{Validate(request.Content.GetRawText(),request.Fields.GetRawText(),"[]",ContractValidationMode.Structural);}catch(InvalidDataException e){return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"template",[e.Message]}}));}
+        var actor=Actor();if(actor is null)return Unauthorized();try{Validate(request.Content.GetRawText(),request.Fields.GetRawText(),"[]",ContractValidationMode.Structural);}catch(InvalidDataException e){return this.CanonicalField("template",e.Message);}
         await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.templates.manage",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
-        var changed=await c.QuerySingleOrDefaultAsync<TemplateMutationResponse>(new CommandDefinition("WITH changed AS (UPDATE odca.contract_templates SET name=@name,description=@description,contract_type=@contractType,row_version=row_version+1 WHERE id=@templateId AND owner_tenant_id=@tenantId AND status='draft' AND row_version=@expected RETURNING id,current_version,row_version) UPDATE odca.contract_template_versions v SET content=@content::jsonb,fields=@fields::jsonb FROM changed WHERE v.template_id=@templateId AND v.version_number=changed.current_version RETURNING changed.id AS Id, changed.current_version AS Version, changed.row_version AS RowVersion, 'draft' AS Status",new{name=request.Name.Trim(),request.Description,request.ContractType,templateId,tenantId,expected=request.ExpectedVersion,content=request.Content.GetRawText(),fields=request.Fields.GetRawText()},tx,cancellationToken:ct));if(changed is null)return Conflict(new{title="O modelo foi alterado, publicado ou não pertence à organização."});await tx.CommitAsync(ct);return Ok(changed);
+        var changed=await c.QuerySingleOrDefaultAsync<TemplateMutationResponse>(new CommandDefinition("WITH changed AS (UPDATE odca.contract_templates SET name=@name,description=@description,contract_type=@contractType,row_version=row_version+1 WHERE id=@templateId AND owner_tenant_id=@tenantId AND status='draft' AND row_version=@expected RETURNING id,current_version,row_version) UPDATE odca.contract_template_versions v SET content=@content::jsonb,fields=@fields::jsonb FROM changed WHERE v.template_id=@templateId AND v.version_number=changed.current_version RETURNING changed.id AS Id, changed.current_version AS Version, changed.row_version AS RowVersion, 'draft' AS Status",new{name=request.Name.Trim(),request.Description,request.ContractType,templateId,tenantId,expected=request.ExpectedVersion,content=request.Content.GetRawText(),fields=request.Fields.GetRawText()},tx,cancellationToken:ct));if(changed is null)return OdcaErrors.Conflict(this, "api.studio.template_changed_published");await tx.CommitAsync(ct);return Ok(changed);
     }
 
     [HttpPost("templates/{templateId:guid}/publish")]
     public async Task<IActionResult> PublishTemplate(Guid tenantId,Guid templateId,[FromQuery] long expectedVersion,CancellationToken ct)
     {
-        var actor=Actor();if(actor is null)return Unauthorized();await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.templates.manage",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);var source=await c.QuerySingleOrDefaultAsync<TemplateSource>(new CommandDefinition("SELECT t.id AS TemplateId,v.id AS VersionId,v.content::text AS Content,v.fields::text AS Fields,t.name AS TemplateName FROM odca.contract_templates t JOIN odca.contract_template_versions v ON v.template_id=t.id AND v.version_number=t.current_version WHERE t.id=@templateId AND t.owner_tenant_id=@tenantId AND t.status='draft' AND t.row_version=@expectedVersion FOR UPDATE",new{templateId,tenantId,expectedVersion},tx,cancellationToken:ct));if(source is null)return Conflict();try{Validate(source.Content,source.Fields,"[]",ContractValidationMode.Structural);}catch(InvalidDataException e){return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"template",[e.Message]}}));}var published=await c.QuerySingleAsync<TemplateMutationResponse>(new CommandDefinition("WITH published AS (UPDATE odca.contract_templates SET status='published',published_at=now(),row_version=row_version+1 WHERE id=@templateId RETURNING id,current_version,row_version), versioned AS (UPDATE odca.contract_template_versions SET published_at=now() WHERE id=@versionId RETURNING 1), audited AS (INSERT INTO odca.audit_events(scope_type,tenant_id,actor_user_id,action,entity_type,entity_id,result) VALUES('tenant',@tenantId,@actor,'template.published','contract_template',@templateId,'success') RETURNING 1) SELECT id AS Id, current_version AS Version, row_version AS RowVersion, 'published' AS Status FROM published",new{templateId,versionId=source.VersionId,tenantId,actor},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Ok(published);
+        var actor=Actor();if(actor is null)return Unauthorized();await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.templates.manage",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);var source=await c.QuerySingleOrDefaultAsync<TemplateSource>(new CommandDefinition("SELECT t.id AS TemplateId,v.id AS VersionId,v.content::text AS Content,v.fields::text AS Fields,t.name AS TemplateName FROM odca.contract_templates t JOIN odca.contract_template_versions v ON v.template_id=t.id AND v.version_number=t.current_version WHERE t.id=@templateId AND t.owner_tenant_id=@tenantId AND t.status='draft' AND t.row_version=@expectedVersion FOR UPDATE",new{templateId,tenantId,expectedVersion},tx,cancellationToken:ct));if(source is null)return OdcaErrors.Conflict(this, "api.studio.template_not_draft");try{Validate(source.Content,source.Fields,"[]",ContractValidationMode.Structural);}catch(InvalidDataException e){return this.CanonicalField("template",e.Message);}var published=await c.QuerySingleAsync<TemplateMutationResponse>(new CommandDefinition("WITH published AS (UPDATE odca.contract_templates SET status='published',published_at=now(),row_version=row_version+1 WHERE id=@templateId RETURNING id,current_version,row_version), versioned AS (UPDATE odca.contract_template_versions SET published_at=now() WHERE id=@versionId RETURNING 1), audited AS (INSERT INTO odca.audit_events(scope_type,tenant_id,actor_user_id,action,entity_type,entity_id,result) VALUES('tenant',@tenantId,@actor,'template.published','contract_template',@templateId,'success') RETURNING 1) SELECT id AS Id, current_version AS Version, row_version AS RowVersion, 'published' AS Status FROM published",new{templateId,versionId=source.VersionId,tenantId,actor},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Ok(published);
     }
 
     [HttpPost("templates/{templateId:guid}/duplicate")]
@@ -62,19 +64,19 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
 
     [HttpPost("templates/{templateId:guid}/archive")]
     public async Task<IActionResult> ArchiveTemplate(Guid tenantId,Guid templateId,[FromQuery] long expectedVersion,CancellationToken ct)
-    {var actor=Actor();if(actor is null)return Unauthorized();await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.templates.manage",ct))return Forbid();var changed=await c.ExecuteAsync(new CommandDefinition("UPDATE odca.contract_templates SET status='archived',archived_at=now(),row_version=row_version+1 WHERE id=@templateId AND owner_tenant_id=@tenantId AND row_version=@expectedVersion AND status<>'archived'",new{templateId,tenantId,expectedVersion},cancellationToken:ct));return changed==1?NoContent():Conflict();}
+    {var actor=Actor();if(actor is null)return Unauthorized();await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.templates.manage",ct))return Forbid();var changed=await c.ExecuteAsync(new CommandDefinition("UPDATE odca.contract_templates SET status='archived',archived_at=now(),row_version=row_version+1 WHERE id=@templateId AND owner_tenant_id=@tenantId AND row_version=@expectedVersion AND status<>'archived'",new{templateId,tenantId,expectedVersion},cancellationToken:ct));return changed==1?NoContent():OdcaErrors.Conflict(this, "api.studio.template_stale");}
 
     [HttpPost("drafts")]
     public async Task<IActionResult> CreateDraft(Guid tenantId, [FromBody] CreateDraftRequest request, CancellationToken ct)
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
-        if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length is < 2 or > 160) return ValidationProblem();
+        if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length is < 2 or > 160) return this.Invalid("api.studio.draft_title_invalid");
         var contractorSource = request.ContractorSource?.Trim().ToLowerInvariant();
         if (string.IsNullOrEmpty(contractorSource) || contractorSource == "manual") contractorSource = null;
         else if (contractorSource is not ("patient" or "representative"))
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]> { { "contractorSource", ["Escolha o paciente, o representante legal ou o preenchimento manual."] } }));
+            return this.Field("contractorSource", "api.studio.contractor_source_invalid");
         else if (request.PatientId is null)
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]> { { "contractorSource", ["Selecione o paciente antes de usar o cadastro dele ou do representante como contratante."] } }));
+            return this.Field("contractorSource", "api.studio.contractor_patient_required");
         await using var c = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(c, actor.Value, tenantId, "tenant.contract_drafts.manage", ct)) return Forbid();
         await using var tx = await c.BeginTransactionAsync(ct); await SetTenant(c, tenantId, actor.Value, tx, ct);
@@ -90,14 +92,14 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
                 new { request.TemplateId }, tx, cancellationToken: ct));
             return templateRowExists
                 ? NotFound(new {
-                    title = "O modelo existe, mas a versão publicada não está disponível.",
-                    detail = "O catálogo do banco de dados está inconsistente para este modelo. Tente novamente e, se persistir, contate o suporte.",
+                    title = this.T("api.template.version_missing"),
+                    detail = this.T("api.template.version_missing.detail"),
                     code = "template.version_missing",
                     templateId = request.TemplateId
                 })
                 : NotFound(new {
-                    title = "O modelo selecionado não está disponível para esta organização.",
-                    detail = "Confira se o modelo continua publicado e se ele foi instalado ou compartilhado com esta organização.",
+                    title = this.T("api.template.not_found"),
+                    detail = this.T("api.template.not_found.detail"),
                     code = "template.not_found",
                     templateId = request.TemplateId
                 });
@@ -112,15 +114,15 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             !string.Equals(activityProfile, ActivityProfileOverlays.PlasticSurgery, StringComparison.Ordinal))
         {
             return Conflict(new {
-                title = "Modelo cirúrgico restrito ao perfil Cirurgião plástico.",
-                detail = "Altere o perfil de atuação da organização para Cirurgião plástico (plano Enterprise) em Organização → Editar organização antes de usar este modelo.",
+                title = this.T("api.draft.profile.surgical_required"),
+                detail = this.T("api.draft.profile.surgical_required.detail"),
                 code = "draft.profile.surgical_required"
             });
         }
         var (draftContent, draftFields) = ActivityProfileOverlays.Apply(source.OfficialKey, activityProfile, source.Content, source.Fields);
         var initialValues = await InitialDraftValuesAsync(c, tx, tenantId, request.PatientId, draftFields, contractorSource, ct);
         if (request.PatientId is not null && !await c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.patients WHERE tenant_id=@tenantId AND id=@PatientId AND inactive_at IS NULL)", new { tenantId, request.PatientId }, tx, cancellationToken: ct)))
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"patientId",["Selecione um paciente ativo desta organização."]}}));
+            return this.Field("patientId", "api.studio.draft_patient_inactive");
         Validate(draftContent, draftFields, "[]", ContractValidationMode.Structural);
         // B.3.4: the server seeds the computed mensalidade total on creation when the
         // formula is already decidable (initially "0.00" — nothing selected yet).
@@ -128,9 +130,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
 
         if (request.ChangeRequestId.HasValue && !request.ContractId.HasValue)
         {
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]> {
-                { "changeRequestId", ["A solicitação de alteração exige a seleção de um contrato correspondente."] }
-            }));
+            return this.Field("changeRequestId", "api.studio.change_request_contract_required");
         }
 
         Guid contractId;
@@ -143,7 +143,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             if (existingDraft.TemplateId != source.TemplateId)
             {
                 return (Conflict(new {
-                    title = $"O contrato já possui uma minuta em andamento com o modelo \"{existingDraft.TemplateName}\". Conclua a minuta existente para usar outro modelo.",
+                    title = this.T("api.draft_template_conflict", existingDraft.TemplateName),
                     code = "draft_template_conflict",
                     existingDraftId = existingDraft.Id,
                     existingTemplateId = existingDraft.TemplateId
@@ -153,7 +153,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             if (existingDraft.PatientId.HasValue && request.PatientId.HasValue && existingDraft.PatientId.Value != request.PatientId.Value)
             {
                 return (Conflict(new {
-                    title = "A minuta em andamento deste contrato está vinculada a outro paciente.",
+                    title = this.T("api.draft_patient_conflict"),
                     code = "draft_patient_conflict",
                     existingDraftId = existingDraft.Id
                 }), false);
@@ -162,7 +162,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             if (existingDraft.PatientId.HasValue && !request.PatientId.HasValue)
             {
                 return (Conflict(new {
-                    title = "A minuta em andamento deste contrato possui um paciente associado, mas a requisição não especificou paciente.",
+                    title = this.T("api.draft_patient_required"),
                     code = "draft_patient_required",
                     existingDraftId = existingDraft.Id
                 }), false);
@@ -245,7 +245,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
                     if (conflictDraft is null)
                     {
                         return Conflict(new {
-                            title = "Conflito de concorrência ao criar minuta.",
+                            title = this.T("api.draft_concurrency_conflict"),
                             code = "draft_concurrency_conflict"
                         });
                     }
@@ -286,15 +286,13 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
 
             if (changeReq is null || changeReq.ContractId != contractId)
             {
-                return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]> {
-                    { "changeRequestId", ["A solicitação de alteração não pertence a este contrato ou organização."] }
-                }));
+                return this.Field("changeRequestId", "api.studio.change_request_mismatch");
             }
 
             if (changeReq.Status is not ("draft" or "proposed"))
             {
                 return Conflict(new {
-                    title = $"A solicitação de alteração está na situação '{changeReq.Status}' e não permite vinculação a nova minuta.",
+                    title = this.T("api.change_request_invalid_status", changeReq.Status),
                     code = "change_request_invalid_status"
                 });
             }
@@ -302,7 +300,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             if (changeReq.DraftId.HasValue && changeReq.DraftId.Value != draftId)
             {
                 return Conflict(new {
-                    title = "A solicitação de alteração já está vinculada a outra minuta.",
+                    title = this.T("api.change_request_already_linked"),
                     code = "change_request_already_linked",
                     draftId = changeReq.DraftId.Value
                 });
@@ -319,7 +317,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
                 if (updatedCr != 1)
                 {
                     return Conflict(new {
-                        title = "Não foi possível vincular a solicitação de alteração. Ela pode ter sido modificada concorrentemente.",
+                        title = this.T("api.change_request_concurrency_conflict"),
                         code = "change_request_concurrency_conflict"
                     });
                 }
@@ -366,7 +364,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
 
         if (!canReadDrafts && !canReadPatientDocs && !canDownloadDocs) return Forbid();
         if (updatedFrom is not null && updatedTo is not null && updatedFrom > updatedTo)
-            return ValidationProblem("O período informado começa depois do término.");
+            return this.Invalid("api.studio.documents_period_invalid");
 
         page = Math.Max(page, 1);
         pageSize = Math.Clamp(pageSize, 1, 50);
@@ -660,20 +658,17 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             WHERE d.tenant_id=@tenantId AND d.id=@draftId FOR UPDATE OF d,p
             """, new { tenantId, draftId }, tx, cancellationToken: ct));
         if (current is null) return NotFound();
-        if (current.PatientInactiveAt is not null) return Conflict(new { title="O paciente está inativo.", code="patient.inactive" });
+        if (current.PatientInactiveAt is not null) return Conflict(new { title=this.T("api.patient.inactive"), code="patient.inactive" });
         if (current.CurrentPatientVersion != request.ExpectedPatientVersion)
-            return Conflict(new { title="O cadastro mudou novamente. Refaça a conferência.", code="patient.version.conflict", currentPatientVersion=current.CurrentPatientVersion });
+            return Conflict(new { title=this.T("api.patient.registration_changed"), code="patient.version.conflict", currentPatientVersion=current.CurrentPatientVersion });
         if (current.SelectedPatientVersion == current.CurrentPatientVersion) { await tx.CommitAsync(ct); return NoContent(); }
         if (current.DraftVersion != request.ExpectedDraftVersion)
-            return Conflict(new { title="A minuta mudou durante a conferência. Recarregue sem perder os dados salvos.", code="draft.version.conflict", currentVersion=current.DraftVersion });
+            return Conflict(new { title=this.T("api.draft.version.conflict"), code="draft.version.conflict", currentVersion=current.DraftVersion });
         var differences = PatientChanges(current.SelectedSnapshot, current.CurrentSnapshot);
         var accepted = new HashSet<string>((request.AcceptedKeys ?? []).Where(key => !string.IsNullOrWhiteSpace(key)).Select(key => key.Trim()), StringComparer.Ordinal);
         var declined = differences.Select(change => change.Field).Where(key => !accepted.Contains(key)).ToArray();
         if (declined.Length > 0 && !request.AcknowledgeRemaining)
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
-            {
-                ["acceptedKeys"] = ["Selecione os valores que devem entrar na minuta ou confirme que os demais permanecem como estão. Nada foi gravado."]
-            }));
+            return this.Field("acceptedKeys", "api.studio.reconfirm_selection_required");
         var definitions = JsonSerializer.Deserialize<ContractFieldDefinition[]>(current.Fields, JsonOptions) ?? [];
         var existingValues = JsonSerializer.Deserialize<ContractFieldValue[]>(current.Values, JsonOptions) ?? [];
         var selectedValues = DocumentFieldAutofill.ApplyRegistrationSelection(definitions, existingValues, current.CurrentSnapshot, accepted.ToArray());
@@ -683,7 +678,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             FieldMapping.Validate(definitions);
             StructuredContractDocument.ValidateValues(definitions, selectedValues, ContractValidationMode.Structural);
         }
-        catch (InvalidDataException exception) { return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]> { ["values"] = [exception.Message] })); }
+        catch (InvalidDataException exception) { return this.CanonicalField("values", exception.Message); }
         var updatedFields = selectedValues
             .Where(value => existingValues.All(currentValue => currentValue.FieldId != value.FieldId || !string.Equals(currentValue.Value, value.Value, StringComparison.Ordinal) || currentValue.Confirmed != value.Confirmed))
             .Select(value => value.FieldId)
@@ -703,7 +698,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
                 acceptedKeys=JsonSerializer.Serialize(accepted.OrderBy(key => key, StringComparer.Ordinal).ToArray()),
                 declinedKeys=JsonSerializer.Serialize(declined),
                 updatedFields=JsonSerializer.Serialize(updatedFields) }, tx, cancellationToken: ct));
-        if (changed != 2) return Conflict(new { title="A conferência não pôde ser registrada.", code="draft.version.conflict" });
+        if (changed != 2) return Conflict(new { title=this.T("api.draft.reconfirmation_failed"), code="draft.version.conflict" });
         await tx.CommitAsync(ct); return NoContent();
     }
 
@@ -720,12 +715,12 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     public async Task<IActionResult> Save(Guid tenantId,Guid draftId,[FromBody] SaveDraftRequest request,CancellationToken ct)
     {
         var actor=Actor();if(actor is null)return Unauthorized(); string content=request.Content.GetRawText(),fields=request.Fields.GetRawText(),values=request.Values.GetRawText();
-        try{values=StructuredContractDocument.NormalizeStoredValues(fields,values);Validate(content,fields,values,ContractValidationMode.Structural);}catch(InvalidDataException e){return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"document",[e.Message]}}));}catch(JsonException){return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"document",["O documento enviado está em formato inválido."]}}));}
+        try{values=StructuredContractDocument.NormalizeStoredValues(fields,values);Validate(content,fields,values,ContractValidationMode.Structural);}catch(InvalidDataException e){return this.CanonicalField("document",e.Message);}catch(JsonException){return this.Field("document","api.studio.document_format_invalid");}
         await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.contract_drafts.manage",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
         var receipt=await c.QuerySingleOrDefaultAsync<SaveRow>(new CommandDefinition("SELECT saved_version AS Version,client_revision AS ClientRevision,saved_at AS SavedAt FROM odca.draft_save_receipts WHERE tenant_id=@tenantId AND draft_id=@draftId AND client_revision=@clientRevision",new{tenantId,draftId,request.ClientRevision},tx,cancellationToken:ct));if(receipt is not null){await tx.CommitAsync(ct);return Ok(new SaveDraftResponse(receipt.Version,receipt.ClientRevision,ToUtcOffset(receipt.SavedAt)));}
         var previousValues=await c.ExecuteScalarAsync<string>(new CommandDefinition("SELECT values::text FROM odca.contract_drafts WHERE tenant_id=@tenantId AND id=@draftId",new{tenantId,draftId},tx,cancellationToken:ct));values=StructuredContractDocument.ProtectAutomaticOrigins(fields,previousValues,values);
         var saved=await c.QuerySingleOrDefaultAsync<SaveRow>(new CommandDefinition("UPDATE odca.contract_drafts SET content=@content::jsonb,fields=@fields::jsonb,values=@values::jsonb,row_version=row_version+1,last_client_revision=@clientRevision,updated_by=@actor,updated_at=now() WHERE tenant_id=@tenantId AND id=@draftId AND row_version=@expectedVersion RETURNING row_version AS Version,last_client_revision AS ClientRevision,updated_at AS SavedAt",new{content,fields,values,request.ClientRevision,actor,tenantId,draftId,request.ExpectedVersion},tx,cancellationToken:ct));
-        if(saved is null){var current=await c.ExecuteScalarAsync<long?>(new CommandDefinition("SELECT row_version FROM odca.contract_drafts WHERE tenant_id=@tenantId AND id=@draftId",new{tenantId,draftId},tx,cancellationToken:ct));return current is null?NotFound():Conflict(new{title="A minuta foi alterada em outra sessão.",currentVersion=current,clientRevision=request.ClientRevision});}
+        if(saved is null){var current=await c.ExecuteScalarAsync<long?>(new CommandDefinition("SELECT row_version FROM odca.contract_drafts WHERE tenant_id=@tenantId AND id=@draftId",new{tenantId,draftId},tx,cancellationToken:ct));return current is null?NotFound():Conflict(new{title=this.T("api.studio.draft_changed_other_session"),code="draft.save.conflict",currentVersion=current,clientRevision=request.ClientRevision});}
         await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.draft_save_receipts(tenant_id,draft_id,client_revision,saved_version,saved_at) VALUES(@tenantId,@draftId,@clientRevision,@version,@savedAt); INSERT INTO odca.contract_events(tenant_id,contract_id,actor_id,event_type,details) SELECT tenant_id,contract_id,@actor,'draft.saved',jsonb_build_object('version',row_version,'clientRevision',@clientRevision) FROM odca.contract_drafts WHERE id=@draftId AND tenant_id=@tenantId",new{actor,request.ClientRevision,draftId,tenantId,version=saved.Version,savedAt=saved.SavedAt},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Ok(new SaveDraftResponse(saved.Version,saved.ClientRevision,ToUtcOffset(saved.SavedAt)));
     }
 
@@ -733,14 +728,14 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     public async Task<IActionResult> Generate(Guid tenantId,Guid draftId,[FromBody] GenerateVersionRequest request,CancellationToken ct)
     {
         var actor=Actor();if(actor is null)return Unauthorized();
-        if(request.IdempotencyKey==Guid.Empty || request.ExpectedVersion<=0)return ValidationProblem("Informe a versão esperada da minuta e uma chave de repetição válida.");
+        if(request.IdempotencyKey==Guid.Empty || request.ExpectedVersion<=0)return this.Invalid("api.studio.generate_fields_invalid");
         await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.contract_drafts.manage",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
-        var existing=await c.QuerySingleOrDefaultAsync<GeneratedExistingRow>(new CommandDefinition("SELECT id AS Id,draft_id AS DraftId,version_number AS Number,canonical_sha256 AS Sha256,byte_size AS ByteSize,created_at AS CreatedAt,review_status AS Status,draft_row_version AS DraftVersion FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND idempotency_key=@idempotencyKey",new{tenantId,request.IdempotencyKey},tx,cancellationToken:ct));if(existing is not null){if(existing.DraftId!=draftId||request.ExpectedVersion!=existing.DraftVersion)return Conflict(new{title="A chave de idempotência já foi usada com outra minuta ou versão.",code="idempotency.payload.conflict"});await tx.CommitAsync(ct);return Ok(new GeneratedVersionResponse(existing.Id,existing.Number,existing.Sha256,existing.ByteSize,ToUtcOffset(existing.CreatedAt),existing.Status));}
+        var existing=await c.QuerySingleOrDefaultAsync<GeneratedExistingRow>(new CommandDefinition("SELECT id AS Id,draft_id AS DraftId,version_number AS Number,canonical_sha256 AS Sha256,byte_size AS ByteSize,created_at AS CreatedAt,review_status AS Status,draft_row_version AS DraftVersion FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND idempotency_key=@idempotencyKey",new{tenantId,request.IdempotencyKey},tx,cancellationToken:ct));if(existing is not null){if(existing.DraftId!=draftId||request.ExpectedVersion!=existing.DraftVersion)return Conflict(new{title=this.T("api.idempotency.payload.conflict"),code="idempotency.payload.conflict"});await tx.CommitAsync(ct);return Ok(new GeneratedVersionResponse(existing.Id,existing.Number,existing.Sha256,existing.ByteSize,ToUtcOffset(existing.CreatedAt),existing.Status));}
         var d=await c.QuerySingleOrDefaultAsync<DraftRow>(new CommandDefinition("SELECT d.id AS Id,d.contract_id AS ContractId,c.title AS Title,d.source_template_id AS SourceTemplateId,d.source_template_version_id AS SourceTemplateVersionId,d.content::text AS Content,d.fields::text AS Fields,d.values::text AS Values,d.row_version AS Version,d.last_client_revision AS LastClientRevision,d.updated_at AS UpdatedAt,d.patient_id AS PatientId,d.patient_row_version AS PatientVersion,t.status AS TemplateStatus,p.row_version AS CurrentPatientVersion,p.inactive_at AS PatientInactiveAt,odca.patient_document_snapshot(@tenantId,d.patient_id)::text AS PatientSnapshot FROM odca.contract_drafts d JOIN odca.contracts c ON c.id=d.contract_id AND c.tenant_id=d.tenant_id JOIN odca.contract_templates t ON t.id=d.source_template_id LEFT JOIN LATERAL (SELECT patient.row_version,patient.inactive_at FROM odca.patients patient WHERE (patient.tenant_id,patient.id)=(d.tenant_id,d.patient_id) FOR UPDATE) p ON true WHERE d.tenant_id=@tenantId AND d.id=@draftId FOR UPDATE OF d",new{tenantId,draftId},tx,cancellationToken:ct));if(d is null)return NotFound();
-        if(d.TemplateStatus!="published")return Conflict(new{title="O modelo não está disponível para nova geração.",code="template.unavailable"});
-        if(d.PatientId is not null && d.PatientInactiveAt is not null)return Conflict(new{title="O paciente está inativo.",detail="Restaure o cadastro antes de gerar um novo documento.",code="patient.inactive"});
-        if(d.PatientId is not null && d.PatientVersion!=d.CurrentPatientVersion)return Conflict(new{title="Os dados do paciente mudaram durante a conferência.",detail="Crie uma nova minuta ou reconfirme os dados atualizados antes da emissão.",code="patient.version.conflict",currentPatientVersion=d.CurrentPatientVersion});
-        if(d.Version!=request.ExpectedVersion)return Conflict(new{title="Salve e resolva o conflito antes de gerar a versão.",currentVersion=d.Version});try{d.Values=StructuredContractDocument.NormalizeStoredValues(d.Fields,d.Values);Validate(d.Content,d.Fields,d.Values,ContractValidationMode.Confirmed);}catch(InvalidDataException e){return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"pendingFields",[e.Message]}}));}
+        if(d.TemplateStatus!="published")return Conflict(new{title=this.T("api.template.unavailable"),code="template.unavailable"});
+        if(d.PatientId is not null && d.PatientInactiveAt is not null)return Conflict(new{title=this.T("api.patient.inactive"),detail=this.T("api.patient.inactive.generate_detail"),code="patient.inactive"});
+        if(d.PatientId is not null && d.PatientVersion!=d.CurrentPatientVersion)return Conflict(new{title=this.T("api.patient.data_changed"),detail=this.T("api.patient.data_changed.detail"),code="patient.version.conflict",currentPatientVersion=d.CurrentPatientVersion});
+        if(d.Version!=request.ExpectedVersion)return Conflict(new{title=this.T("api.studio.generate_version_conflict"),code="draft.generate.conflict",currentVersion=d.Version});try{d.Values=StructuredContractDocument.NormalizeStoredValues(d.Fields,d.Values);Validate(d.Content,d.Fields,d.Values,ContractValidationMode.Confirmed);}catch(InvalidDataException e){return this.CanonicalField("pendingFields",e.Message);}
         var number=await c.ExecuteScalarAsync<int>(new CommandDefinition("SELECT coalesce(max(version_number),0)+1 FROM odca.generated_contract_versions WHERE draft_id=@draftId",new{draftId},tx,cancellationToken:ct));
         var snapshot=Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new{schemaVersion=2,patient=d.PatientSnapshot is null?(JsonElement?)null:JsonSerializer.Deserialize<JsonElement>(d.PatientSnapshot),content=JsonSerializer.Deserialize<JsonElement>(d.Content),fields=JsonSerializer.Deserialize<JsonElement>(d.Fields),values=JsonSerializer.Deserialize<JsonElement>(d.Values)}));var hash=Convert.ToHexString(SHA256.HashData(snapshot)).ToLowerInvariant();var id=Guid.NewGuid();var key=$"generated/{tenantId:N}/{d.ContractId:N}/{id:N}.json";var root=configuration["Documents:StoragePath"]??Path.Combine(AppContext.BaseDirectory,"App_Data","documents");var path=Path.Combine(root,key.Replace('/',Path.DirectorySeparatorChar));Directory.CreateDirectory(Path.GetDirectoryName(path)!);await System.IO.File.WriteAllBytesAsync(path,snapshot,ct);
         // D-A4: o CNPJ da organização na data da emissão faz parte do snapshot imutável.
@@ -784,7 +779,13 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         string html;
         var cover = new ContractDocumentRenderer.DocumentCoverInfo(row.Organization, row.OrganizationTaxId, row.Title, row.Number, ToUtcOffset(row.CreatedAt), row.Author);
         try { html=ContractDocumentRenderer.ToHtml(row.Content,row.Fields,row.Values,cover); }
-        catch(InvalidDataException exception) { return Problem(statusCode:StatusCodes.Status422UnprocessableEntity,title:"A estrutura histórica não pode ser apresentada.",detail:exception.Message); }
+        catch(InvalidDataException exception)
+        {
+            // D-OC27: título por chave; detalhe canônico (renderer) resolvido por mapa.
+            var culture=this.Culture();
+            var localizer=HttpContext.RequestServices.GetRequiredService<Odca.Configuration.Localization.LocalizationService>();
+            return this.Status(StatusCodes.Status422UnprocessableEntity,"api.studio.history_render_failed",ApiMessages.Localize(localizer,exception.Message,culture) ?? exception.Message);
+        }
         await tx.CommitAsync(ct); return Ok(new GeneratedVersionDetail(row.Id,row.ContractId,row.DraftId,row.Number,row.Title,row.DocumentType,
             row.Organization,row.Template,row.TemplateVersion,row.Author,ToUtcOffset(row.CreatedAt),row.Sha256,row.ReviewStatus,
             row.SignatureStatus,row.ReviewId,ParseOptional(row.PatientSnapshot),JsonSerializer.Deserialize<JsonElement>(row.Content),
@@ -808,12 +809,12 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         if(row is null)return NotFound();if(row.Status=="completed"){await tx.CommitAsync(ct);return Ok(new{status="completed",byteSize=row.ByteSize,replayed=true});}
         // D-A4: artefato imutável usa apenas o snapshot persistido (created_at +
         // emission_metadata), nunca o relógio do momento da reimpressão.
-        byte[] pdf;try{pdf=ContractDocumentRenderer.ToPdf(row.Content,row.Fields,row.Values,row.Title,row.Number,new ContractDocumentRenderer.DocumentCoverInfo(row.Organization,row.TaxId,row.Title,row.Number,ToUtcOffset(row.CreatedAt),row.Author));}catch(InvalidDataException e){await c.ExecuteAsync(new CommandDefinition("UPDATE odca.generated_contract_versions SET pdf_status='failed',pdf_failure_code='invalid_structure' WHERE tenant_id=@tenantId AND id=@versionId",new{tenantId,versionId},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Problem(statusCode:StatusCodes.Status422UnprocessableEntity,title:"Não foi possível gerar o PDF.",detail:e.Message);}
+        byte[] pdf;try{pdf=ContractDocumentRenderer.ToPdf(row.Content,row.Fields,row.Values,row.Title,row.Number,new ContractDocumentRenderer.DocumentCoverInfo(row.Organization,row.TaxId,row.Title,row.Number,ToUtcOffset(row.CreatedAt),row.Author));}catch(InvalidDataException e){await c.ExecuteAsync(new CommandDefinition("UPDATE odca.generated_contract_versions SET pdf_status='failed',pdf_failure_code='invalid_structure' WHERE tenant_id=@tenantId AND id=@versionId",new{tenantId,versionId},tx,cancellationToken:ct));await tx.CommitAsync(ct);var culture=this.Culture();var localizer=HttpContext.RequestServices.GetRequiredService<Odca.Configuration.Localization.LocalizationService>();return this.Status(StatusCodes.Status422UnprocessableEntity,"api.studio.pdf_generation_failed",ApiMessages.Localize(localizer,e.Message,culture) ?? e.Message);}
         var hash=Convert.ToHexString(SHA256.HashData(pdf)).ToLowerInvariant();var key=$"generated/{tenantId:N}/{versionId:N}/final-{ContractDocumentRenderer.PdfRendererVersion}-{hash[..16]}.pdf";var root=configuration["Documents:StoragePath"]??Path.Combine(AppContext.BaseDirectory,"App_Data","documents");var path=Path.Combine(root,key.Replace('/',Path.DirectorySeparatorChar));var temporary=path+".attempt-"+Guid.NewGuid().ToString("N");Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         try
         {
             await System.IO.File.WriteAllBytesAsync(temporary,pdf,ct);
-            if(System.IO.File.Exists(path)){var existing=await System.IO.File.ReadAllBytesAsync(path,ct);if(!CryptographicOperations.FixedTimeEquals(SHA256.HashData(existing),SHA256.HashData(pdf)))return Problem(statusCode:StatusCodes.Status409Conflict,title:"Já existe um artefato divergente para esta tentativa.");System.IO.File.Delete(temporary);}else System.IO.File.Move(temporary,path,false);
+            if(System.IO.File.Exists(path)){var existing=await System.IO.File.ReadAllBytesAsync(path,ct);if(!CryptographicOperations.FixedTimeEquals(SHA256.HashData(existing),SHA256.HashData(pdf)))return this.Status(StatusCodes.Status409Conflict,"api.studio.pdf_artifact_divergent");System.IO.File.Delete(temporary);}else System.IO.File.Move(temporary,path,false);
             var reserved=await c.ExecuteScalarAsync<bool>(new CommandDefinition("""
                 INSERT INTO odca.tenant_storage_usage(tenant_id) VALUES(@tenantId) ON CONFLICT DO NOTHING;
                 UPDATE odca.tenant_storage_usage u SET quota_bytes=q.effective_quota
@@ -824,7 +825,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
                   ON CONFLICT(tenant_id,idempotency_key) DO NOTHING RETURNING 1)
                 UPDATE odca.tenant_storage_usage SET used_bytes=used_bytes+@size WHERE tenant_id=@tenantId AND EXISTS(SELECT 1 FROM movement) RETURNING true
                 """,new{tenantId,versionId,size=pdf.LongLength,actor},tx,cancellationToken:ct));
-            if(!reserved)return Problem(statusCode:StatusCodes.Status413PayloadTooLarge,title:"A cota efetiva de armazenamento da organização foi atingida.");
+            if(!reserved)return this.Status(StatusCodes.Status413PayloadTooLarge,"api.studio.pdf_storage_quota");
             await c.ExecuteAsync(new CommandDefinition("UPDATE odca.generated_contract_versions SET pdf_status='completed',pdf_storage_key=@key,pdf_sha256=@hash,pdf_byte_size=@size,pdf_renderer_version=@renderer,pdf_completed_at=now(),pdf_failure_code=NULL WHERE tenant_id=@tenantId AND id=@versionId",new{tenantId,versionId,key,hash,size=pdf.LongLength,renderer=ContractDocumentRenderer.PdfRendererVersion},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Ok(new{status="completed",byteSize=pdf.LongLength,replayed=false});
         }
         finally{if(System.IO.File.Exists(temporary))System.IO.File.Delete(temporary);}
@@ -834,7 +835,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     public async Task<IActionResult> DownloadPdf(Guid tenantId,Guid versionId,CancellationToken ct)
     {
         var actor=Actor();if(actor is null)return Unauthorized();await using var c=await dataSource.OpenConnectionAsync(ct);var canReadPatientDocuments=await Allowed(c,actor.Value,tenantId,"tenant.patients.documents.read",ct);var canReadDrafts=await Allowed(c,actor.Value,tenantId,"tenant.contract_drafts.read",ct);if(!canReadPatientDocuments&&!canReadDrafts)return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
-        var row=await c.QuerySingleOrDefaultAsync<PdfDownloadRow>(new CommandDefinition("SELECT pdf_storage_key AS StorageKey,pdf_sha256 AS Sha256,coalesce(emission_metadata->>'title','documento') AS Title,patient_id AS PatientId FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND id=@versionId AND pdf_status='completed'",new{tenantId,versionId},tx,cancellationToken:ct));if(row is null)return NotFound();if(!canReadDrafts&&row.PatientId is null)return Forbid();var root=configuration["Documents:StoragePath"]??Path.Combine(AppContext.BaseDirectory,"App_Data","documents");var path=Path.Combine(root,row.StorageKey.Replace('/',Path.DirectorySeparatorChar));if(!System.IO.File.Exists(path))return Problem(statusCode:StatusCodes.Status410Gone,title:"O arquivo final não está disponível.");var bytes=await System.IO.File.ReadAllBytesAsync(path,ct);if(!CryptographicOperations.FixedTimeEquals(SHA256.HashData(bytes),Convert.FromHexString(row.Sha256)))return Problem(statusCode:StatusCodes.Status409Conflict,title:"A integridade do PDF não pôde ser confirmada.");await tx.CommitAsync(ct);return File(bytes,"application/pdf",$"{SafeFileName(row.Title)}.pdf",false);
+        var row=await c.QuerySingleOrDefaultAsync<PdfDownloadRow>(new CommandDefinition("SELECT pdf_storage_key AS StorageKey,pdf_sha256 AS Sha256,coalesce(emission_metadata->>'title','documento') AS Title,patient_id AS PatientId FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND id=@versionId AND pdf_status='completed'",new{tenantId,versionId},tx,cancellationToken:ct));if(row is null)return NotFound();if(!canReadDrafts&&row.PatientId is null)return Forbid();var root=configuration["Documents:StoragePath"]??Path.Combine(AppContext.BaseDirectory,"App_Data","documents");var path=Path.Combine(root,row.StorageKey.Replace('/',Path.DirectorySeparatorChar));if(!System.IO.File.Exists(path))return this.Status(StatusCodes.Status410Gone,"api.studio.pdf_unavailable");var bytes=await System.IO.File.ReadAllBytesAsync(path,ct);if(!CryptographicOperations.FixedTimeEquals(SHA256.HashData(bytes),Convert.FromHexString(row.Sha256)))return this.Status(StatusCodes.Status409Conflict,"api.studio.pdf_integrity_unconfirmed");await tx.CommitAsync(ct);return File(bytes,"application/pdf",$"{SafeFileName(row.Title)}.pdf",false);
     }
 
     [HttpGet("versions/{versionId:guid}/signature-preparation/readiness")]
@@ -850,10 +851,13 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     public async Task<IActionResult> SavePreparation(Guid tenantId,Guid versionId,SaveSignaturePreparationRequest request,CancellationToken ct)
     {
         if(Actor() is not Guid actor)return Unauthorized();
+        // D-OC27: mensagens canônicas do validador resolvidas por mapa reverso; desconhecidas voltam como vieram.
+        var culture=this.Culture();
+        var localizer=HttpContext.RequestServices.GetRequiredService<Odca.Configuration.Localization.LocalizationService>();
         var participants=request.Participants;
         var errors=ValidateParticipants(participants);
         if(request.Confirm&&(request.OperationId is null||request.OperationId==Guid.Empty))errors["operationId"]=["A chave da confirmação é obrigatória."];
-        if(errors.Count>0)return ValidationProblem(new ValidationProblemDetails(errors));
+        if(errors.Count>0)return this.Errors(errors.Select(entry=>new KeyValuePair<string,string[]>(entry.Key,entry.Value.Select(message=>ApiMessages.Localize(localizer,message,culture) ?? message).ToArray())).ToDictionary(pair=>pair.Key,pair=>pair.Value));
         var normalized=participants!.Select(x=>x with{Role=x.Role.Trim(),Name=x.Name.Trim(),Email=NullIfBlank(x.Email),Phone=NullIfBlank(x.Phone)}).OrderBy(x=>x.Position).ToArray();
         await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor,tenantId,"tenant.contract_drafts.manage",ct))return Forbid();
         await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor,tx,ct);
@@ -867,7 +871,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             var receipt=await ReadOperation(c,tenantId,request.OperationId.Value,tx,ct);
             if(receipt is not null)
             {
-                if(receipt.OperationType!="confirm"||receipt.CommandHash!=commandHash)return Conflict(new{title="Esta chave já foi usada com outro comando.",code="preparation.idempotency.conflict"});
+                if(receipt.OperationType!="confirm"||receipt.CommandHash!=commandHash)return Conflict(new{title=this.T("api.preparation.idempotency.conflict"),code="preparation.idempotency.conflict"});
                 // A resposta persistida é o snapshot original (replayed=false); o replay
                 // deve sinalizar que é reexecução idempotente do comando.
                 var stored=JsonNode.Parse(receipt.ResponseJson) as JsonObject;
@@ -875,22 +879,22 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
                 await tx.CommitAsync(ct);return Content(stored?.ToJsonString() ?? receipt.ResponseJson,"application/json");
             }
         }
-        var sourceErrors=await ValidateParticipantSources(c,tenantId,version,normalized,tx,ct);if(sourceErrors.Count>0)return ValidationProblem(new ValidationProblemDetails(sourceErrors));
+        var sourceErrors=await ValidateParticipantSources(c,tenantId,version,normalized,tx,ct);if(sourceErrors.Count>0)return this.Errors(sourceErrors.Select(entry=>new KeyValuePair<string,string[]>(entry.Key,entry.Value.Select(message=>ApiMessages.Localize(localizer,message,culture) ?? message).ToArray())).ToDictionary(pair=>pair.Key,pair=>pair.Value));
         var current=await c.QuerySingleOrDefaultAsync<PreparationStateRow>(new CommandDefinition("SELECT id AS Id,status AS Status,row_version AS Version,composition_revision AS CompositionRevision,confirmed_revision AS ConfirmedRevision,confirmed_pdf_sha256 AS ConfirmedPdfSha256,confirmed_at AS ConfirmedAt,confirmation_operation_id AS ConfirmationOperationId FROM odca.signature_preparations WHERE tenant_id=@tenantId AND generated_version_id=@versionId FOR UPDATE",new{tenantId,versionId},tx,cancellationToken:ct));
         Guid preparationId;int revision;long nextVersion;
         if(current is null)
         {
-            if(request.ExpectedVersion!=0)return Conflict(new{title="A preparação ainda não existe nesta versão. Recarregue a página.",code="preparation.creation.conflict"});
+            if(request.ExpectedVersion!=0)return Conflict(new{title=this.T("api.preparation.creation.not_found"),code="preparation.creation.conflict"});
             preparationId=Guid.NewGuid();
             var created=await c.ExecuteScalarAsync<bool>(new CommandDefinition("INSERT INTO odca.signature_preparations(id,tenant_id,generated_version_id,status,created_by,updated_by) VALUES(@preparationId,@tenantId,@versionId,'draft',@actor,@actor) ON CONFLICT(tenant_id,generated_version_id) DO NOTHING RETURNING true",new{preparationId,tenantId,versionId,actor},tx,cancellationToken:ct));
-            if(!created)return Conflict(new{title="Outra sessão iniciou esta preparação. Recarregue para preservar as duas composições.",code="preparation.creation.conflict"});
+            if(!created)return Conflict(new{title=this.T("api.preparation.creation.conflict"),code="preparation.creation.conflict"});
             revision=1;nextVersion=1;
             await AddPreparationEvent(c,tenantId,preparationId,revision,actor,"created",new{count=normalized.Length},tx,ct);
         }
         else
         {
-            if(current.Version!=request.ExpectedVersion)return Conflict(new{title="A composição foi alterada em outra sessão. Recarregue e reaplique suas mudanças.",code="preparation.version.conflict",currentVersion=current.Version});
-            if(current.Status=="confirmed")return Conflict(new{title="A composição confirmada está congelada. Reabra-a com justificativa antes de editar.",code="preparation.confirmed"});
+            if(current.Version!=request.ExpectedVersion)return Conflict(new{title=this.T("api.preparation.version.conflict"),code="preparation.version.conflict",currentVersion=current.Version});
+            if(current.Status=="confirmed")return Conflict(new{title=this.T("api.preparation.confirmed"),code="preparation.confirmed"});
             preparationId=current.Id;revision=current.CompositionRevision+1;nextVersion=current.Version+1;
             await c.ExecuteAsync(new CommandDefinition("UPDATE odca.signature_preparations SET composition_revision=@revision,row_version=row_version+1,updated_by=@actor,updated_at=now() WHERE tenant_id=@tenantId AND id=@preparationId",new{tenantId,preparationId,revision,actor},tx,cancellationToken:ct));
             await AddPreparationEvent(c,tenantId,preparationId,revision,actor,"updated",new{count=normalized.Length},tx,ct);
@@ -909,7 +913,16 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         if(request.Confirm)
         {
             var readiness=await CalculateReadiness(c,tenantId,versionId,tx,ct);
-            if(readiness is null||!readiness.CanConfirm)return BadRequest(new ValidationProblemDetails(new Dictionary<string,string[]>{{"confirm",readiness?.Blockers.Select(x=>x.Message).ToArray()??["A conferência não pôde ser calculada."]}}));
+            string[]? readinessBlockers = readiness?.Blockers.Select(x => ApiMessages.Localize(localizer, x.Message, culture) ?? x.Message).ToArray();
+            if (readiness is null || !readiness.CanConfirm)
+            {
+                if (readinessBlockers is null)
+                {
+                    var fallback = ApiMessages.Localize(localizer, "A conferência não pôde ser calculada.", culture) ?? "A conferência não pôde ser calculada.";
+                    readinessBlockers = [fallback];
+                }
+                return this.Errors(new Dictionary<string, string[]> { { "confirm", readinessBlockers } });
+            }
             await c.ExecuteAsync(new CommandDefinition("UPDATE odca.signature_preparations SET status='confirmed',confirmed_revision=composition_revision,confirmed_pdf_storage_key=@key,confirmed_pdf_sha256=@hash,confirmed_at=now(),confirmed_by=@actor,confirmation_operation_id=@operationId WHERE tenant_id=@tenantId AND id=@preparationId",new{tenantId,preparationId,key=version.PdfStorageKey,hash=version.PdfSha256,actor,operationId=request.OperationId},tx,cancellationToken:ct));
             await AddPreparationEvent(c,tenantId,preparationId,revision,actor,"confirmed",new{pdfSha256=version.PdfSha256,pdfStorageKey=version.PdfStorageKey},tx,ct);
             var response=JsonSerializer.Serialize(new{status="confirmed",version=nextVersion,compositionRevision=revision,replayed=false});
@@ -922,18 +935,18 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     [HttpPost("versions/{versionId:guid}/signature-preparation/reopen")]
     public async Task<IActionResult> ReopenPreparation(Guid tenantId,Guid versionId,ReopenSignaturePreparationRequest request,CancellationToken ct)
     {
-        if(Actor() is not Guid actor)return Unauthorized();if(request.OperationId==Guid.Empty||string.IsNullOrWhiteSpace(request.Justification)||request.Justification.Trim().Length is < 5 or > 1000)return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"justification",["Informe uma justificativa de 5 a 1000 caracteres."]}}));
+        if(Actor() is not Guid actor)return Unauthorized();if(request.OperationId==Guid.Empty||string.IsNullOrWhiteSpace(request.Justification)||request.Justification.Trim().Length is < 5 or > 1000)return this.Field("justification","api.studio.reopen_justification_length");
         await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor,tenantId,"tenant.contract_drafts.manage",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor,tx,ct);
         var commandHash=CommandHash(new{versionId,request.ExpectedVersion,justification=request.Justification.Trim()});
         await LockOperation(c,request.OperationId,tx,ct);
         var receipt=await ReadOperation(c,tenantId,request.OperationId,tx,ct);
         if(receipt is not null)
         {
-            if(receipt.OperationType!="reopen"||receipt.CommandHash!=commandHash)return Conflict(new{title="Esta chave já foi usada com outro comando.",code="preparation.idempotency.conflict"});
+            if(receipt.OperationType!="reopen"||receipt.CommandHash!=commandHash)return Conflict(new{title=this.T("api.preparation.idempotency.conflict"),code="preparation.idempotency.conflict"});
             await tx.CommitAsync(ct);return Content(receipt.ResponseJson,"application/json");
         }
         var current=await c.QuerySingleOrDefaultAsync<PreparationStateRow>(new CommandDefinition("SELECT id AS Id,status AS Status,row_version AS Version,composition_revision AS CompositionRevision,confirmed_revision AS ConfirmedRevision,confirmed_pdf_sha256 AS ConfirmedPdfSha256,confirmed_at AS ConfirmedAt,confirmation_operation_id AS ConfirmationOperationId FROM odca.signature_preparations WHERE tenant_id=@tenantId AND generated_version_id=@versionId FOR UPDATE",new{tenantId,versionId},tx,cancellationToken:ct));
-        if(current is null)return NotFound();if(current.Version!=request.ExpectedVersion)return Conflict(new{title="A preparação foi alterada em outra sessão.",code="preparation.version.conflict",currentVersion=current.Version});if(current.Status=="draft")return Conflict(new{title="A preparação já está aberta para edição.",code="preparation.state.conflict"});
+        if(current is null)return NotFound();if(current.Version!=request.ExpectedVersion)return Conflict(new{title=this.T("api.preparation.version.changed"),code="preparation.version.conflict",currentVersion=current.Version});if(current.Status=="draft")return Conflict(new{title=this.T("api.preparation.state.conflict"),code="preparation.state.conflict"});
         await c.ExecuteAsync(new CommandDefinition("UPDATE odca.signature_preparations SET status='draft',confirmed_revision=NULL,row_version=row_version+1,updated_by=@actor,updated_at=now() WHERE tenant_id=@tenantId AND id=@id",new{tenantId,id=current.Id,actor},tx,cancellationToken:ct));
         await AddPreparationEvent(c,tenantId,current.Id,current.CompositionRevision,actor,"reopened",new{justification=request.Justification.Trim(),priorConfirmedRevision=current.ConfirmedRevision,priorPdfSha256=current.ConfirmedPdfSha256,priorConfirmedAt=current.ConfirmedAt,operationId=request.OperationId},tx,ct);
         var response=JsonSerializer.Serialize(new{status="draft",version=current.Version+1,replayed=false});
@@ -955,7 +968,8 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         }
         catch(TimeZoneConfigurationException)
         {
-            return Problem(statusCode:StatusCodes.Status503ServiceUnavailable,title:"A configuração de data da organização está indisponível.",detail:"Contate o administrador para corrigir o fuso horário configurado.");
+            // D-OC27: texto por chave; código wire aditivo.
+            return new ObjectResult(new ProblemDetails { Title = this.T("api.studio.timezone_unavailable"), Detail = this.T("api.studio.timezone_unavailable.detail"), Status = 503, Extensions = { ["code"] = "studio.timezone_unavailable" } }) { StatusCode = 503 };
         }
         var items=await c.QueryAsync<SignaturePreparationHistoryItem>(new CommandDefinition("""
             SELECT e.id AS Id,(e.occurred_at AT TIME ZONE @timeZone) AS OccurredAt,e.actor_user_id AS ActorId,u.display_name AS Actor,
@@ -969,7 +983,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     [HttpGet("versions/{versionId:guid}/signature-preparation/compare")]
     public async Task<IActionResult> ComparePreparations(Guid tenantId,Guid versionId,int beforeRevision,int afterRevision,CancellationToken ct)
     {
-        if(Actor() is not Guid actor)return Unauthorized();if(beforeRevision<1||afterRevision<1||beforeRevision==afterRevision)return ValidationProblem();await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor,tenantId,"tenant.contract_drafts.read",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor,tx,ct);
+        if(Actor() is not Guid actor)return Unauthorized();if(beforeRevision<1||afterRevision<1||beforeRevision==afterRevision)return this.Invalid("api.studio.compare_revisions_invalid");await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor,tenantId,"tenant.contract_drafts.read",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor,tx,ct);
         var preparationId=await c.ExecuteScalarAsync<Guid?>(new CommandDefinition("SELECT id FROM odca.signature_preparations WHERE tenant_id=@tenantId AND generated_version_id=@versionId",new{tenantId,versionId},tx,cancellationToken:ct));if(preparationId is null)return NotFound();
         var rows=(await c.QueryAsync<ComparisonParticipant>(new CommandDefinition("SELECT client_id AS Id,name AS Name,participant_type AS ParticipantType,source_id AS SourceId,role AS Role,email AS Email,phone AS Phone,position AS Position,composition_revision AS Revision FROM odca.signature_participants WHERE tenant_id=@tenantId AND preparation_id=@preparationId AND composition_revision=ANY(@revisions) ORDER BY composition_revision,position",new{tenantId,preparationId,revisions=new[]{beforeRevision,afterRevision}},tx,cancellationToken:ct))).AsList();
         if(!rows.Any(x=>x.Revision==beforeRevision)||!rows.Any(x=>x.Revision==afterRevision))return NotFound();var changes=CompareCompositions(rows.Where(x=>x.Revision==beforeRevision),rows.Where(x=>x.Revision==afterRevision));await tx.CommitAsync(ct);return Ok(new SignatureCompositionComparison(beforeRevision,afterRevision,changes));
@@ -987,16 +1001,16 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         string permission;
         if(mode=="session")permission="tenant.signature_participants.sign_self";
         else if(mode=="evidence")permission="tenant.signature_participants.record";
-        else return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"mode",["Informe a modalidade de assinatura: session ou evidence."]}}));
+        else return this.Field("mode", "api.studio.sign_mode_invalid");
         string? evidence=null;
         if(mode=="evidence")
         {
             evidence=request!.Evidence?.Trim();
-            if(evidence is null||evidence.Length<5||evidence.Length>2000)return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"evidence",["Descreva a evidência da assinatura com 5 a 2000 caracteres."]}}));
+            if(evidence is null||evidence.Length<5||evidence.Length>2000)return this.Field("evidence", "api.studio.sign_evidence_length");
         }
         else if(!string.IsNullOrWhiteSpace(request?.Evidence))
         {
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"evidence",["A descrição de evidência só se aplica à modalidade evidence."]}}));
+            return this.Field("evidence", "api.studio.sign_evidence_only_evidence_mode");
         }
         await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor,tenantId,permission,ct))return Forbid();
         await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor,tx,ct);
@@ -1004,17 +1018,17 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         if(version is null)return NotFound();
         var preparation=await c.QuerySingleOrDefaultAsync<PreparationStateRow>(new CommandDefinition("SELECT id AS Id,status AS Status,row_version AS Version,composition_revision AS CompositionRevision,confirmed_revision AS ConfirmedRevision,confirmed_pdf_sha256 AS ConfirmedPdfSha256,confirmed_at AS ConfirmedAt,confirmation_operation_id AS ConfirmationOperationId FROM odca.signature_preparations WHERE tenant_id=@tenantId AND id=@preparationId AND generated_version_id=@versionId FOR UPDATE",new{tenantId,preparationId,versionId},tx,cancellationToken:ct));
         if(preparation is null)return NotFound();
-        if(preparation.Status!="confirmed")return Conflict(new{title="Só uma composição confirmada aceita assinaturas. Envie a preparação para assinatura primeiro.",code="preparation.not_confirmed"});
+        if(preparation.Status!="confirmed")return Conflict(new{title=this.T("api.preparation.not_confirmed.signing"),code="preparation.not_confirmed"});
         var participant=await c.QuerySingleOrDefaultAsync<SignatureParticipantStateRow>(new CommandDefinition("SELECT client_id AS ClientId,name AS Name,signed_at AS SignedAt,signed_by AS SignedBy,identity_membership_id AS IdentityMembershipId FROM odca.signature_participants WHERE tenant_id=@tenantId AND preparation_id=@preparationId AND composition_revision=@revision AND client_id=@clientId FOR UPDATE",new{tenantId,preparationId,revision=preparation.ConfirmedRevision,clientId=participantClientId},tx,cancellationToken:ct));
-        if(participant is null)return Conflict(new{title="Este participante não integra a composição confirmada. Reabra a preparação para ajustá-la.",code="participant.gone"});
+        if(participant is null)return Conflict(new{title=this.T("api.participant.gone"),code="participant.gone"});
         if(participant.SignedAt is null&&mode=="session")
         {
             // D-A3: autoassinatura exige vínculo próprio ativo e sessão em nível MFA.
             var linkedUser=await c.ExecuteScalarAsync<Guid?>(new CommandDefinition("SELECT user_id FROM odca.memberships WHERE id=@membershipId AND tenant_id=@tenantId",new{membershipId=participant.IdentityMembershipId,tenantId},tx,cancellationToken:ct));
-            if(linkedUser is null||linkedUser.Value!=actor)return Conflict(new{title="Vincule sua conta a este participante antes de assinar por sessão.",code="participant.identity_not_linked"});
-            if(SessionId() is not Guid sessionId)return Conflict(new{title="Sua sessão atual não permite autoassinatura.",code="sign.session_required"});
+            if(linkedUser is null||linkedUser.Value!=actor)return Conflict(new{title=this.T("api.participant.identity_not_linked"),code="participant.identity_not_linked"});
+            if(SessionId() is not Guid sessionId)return Conflict(new{title=this.T("api.sign.session_required"),code="sign.session_required"});
             var mfaSession=await c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.sessions WHERE id=@sid AND user_id=@actor AND authentication_level='mfa' AND revoked_at IS NULL)",new{sid=sessionId,actor},tx,cancellationToken:ct));
-            if(!mfaSession)return Conflict(new{title="A autoassinatura exige verificação em dois fatores (MFA) nesta sessão.",code="sign.mfa_required"});
+            if(!mfaSession)return Conflict(new{title=this.T("api.sign.mfa_required"),code="sign.mfa_required"});
         }
         if(participant.SignedAt is not null)
         {
@@ -1024,14 +1038,14 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
                 var openCount=await c.ExecuteScalarAsync<int>(new CommandDefinition("SELECT count(*)::int FROM odca.signature_participants WHERE tenant_id=@tenantId AND preparation_id=@preparationId AND composition_revision=@revision AND signed_at IS NULL",new{tenantId,preparationId,revision=preparation.ConfirmedRevision},tx,cancellationToken:ct));
                 await tx.CommitAsync(ct);return Ok(new{signedAt=ToUtcOffset(participant.SignedAt.Value),signedBy=actor,remaining=openCount,allSigned=openCount==0,replayed=true});
             }
-            return Conflict(new{title="Este participante já assinou o documento em outra sessão.",code="participant.already_signed"});
+            return Conflict(new{title=this.T("api.participant.already_signed"),code="participant.already_signed"});
         }
         var marked=await c.ExecuteAsync(new CommandDefinition("UPDATE odca.signature_participants SET signed_at=now(),signed_by=@actor,signed_through=@mode,signed_session_id=@sessionId,signature_evidence=@evidence WHERE tenant_id=@tenantId AND preparation_id=@preparationId AND composition_revision=@revision AND client_id=@clientId AND signed_at IS NULL",new{tenantId,preparationId,revision=preparation.ConfirmedRevision,clientId=participantClientId,actor,mode,sessionId=mode=="session"?SessionId():null,evidence},tx,cancellationToken:ct));
         if(marked==0)
         {
             var retried=await c.QuerySingleOrDefaultAsync<SignatureParticipantStateRow>(new CommandDefinition("SELECT client_id AS ClientId,name AS Name,signed_at AS SignedAt,signed_by AS SignedBy,identity_membership_id AS IdentityMembershipId FROM odca.signature_participants WHERE tenant_id=@tenantId AND preparation_id=@preparationId AND composition_revision=@revision AND client_id=@clientId",new{tenantId,preparationId,revision=preparation.ConfirmedRevision,clientId=participantClientId},tx,cancellationToken:ct));
-            if(retried is null||retried.SignedAt is null)return Conflict(new{title="A composição mudou durante a operação. Recarregue e repita a ação.",code="participant.gone"});
-            if(retried.SignedBy!=actor)return Conflict(new{title="Este participante já assinou o documento em outra sessão.",code="participant.already_signed"});
+            if(retried is null||retried.SignedAt is null)return Conflict(new{title=this.T("api.participant.gone.composition_changed"),code="participant.gone"});
+            if(retried.SignedBy!=actor)return Conflict(new{title=this.T("api.participant.already_signed"),code="participant.already_signed"});
             var openCount=await c.ExecuteScalarAsync<int>(new CommandDefinition("SELECT count(*)::int FROM odca.signature_participants WHERE tenant_id=@tenantId AND preparation_id=@preparationId AND composition_revision=@revision AND signed_at IS NULL",new{tenantId,preparationId,revision=preparation.ConfirmedRevision},tx,cancellationToken:ct));
             await tx.CommitAsync(ct);return Ok(new{signedAt=ToUtcOffset(retried.SignedAt.Value),signedBy=actor,remaining=openCount,allSigned=openCount==0,replayed=true});
         }
@@ -1061,15 +1075,15 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         await using var c=await dataSource.OpenConnectionAsync(ct);
         await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor,tx,ct);
         var membership=await c.ExecuteScalarAsync<Guid?>(new CommandDefinition("SELECT id FROM odca.memberships WHERE tenant_id=@tenantId AND user_id=@actor",new{tenantId,actor},tx,cancellationToken:ct));
-        if(membership is null)return Conflict(new{title="Somente membros desta organização podem vincular a própria conta.",code="link.not_member"});
+        if(membership is null)return Conflict(new{title=this.T("api.link.not_member"),code="link.not_member"});
         var preparation=await c.QuerySingleOrDefaultAsync<PreparationStateRow>(new CommandDefinition("SELECT id AS Id,status AS Status,row_version AS Version,composition_revision AS CompositionRevision,confirmed_revision AS ConfirmedRevision,confirmed_pdf_sha256 AS ConfirmedPdfSha256,confirmed_at AS ConfirmedAt,confirmation_operation_id AS ConfirmationOperationId FROM odca.signature_preparations WHERE tenant_id=@tenantId AND id=@preparationId AND generated_version_id=@versionId FOR UPDATE",new{tenantId,preparationId,versionId},tx,cancellationToken:ct));
         if(preparation is null)return NotFound();
-        if(preparation.Status!="confirmed")return Conflict(new{title="A vinculação vale apenas sobre a composição confirmada.",code="preparation.not_confirmed"});
+        if(preparation.Status!="confirmed")return Conflict(new{title=this.T("api.preparation.not_confirmed.linking"),code="preparation.not_confirmed"});
         var participant=await c.QuerySingleOrDefaultAsync<SignatureParticipantStateRow>(new CommandDefinition("SELECT client_id AS ClientId,name AS Name,signed_at AS SignedAt,signed_by AS SignedBy,identity_membership_id AS IdentityMembershipId FROM odca.signature_participants WHERE tenant_id=@tenantId AND preparation_id=@preparationId AND composition_revision=@revision AND client_id=@clientId FOR UPDATE",new{tenantId,preparationId,revision=preparation.ConfirmedRevision,clientId=participantClientId},tx,cancellationToken:ct));
-        if(participant is null)return Conflict(new{title="Este participante não integra a composição confirmada. Reabra a preparação para ajustá-la.",code="participant.gone"});
-        if(participant.SignedAt is not null)return Conflict(new{title="Este participante já assinou; a vinculação fica registrada na linha seguinte.",code="participant.already_signed"});
+        if(participant is null)return Conflict(new{title=this.T("api.participant.gone"),code="participant.gone"});
+        if(participant.SignedAt is not null)return Conflict(new{title=this.T("api.participant.already_signed.link_note"),code="participant.already_signed"});
         var linked=await c.ExecuteAsync(new CommandDefinition("UPDATE odca.signature_participants SET identity_membership_id=@membership WHERE tenant_id=@tenantId AND preparation_id=@preparationId AND composition_revision=@revision AND client_id=@clientId",new{tenantId,membership=membership.Value,preparationId,revision=preparation.ConfirmedRevision,clientId=participantClientId},tx,cancellationToken:ct));
-        if(linked==0)return Conflict(new{title="A composição mudou durante a operação. Recarregue e repita a ação.",code="participant.gone"});
+        if(linked==0)return Conflict(new{title=this.T("api.participant.gone.composition_changed"),code="participant.gone"});
         await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.audit_events(scope_type,tenant_id,actor_user_id,action,entity_type,entity_id,result,metadata) VALUES('tenant',@tenantId,@actor,'signature.identity_linked','signature_participant',@clientId,'success',jsonb_build_object('preparationId',@preparationId,'versionId',@versionId))",new{tenantId,actor,clientId=participantClientId,preparationId,versionId},tx,cancellationToken:ct));
         await tx.CommitAsync(ct);
         return Ok(new{linked=true,participantId=participantClientId});
@@ -1087,10 +1101,10 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             WHERE p.tenant_id=@tenantId AND p.id=@preparationId AND p.generated_version_id=@versionId FOR UPDATE OF p
             """,new{tenantId,preparationId,versionId},tx,cancellationToken:ct));
         if(preparation is null)return NotFound();
-        if(preparation.Status!="confirmed")return Conflict(new{title="Só uma composição confirmada admite lembretes de assinatura.",code="preparation.not_confirmed"});
+        if(preparation.Status!="confirmed")return Conflict(new{title=this.T("api.preparation.not_confirmed.reminder"),code="preparation.not_confirmed"});
         var now=await c.ExecuteScalarAsync<DateTime>(new CommandDefinition("SELECT now()",null,tx,cancellationToken:ct));
         if(preparation.LastRemindedAt is not null&&(now-preparation.LastRemindedAt.Value).TotalSeconds<60)
-            return Conflict(new{title="Um lembrete foi enviado recentemente. Aguarde antes de repetir o envio.",code="reminder.too_soon",retryAfterSeconds=Math.Max(1,60-(int)((now-preparation.LastRemindedAt.Value).TotalSeconds))});
+            return Conflict(new{title=this.T("api.reminder.too_soon"),code="reminder.too_soon",retryAfterSeconds=Math.Max(1,60-(int)((now-preparation.LastRemindedAt.Value).TotalSeconds))});
         long nextVersion=preparation.Version+1;
         int unsignedCount=await c.ExecuteScalarAsync<int>(new CommandDefinition("SELECT count(*)::int FROM odca.signature_participants WHERE tenant_id=@tenantId AND preparation_id=@preparationId AND composition_revision=@revision AND signed_at IS NULL",new{tenantId,preparationId,revision=preparation.ConfirmedRevision},tx,cancellationToken:ct));
         await c.ExecuteAsync(new CommandDefinition("UPDATE odca.signature_preparations SET last_reminded_at=now(),last_reminded_by=@actor,row_version=row_version+1,updated_by=@actor,updated_at=now() WHERE tenant_id=@tenantId AND id=@preparationId",new{tenantId,preparationId,actor},tx,cancellationToken:ct));
@@ -1111,7 +1125,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     public async Task<IActionResult> Submit(Guid tenantId,[FromBody] SubmitReviewRequest request,CancellationToken ct)
     {
         var actor=Actor();if(actor is null)return Unauthorized();
-        if(request.GeneratedVersionId==Guid.Empty||request.ReviewerId==Guid.Empty||request.IdempotencyKey==Guid.Empty)return ValidationProblem("Informe a versão, o responsável e uma chave de repetição válidos.");
+        if(request.GeneratedVersionId==Guid.Empty||request.ReviewerId==Guid.Empty||request.IdempotencyKey==Guid.Empty)return this.Invalid("api.studio.review_submit_fields_invalid");
         await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.reviews.request",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
         var prior=await c.QuerySingleOrDefaultAsync<SubmittedReviewRow>(new CommandDefinition("""
             SELECT r.id AS ReviewId,r.generated_version_id AS GeneratedVersionId,r.status AS Status,
@@ -1123,10 +1137,10 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         if(prior is not null){
             if(prior.GeneratedVersionId!=request.GeneratedVersionId||prior.ReviewerId!=request.ReviewerId||
                prior.DueAt!=request.DueAt||!string.Equals(prior.Instructions,request.Instructions?.Trim(),StringComparison.Ordinal))
-                return Conflict(new{title="A chave de repetição já foi usada para outra solicitação.",code="review.idempotency.conflict"});
+                return Conflict(new{title=this.T("api.review.idempotency.conflict"),code="review.idempotency.conflict"});
             await tx.CommitAsync(ct);return Ok(new ReviewSubmittedResponse(prior.ReviewId,prior.GeneratedVersionId,prior.Status));}
-        var v=await c.QuerySingleOrDefaultAsync<VersionRow>(new CommandDefinition("SELECT id AS Id,contract_id AS ContractId,content::text AS Content,canonical_sha256 AS Sha256,review_status AS Status FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND id=@id FOR UPDATE",new{tenantId,id=request.GeneratedVersionId},tx,cancellationToken:ct));if(v is null)return NotFound();if(v.Status!="generated")return Conflict(new{title="A versão já foi encaminhada."});
-        var reviewer=await c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.memberships WHERE tenant_id=@tenantId AND user_id=@reviewer AND status='active' AND odca.tenant_actor_has_permission(user_id,@tenantId,'tenant.reviews.decide'))",new{tenantId,reviewer=request.ReviewerId},tx,cancellationToken:ct));if(!reviewer)return ValidationProblem("O revisor selecionado não está ativo ou autorizado para revisões.");var reviewId=Guid.NewGuid();
+        var v=await c.QuerySingleOrDefaultAsync<VersionRow>(new CommandDefinition("SELECT id AS Id,contract_id AS ContractId,content::text AS Content,canonical_sha256 AS Sha256,review_status AS Status FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND id=@id FOR UPDATE",new{tenantId,id=request.GeneratedVersionId},tx,cancellationToken:ct));if(v is null)return NotFound();if(v.Status!="generated")return OdcaErrors.Conflict(this, "api.studio.review_version_already_sent");
+        var reviewer=await c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.memberships WHERE tenant_id=@tenantId AND user_id=@reviewer AND status='active' AND odca.tenant_actor_has_permission(user_id,@tenantId,'tenant.reviews.decide'))",new{tenantId,reviewer=request.ReviewerId},tx,cancellationToken:ct));if(!reviewer)return this.Invalid("api.studio.reviewer_not_authorized");var reviewId=Guid.NewGuid();
         await c.ExecuteAsync(new CommandDefinition("""
           INSERT INTO odca.contract_review_requests(id,tenant_id,contract_id,generated_version_id,requested_by,due_at,instructions,content_snapshot,document_sha256,idempotency_key)
           VALUES(@reviewId,@tenantId,@contractId,@versionId,@actor,@dueAt,@instructions,@content::jsonb,@sha256,@idempotencyKey);
@@ -1173,10 +1187,10 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             """, new { tenantId, ids = new[] { before, after } }, tx, cancellationToken: ct))).AsList();
         if (rows.Count != 2) return NotFound();
         var left = rows.Single(x => x.Id == before); var right = rows.Single(x => x.Id == after);
-        if (left.ContractId != right.ContractId) return BadRequest(new { title = "Selecione versões do mesmo contrato." });
+        if (left.ContractId != right.ContractId) return this.Status(StatusCodes.Status400BadRequest, "api.studio.compare_same_contract");
         IReadOnlyList<StudioChange> changes;
         try { changes = ContractStudioAnalysis.Compare(left.Content, left.Fields, left.Values, right.Content, right.Fields, right.Values); }
-        catch (InvalidDataException e) { return StatusCode(StatusCodes.Status413PayloadTooLarge, new { title = e.Message }); }
+        catch (InvalidDataException e) { var culture=this.Culture();var localizer=HttpContext.RequestServices.GetRequiredService<Odca.Configuration.Localization.LocalizationService>();return StatusCode(StatusCodes.Status413PayloadTooLarge,new { title = ApiMessages.Localize(localizer,e.Message,culture) ?? e.Message }); }
         await tx.CommitAsync(ct);
         return Ok(new VersionComparisonResponse(ToItem(left), ToItem(right), changes.Select(x => new StudioChangeItem(x.Category, x.Reference, x.Before, x.After)).ToArray()));
     }
@@ -1222,7 +1236,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     [HttpPost("drafts/{draftId:guid}/comments")]
     public async Task<IActionResult> AddComment(Guid tenantId, Guid draftId, [FromBody] CreateStudioCommentRequest request, CancellationToken ct)
     {
-        var actor = Actor(); if (actor is null) return Unauthorized(); if (string.IsNullOrWhiteSpace(request.Body) || request.Body.Trim().Length > 4000 || string.IsNullOrWhiteSpace(request.Reference) || request.Reference.Length > 200) return ValidationProblem();
+        var actor = Actor(); if (actor is null) return Unauthorized(); if (string.IsNullOrWhiteSpace(request.Body) || request.Body.Trim().Length > 4000 || string.IsNullOrWhiteSpace(request.Reference) || request.Reference.Length > 200) return this.Invalid("api.studio.comment_fields_invalid");
         await using var c = await dataSource.OpenConnectionAsync(ct); if (!await Allowed(c, actor.Value, tenantId, "tenant.contract_drafts.manage", ct)) return Forbid(); await using var tx = await c.BeginTransactionAsync(ct); await SetTenant(c, tenantId, actor.Value, tx, ct); var id = Guid.NewGuid();
         var inserted = await c.ExecuteScalarAsync<bool>(new CommandDefinition("INSERT INTO odca.studio_comments(id,tenant_id,contract_id,draft_id,generated_version_id,draft_revision,author_id,parent_id,reference,body) SELECT @id,d.tenant_id,d.contract_id,d.id,@versionId,@draftRevision,@actor,@parentId,@reference,@body FROM odca.contract_drafts d WHERE d.tenant_id=@tenantId AND d.id=@draftId AND (@versionId IS NULL OR EXISTS(SELECT 1 FROM odca.generated_contract_versions v WHERE v.tenant_id=d.tenant_id AND v.contract_id=d.contract_id AND v.id=@versionId)) AND (@parentId IS NULL OR EXISTS(SELECT 1 FROM odca.studio_comments p WHERE p.tenant_id=d.tenant_id AND p.draft_id=d.id AND p.id=@parentId)) RETURNING true", new { id, tenantId, draftId, versionId=request.VersionId, request.DraftRevision, actor, request.ParentId, reference=request.Reference.Trim(), body=request.Body.Trim() }, tx, cancellationToken: ct));
         if (!inserted) return NotFound(); await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.contract_events(tenant_id,contract_id,actor_id,event_type,details) SELECT tenant_id,contract_id,@actor,'comment.created',jsonb_build_object('commentId',@id,'reference',@reference) FROM odca.contract_drafts WHERE tenant_id=@tenantId AND id=@draftId", new { tenantId, draftId, actor, id, reference=request.Reference }, tx, cancellationToken: ct)); await tx.CommitAsync(ct); return Created($"/api/v1/organizations/{tenantId}/studio/drafts/{draftId}/comments/{id}", new { id });
@@ -1240,8 +1254,8 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
         if (!resolve && string.IsNullOrWhiteSpace(request.Observation))
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]> { ["observation"] = ["Informe a justificativa para reabrir a pendência."] }));
-        if (request.Observation?.Trim().Length > 4000) return ValidationProblem();
+            return this.Field("observation", "api.studio.comment_reopen_observation_required");
+        if (request.Observation?.Trim().Length > 4000) return this.Invalid("api.studio.comment_observation_too_long");
         await using var c = await dataSource.OpenConnectionAsync(ct); if (!await Allowed(c, actor.Value, tenantId, "tenant.contract_drafts.manage", ct)) return Forbid();
         await using var tx = await c.BeginTransactionAsync(ct); await SetTenant(c, tenantId, actor.Value, tx, ct);
         var current = await c.QuerySingleOrDefaultAsync<CommentStateRow>(new CommandDefinition("""
@@ -1252,13 +1266,13 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             """, new { tenantId, draftId, commentId }, tx, cancellationToken: ct));
         if (current is null) return NotFound();
         if (current.Resolved == resolve) { await tx.CommitAsync(ct); return NoContent(); }
-        if (current.Resolved != request.ExpectedResolved) return Conflict(new { title = "A pendência foi atualizada por outra pessoa. Atualize os dados e tente novamente." });
+        if (current.Resolved != request.ExpectedResolved) return OdcaErrors.Conflict(this, "api.studio.comment_state_changed");
         var action = resolve ? "resolve" : "reopen";
         var count = await c.ExecuteAsync(new CommandDefinition(resolve
             ? "UPDATE odca.studio_comments SET resolved_at=now(),resolved_by=@actor WHERE tenant_id=@tenantId AND draft_id=@draftId AND id=@commentId AND resolved_at IS NULL AND deleted_at IS NULL"
             : "UPDATE odca.studio_comments SET resolved_at=NULL,resolved_by=NULL WHERE tenant_id=@tenantId AND draft_id=@draftId AND id=@commentId AND resolved_at IS NOT NULL AND deleted_at IS NULL",
             new { actor, tenantId, draftId, commentId }, tx, cancellationToken: ct));
-        if (count != 1) return Conflict(new { title = "A pendência foi atualizada por outra pessoa." });
+        if (count != 1) return OdcaErrors.Conflict(this, "api.studio.comment_state_changed_short");
         await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.studio_comment_events(tenant_id,comment_id,actor_id,event_type) VALUES(@tenantId,@commentId,@actor,@action)", new { tenantId, commentId, actor, action }, tx, cancellationToken: ct));
         if (!string.IsNullOrWhiteSpace(request.Observation))
             await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.studio_comments(tenant_id,contract_id,draft_id,draft_revision,author_id,parent_id,reference,body) VALUES(@tenantId,@contractId,@draftId,@draftRevision,@actor,@commentId,@reference,@body)", new { tenantId, current.ContractId, draftId, current.DraftRevision, actor, commentId, current.Reference, body = request.Observation.Trim() }, tx, cancellationToken: ct));

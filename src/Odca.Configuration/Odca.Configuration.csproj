@@ -1,5 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
   <ItemGroup><FrameworkReference Include="Microsoft.AspNetCore.App" /></ItemGroup>
+  <!-- Catálogos i18n únicos do produto: viajam com cada app que referencia esta
+       assembly (copiados transitoriamente para a raiz de output, pasta Localization/). -->
+  <ItemGroup><Content Include="Localization\*.json" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
   <ItemGroup><InternalsVisibleTo Include="Odca.IntegrationTests" /></ItemGroup>
 </Project>

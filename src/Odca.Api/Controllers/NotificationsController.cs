@@ -4,6 +4,7 @@ using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
+using Odca.Api.Localization;
 using Odca.Contracts.Account;
 
 namespace Odca.Api.Controllers;
@@ -114,10 +115,11 @@ public sealed class NotificationsController(NpgsqlDataSource dataSource) : Contr
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
         if (string.IsNullOrWhiteSpace(request.PreferredLanguage) || !AllowedLanguages.Contains(request.PreferredLanguage, StringComparer.OrdinalIgnoreCase))
-            return BadRequest(new { title = "Idioma não suportado.", code = "notifications.language.invalid", supported = AllowedLanguages });
+            // D-OC27: código wire preservado; título por chave estável.
+            return BadRequest(new { title = this.T("api.notifications.language.invalid"), code = "notifications.language.invalid", supported = AllowedLanguages });
         var kinds = request.Kinds?.Where(k => !string.IsNullOrWhiteSpace(k.Kind)).ToList();
         if (kinds is not null && kinds.Any(k => !KnownKinds.Contains(k.Kind)))
-            return BadRequest(new { title = "Tipo de notificação desconhecido.", code = "notifications.kind.unknown" });
+            return BadRequest(new { title = this.T("api.notifications.kind.unknown"), code = "notifications.kind.unknown" });
 
         await using var c = await dataSource.OpenConnectionAsync(ct);
         await using var tx = await c.BeginTransactionAsync(ct); await SetTenant(c, tenantId, actor.Value, tx, ct);

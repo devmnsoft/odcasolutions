@@ -2,7 +2,9 @@ using System.Security.Claims;
 using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using Odca.Api.Localization;
 using Odca.Application.Operations;
 using Odca.Contracts.Operations;
 
@@ -110,11 +112,14 @@ public sealed class OperationalInboxController(
         }
         catch (ArgumentOutOfRangeException)
         {
-            return ValidationProblem("Informe um ano e um mês civis válidos.");
+            return this.Invalid("api.inbox.agenda_invalid");
         }
         catch (ArgumentException exception)
         {
-            return ValidationProblem(exception.Message);
+            // D-OC27: texto canônico do MonthlyAgendaService resolvido por mapa reverso.
+            var culture = this.Culture();
+            var localizer = HttpContext.RequestServices.GetRequiredService<Odca.Configuration.Localization.LocalizationService>();
+            return ValidationProblem(ApiMessages.Localize(localizer, exception.Message, culture) ?? exception.Message);
         }
     }
 

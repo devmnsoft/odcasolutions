@@ -3,7 +3,10 @@ using System.Text.Json;
 using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using Odca.Api.Localization;
+using Odca.Configuration.Localization;
 using Odca.Contracts.Solicitations;
 
 namespace Odca.Api.Controllers;
@@ -39,60 +42,72 @@ public sealed class SolicitationsController(NpgsqlDataSource dataSource) : Contr
         if (!await Allowed(c, actor.Value, tenantId, "tenant.solicitations.read", ct)) return Forbid();
         var owner = await c.QueryFirstOrDefaultAsync<Guid>(new CommandDefinition("SELECT tenant_id FROM odca.solicitations WHERE id=@solicitation", new { solicitation = solicitationId }, cancellationToken: ct));
         if (owner != tenantId) return NotFound();
-        return await EnvelopeResult(c, "SELECT odca.solicitation_detail(@actor,@solicitation)::text", new { actor, solicitation = solicitationId }, ct);
+        return await EnvelopeResult(c, "SELECT odca.solicitation_detail(@actor,@solicitation)::text", new { actor, solicitation = solicitationId }, HttpContext, ct);
     }
 
     [HttpPost]
     public async Task<IActionResult> Open(Guid tenantId, [FromBody] OpenSolicitationRequest request, CancellationToken ct)
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
-        if (string.IsNullOrWhiteSpace(request.Service) || string.IsNullOrWhiteSpace(request.Subject) || string.IsNullOrWhiteSpace(request.Body) || request.Body.Trim().Length < 10 || request.IdempotencyKey == Guid.Empty) return ValidationProblem();
+        // D-OC27: validações específicas com código estável e mensagem localizada.
+        if (string.IsNullOrWhiteSpace(request.Service) || string.IsNullOrWhiteSpace(request.Subject) || string.IsNullOrWhiteSpace(request.Body) || request.Body.Trim().Length < 10 || request.IdempotencyKey == Guid.Empty) return this.Invalid("api.solicitations.open_invalid");
         await using var c = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(c, actor.Value, tenantId, "tenant.solicitations.manage", ct)) return Forbid();
         return await EnvelopeResult(c, "SELECT odca.solicitations_open(@tenant,@actor,@service,@priority,@subject,@body,@key,@contractId)::text",
-            new { tenant = tenantId, actor, service = request.Service.Trim(), priority = string.IsNullOrWhiteSpace(request.Priority) ? "normal" : request.Priority.Trim(), subject = request.Subject.Trim(), body = request.Body.Trim(), key = request.IdempotencyKey, contractId = request.ContractId }, ct);
+            new { tenant = tenantId, actor, service = request.Service.Trim(), priority = string.IsNullOrWhiteSpace(request.Priority) ? "normal" : request.Priority.Trim(), subject = request.Subject.Trim(), body = request.Body.Trim(), key = request.IdempotencyKey, contractId = request.ContractId }, HttpContext, ct);
     }
 
     [HttpPost("{solicitationId:guid}/messages")]
     public async Task<IActionResult> Message(Guid tenantId, Guid solicitationId, [FromBody] SolicitationMessageRequest request, CancellationToken ct)
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
-        if (string.IsNullOrWhiteSpace(request.Body) || request.Body.Trim().Length < 2) return ValidationProblem();
+        if (string.IsNullOrWhiteSpace(request.Body) || request.Body.Trim().Length < 2) return this.Invalid("api.solicitations.message_invalid");
         await using var c = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(c, actor.Value, tenantId, "tenant.solicitations.manage", ct)) return Forbid();
         return await EnvelopeResult(c, "SELECT odca.solicitations_message(@tenant,@actor,@solicitation,@body,@version)::text",
-            new { tenant = tenantId, actor, solicitation = solicitationId, body = request.Body.Trim(), version = request.RowVersion }, ct);
+            new { tenant = tenantId, actor, solicitation = solicitationId, body = request.Body.Trim(), version = request.RowVersion }, HttpContext, ct);
     }
 
     [HttpPost("{solicitationId:guid}/actions")]
     public async Task<IActionResult> Action(Guid tenantId, Guid solicitationId, [FromBody] SolicitationActionRequest request, CancellationToken ct)
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
-        if (string.IsNullOrWhiteSpace(request.Action)) return ValidationProblem();
+        if (string.IsNullOrWhiteSpace(request.Action)) return this.Invalid("api.solicitations.action_invalid");
         await using var c = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(c, actor.Value, tenantId, "tenant.solicitations.manage", ct)) return Forbid();
         return await EnvelopeResult(c, "SELECT odca.solicitations_transition(@tenant,@actor,@solicitation,@action,@text,@priority,@assignee,@version)::text",
-            new { tenant = tenantId, actor, solicitation = solicitationId, action = request.Action.Trim(), text = string.IsNullOrWhiteSpace(request.Text) ? null : request.Text.Trim(), priority = string.IsNullOrWhiteSpace(request.Priority) ? null : request.Priority.Trim(), assignee = request.AssigneeUserId, version = request.RowVersion }, ct);
+            new { tenant = tenantId, actor, solicitation = solicitationId, action = request.Action.Trim(), text = string.IsNullOrWhiteSpace(request.Text) ? null : request.Text.Trim(), priority = string.IsNullOrWhiteSpace(request.Priority) ? null : request.Priority.Trim(), assignee = request.AssigneeUserId, version = request.RowVersion }, HttpContext, ct);
     }
 
     /// <summary>Executa uma funcao definer que devolve payload OU {"error","code"} e mapeia o
     /// envelope para o status HTTP correspondente.</summary>
-    internal static async Task<IActionResult> EnvelopeResult(NpgsqlConnection c, string sql, object parameters, CancellationToken ct)
+    /// <param name="context">D-OC27: cultura ativa (X-Odca-Culture) para localizar o título do erro.</param>
+    internal static async Task<IActionResult> EnvelopeResult(NpgsqlConnection c, string sql, object parameters, Microsoft.AspNetCore.Http.HttpContext context, CancellationToken ct)
     {
+        var localizer = context.RequestServices.GetRequiredService<LocalizationService>();
+        var culture = ApiCulture.For(context);
         var payload = await c.ExecuteScalarAsync<string>(new CommandDefinition(sql + "::text", parameters, cancellationToken: ct));
-        if (payload is null) return new ObjectResult(new ProblemDetails { Title = "A operacao nao produziu resultado.", Status = 500 }) { StatusCode = 500 };
+        if (payload is null) return new ObjectResult(new ProblemDetails { Title = localizer.T("api.internal.no_result", culture), Status = 500, Extensions = { ["code"] = "api.internal.no_result" } }) { StatusCode = 500 };
         using var doc = JsonDocument.Parse(payload);
         if (doc.RootElement.ValueKind == JsonValueKind.Object && doc.RootElement.TryGetProperty("code", out var codeEl))
         {
             var code = codeEl.GetString() ?? "solicitations.error";
+            // D-OC27: (código, mensagem canônica PT) → chave estável api.sql.* no catálogo;
+            // par sem mapeamento preserva o texto original. Detalhe permanece o código estável.
             var error = doc.RootElement.TryGetProperty("error", out var errEl) ? errEl.GetString() ?? "Operacao invalida." : "Operacao invalida.";
+            var sqlKey = ApiSqlMessages.KeyFor(code, error);
+            if (sqlKey is not null)
+            {
+                var translated = localizer.T(sqlKey, culture);
+                if (translated != sqlKey) error = translated;
+            }
             long? current = doc.RootElement.TryGetProperty("currentRowVersion", out var cv) && cv.ValueKind == JsonValueKind.Number ? cv.GetInt64() : null;
-            IActionResult Problem(int status) => new ObjectResult(new ProblemDetails { Title = error, Status = status, Detail = code }) { StatusCode = status };
+            IActionResult Problem(int status) => new ObjectResult(new ProblemDetails { Title = error, Status = status, Detail = code, Extensions = { ["code"] = code } }) { StatusCode = status };
             return code switch
             {
                 "solicitations.not_found" => Problem(StatusCodes.Status404NotFound),
                 "solicitations.permission" or "solicitations.permission_odca" or "solicitations.permission_platform" => Problem(StatusCodes.Status403Forbidden),
-                "solicitations.stale" => new ObjectResult(new ProblemDetails { Title = error, Status = StatusCodes.Status409Conflict, Detail = code, Extensions = { ["currentRowVersion"] = current } }) { StatusCode = StatusCodes.Status409Conflict },
+                "solicitations.stale" => new ObjectResult(new ProblemDetails { Title = error, Status = StatusCodes.Status409Conflict, Detail = code, Extensions = { ["code"] = code, ["currentRowVersion"] = current } }) { StatusCode = StatusCodes.Status409Conflict },
                 "solicitations.plan.required" => Problem(StatusCodes.Status409Conflict),
                 "solicitations.transition" => Problem(StatusCodes.Status409Conflict),
                 _ => Problem(StatusCodes.Status400BadRequest)

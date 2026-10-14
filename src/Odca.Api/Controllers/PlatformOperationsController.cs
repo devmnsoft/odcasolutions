@@ -4,6 +4,7 @@ using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
+using Odca.Api.Localization;
 using Odca.Contracts.Administration;
 
 namespace Odca.Api.Controllers;
@@ -57,24 +58,28 @@ public sealed class PlatformOperationsController(NpgsqlDataSource dataSource) : 
     public async Task<IActionResult> SetTemplateStatus(string key, [FromBody] TemplateCatalogStatusRequest request, CancellationToken ct)
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
-        if (string.IsNullOrWhiteSpace(request.Action)) return ValidationProblem();
+        if (string.IsNullOrWhiteSpace(request.Action)) return this.Invalid("api.platform_catalog.action_required");
         await using var c = await dataSource.OpenConnectionAsync(ct);
         await EnsurePlatformGuc(c, actor.Value, ct);
         var payload = await c.ExecuteScalarAsync<string>(new CommandDefinition(
             "SELECT odca.platform_catalog_set_status(@actor,@key,@action,@reason)::text",
             new { actor = actor.Value, key = key.Trim(), action = request.Action.Trim().ToLowerInvariant(), reason = string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim() },
             cancellationToken: ct));
-        if (payload is null) return StatusCode(500, new ProblemDetails { Title = "A operação não produziu resultado.", Status = 500 });
+        if (payload is null) return this.Status(500, "api.internal.no_result");
         using var doc = JsonDocument.Parse(payload);
         var root = doc.RootElement;
         if (root.TryGetProperty("code", out var codeEl))
         {
+            // D-OC27: (código, mensagem canônica PT) → chave estável api.sql.* no catálogo; par sem mapeamento preserva o original.
             var code = codeEl.GetString() ?? "catalog.error";
-            var error = root.TryGetProperty("error", out var errEl) ? errEl.GetString() ?? "Operação inválida." : "Operação inválida.";
+            var fallback = root.TryGetProperty("error", out var errEl) ? errEl.GetString() ?? "Operação inválida." : "Operação inválida.";
+            var sqlKey = ApiSqlMessages.KeyFor(code, fallback);
+            var translated = sqlKey is null ? null : this.T(sqlKey);
+            var title = translated is null || translated == sqlKey ? fallback : translated;
             return code switch
             {
-                "catalog.not_found" => new ObjectResult(new ProblemDetails { Title = error, Status = 404, Detail = code }) { StatusCode = 404 },
-                _ => new ObjectResult(new ProblemDetails { Title = error, Status = 400, Detail = code }) { StatusCode = 400 }
+                "catalog.not_found" => new ObjectResult(new ProblemDetails { Title = title, Status = 404, Detail = code, Extensions = { ["code"] = code } }) { StatusCode = 404 },
+                _ => new ObjectResult(new ProblemDetails { Title = title, Status = 400, Detail = code, Extensions = { ["code"] = code } }) { StatusCode = 400 }
             };
         }
         return Ok(root.Clone());
@@ -93,7 +98,7 @@ public sealed class PlatformOperationsController(NpgsqlDataSource dataSource) : 
               JOIN odca.contract_template_versions v ON v.template_id = t.id AND v.version_number = t.current_version
              WHERE t.owner_tenant_id IS NULL AND t.scope='global' AND t.official_key=@key
             """, new { key = key.Trim() }, cancellationToken: ct));
-        if (row is null) return NotFound(new { error = $"Modelo oficial '{key}' não encontrado.", code = "catalog.not_found" });
+        if (row is null) return NotFound(new { error = this.T("api.catalog.not_found", key.Trim()), code = "catalog.not_found" });
         return Ok(new
         {
             officialKey = key.Trim(),
@@ -113,7 +118,7 @@ public sealed class PlatformOperationsController(NpgsqlDataSource dataSource) : 
         var actor = Actor(); if (actor is null) return Unauthorized();
         var summary = request.Summary?.Trim() ?? string.Empty;
         if (summary.Length is < 5 or > 500)
-            return ValidationProblem("O resumo da mudança deve ter entre 5 e 500 caracteres.");
+            return this.Invalid("api.platform_catalog.summary_invalid");
 
         string contentJson, fieldsJson;
         try
@@ -121,19 +126,19 @@ public sealed class PlatformOperationsController(NpgsqlDataSource dataSource) : 
             using (var contentDoc = JsonDocument.Parse(request.Content ?? "{}"))
             {
                 if (contentDoc.RootElement.ValueKind is not JsonValueKind.Object)
-                    return ValidationProblem("Conteúdo inválido: esperado um objeto JSON estruturado.");
+                    return this.Invalid("api.platform_catalog.content_invalid");
                 contentJson = contentDoc.RootElement.GetRawText();
             }
             using (var fieldsDoc = JsonDocument.Parse(request.Fields ?? "[]"))
             {
                 if (fieldsDoc.RootElement.ValueKind is not JsonValueKind.Array)
-                    return ValidationProblem("Campos inválidos: esperado um array JSON.");
+                    return this.Invalid("api.platform_catalog.fields_invalid");
                 fieldsJson = fieldsDoc.RootElement.GetRawText();
             }
         }
         catch (JsonException)
         {
-            return ValidationProblem("Conteúdo/campos não são JSON válido.");
+            return this.Invalid("api.platform_catalog.json_invalid");
         }
 
         await using var c = await dataSource.OpenConnectionAsync(ct);
@@ -151,19 +156,21 @@ public sealed class PlatformOperationsController(NpgsqlDataSource dataSource) : 
             if (locked is null)
             {
                 await tx.RollbackAsync(ct);
-                return NotFound(new { error = $"Modelo oficial '{key}' não encontrado.", code = "catalog.not_found" });
+                return NotFound(new { error = this.T("api.catalog.not_found", key.Trim()), code = "catalog.not_found" });
             }
             if (!string.Equals(locked.Status, "published", StringComparison.Ordinal))
             {
                 await tx.RollbackAsync(ct);
-                return Conflict(new { error = "Apenas modelos publicados no catálogo aceitam nova revisão.", code = "template.not_published" });
+                return Conflict(new { error = this.T("api.template.not_published"), code = "template.not_published" });
             }
             if (request.ExpectedRevision is not null && locked.Revision != request.ExpectedRevision.Value)
             {
                 await tx.RollbackAsync(ct);
                 return Conflict(new
                 {
-                    error = $"A revisão atual é {locked.Revision}; a publicação baseou-se em {request.ExpectedRevision}. Recarregue a revisão e repita o salvamento.",
+                    error = this.T("api.template.revision_conflict",
+                        locked.Revision.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        request.ExpectedRevision.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)),
                     code = "template.revision_conflict"
                 });
             }
@@ -254,12 +261,12 @@ public sealed class PlatformOperationsController(NpgsqlDataSource dataSource) : 
     public async Task<IActionResult> CreateTemplate([FromBody] CreateOfficialTemplateRequest request, CancellationToken ct)
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
-        if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Trim().Length < 3) return ValidationProblem("Nome deve ter pelo menos 3 caracteres.");
-        if (string.IsNullOrWhiteSpace(request.ContractType)) return ValidationProblem("Tipo de contrato é obrigatório.");
+        if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Trim().Length < 3) return this.Invalid("api.platform_catalog.name_invalid");
+        if (string.IsNullOrWhiteSpace(request.ContractType)) return this.Invalid("api.platform_catalog.contract_type_required");
 
         var validTypes = new[] { "nda", "services", "service", "services-multiple-therapies", "supply", "lease", "consent", "amendment" };
         if (!validTypes.Contains(request.ContractType.ToLowerInvariant()))
-            return ValidationProblem($"Tipo inválido. Válidos: {string.Join(", ", validTypes)}.");
+            return this.Invalid("api.platform_catalog.type_invalid", string.Join(", ", validTypes));
 
         var officialKey = string.IsNullOrWhiteSpace(request.OfficialKey)
             ? request.Name.Trim().ToLowerInvariant().Replace(' ', '-')
@@ -272,7 +279,7 @@ public sealed class PlatformOperationsController(NpgsqlDataSource dataSource) : 
             "SELECT EXISTS(SELECT 1 FROM odca.contract_templates WHERE owner_tenant_id IS NULL AND scope='global' AND official_key=@key AND archived_at IS NULL)",
             new { key = officialKey }, cancellationToken: ct));
         if (keyExists)
-            return Conflict(new { error = $"official_key '{officialKey}' já existe no catálogo oficial.", code = "template.key_exists" });
+            return Conflict(new { error = this.T("api.template.key_exists", officialKey), code = "template.key_exists" });
 
         var templateId = Guid.NewGuid();
         var versionId = Guid.NewGuid();

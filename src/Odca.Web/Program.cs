@@ -22,7 +22,7 @@ if (!string.IsNullOrWhiteSpace(keysPath))
     dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
 }
 builder.Services.AddSingleton<DistributedCacheTicketStore>();
-builder.Services.AddSingleton<Odca.Web.Localization.LocalizationService>();
+builder.Services.AddSingleton<Odca.Configuration.Localization.LocalizationService>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {

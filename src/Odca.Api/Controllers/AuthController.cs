@@ -2,6 +2,8 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.DependencyInjection;
+using Odca.Api.Localization;
 using Odca.Application.Common;
 using Odca.Application.Identity;
 using Odca.Contracts.Identity;
@@ -32,11 +34,16 @@ public sealed class AuthController(
             cancellationToken);
         if (!result.Succeeded || result.User is null || result.Token is null)
         {
+            var culture = this.Culture();
+            var localizer = HttpContext.RequestServices.GetRequiredService<Odca.Configuration.Localization.LocalizationService>();
+            // D-OC27: título e detalhe localizados por código estável; o Detalhe canônico PT
+            // ("E-mail/CPF ou senha inválidos.") resolve para api.auth.invalid_credentials.
             return Unauthorized(new ProblemDetails
             {
                 Status = StatusCodes.Status401Unauthorized,
-                Title = "Não foi possível autenticar.",
-                Detail = result.FailureMessage
+                Title = localizer.T("api.auth.login_failed", culture),
+                // Detalhe canônico PT resolvido por mapa reverso; texto desconhecido volta como veio.
+                Detail = ApiMessages.Localize(localizer, result.FailureMessage, culture) ?? localizer.T("api.auth.invalid_credentials", culture)
             });
         }
 
@@ -64,8 +71,19 @@ public sealed class AuthController(
             cancellationToken);
         if (!result.Succeeded || result.User is null || result.Token is null)
         {
-            return ValidationProblem(new ValidationProblemDetails(
-                new Dictionary<string, string[]> { ["newPassword"] = [.. result.Errors] }));
+            // D-OC27: cada mensagem de política de senha (canônica PT) resolve para uma chave api.auth.password_*;
+            // mensagem desconhecida volta como veio (nunca se inventa texto).
+            var culture = this.Culture();
+            var localizer = HttpContext.RequestServices.GetRequiredService<Odca.Configuration.Localization.LocalizationService>();
+            return ValidationProblem(new ValidationProblemDetails
+            {
+                Title = localizer.T("api.validation.invalid_fields", culture),
+                Extensions = { ["code"] = "api.change_password.failed" },
+                Errors =
+                {
+                    ["newPassword"] = [.. result.Errors.Select(error => ApiMessages.Localize(localizer, error, culture) ?? error)]
+                }
+            });
         }
 
         return Ok(ToResponse(result.User, result.Session!, result.Token));
@@ -126,8 +144,17 @@ public sealed class AuthController(
             cancellationToken);
         if (!result.Succeeded || result.User is null || result.Session is null || result.Token is null)
         {
-            return ValidationProblem(new ValidationProblemDetails(
-                new Dictionary<string, string[]> { ["code"] = [.. result.Errors] }));
+            // D-OC27: chave com escopo de endpoint (mfa.confirm.*) — o mesmo texto canônico pode
+            // aparecer em endpoints diferentes e o código no wire deve permanecer estável.
+            var culture = this.Culture();
+            var localizer = HttpContext.RequestServices.GetRequiredService<Odca.Configuration.Localization.LocalizationService>();
+            var message = LocalizedMfaError(localizer, result.Errors is { Count: > 0 } ? result.Errors[0] : null, "api.auth.mfa_confirm_", culture);
+            return ValidationProblem(new ValidationProblemDetails
+            {
+                Title = localizer.T("api.validation.invalid_fields", culture),
+                Extensions = { ["code"] = message.Key },
+                Errors = { ["code"] = [message.Text] }
+            });
         }
 
         return Ok(ToMfaResponse(result.User, result.Token, result.RecoveryCodes));
@@ -152,8 +179,16 @@ public sealed class AuthController(
             cancellationToken);
         if (!result.Succeeded || result.User is null || result.Session is null || result.Token is null)
         {
-            return ValidationProblem(new ValidationProblemDetails(
-                new Dictionary<string, string[]> { ["code"] = [.. result.Errors] }));
+            // D-OC27: chave com escopo de endpoint (mfa.challenge.*).
+            var culture = this.Culture();
+            var localizer = HttpContext.RequestServices.GetRequiredService<Odca.Configuration.Localization.LocalizationService>();
+            var message = LocalizedMfaError(localizer, result.Errors is { Count: > 0 } ? result.Errors[0] : null, "api.auth.mfa_challenge_", culture);
+            return ValidationProblem(new ValidationProblemDetails
+            {
+                Title = localizer.T("api.validation.invalid_fields", culture),
+                Extensions = { ["code"] = message.Key },
+                Errors = { ["code"] = [message.Text] }
+            });
         }
 
         return Ok(ToMfaResponse(result.User, result.Token, []));
@@ -169,6 +204,26 @@ public sealed class AuthController(
         }
 
         return NoContent();
+    }
+
+    /// <summary>D-OC27: mapeia o texto canônico de erro do MFA (PT, Odca.Application.Identity.MfaService)
+    /// para a chave api.auth.&lt;escopo&gt;.&lt;razão&gt; do catálogo. Texto desconhecido → chave unknown
+    /// + mensagem original preservada.</summary>
+    private static (string Key, string Text) LocalizedMfaError(
+        Odca.Configuration.Localization.LocalizationService localizer,
+        string? canonicalText,
+        string scopePrefix,
+        string culture)
+    {
+        if (canonicalText is null)
+        {
+            return ("api.auth.unknown", localizer.T("api.auth.unknown", culture));
+        }
+        var suffix = ApiMessages.MfaErrorSuffix(canonicalText) ?? "unknown";
+        var key = $"{scopePrefix}{suffix}";
+        // Chave ausente no catálogo → texto canônico preservado.
+        var localized = localizer.T(key, culture);
+        return (key, localized == key ? canonicalText : localized);
     }
 
     private bool TryGetIdentity(out Guid userId, out Guid sessionId)

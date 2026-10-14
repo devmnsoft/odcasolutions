@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Odca.Configuration.Localization;
 using Odca.Contracts.Studio;
 using Odca.Web.Models;
 using Odca.Web.Services;
@@ -12,7 +13,7 @@ namespace Odca.Web.Controllers;
 
 [Authorize]
 [Route("organizacoes/{tenantId:guid}/estudio")]
-public sealed class StudioController(OdcaApiClient api, IConfiguration configuration, IUserTenantContext tenantContext, Odca.Web.Localization.LocalizationService loc) : Controller
+public sealed class StudioController(OdcaApiClient api, IConfiguration configuration, IUserTenantContext tenantContext, LocalizationService loc) : Controller
 {
     private string? Culture => HttpContext.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] as string;
     private string L(string key, params string[] args) => loc.T(key, Culture, args);

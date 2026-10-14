@@ -37,13 +37,10 @@ public sealed class PlatformCustomerCreationTests(DatabaseFixture database) : IC
         await using var dataSource = NpgsqlDataSource.Create(database.AppConnectionString);
         var repo = new NpgsqlConsumptionRepository(dataSource, passwordService);
         var controller = new ConsumptionController(repo);
-        var httpContext = new DefaultHttpContext();
-        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity([
-            new Claim("sub", superAdminId.ToString()),
-            new Claim(ClaimTypes.NameIdentifier, superAdminId.ToString()),
-            new Claim("is_platform_admin", "true")
-        ], "test"));
-        controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = TestControllerContexts.Create(superAdminId, new Claim("is_platform_admin", "true"))
+        };
 
         // 3. SuperAdmin creates a new organization
         var uniqueCnpj = GenerateValidCnpj();
@@ -140,13 +137,10 @@ public sealed class PlatformCustomerCreationTests(DatabaseFixture database) : IC
         await using var dataSource = NpgsqlDataSource.Create(database.AppConnectionString);
         var repo = new NpgsqlConsumptionRepository(dataSource, passwordService);
         var controller = new ConsumptionController(repo);
-        var httpContext = new DefaultHttpContext();
-        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity([
-            new Claim("sub", superAdminId.ToString()),
-            new Claim(ClaimTypes.NameIdentifier, superAdminId.ToString()),
-            new Claim("is_platform_admin", "true")
-        ], "test"));
-        controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = TestControllerContexts.Create(superAdminId, new Claim("is_platform_admin", "true"))
+        };
 
         var request = new CreatePlatformCustomerRequest(
             OrganizationName: "Organização Teste Plano Inexistente",

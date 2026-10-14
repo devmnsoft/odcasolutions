@@ -1,21 +1,23 @@
 using System.Globalization;
 using System.Text.Json;
 
-namespace Odca.Web.Localization;
+namespace Odca.Configuration.Localization;
 
+/// <summary>Carrega os catálogos pt-BR/en-US/fr-FR/es-ES que viajam com cada app
+/// (cópia de conteúdo em Localization/ na raiz do output) e resolve chaves com
+/// fallback pt-BR. Camada canônica permanece pt-BR; isto é apenas apresentação.</summary>
 public sealed class LocalizationService
 {
     private static readonly string[] _supportedLanguages = { "pt-BR", "en-US", "fr-FR", "es-ES" };
     private static readonly CultureInfo FallbackCulture = CultureInfo.GetCultureInfo("pt-BR");
     private readonly Dictionary<string, Dictionary<string, string>> _catalogs = new();
-    private readonly string _baseDir;
 
-    public LocalizationService(IWebHostEnvironment env)
+    public LocalizationService()
     {
-        _baseDir = Path.Combine(env.ContentRootPath, "Localization");
+        var baseDir = Path.Combine(AppContext.BaseDirectory, "Localization");
         foreach (var lang in _supportedLanguages)
         {
-            var path = Path.Combine(_baseDir, $"{lang}.json");
+            var path = Path.Combine(baseDir, $"{lang}.json");
             if (File.Exists(path))
             {
                 var json = File.ReadAllText(path);
@@ -23,8 +25,6 @@ public sealed class LocalizationService
             }
         }
     }
-
-    public IReadOnlyList<string> SupportedLanguages => _supportedLanguages;
 
     /// <summary>Returns the whole resolved catalog for a supported culture (no fallback merge needed: catalogs are parity-checked).</summary>
     public IReadOnlyDictionary<string, string> Catalog(string? culture)

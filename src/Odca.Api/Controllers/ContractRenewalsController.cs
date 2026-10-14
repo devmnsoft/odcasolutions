@@ -3,6 +3,7 @@ using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
+using Odca.Api.Localization;
 using Odca.Contracts.Obligations;
 
 namespace Odca.Api.Controllers;
@@ -24,9 +25,9 @@ public sealed class ContractRenewalsController(NpgsqlDataSource dataSource) : Co
     [HttpPost("decision")]
     public async Task<IActionResult> Decide(Guid tenantId,Guid contractId,[FromBody] RenewalDecisionRequest request,CancellationToken ct)
     {
-        var actor=Actor();if(actor is null)return Unauthorized();var allowed=new[]{"intent_to_renew","negotiating","not_renewing"};if(request.Decision=="renewed")return Conflict(new{title="Use a Central de Renovações para revisar, formalizar e aplicar a nova vigência."});if(!allowed.Contains(request.Decision)||string.IsNullOrWhiteSpace(request.Justification))return ValidationProblem();
+        var actor=Actor();if(actor is null)return Unauthorized();var allowed=new[]{"intent_to_renew","negotiating","not_renewing"};if(request.Decision=="renewed")return OdcaErrors.Conflict(this, "api.renewals.use_center");if(!allowed.Contains(request.Decision)||string.IsNullOrWhiteSpace(request.Justification))return this.Invalid("api.renewals.decision_invalid");
         var permission=request.Decision=="renewed"?"tenant.renewals.register":"tenant.renewals.decide";await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,permission,ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,tx,ct);
-        var contract=await c.QuerySingleOrDefaultAsync<Term>(new CommandDefinition("SELECT start_date AS StartDate,end_date AS EndDate,renewal_notice_days AS NoticeDays,version AS Version FROM odca.contracts WHERE tenant_id=@tenantId AND id=@contractId FOR UPDATE",new{tenantId,contractId},tx,cancellationToken:ct));if(contract is null)return NotFound();if(contract.Version!=request.ContractVersion)return Conflict(new{title="O contrato foi alterado em outra sessão.",currentVersion=contract.Version});
+        var contract=await c.QuerySingleOrDefaultAsync<Term>(new CommandDefinition("SELECT start_date AS StartDate,end_date AS EndDate,renewal_notice_days AS NoticeDays,version AS Version FROM odca.contracts WHERE tenant_id=@tenantId AND id=@contractId FOR UPDATE",new{tenantId,contractId},tx,cancellationToken:ct));if(contract is null)return NotFound();if(contract.Version!=request.ContractVersion)return Conflict(new{title=this.T("api.contract.changed_other_session"),code="renewals.version.conflict",currentVersion=contract.Version});
         var previous=await c.ExecuteScalarAsync<Guid?>(new CommandDefinition("SELECT id FROM odca.contract_renewal_cycles WHERE tenant_id=@tenantId AND contract_id=@contractId ORDER BY cycle_number DESC LIMIT 1",new{tenantId,contractId},tx,cancellationToken:ct));
         var id=Guid.NewGuid();var cycle=await c.ExecuteScalarAsync<int>(new CommandDefinition("SELECT COALESCE(max(cycle_number),0)+1 FROM odca.contract_renewal_cycles WHERE tenant_id=@tenantId AND contract_id=@contractId",new{tenantId,contractId},tx,cancellationToken:ct));
         await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.contract_renewal_cycles(id,tenant_id,contract_id,cycle_number,starts_on,ends_on,notice_due_on,decision,justification,decided_by,decided_at,previous_cycle_id) VALUES(@id,@tenantId,@contractId,@cycle,@starts,@ends,@notice,@decision,@justification,@actor,now(),@previous)",new{id,tenantId,contractId,cycle,starts=request.Decision=="renewed"?request.NewStartDate:contract.StartDate,ends=request.Decision=="renewed"?request.NewEndDate:contract.EndDate,notice=(request.Decision=="renewed"?request.NewEndDate:contract.EndDate)?.AddDays(-(contract.NoticeDays??0)),decision=request.Decision,justification=request.Justification.Trim(),actor,previous},tx,cancellationToken:ct));

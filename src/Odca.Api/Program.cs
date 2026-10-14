@@ -4,7 +4,9 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Odca.Application.Identity;
 using Odca.Infrastructure;
@@ -19,10 +21,22 @@ var localConfiguration = LocalRuntimeConfiguration.Add(builder.Configuration, bu
 Console.WriteLine($"Configuração: ambiente={localConfiguration.Environment}; caminho={localConfiguration.Path ?? "não utilizado"}.");
 
 builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
+builder.Services.AddSingleton<Odca.Configuration.Localization.LocalizationService>();
 builder.Services.AddProblemDetails(options =>
 {
     options.CustomizeProblemDetails = context =>
+    {
         context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
+        // D-OC27: erros 500 (exceção não tratada) ganham título e código estáveis;
+        // a identidade técnica segue em traceId. Cultura via X-Odca-Culture.
+        if (context.HttpContext.Response.StatusCode is 500 or 502 or 503)
+        {
+            var localizer = context.HttpContext.RequestServices.GetRequiredService<Odca.Configuration.Localization.LocalizationService>();
+            var culture = Odca.Api.Localization.ApiCulture.For(context.HttpContext);
+            context.ProblemDetails.Title = localizer.T("api.internal.error", culture);
+            context.ProblemDetails.Extensions["code"] = "api.internal.error";
+        }
+    };
 });
 builder.Services.AddControllers();
 builder.Services.AddTransient<OrganizationFeatureGate>();

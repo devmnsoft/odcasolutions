@@ -73,14 +73,8 @@ public sealed class ReviewAuthorizationBehaviorTests(DatabaseFixture database) :
     private static ReviewRequestsController Controller(NpgsqlDataSource dataSource, Guid actor)
     {
         var controller = new ReviewRequestsController(dataSource);
-        controller.ControllerContext = new ControllerContext
-        {
-            HttpContext = new DefaultHttpContext
-            {
-                User = new ClaimsPrincipal(new ClaimsIdentity(
-                    [new Claim("sub", actor.ToString())], "integration-test"))
-            }
-        };
+        // D-OC27: RequestServices mínima (LocalizationService) para as fábricas de erro.
+        controller.ControllerContext = new ControllerContext { HttpContext = TestControllerContexts.Create(actor) };
         return controller;
     }
 

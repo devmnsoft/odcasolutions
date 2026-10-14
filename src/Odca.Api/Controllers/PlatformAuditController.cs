@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Odca.Api.Localization;
 using Odca.Application.Administration;
 using Odca.Contracts.Administration;
 
@@ -32,7 +33,7 @@ public sealed class PlatformAuditController(IPlatformAuditRepository repository)
         {
             PlatformAuditAccess.Ok when result.Page is not null => Ok(result.Page),
             PlatformAuditAccess.Forbidden => Forbid(),
-            _ => Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Não foi possível consultar a auditoria da plataforma.")
+            _ => this.Status(StatusCodes.Status503ServiceUnavailable, "api.platform_audit.unavailable")
         };
     }
 }

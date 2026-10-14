@@ -1,5 +1,5 @@
 using System.Globalization;
-using Odca.Web.Localization;
+using Odca.Configuration.Localization;
 
 namespace Odca.Web.Middleware;
 

@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+using Odca.Api.Localization;
 using Odca.Application.Administration;
 using Odca.Application.Common;
 using Odca.Application.Patients;
@@ -39,7 +41,7 @@ public sealed class PatientsController(IPatientRepository repository, IClock clo
         return result.Status switch
         {
             PatientMutationStatus.Success => CreatedAtAction(nameof(Get), new { tenantId, patientId = result.Patient!.Id }, result.Patient),
-            PatientMutationStatus.Duplicate => ConflictProblem("patient.identifier.duplicate", "Já existe um paciente ativo com esse identificador."),
+            PatientMutationStatus.Duplicate => ConflictProblem("patient.identifier.duplicate", "api.patients.duplicate_create"),
             _ => Forbid()
         };
     }
@@ -74,8 +76,8 @@ public sealed class PatientsController(IPatientRepository repository, IClock clo
         {
             PatientMutationStatus.Success => NoContent(),
             PatientMutationStatus.NotFound => NotFound(),
-            PatientMutationStatus.Duplicate => ConflictProblem("patient.identifier.duplicate", "Outro cadastro ativo usa o mesmo identificador."),
-            PatientMutationStatus.Conflict => ConflictProblem("patient.version.conflict", "O paciente foi alterado em outra sessão."),
+            PatientMutationStatus.Duplicate => ConflictProblem("patient.identifier.duplicate", "api.patients.duplicate_set_active"),
+            PatientMutationStatus.Conflict => ConflictProblem("patient.version.conflict", "api.patients.version_conflict"),
             _ => Forbid()
         };
     }
@@ -83,12 +85,13 @@ public sealed class PatientsController(IPatientRepository repository, IClock clo
     private IActionResult Mutation(PatientMutation result) => result.Status switch
     {
         PatientMutationStatus.Success => Ok(result.Patient), PatientMutationStatus.NotFound => NotFound(),
-        PatientMutationStatus.Conflict => ConflictProblem("patient.version.conflict", "O paciente foi alterado em outra sessão."),
-        PatientMutationStatus.Duplicate => ConflictProblem("patient.identifier.duplicate", "Outro paciente ativo usa esse identificador."), _ => Forbid()
+        PatientMutationStatus.Conflict => ConflictProblem("patient.version.conflict", "api.patients.version_conflict"),
+        PatientMutationStatus.Duplicate => ConflictProblem("patient.identifier.duplicate", "api.patients.duplicate_update"), _ => Forbid()
     };
 
-    private ObjectResult ConflictProblem(string code, string detail) => Problem(statusCode: StatusCodes.Status409Conflict,
-        title: "Não foi possível concluir a alteração.", detail: detail, extensions: new Dictionary<string, object?> { ["code"] = code });
+    // D-OC27: title/detail resolvidos por chave estável; o código wire permanece inalterado.
+    private ObjectResult ConflictProblem(string code, string detailKey) => Problem(statusCode: StatusCodes.Status409Conflict,
+        title: this.T("api.patients.mutation_failed"), detail: this.T(detailKey), extensions: new Dictionary<string, object?> { ["code"] = code });
 
     // ActionResult is the concrete MVC return type of ValidationProblem; null means valid.
     private ActionResult? ValidateRequest(SavePatientRequest request)
@@ -96,11 +99,18 @@ public sealed class PatientsController(IPatientRepository repository, IClock clo
         var errors = PatientRules.Validate(request, DateOnly.FromDateTime(clock.UtcNow.UtcDateTime));
         if (errors.Count == 0) return null;
 
-        var details = new ValidationProblemDetails(errors.ToDictionary(
-            entry => entry.Key,
-            entry => entry.Value,
-            StringComparer.Ordinal));
-        return ValidationProblem(details);
+        // D-OC27: cada mensagem canônica (PatientRules) resolvida por mapa reverso; texto desconhecido volta como veio.
+        var culture = this.Culture();
+        var localizer = HttpContext.RequestServices.GetRequiredService<Odca.Configuration.Localization.LocalizationService>();
+        return ValidationProblem(new ValidationProblemDetails
+        {
+            Title = this.T("api.validation.invalid_fields"),
+            Extensions = { ["code"] = "api.patients.validation" },
+            Errors = errors.ToDictionary(
+                entry => entry.Key,
+                entry => entry.Value.Select(message => ApiMessages.Localize(localizer, message, culture) ?? message).ToArray(),
+                StringComparer.Ordinal)
+        });
     }
 
     private bool Actor(out Guid actor) => Guid.TryParse(User.FindFirstValue("sub"), out actor);

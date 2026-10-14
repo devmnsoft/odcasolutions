@@ -1,5 +1,16 @@
 # Status de execução
 
+## Incremento: Localização total da API (D-OC27) (14/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `9eda889` (= D-OC26). Build da solution (`Odca.sln`) **0W/0E**. Domain **358/358 PASS** (355 de base + 3 novos de cultura BFF→API). Suíte de integração em `odca_test_integration` zerado via `scripts/qa/run-integration-tests.ps1 -FreshDb`: **178/178 PASS — zero falhas** (linha de base D-OC26: 173; +3 fatos de cobertura sem DB + 2 e2e de duas culturas). Paridade de catálogos **4/4** (1186 chaves por idioma: 749 BFF + 437 `api.*`).
+- **Entrega**: `docs/execution/D-OC27_LOCALIZACAO_API.md`. Toda mensagem de erro da API sai no idioma do usuário com **código estável no wire** e texto resolvido por catálogo; a cultura viaja BFF→API no header `X-Odca-Culture`. Os 27 controllers da API + o handler de 500 foram varridos. A camada SQL permanece **canônica em pt-BR** (`odca.sql` inalterado; os 37 envelopes jsonb são mapeados `(código, mensagem)` → chave apenas na fronteira da API). Regra da casa mantida: **texto desconhecido volta como veio** — nada inventado.
+- **Três defeitos reais achados pela cobertura nova (e corrigidos)**:
+  - **Regex malformado em `ApiMessages.TemplatePatterns`** (`api.studio.formula_terms_only_calculated`): parêntese de fechamento sem escape → `TypeInitializationException` em todo caminho que tocasse `ApiMessages`. Invisível ao build; corrigido com `\)` no padrão.
+  - **Shadowing do extension `OdcaErrors.Conflict`** (27 sites em 9 controllers): `this.Conflict("api.…")` ligava ao método de instância `ControllerBase.Conflict(object?)`, vazando a **chave crua do catálogo** como body 409 — regressão de forma de wire vs. 9eda889. Corrigido qualificando `OdcaErrors.Conflict(this, "api.…")`.
+  - **Invocação direta de controllers sem `RequestServices`**: a varredura passou a resolver `LocalizationService` via `HttpContext.RequestServices`, nula nos contextos hand-built de teste (×4 Domain + 4 arquivos de Integração). Correção: helper compartilhado `TestControllerContexts.Create(actorId, extraClaims)`. Detalhe: no .NET 10 `ProblemDetailsFactory` é **classe abstrata** (não interface) e `MvcProblemDetailsFactory` deixou de existir; o concreto público é `DefaultProblemDetailsFactory(IOptions<ApiBehaviorOptions>, IOptions<ProblemDetailsOptions>?)`.
+- **Prova HTTP real em 4 idiomas**: mesmo registro inválido (`POST /api/v1/onboarding/registrations`) com `X-Odca-Culture` pt-BR/en-US/fr-FR/es-ES contra a API rodando → 400 em todos, `code = api.onboarding.registration_invalid` estável, título + erros de campo localizados (corpos completos na doc).
+- **Fora de escopo (backlog)**: i18n das mensagens de sucesso/resposta além do Estúdio; dedup cosmética das regras `.studio-grid` em max-width:1100px. Sem push/merge/deploy automático.
+
 ## Incremento: Estabilização da suíte de integração (D-OC26) (13/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `6a32a34`. Build da solution (`Odca.sln`) **0W/0E**. Domain **355/355 PASS**. Suíte de integração em `odca_test_integration` zerado: **173/173 PASS — zero falhas** (linha de base herdada: 54F/116P/170; total 170→173 com +3 fatos novos). Runner reutilizável commitado: `scripts/qa/run-integration-tests.ps1 [-FreshDb]`.

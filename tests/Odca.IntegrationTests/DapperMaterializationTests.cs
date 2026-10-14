@@ -194,12 +194,7 @@ public sealed class DapperMaterializationTests(DatabaseFixture database) : IClas
     {
         var config = new ConfigurationBuilder().Build();
         var controller = new ContractImportsController(ds, config, NullLogger<ContractImportsController>.Instance);
-        var httpContext = new DefaultHttpContext();
-        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity([
-            new Claim("sub", actorId.ToString()),
-            new Claim(ClaimTypes.NameIdentifier, actorId.ToString())
-        ], "test"));
-        controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+        controller.ControllerContext = new ControllerContext { HttpContext = TestControllerContexts.Create(actorId) };
         return controller;
     }
 
@@ -208,12 +203,7 @@ public sealed class DapperMaterializationTests(DatabaseFixture database) : IClas
         var config = new ConfigurationBuilder().Build();
         var catalog = new StubTemplateCatalogRepository();
         var controller = new ContractStudioController(ds, config, catalog);
-        var httpContext = new DefaultHttpContext();
-        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity([
-            new Claim("sub", actorId.ToString()),
-            new Claim(ClaimTypes.NameIdentifier, actorId.ToString())
-        ], "test"));
-        controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+        controller.ControllerContext = new ControllerContext { HttpContext = TestControllerContexts.Create(actorId) };
         return controller;
     }
 

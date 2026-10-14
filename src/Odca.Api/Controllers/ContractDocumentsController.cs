@@ -3,7 +3,9 @@ using System.Security.Cryptography;
 using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using Odca.Api.Localization;
 using Odca.Application.Documents;
 using IOFile = System.IO.File;
 
@@ -38,7 +40,7 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
     public async Task<IActionResult> Upload(Guid tenantId, Guid contractId, IFormFile file, [FromForm] Guid? documentId, CancellationToken ct)
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
-        if (file.Length <= 0) return ValidationProblem();
+        if (file.Length <= 0) return this.Invalid("api.documents.upload_empty");
         long maximumFileBytes;
         await using (var limitsConnection = await dataSource.OpenConnectionAsync(ct))
         {
@@ -52,8 +54,9 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
                 """,new{tenantId},limitsTransaction,cancellationToken:ct));
             await limitsTransaction.CommitAsync(ct);
         }
-        if (maximumFileBytes<=0) return Conflict(new ProblemDetails{Title="Upload indisponível",Detail="A assinatura não possui um limite de arquivo ativo."});
-        if (file.Length>maximumFileBytes) return Problem(statusCode:413,title:"Arquivo excede o limite do plano.",detail:$"O limite atual é {maximumFileBytes} bytes.");
+        // D-OC27: títulos/detalhes por chaves estáveis; códigos wire aditivos.
+        if (maximumFileBytes<=0) return new ObjectResult(new ProblemDetails{Title=this.T("api.documents.upload_unavailable"),Detail=this.T("api.documents.upload_unavailable.detail"),Status=409,Extensions={["code"]="documents.upload_unavailable"}}){StatusCode=409};
+        if (file.Length>maximumFileBytes) return new ObjectResult(new ProblemDetails{Title=this.T("api.documents.file_too_large"),Detail=this.T("api.documents.file_too_large.limit_detail",maximumFileBytes.ToString(System.Globalization.CultureInfo.InvariantCulture)),Status=413,Extensions={["code"]="documents.file_too_large"}}){StatusCode=413};
         var root = Path.GetFullPath(configuration["Documents:StoragePath"] ?? "./private-documents");
         Directory.CreateDirectory(Path.Combine(root, "quarantine"));
         var temporary = Path.Combine(root, "quarantine", $"upload-{Guid.NewGuid():N}.tmp");
@@ -68,7 +71,7 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
                 int read;
                 while ((read = await source.ReadAsync(buffer, ct)) > 0)
                 {
-                    size += read; if (size > maximumFileBytes) return Problem(statusCode: 413, title: "Arquivo excede o limite do plano.",detail:$"O stream ultrapassou {maximumFileBytes} bytes e foi interrompido.");
+                    size += read; if (size > maximumFileBytes) return new ObjectResult(new ProblemDetails{Title=this.T("api.documents.file_too_large"),Detail=this.T("api.documents.file_too_large.stream_detail",maximumFileBytes.ToString(System.Globalization.CultureInfo.InvariantCulture)),Status=413,Extensions={["code"]="documents.file_too_large"}}){StatusCode=413};
                     var copy = Math.Min(read, prefix.Length - prefixCount); if (copy > 0) { buffer.AsSpan(0, copy).CopyTo(prefix.AsSpan(prefixCount)); prefixCount += copy; }
                     sha.AppendData(buffer, 0, read); await destinationStream.WriteAsync(buffer.AsMemory(0, read), ct);
                 }
@@ -97,10 +100,10 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
                  WHERE u.tenant_id=@tenantId;
                 """, new { tenantId }, transaction, cancellationToken: ct));
             var existing = await connection.QuerySingleOrDefaultAsync<ExistingReservation>(new CommandDefinition("SELECT id AS Id,status AS Status FROM odca.storage_reservations WHERE tenant_id=@tenantId AND operation_key=CAST(@operationKey AS text)",new{tenantId,operationKey},transaction,cancellationToken:ct));
-            if(existing is not null&&existing.Status=="confirmed") return Conflict(new ProblemDetails{Title="Upload já confirmado",Detail="A chave de idempotência já foi utilizada."});
+            if(existing is not null&&existing.Status=="confirmed") return new ObjectResult(new ProblemDetails{Title=this.T("api.documents.upload_already_confirmed"),Detail=this.T("api.documents.upload_already_confirmed.detail"),Status=409,Extensions={["code"]="documents.upload_already_confirmed"}}){StatusCode=409};
             var reservationId=existing?.Id??Guid.NewGuid();
             var reserved = await connection.ExecuteScalarAsync<bool>(new CommandDefinition("UPDATE odca.tenant_storage_usage SET reserved_bytes=reserved_bytes+@size WHERE tenant_id=@tenantId AND used_bytes+reserved_bytes+@size<=quota_bytes RETURNING true", new { tenantId, size }, transaction, cancellationToken: ct));
-            if (!reserved) return Problem(statusCode: 413, title: "A cota de armazenamento da organização foi atingida.");
+            if (!reserved) return this.Status(413, "api.documents.storage_quota_reached");
             await connection.ExecuteAsync(new CommandDefinition("INSERT INTO odca.storage_reservations(id,tenant_id,operation_key,requested_bytes,status,created_by,expires_at) VALUES(@reservationId,@tenantId,CAST(@operationKey AS text),@size,'reserved',@actor,now()+interval '30 minutes') ON CONFLICT(tenant_id,operation_key) DO UPDATE SET requested_bytes=excluded.requested_bytes,status='reserved',expires_at=excluded.expires_at",new{reservationId,tenantId,operationKey,size,actor},transaction,cancellationToken:ct));
             if (documentId is null)
                 await connection.ExecuteAsync(new CommandDefinition("INSERT INTO odca.contract_documents(id,tenant_id,contract_id,title,created_by) VALUES(@logicalId,@tenantId,@contractId,@title,@actor)", new { logicalId, tenantId, contractId, title = Path.GetFileName(file.FileName), actor }, transaction, cancellationToken: ct));
@@ -135,7 +138,16 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
         }
         catch (InvalidDataException exception)
         {
-            return BadRequest(new ProblemDetails { Title = "Documento inválido ou não suportado.", Detail = exception.Message });
+            // D-OC27: título fixo por chave; detalhe canônico (DocumentContent) resolvido por mapa/template.
+            var culture = this.Culture();
+            var localizer = HttpContext.RequestServices.GetRequiredService<Odca.Configuration.Localization.LocalizationService>();
+            return BadRequest(new ProblemDetails
+            {
+                Title = this.T("api.documents.invalid_file"),
+                Detail = ApiMessages.Localize(localizer, exception.Message, culture) ?? exception.Message,
+                Status = StatusCodes.Status400BadRequest,
+                Extensions = { ["code"] = "documents.invalid_file" }
+            });
         }
         finally { if (IOFile.Exists(temporary)) IOFile.Delete(temporary); }
     }
@@ -150,9 +162,9 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
         if (!await Allowed(connection, transaction, actor.Value, tenantId, "tenant.documents.download", ct)) return Forbid();
         var item = await connection.QuerySingleOrDefaultAsync<StoredVersion>(new CommandDefinition("SELECT storage_key AS StorageKey,display_name AS DisplayName,detected_type AS DetectedType,security_status AS SecurityStatus FROM odca.document_versions WHERE tenant_id=@tenantId AND contract_id=@contractId AND document_id=@documentId AND id=@versionId", new { tenantId, contractId, documentId, versionId }, transaction, cancellationToken: ct));
         if (item is null) return NotFound();
-        if (item.SecurityStatus != "safe") return Conflict(new ProblemDetails { Title = "Arquivo indisponível", Detail = "O arquivo somente é liberado após uma análise de segurança concluída." });
+        if (item.SecurityStatus != "safe") return new ObjectResult(new ProblemDetails { Title = this.T("api.documents.security_not_cleared"), Detail = this.T("api.documents.security_not_cleared.detail"), Status = 409, Extensions = { ["code"] = "documents.security_not_cleared" } }) { StatusCode = 409 };
         var root = Path.GetFullPath(configuration["Documents:StoragePath"] ?? "./private-documents"); var path = Path.GetFullPath(Path.Combine(root, item.StorageKey));
-        if (!path.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal) || !IOFile.Exists(path)) return Problem(statusCode: 503, title: "Arquivo requer reconciliação de armazenamento.");
+        if (!path.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal) || !IOFile.Exists(path)) return this.Status(503, "api.documents.reconciliation_required");
         await transaction.CommitAsync(ct);
         return PhysicalFile(path, Mime(item.DetectedType), item.DisplayName, enableRangeProcessing: true);
     }
@@ -166,7 +178,7 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
         await SetContext(connection, actor.Value, tenantId, transaction, ct);
         if (!await Allowed(connection, transaction, actor.Value, tenantId, "tenant.extractions.request", ct)) return Forbid();
         var safe = await connection.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.document_versions WHERE tenant_id=@tenantId AND contract_id=@contractId AND document_id=@documentId AND id=@versionId AND security_status='safe')", new { tenantId, contractId, documentId, versionId }, transaction, cancellationToken: ct));
-        if (!safe) return Conflict(new ProblemDetails { Title = "A versão ainda não foi aprovada pela análise de segurança." });
+        if (!safe) return OdcaErrors.Conflict(this, "api.documents.version_not_approved");
         var id = Guid.NewGuid(); await connection.ExecuteAsync(new CommandDefinition("INSERT INTO odca.extraction_jobs(id,tenant_id,contract_id,version_id,requested_by) VALUES(@id,@tenantId,@contractId,@versionId,@actor)", new { id, tenantId, contractId, versionId, actor }, transaction, cancellationToken: ct)); await transaction.CommitAsync(ct);
         return Accepted(new { extractionId = id, status = "queued" });
     }
@@ -190,7 +202,7 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
     public async Task<IActionResult> Apply(Guid tenantId, Guid contractId, Guid extractionId, [FromBody] ApplyReviewRequest request, CancellationToken ct)
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
-        if (request.Decisions.Count is 0 or > 30 || request.Decisions.Any(x => x.Status is not ("accepted" or "edited" or "rejected"))) return ValidationProblem();
+        if (request.Decisions.Count is 0 or > 30 || request.Decisions.Any(x => x.Status is not ("accepted" or "edited" or "rejected"))) return this.Invalid("api.documents.apply_invalid");
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         await using var tx = await connection.BeginTransactionAsync(ct);
         await SetContext(connection, actor.Value, tenantId, tx, ct);
@@ -204,17 +216,17 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
         if (currentVersion != request.ContractVersion)
         {
             await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.extraction_reviews SET status='conflicting' WHERE tenant_id=@tenantId AND idempotency_key=@key", new { tenantId, key = request.IdempotencyKey }, tx, cancellationToken: ct));
-            await tx.CommitAsync(ct); return Conflict(new { title = "O contrato foi alterado em outra sessão.", currentVersion, decisionsPreserved = true });
+            await tx.CommitAsync(ct); return Conflict(new { title = this.T("api.contract.changed_other_session"), code = "extraction.version.conflict", currentVersion, decisionsPreserved = true });
         }
         var allowed = new Dictionary<string, string>(StringComparer.Ordinal) { ["title"]="title", ["reference"]="reference", ["start_date"]="start_date", ["end_date"]="end_date", ["value"]="value", ["currency"]="currency", ["renewal_notice_days"]="renewal_notice_days" };
         foreach (var decision in request.Decisions)
         {
             var suggestion = await connection.QuerySingleOrDefaultAsync<SuggestionForApply>(new CommandDefinition("SELECT s.field_name AS FieldName,s.normalized_value AS NormalizedValue FROM odca.extraction_suggestions s JOIN odca.extraction_results r ON r.id=s.result_id AND r.tenant_id=s.tenant_id WHERE s.tenant_id=@tenantId AND s.id=@id AND r.job_id=@extractionId FOR UPDATE", new { tenantId, id = decision.SuggestionId, extractionId }, tx, cancellationToken: ct));
-            if (suggestion is null) return ValidationProblem();
+            if (suggestion is null) return this.Invalid("api.documents.suggestion_missing");
             var value = decision.Status == "edited" ? decision.Value?.Trim() : suggestion.NormalizedValue;
             await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.extraction_suggestions SET review_status=@status,reviewed_value=@value,reviewed_by=@actor,reviewed_at=now() WHERE tenant_id=@tenantId AND id=@id", new { decision.Status, value, actor, tenantId, id = decision.SuggestionId }, tx, cancellationToken: ct));
             if (decision.Status == "rejected" || !allowed.TryGetValue(suggestion.FieldName, out var column)) continue;
-            if (string.IsNullOrWhiteSpace(value)) return ValidationProblem();
+            if (string.IsNullOrWhiteSpace(value)) return this.Invalid("api.documents.decision_value_required");
             var cast = column switch { "start_date" or "end_date" => "::date", "value" => "::numeric(18,2)", "renewal_notice_days" => "::integer", _ => "" };
             await connection.ExecuteAsync(new CommandDefinition($"UPDATE odca.contracts SET {column}=@value{cast} WHERE tenant_id=@tenantId AND id=@contractId", new { value, tenantId, contractId }, tx, cancellationToken: ct));
         }

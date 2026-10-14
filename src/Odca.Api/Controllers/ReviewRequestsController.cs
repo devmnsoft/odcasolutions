@@ -3,6 +3,7 @@ using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
+using Odca.Api.Localization;
 using Odca.Contracts.Reviews;
 
 namespace Odca.Api.Controllers;
@@ -93,7 +94,7 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
         if (request.AssigneeId == Guid.Empty || string.IsNullOrWhiteSpace(request.Reason))
-            return ValidationProblem("Selecione um responsável e informe a justificativa.");
+            return this.Invalid("api.reviews.reassign_invalid");
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(connection, actor.Value, tenantId, "tenant.reviews.decide", ct)) return Forbid();
         await using var tx = await connection.BeginTransactionAsync(ct); await SetTenant(connection, tenantId, actor.Value, tx, ct);
@@ -105,14 +106,14 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
         if (prior is not null)
         {
             if (prior.AssigneeId != request.AssigneeId || prior.ExpectedVersion != request.ExpectedVersion)
-                return Conflict(new { title="A chave de repetição já foi usada para outra atribuição." });
+                return OdcaErrors.Conflict(this, "api.reviews.reassign_key_reused");
             await tx.CommitAsync(ct); return Ok(new { version=request.ExpectedVersion+1, replayed=true });
         }
         var eligible = await connection.ExecuteScalarAsync<bool>(new CommandDefinition("""
             SELECT EXISTS(SELECT 1 FROM odca.memberships m WHERE m.tenant_id=@tenantId AND m.user_id=@assigneeId
               AND m.status='active' AND odca.tenant_actor_has_permission(m.user_id,@tenantId,'tenant.reviews.decide'))
             """, new { tenantId, request.AssigneeId }, tx, cancellationToken: ct));
-        if (!eligible) return ValidationProblem("O responsável selecionado não está ativo ou autorizado para revisões.");
+        if (!eligible) return this.Invalid("api.reviews.assignee_not_authorized");
         var changed = await connection.ExecuteScalarAsync<int?>(new CommandDefinition("""
             WITH current_step AS (
               UPDATE odca.contract_review_steps SET status='reassigned',decided_by=@actor,decided_at=now(),justification=@reason
@@ -137,7 +138,7 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
             ) SELECT count(*)::integer FROM updated_review
             """, new { tenantId, reviewId, actor, request.AssigneeId, expected=request.ExpectedVersion,
                 reason=request.Reason.Trim(), key=request.IdempotencyKey.ToString() }, tx, cancellationToken: ct));
-        if (changed != 1) return Conflict(new { title="A atribuição foi alterada em outra sessão ou o responsável já é o selecionado." });
+        if (changed != 1) return OdcaErrors.Conflict(this, "api.reviews.reassign_changed_or_same");
         await tx.CommitAsync(ct); return Ok(new { version=request.ExpectedVersion+1, replayed=false });
     }
 
@@ -189,7 +190,7 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
     public async Task<IActionResult> AddMessage(Guid tenantId, Guid reviewId, AddReviewMessageRequest request, CancellationToken ct)
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
-        if (string.IsNullOrWhiteSpace(request.Body) || request.Body.Trim().Length > 4000 || request.Visibility is not ("client" or "internal")) return ValidationProblem("Informe mensagem e visibilidade válidas.");
+        if (string.IsNullOrWhiteSpace(request.Body) || request.Body.Trim().Length > 4000 || request.Visibility is not ("client" or "internal")) return this.Invalid("api.reviews.message_invalid");
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(connection, actor.Value, tenantId, "tenant.reviews.read", ct)) return Forbid();
         var canManage = await Allowed(connection, actor.Value, tenantId, "tenant.reviews.decide", ct);
@@ -209,7 +210,7 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
                   WHERE tenant_id=@tenantId AND review_id=@reviewId AND id=@id AND author_id=@actor
                     AND body=@body AND visibility=@visibility AND reference IS NOT DISTINCT FROM @reference)
                 """, new { tenantId,reviewId,id,actor,body=request.Body.Trim(),reference=request.Reference?.Trim(),request.Visibility },tx,cancellationToken:ct));
-            if (!sameRequest) return Conflict(new { title="A chave de repetição já foi usada ou a solicitação não aceita novas mensagens." });
+            if (!sameRequest) return OdcaErrors.Conflict(this, "api.reviews.message_key_conflict");
         }
         if (inserted == true) await connection.ExecuteAsync(new CommandDefinition("INSERT INTO odca.contract_review_events(tenant_id,review_id,actor_id,event_type,details) VALUES(@tenantId,@reviewId,@actor,'review.message_added',jsonb_build_object('visibility',@visibility))",new{tenantId,reviewId,actor,request.Visibility},tx,cancellationToken:ct));
         await tx.CommitAsync(ct); return Ok(new { id });
@@ -220,7 +221,7 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
         if (request.Action is not ("approve" or "request_changes") || string.IsNullOrWhiteSpace(request.Justification))
-            return ValidationProblem("Informe uma decisão e uma justificativa.");
+            return this.Invalid("api.reviews.decision_invalid");
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(connection, actor.Value, tenantId, "tenant.reviews.decide", ct)) return Forbid();
         await using var tx = await connection.BeginTransactionAsync(ct); await SetTenant(connection, tenantId, actor.Value, tx, ct);
@@ -241,13 +242,13 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
         if (prior is not null)
         {
             if (prior.Action != request.Action || prior.ExpectedVersion != request.ExpectedVersion)
-                return Conflict(new { title="A chave de repetição já foi usada para outra decisão." });
+                return OdcaErrors.Conflict(this, "api.reviews.decision_key_reused");
             await tx.CommitAsync(ct);
             return Ok(new { status=prior.Status, version=request.ExpectedVersion+1, replayed=true });
         }
         if (review.Status != "in_review" || review.StepId is null || review.ReviewerId != actor.Value)
-            return Conflict(new { title="A revisão não está disponível para decisão deste responsável." });
-        if (review.Version != request.ExpectedVersion) return Conflict(new { title="A revisão foi alterada em outra sessão.", currentVersion=review.Version });
+            return OdcaErrors.Conflict(this, "api.reviews.not_available_to_actor");
+        if (review.Version != request.ExpectedVersion) return Conflict(new { title=this.T("api.reviews.review_changed"), code="review.version.conflict", currentVersion=review.Version });
         var status=request.Action=="approve"?"internally_approved":"changes_requested";
         var stepStatus=request.Action=="approve"?"approved":"changes_requested";
         var updated = await connection.ExecuteScalarAsync<int?>(new CommandDefinition("""
@@ -281,7 +282,7 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
             """, new { tenantId, reviewId, actor, review.StepId, stepStatus, status, action=request.Action,
                 reason=request.Justification.Trim(), expected=request.ExpectedVersion, review.GeneratedVersionId,
                 Event=$"review.{request.Action}", key=request.IdempotencyKey.ToString() }, tx, cancellationToken:ct));
-        if (updated != 1) return Conflict(new { title="A revisão foi alterada em outra sessão.", currentVersion=review.Version });
+        if (updated != 1) return Conflict(new { title=this.T("api.reviews.review_changed"), code="review.version.conflict", currentVersion=review.Version });
         await tx.CommitAsync(ct); return Ok(new { status, version=request.ExpectedVersion+1, replayed=false });
     }
 
@@ -290,7 +291,7 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
         if (string.IsNullOrWhiteSpace(request.Justification) || request.IdempotencyKey == Guid.Empty)
-            return ValidationProblem("Informe a justificativa do cancelamento.");
+            return this.Invalid("api.reviews.cancel_reason_required");
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(connection, actor.Value, tenantId, "tenant.reviews.cancel", ct)) return Forbid();
         await using var tx = await connection.BeginTransactionAsync(ct); await SetTenant(connection, tenantId, actor.Value, tx, ct);
@@ -310,14 +311,14 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
             """, new { tenantId, reviewId, key = request.IdempotencyKey.ToString() }, tx, cancellationToken: ct));
         if (prior is not null)
         {
-            if (prior != request.ExpectedVersion) return Conflict(new { title = "A chave de repetição já foi usada para outro cancelamento." });
+            if (prior != request.ExpectedVersion) return OdcaErrors.Conflict(this, "api.reviews.cancel_key_reused");
             await tx.CommitAsync(ct);
             return Ok(new { status = "cancelled", version = request.ExpectedVersion + 1, replayed = true });
         }
         if (review.Status is not ("in_review" or "changes_requested"))
-            return Conflict(new { title = "A revisão não pode ser cancelada neste estado." });
+            return OdcaErrors.Conflict(this, "api.reviews.cancel_state_blocked");
         if (review.Version != request.ExpectedVersion)
-            return Conflict(new { title = "A revisão foi alterada em outra sessão.", currentVersion = review.Version });
+            return Conflict(new { title = this.T("api.reviews.review_changed"), code = "review.version.conflict", currentVersion = review.Version });
         var updated = await connection.ExecuteScalarAsync<int>(new CommandDefinition("""
             WITH cancelled AS (
               UPDATE odca.contract_review_requests
@@ -339,7 +340,7 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
             )
             SELECT count(*)::int FROM cancelled
             """, new { tenantId, reviewId, actor, status = review.Status, expected = request.ExpectedVersion, reason = request.Justification.Trim(), key = request.IdempotencyKey.ToString() }, tx, cancellationToken: ct));
-        if (updated != 1) return Conflict(new { title = "A revisão foi alterada em outra sessão.", currentVersion = review.Version });
+        if (updated != 1) return Conflict(new { title = this.T("api.reviews.review_changed"), code = "review.version.conflict", currentVersion = review.Version });
         await tx.CommitAsync(ct);
         return Ok(new { status = "cancelled", version = request.ExpectedVersion + 1, replayed = false });
     }

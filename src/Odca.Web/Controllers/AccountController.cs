@@ -116,7 +116,7 @@ public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContex
     [HttpPost("minha-conta/idioma")]
     public IActionResult SetLanguage(string? lang, string? returnUrl)
     {
-        var code = Localization.LocalizationService.ResolveCultureCode(lang) ?? "pt-BR";
+        var code = Odca.Configuration.Localization.LocalizationService.ResolveCultureCode(lang) ?? "pt-BR";
         Response.Cookies.Append(Middleware.CultureMiddleware.CookieName, code, new CookieOptions
         {
             HttpOnly = true,

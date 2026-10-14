@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using Odca.Contracts.Contracts;
 using Odca.Contracts.Identity;
 using Odca.Contracts.Onboarding;
@@ -21,8 +22,17 @@ using Odca.Contracts.Administration;
 
 namespace Odca.Web.Services;
 
-public sealed partial class OdcaApiClient(HttpClient client)
+public sealed partial class OdcaApiClient(HttpClient client, IHttpContextAccessor httpContextAccessor)
 {
+    /// <summary>D-OC27: cultura ativa (resolvida pela CultureMiddleware do Web) — viaja para a API
+    /// no header X-Odca-Culture para que os erros de API sejam apresentados no idioma do usuário.</summary>
+    private string? RequestCulture => httpContextAccessor.HttpContext?.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] as string;
+
+    private void ApplyCulture(HttpRequestMessage message)
+    {
+        if (!string.IsNullOrWhiteSpace(RequestCulture)) message.Headers.TryAddWithoutValidation("X-Odca-Culture", RequestCulture);
+    }
+
     public Task<ApiCallResult<PatientPage>> GetPatientsAsync(string token, Guid tenantId, string? search, bool includeInactive, int page, CancellationToken ct) =>
         SendAsync<PatientPage>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/patients?search={Uri.EscapeDataString(search ?? string.Empty)}&includeInactive={includeInactive.ToString().ToLowerInvariant()}&page={page}", token), false, ct);
     public Task<ApiCallResult<PatientDetails>> GetPatientAsync(string token, Guid tenantId, Guid patientId, CancellationToken ct) =>
@@ -367,6 +377,7 @@ public sealed partial class OdcaApiClient(HttpClient client)
         {
             Content = JsonContent.Create(request)
         };
+        ApplyCulture(message);
         return await SendAsync<LoginResponse>(message, invalidCredentialsOnUnauthorized: true, cancellationToken);
     }
 
@@ -455,6 +466,7 @@ public sealed partial class OdcaApiClient(HttpClient client)
     public async Task<ApiCallResult<PlanCatalogResponse[]>> GetPublicPlansAsync(CancellationToken cancellationToken)
     {
         using var message = new HttpRequestMessage(HttpMethod.Get, "api/v1/catalog/plans");
+        ApplyCulture(message);
         return await SendAsync<PlanCatalogResponse[]>(message, invalidCredentialsOnUnauthorized: false, cancellationToken);
     }
 
@@ -466,6 +478,7 @@ public sealed partial class OdcaApiClient(HttpClient client)
         {
             Content = JsonContent.Create(request)
         };
+        ApplyCulture(message);
         return await SendAsync<PrivacyRequestCreated>(message, invalidCredentialsOnUnauthorized: false, cancellationToken);
     }
 
@@ -477,6 +490,7 @@ public sealed partial class OdcaApiClient(HttpClient client)
         {
             Content = JsonContent.Create(request)
         };
+        ApplyCulture(message);
         return await SendAsync<StartCustomerRegistrationResponse>(message, invalidCredentialsOnUnauthorized: false, cancellationToken);
     }
 
@@ -488,6 +502,7 @@ public sealed partial class OdcaApiClient(HttpClient client)
         {
             Content = JsonContent.Create(request)
         };
+        ApplyCulture(message);
         return await SendAsync<ConfirmCustomerRegistrationResponse>(message, invalidCredentialsOnUnauthorized: false, cancellationToken);
     }
 
@@ -702,6 +717,7 @@ public sealed partial class OdcaApiClient(HttpClient client)
         var query =
             $"invitationId={invitationId}&token={Uri.EscapeDataString(inviteToken)}";
         using var message = new HttpRequestMessage(HttpMethod.Get, $"api/v1/organizations/invitations/preview?{query}");
+        ApplyCulture(message);
         return await SendAsync<InvitationPreviewResponse>(message, false, cancellationToken);
     }
 
@@ -1011,10 +1027,11 @@ public sealed partial class OdcaApiClient(HttpClient client)
     private sealed record ApiProblem(string? Title, string? Detail,
         IReadOnlyDictionary<string, string[]>? Errors, string? Code);
 
-    private static HttpRequestMessage CreateAuthorized(HttpMethod method, string path, string token)
+    private HttpRequestMessage CreateAuthorized(HttpMethod method, string path, string token)
     {
         var message = new HttpRequestMessage(method, path);
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        ApplyCulture(message);
         return message;
     }
 }

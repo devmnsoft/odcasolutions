@@ -3,6 +3,7 @@ using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
+using Odca.Api.Localization;
 using Odca.Contracts.Renewals;
 
 namespace Odca.Api.Controllers;
@@ -19,7 +20,7 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
-        if (from.HasValue && to.HasValue && from > to) return ValidationProblem();
+        if (from.HasValue && to.HasValue && from > to) return this.Invalid("api.renewals.date_range_invalid");
         page = Math.Max(1, page); pageSize = Math.Clamp(pageSize, 1, 100);
         await using var c = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(c, actor.Value, tenantId, "tenant.renewals.read", ct)) return Forbid();
@@ -52,20 +53,20 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
     public async Task<IActionResult> Create(Guid tenantId, Guid contractId, [FromBody] CreateRenewalRequest request, CancellationToken ct)
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
-        if (request.Kind is not ("renewal" or "amendment" or "revision") || string.IsNullOrWhiteSpace(request.Reason)) return ValidationProblem();
-        if (request.ProposedEndDate < request.ProposedStartDate || request.ProposedValue < 0 || (request.ProposedValue.HasValue && string.IsNullOrWhiteSpace(request.Currency))) return ValidationProblem();
+        if (request.Kind is not ("renewal" or "amendment" or "revision") || string.IsNullOrWhiteSpace(request.Reason)) return this.Invalid("api.renewals.create_kind_reason");
+        if (request.ProposedEndDate < request.ProposedStartDate || request.ProposedValue < 0 || (request.ProposedValue.HasValue && string.IsNullOrWhiteSpace(request.Currency))) return this.Invalid("api.renewals.create_values_invalid");
         if (request.ValueChangeMode is not (null or "total" or "increase" or "decrease"))
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]> {{ "valueChangeMode", ["Use total, increase ou decrease."] }}));
+            return this.Field("valueChangeMode", "api.renewals.value_change_mode_invalid");
         var priority = string.IsNullOrWhiteSpace(request.Priority) ? "normal" : request.Priority.Trim().ToLowerInvariant();
         if (priority is not ("low" or "normal" or "high" or "critical"))
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]> {{ "priority", ["Use low, normal, high ou critical."] }}));
+            return this.Field("priority", "api.renewals.priority_invalid");
         await using var c = await dataSource.OpenConnectionAsync(ct); if (!await Allowed(c, actor.Value, tenantId, "tenant.renewals.prepare", ct)) return Forbid();
         await using var tx = await c.BeginTransactionAsync(ct); await SetTenant(c, tenantId, actor.Value, tx, ct);
-        var organizationToday=await OrganizationToday(c,tenantId,tx,ct);if(request.EffectiveOn<organizationToday)return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"effectiveOn",["Datas retroativas não são aceitas."]}}));
+        var organizationToday=await OrganizationToday(c,tenantId,tx,ct);if(request.EffectiveOn<organizationToday)return this.Field("effectiveOn", "api.renewals.effective_on_retroactive");
         var contract = await c.QuerySingleOrDefaultAsync<ContractBase>(new CommandDefinition("SELECT start_date AS StartDate,end_date AS EndDate,value AS Value,currency AS Currency,owner_id AS OwnerId,version AS Version FROM odca.contracts WHERE tenant_id=@tenantId AND id=@contractId FOR UPDATE", new { tenantId, contractId }, tx, cancellationToken: ct));
-        if (contract is null) return NotFound(); if (contract.Version != request.ContractVersion) return Conflict(new { title = "O contrato mudou. Faça uma nova análise.", code = "contract.version.conflict", currentVersion = contract.Version });
+        if (contract is null) return NotFound(); if (contract.Version != request.ContractVersion) return Conflict(new { title = this.T("api.renewals.contract_changed"), code = "contract.version.conflict", currentVersion = contract.Version });
         if (request.DraftId.HasValue && !await c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.contract_drafts WHERE tenant_id=@tenantId AND contract_id=@contractId AND id=@draftId)", new { tenantId, contractId, request.DraftId }, tx, cancellationToken:ct)))
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]> {{ "draftId", ["A minuta deve pertencer ao contrato e à organização."] }}));
+            return this.Field("draftId", "api.renewals.draft_not_linked");
         var proposedValue = request.ValueChangeMode switch
         {
             "increase" when contract.Value.HasValue && request.ProposedValue.HasValue => contract.Value + request.ProposedValue,
@@ -73,14 +74,14 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
             _ => request.ProposedValue
         };
         if (proposedValue < 0 || request.ValueChangeMode is "increase" or "decrease" && !contract.Value.HasValue)
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]> {{ "proposedValue", ["Acréscimo ou redução exige valor atual e não pode resultar em valor negativo."] }}));
+            return this.Field("proposedValue", "api.renewals.value_change_requires_current");
         // Validação do estado resultante (não apenas campos enviados)
         var resultStart = request.ProposedStartDate ?? contract.StartDate;
         var resultEnd = request.ClearEndDate ? (DateOnly?)null : (request.ProposedEndDate ?? contract.EndDate);
         if (resultStart is not null && resultEnd is not null && resultStart > resultEnd)
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]> {{ "dates", ["A data inicial do contrato resultante não pode ser posterior à data final."] }}));
+            return this.Field("dates", "api.renewals.result_dates_invalid");
         if (request.Currency is not null && !string.IsNullOrWhiteSpace(request.Currency) && request.ProposedValue is null)
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]> {{ "currency", ["Moeda proposta sem valor correspondente. Ombra a moeda atual não será alterada."] }}));
+            return this.Field("currency", "api.renewals.currency_without_value");
         // Revisão administrativa (Bloco A'): correção não comercial — não altera condições
         // comerciais (valores, vigência, objeto ou partes). Qualquer delta comercial segue
         // aditivo ou nova versão; o efeito aplicado é comparado ao contrato atual.
@@ -92,10 +93,7 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
             var appliedCcy   = proposedValue.HasValue ? (request.Currency?.Trim().ToUpperInvariant() ?? contract.Currency) : contract.Currency;
             if (appliedStart != contract.StartDate || appliedEnd != contract.EndDate
                 || appliedValue != contract.Value || !string.Equals(appliedCcy, contract.Currency, StringComparison.Ordinal))
-                return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
-                {
-                    { "kind", ["A revisão administrativa é uma correção não comercial: ela não altera valores, vigência, objeto ou partes. Use um aditivo ou uma nova versão para alterações materiais."] }
-                }));
+                return this.Field("kind", "api.renewals.revision_not_noncommercial");
         }
         var id = Guid.NewGuid();
         var clearEnd = request.ClearEndDate;
@@ -110,7 +108,7 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
         {
             var existing=await c.ExecuteScalarAsync<Guid?>(new CommandDefinition("SELECT id FROM odca.contract_change_requests WHERE tenant_id=@tenantId AND idempotency_key=@key",new{tenantId,key=request.IdempotencyKey},tx,cancellationToken:ct));
             if(existing.HasValue){await tx.CommitAsync(ct);return Ok(new{id=existing.Value,replayed=true});}
-            return Conflict(new{title="Já existe uma alteração ativa para este contrato."});
+            return OdcaErrors.Conflict(this, "api.renewals.active_change_exists");
         }
         await tx.CommitAsync(ct); return Created($"/api/v1/organizations/{tenantId}/renewals/{id}", new { id, replayed=false });
     }
@@ -118,7 +116,7 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
     [HttpPost("{id:guid}/formalization")]
     public async Task<IActionResult> Formalize(Guid tenantId, Guid id, [FromBody] FormalizeRenewalRequest request, CancellationToken ct)
     {
-        var actor=Actor(); if(actor is null)return Unauthorized(); if(string.IsNullOrWhiteSpace(request.Justification))return ValidationProblem();
+        var actor=Actor(); if(actor is null)return Unauthorized(); if(string.IsNullOrWhiteSpace(request.Justification))return this.Invalid("api.renewals.formalize_reason_required");
         await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.renewals.formalize",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
         // Idempotent replay: if already formalized with matching key, return success.
         if (request.IdempotencyKey.HasValue)
@@ -129,7 +127,7 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
             if (replay is not null && replay.Status == "formalized" && replay.Key == request.IdempotencyKey.Value)
             { await tx.CommitAsync(ct); return Ok(new { manualFormalization = true, replayed = true }); }
         }
-        var organizationToday=await OrganizationToday(c,tenantId,tx,ct);if(request.FormalizedOn>organizationToday)return ValidationProblem();
+        var organizationToday=await OrganizationToday(c,tenantId,tx,ct);if(request.FormalizedOn>organizationToday)return this.Invalid("api.renewals.formalized_on_future");
         var changed=await c.ExecuteAsync(new CommandDefinition("""
             UPDATE odca.contract_change_requests r SET status='formalized',application_status=CASE WHEN effective_on>@today THEN 'scheduled' ELSE 'not_applied' END,
               evidence_version_id=@evidence,formalized_on=@date,formalization_justification=@reason,formalized_by=@actor,formalized_at=now(),
@@ -137,12 +135,12 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
             WHERE r.tenant_id=@tenantId AND r.id=@id AND r.row_version=@version AND r.status IN('in_review','internally_approved','awaiting_formalization')
               AND EXISTS(SELECT 1 FROM odca.document_versions v WHERE v.tenant_id=r.tenant_id AND v.contract_id=r.contract_id AND v.id=@evidence AND v.security_status='safe')
             """,new{tenantId,id,version=request.RowVersion,evidence=request.EvidenceVersionId,date=request.FormalizedOn,reason=request.Justification.Trim(),actor,today=organizationToday,idemKey=request.IdempotencyKey},tx,cancellationToken:ct));
-        if(changed!=1)return Conflict(new{title="Estado, versão ou evidência segura inválidos."});await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.contract_change_events(tenant_id,request_id,actor_id,event_type,details) VALUES(@tenantId,@id,@actor,'manual_formalization',jsonb_build_object('evidenceVersionId',@evidence))",new{tenantId,id,actor,evidence=request.EvidenceVersionId},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Ok(new{manualFormalization=true,replayed=false});
+        if(changed!=1)return OdcaErrors.Conflict(this, "api.renewals.state_version_evidence_invalid");await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.contract_change_events(tenant_id,request_id,actor_id,event_type,details) VALUES(@tenantId,@id,@actor,'manual_formalization',jsonb_build_object('evidenceVersionId',@evidence))",new{tenantId,id,actor,evidence=request.EvidenceVersionId},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Ok(new{manualFormalization=true,replayed=false});
     }
 
     [HttpPost("{id:guid}/apply")]
     public async Task<IActionResult> Apply(Guid tenantId,Guid id,[FromBody] ApplyRenewalRequest request,CancellationToken ct)
-    {var actor=Actor();if(actor is null)return Unauthorized();await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.renewals.apply",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);var today=await OrganizationToday(c,tenantId,tx,ct);var outcome=await ApplyCore(c,tx,tenantId,id,actor.Value,request.RowVersion,today,ct);if(outcome is null){await tx.CommitAsync(ct);return Conflict(new{title="A proposta está desatualizada, não está formalizada ou ainda tem efeito futuro."});}await tx.CommitAsync(ct);return Ok(outcome);}
+    {var actor=Actor();if(actor is null)return Unauthorized();await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.renewals.apply",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);var today=await OrganizationToday(c,tenantId,tx,ct);var outcome=await ApplyCore(c,tx,tenantId,id,actor.Value,request.RowVersion,today,ct);if(outcome is null){await tx.CommitAsync(ct);return OdcaErrors.Conflict(this, "api.renewals.apply_not_ready");}await tx.CommitAsync(ct);return Ok(outcome);}
 
     internal static async Task<object?> ApplyCore(NpgsqlConnection c,NpgsqlTransaction tx,Guid tenantId,Guid id,Guid actor,long rowVersion,DateOnly today,CancellationToken ct)
     {
@@ -224,7 +222,7 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
             UPDATE odca.contract_change_requests SET status='in_review',row_version=row_version+1,updated_at=now()
             WHERE tenant_id=@tenantId AND id=@id AND row_version=@version AND status='draft'
             """, new { tenantId, id, version=request.RowVersion }, tx, cancellationToken: ct));
-        if (changed != 1) { await tx.CommitAsync(ct); return Conflict(new { title = "A proposta não está em rascunho ou mudou de versão." }); }
+        if (changed != 1) { await tx.CommitAsync(ct); return OdcaErrors.Conflict(this, "api.renewals.submit_not_draft"); }
         await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.contract_change_events(tenant_id,request_id,actor_id,event_type,details) VALUES(@tenantId,@id,@actor,'submitted','{}'::jsonb)", new { tenantId, id, actor }, tx, cancellationToken: ct));
         await tx.CommitAsync(ct);
         return Ok(new { submitted = true });
@@ -241,7 +239,7 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
             UPDATE odca.contract_change_requests SET status='cancelled',cancelled_at=now(),row_version=row_version+1,updated_at=now()
             WHERE tenant_id=@tenantId AND id=@id AND row_version=@version AND status NOT IN('formalized','cancelled','conflict')
             """, new { tenantId, id, version=request.RowVersion }, tx, cancellationToken: ct));
-        if (changed != 1) { await tx.CommitAsync(ct); return Conflict(new { title = "A proposta não pode mais ser cancelada neste estado." }); }
+        if (changed != 1) { await tx.CommitAsync(ct); return OdcaErrors.Conflict(this, "api.renewals.cancel_state_blocked"); }
         await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.contract_change_events(tenant_id,request_id,actor_id,event_type,details) VALUES(@tenantId,@id,@actor,'cancelled',jsonb_build_object('reason',@reason))", new { tenantId, id, actor, reason=request.Reason?.Trim() }, tx, cancellationToken: ct));
         await tx.CommitAsync(ct);
         return Ok(new { cancelled = true });
@@ -266,11 +264,11 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
         await using var c = await dataSource.OpenConnectionAsync(ct);
         if (!await Allowed(c, actor.Value, tenantId, "tenant.organization.manage", ct)) return Forbid();
         if (request.Days is null || request.Days.Length != 3)
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]> {{ "days", ["Informe três dias de lembrete."] }}));
+            return this.Field("days", "api.renewals.reminder_days_required");
         for (var i = 0; i < 3; i++) if (request.Days[i] < 1 || request.Days[i] > 365)
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]> {{ "days", ["Cada lembrete deve estar entre 1 e 365 dias."] }}));
+            return this.Field("days", "api.renewals.reminder_days_range");
         if (request.Days[0] <= request.Days[1] || request.Days[1] <= request.Days[2])
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]> {{ "days", ["Informe os dias em ordem decrescente (ex.: 30, 15, 7)."] }}));
+            return this.Field("days", "api.renewals.reminder_days_order");
         await using var tx = await c.BeginTransactionAsync(ct); await SetTenant(c, tenantId, actor.Value, tx, ct);
         var days = request.Days;
         var changed = await c.ExecuteAsync(new CommandDefinition(

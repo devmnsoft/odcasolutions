@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Odca.Api.Localization;
 using Odca.Application.Administration;
 using Odca.Contracts.Administration;
 
@@ -25,7 +26,7 @@ public sealed class OrganizationFeaturesController(IOrganizationFeatureRepositor
             OrganizationFeatureAccess.Ok when result.Catalog is not null => Ok(result.Catalog),
             OrganizationFeatureAccess.Missing => NotFound(),
             OrganizationFeatureAccess.Forbidden => Forbid(),
-            _ => Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Não foi possível consultar as funcionalidades da organização.")
+            _ => this.Status(StatusCodes.Status503ServiceUnavailable, "api.org_features.unavailable")
         };
     }
 
@@ -44,23 +45,17 @@ public sealed class OrganizationFeaturesController(IOrganizationFeatureRepositor
 
         if (request.Reason is null)
         {
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
-            {
-                ["reason"] = ["Informe a justificativa do bloqueio ou da liberação."]
-            }));
+            return this.Field("reason", "api.org_features.reason_required");
         }
 
         var result = await repository.SetAsync(actorId, tenantId, featureCode, request.Blocked, request.Reason, cancellationToken);
         return result.Access switch
         {
             OrganizationFeatureAccess.Ok when result.Feature is not null => Ok(result.Feature),
-            OrganizationFeatureAccess.Invalid => ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
-            {
-                ["feature"] = ["Informe uma funcionalidade conhecida e uma justificativa entre 5 e 500 caracteres."]
-            })),
+            OrganizationFeatureAccess.Invalid => this.Field("feature", "api.org_features.invalid_feature"),
             OrganizationFeatureAccess.Missing => NotFound(),
             OrganizationFeatureAccess.Forbidden => Forbid(),
-            _ => Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Não foi possível registrar a decisão administrativa.")
+            _ => this.Status(StatusCodes.Status503ServiceUnavailable, "api.org_features.update_unavailable")
         };
     }
 }

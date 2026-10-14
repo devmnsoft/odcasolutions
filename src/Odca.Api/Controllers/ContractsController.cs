@@ -3,6 +3,7 @@ using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
+using Odca.Api.Localization;
 
 namespace Odca.Api.Controllers;
 
@@ -18,7 +19,7 @@ public sealed class ContractsController(NpgsqlDataSource dataSource) : Controlle
         page=Math.Max(page,1);pageSize=Math.Clamp(pageSize,1,50);
         var state=status?.Trim().ToLowerInvariant();
         if(state is not (null or "" or "active" or "archived" or "closed" or "all"))
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"status",["Use active, archived, closed ou all."]}}));
+            return this.Field("status", "api.contracts.list_status_invalid");
         state ??= "active";
         await using var c=await dataSource.OpenConnectionAsync(ct);
         if(!await Allowed(c,actor.Value,tenantId,"tenant.contracts.read","tenant.contract_drafts.read",ct))return Forbid();
@@ -101,22 +102,22 @@ public sealed class ContractsController(NpgsqlDataSource dataSource) : Controlle
         var actor=Actor();if(actor is null)return Unauthorized();
         bool hasTitle=request.Title is not null,hasReference=request.Reference is not null;
         if(hasTitle&&request.Title!.Trim().Length is < 2 or > 160)
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"title",["O título precisa ter de 2 a 160 caracteres."]}}));
+            return this.Field("title","api.contracts.title_length");
         if(hasReference&&request.Reference!.Trim().Length>160)
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"reference",["A referência precisa ter até 160 caracteres."]}}));
+            return this.Field("reference","api.contracts.reference_length");
         if(!(hasTitle||hasReference||request.ClearOwner||request.OwnerId.HasValue))
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"body",["Informe ao menos um campo para atualizar."]}}));
+            return this.Field("body","api.contracts.update_empty");
         await using var c=await dataSource.OpenConnectionAsync(ct);
         if(!await Allowed(c,actor.Value,tenantId,"tenant.contracts.manage",ct))return Forbid();
         await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
         if(request.OwnerId.HasValue)
         {
             var ownerActive=await c.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT EXISTS(SELECT 1 FROM odca.memberships WHERE tenant_id=@tenantId AND user_id=@ownerId AND status='active')",new{tenantId,ownerId=request.OwnerId.Value},tx,cancellationToken:ct));
-            if(!ownerActive)return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"ownerId",["O responsável precisa ter vínculo ativo nesta organização."]}}));
+            if(!ownerActive)return this.Field("ownerId","api.contracts.owner_inactive");
         }
         var current=await c.QuerySingleOrDefaultAsync<ContractUpdateRow>(new CommandDefinition("SELECT version AS Version,title AS Title,reference AS Reference,owner_id AS OwnerId FROM odca.contracts WHERE tenant_id=@tenantId AND id=@contractId FOR UPDATE",new{tenantId,contractId},tx,cancellationToken:ct));
         if(current is null)return NotFound();
-        if(current.Version!=version)return Conflict(new{title="O contrato foi alterado em outra sessão. Recarregue e reaplique suas mudanças.",code="contract.version.conflict",currentVersion=current.Version});
+        if(current.Version!=version)return Conflict(new{title=this.T("api.contract.version_conflict_update"),code="contract.version.conflict",currentVersion=current.Version});
         string title=hasTitle?request.Title!.Trim():current.Title;
         string? reference=hasReference?(request.Reference!.Trim().Length==0?null:request.Reference.Trim()):current.Reference;
         string ownerExpr=request.ClearOwner?"NULL":request.OwnerId.HasValue?"@ownerId":"owner_id";
@@ -160,8 +161,8 @@ public sealed class ContractsController(NpgsqlDataSource dataSource) : Controlle
             WHERE c.tenant_id=@tenantId AND c.id=@contractId FOR UPDATE OF c
             """,new{tenantId,contractId},tx,cancellationToken:ct));
         if(source is null)return NotFound();
-        if(source.ClosedAt is not null)return Conflict(new{title="Um contrato encerrado não pode ser duplicado. Crie um novo contrato se precisar recomeçar.",code="contract.closed"});
-        if(source.DraftId is null)return Conflict(new{title="Este contrato não possui minuta vinculada e não pode ser duplicado.",code="contract.no_draft"});
+        if(source.ClosedAt is not null)return Conflict(new{title=this.T("api.contract.closed"),code="contract.closed"});
+        if(source.DraftId is null)return Conflict(new{title=this.T("api.contract.no_draft"),code="contract.no_draft"});
         var baseTitle=source.Title.Length>152?source.Title[..152].TrimEnd():source.Title;
         string newTitle=baseTitle+" (cópia)";
         Guid targetContractId=Guid.NewGuid(),targetDraftId=Guid.NewGuid();
@@ -194,7 +195,7 @@ public sealed class ContractsController(NpgsqlDataSource dataSource) : Controlle
         if(request?.Reason is { } raw)
         {
             reason=raw.Trim();
-            if(reason.Length>500)return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"reason",["A justificativa precisa ter até 500 caracteres."]}}));
+            if(reason.Length>500)return this.Field("reason","api.contracts.archive_reason_length");
             if(reason.Length==0)reason=null;
         }
         await using var c=await dataSource.OpenConnectionAsync(ct);
@@ -202,7 +203,7 @@ public sealed class ContractsController(NpgsqlDataSource dataSource) : Controlle
         await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
         var current=await c.QuerySingleOrDefaultAsync<ContractLifecycleRow>(new CommandDefinition("SELECT version AS Version,archived_at AS ArchivedAt FROM odca.contracts WHERE tenant_id=@tenantId AND id=@contractId FOR UPDATE",new{tenantId,contractId},tx,cancellationToken:ct));
         if(current is null)return NotFound();
-        if(current.Version!=version)return Conflict(new{title="O contrato foi alterado em outra sessão. Recarregue e repita a ação.",code="contract.version.conflict",currentVersion=current.Version});
+        if(current.Version!=version)return Conflict(new{title=this.T("api.contract.version_conflict_lifecycle"),code="contract.version.conflict",currentVersion=current.Version});
         if(current.ArchivedAt is not null){await tx.CommitAsync(ct);return Ok(new{replayed=true,version=current.Version});}
         long newVersion=current.Version+1;
         await c.ExecuteAsync(new CommandDefinition("UPDATE odca.contracts SET archived_at=now(),archived_by=@actor,archive_reason=@reason,version=version+1,updated_at=now() WHERE tenant_id=@tenantId AND id=@contractId",new{tenantId,contractId,actor,reason},tx,cancellationToken:ct));
@@ -227,7 +228,7 @@ public sealed class ContractsController(NpgsqlDataSource dataSource) : Controlle
         await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
         var current=await c.QuerySingleOrDefaultAsync<ContractLifecycleRow>(new CommandDefinition("SELECT version AS Version,archived_at AS ArchivedAt FROM odca.contracts WHERE tenant_id=@tenantId AND id=@contractId FOR UPDATE",new{tenantId,contractId},tx,cancellationToken:ct));
         if(current is null)return NotFound();
-        if(current.Version!=version)return Conflict(new{title="O contrato foi alterado em outra sessão. Recarregue e repita a ação.",code="contract.version.conflict",currentVersion=current.Version});
+        if(current.Version!=version)return Conflict(new{title=this.T("api.contract.version_conflict_lifecycle"),code="contract.version.conflict",currentVersion=current.Version});
         if(current.ArchivedAt is null){await tx.CommitAsync(ct);return Ok(new{replayed=true,version=current.Version});}
         long newVersion=current.Version+1;
         await c.ExecuteAsync(new CommandDefinition("UPDATE odca.contracts SET archived_at=NULL,archived_by=NULL,archive_reason=NULL,version=version+1,updated_at=now() WHERE tenant_id=@tenantId AND id=@contractId",new{tenantId,contractId},tx,cancellationToken:ct));
@@ -248,19 +249,19 @@ public sealed class ContractsController(NpgsqlDataSource dataSource) : Controlle
     {
         var actor=Actor();if(actor is null)return Unauthorized();
         if(request.ClosedOn is null)
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"closedOn",["Informe a data de encerramento."]}}));
+            return this.Field("closedOn","api.contracts.close_date_required");
         var reason=request.Reason?.Trim();
         if(string.IsNullOrWhiteSpace(reason)||reason.Length is < 5 or > 2000)
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"reason",["Descreva o motivo do encerramento com 5 a 2000 caracteres."]}}));
+            return this.Field("reason","api.contracts.close_reason_required");
         await using var c=await dataSource.OpenConnectionAsync(ct);
         if(!await Allowed(c,actor.Value,tenantId,"tenant.contracts.manage",ct))return Forbid();
         await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
         var current=await c.QuerySingleOrDefaultAsync<ContractLifecycleRow>(new CommandDefinition("SELECT version AS Version,archived_at AS ArchivedAt,closed_at AS ClosedAt,start_date AS StartDate FROM odca.contracts WHERE tenant_id=@tenantId AND id=@contractId FOR UPDATE",new{tenantId,contractId},tx,cancellationToken:ct));
         if(current is null)return NotFound();
-        if(current.Version!=version)return Conflict(new{title="O contrato foi alterado em outra sessão. Recarregue e repita a ação.",code="contract.version.conflict",currentVersion=current.Version});
+        if(current.Version!=version)return Conflict(new{title=this.T("api.contract.version_conflict_lifecycle"),code="contract.version.conflict",currentVersion=current.Version});
         if(current.ClosedAt is not null){await tx.CommitAsync(ct);return Ok(new{replayed=true,version=current.Version});}
         if(current.StartDate is not null&&request.ClosedOn.Value<current.StartDate)
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string,string[]>{{"closedOn",["A data de encerramento não pode ser anterior ao início da vigência."]}}));
+            return this.Field("closedOn","api.contracts.close_before_start");
         long newVersion=current.Version+1;
         await c.ExecuteAsync(new CommandDefinition("""
             UPDATE odca.contracts SET closed_at=now(),closed_by=@actor,closed_on=@closedOn,closure_reason=@reason,

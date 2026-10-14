@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
+using Odca.Api.Localization;
 using Odca.Application.Plans;
 using Odca.Contracts.Plans;
 using Odca.Contracts.Tenancy;
@@ -24,13 +25,13 @@ public sealed class PlansController(IPlanCatalogRepository repository) : Control
     }
 
     [HttpPost("changes/preview")]
-    public async Task<ActionResult<PlanChangePreviewResponse>> Preview(
+    public async Task<IActionResult> Preview(
         [FromBody] PlanChangeRequest request,
         CancellationToken cancellationToken)
     {
         if (!Actor(out var actor) || request.TenantId == Guid.Empty || string.IsNullOrWhiteSpace(request.PlanCode))
         {
-            return ValidationProblem();
+            return this.Invalid("api.plans.request_invalid");
         }
 
         try
@@ -54,7 +55,7 @@ public sealed class PlansController(IPlanCatalogRepository repository) : Control
     {
         if (!Actor(out var actor) || request.TenantId == Guid.Empty || string.IsNullOrWhiteSpace(request.PlanCode))
         {
-            return ValidationProblem();
+            return this.Invalid("api.plans.request_invalid");
         }
 
         var result = await repository.ApplyOrganizationPlanChangeAsync(
@@ -68,22 +69,20 @@ public sealed class PlansController(IPlanCatalogRepository repository) : Control
             "applied" => NoContent(),
             "missing" or "missing_plan" => NotFound(),
             "forbidden" => Forbid(),
+            // D-OC27: código estável no wire preservado (Extensions["code"]); apenas os textos são localizados.
             "unchanged" => Conflict(new ProblemDetails
             {
-                Title = "Plano inalterado",
-                Detail = "A organização já está vinculada a essa versão vigente.",
+                Title = this.T("api.plans.unchanged"),
+                Detail = this.T("api.plans.unchanged.detail"),
                 Extensions = { ["code"] = "unchanged" }
             }),
             "conflict" => Conflict(new ProblemDetails
             {
-                Title = "Versões vigentes conflitantes",
-                Detail = "Há mais de uma versão publicada vigente para o plano solicitado.",
+                Title = this.T("api.plans.conflicting_versions"),
+                Detail = this.T("api.plans.conflicting_versions.detail"),
                 Extensions = { ["code"] = "conflicting_plan_versions" }
             }),
-            _ => ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
-            {
-                ["justification"] = ["Informe uma justificativa entre 5 e 500 caracteres e um plano vigente."]
-            }))
+            _ => this.Field("justification", "api.plans.justification_required")
         };
     }
 

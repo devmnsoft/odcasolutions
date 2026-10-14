@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Odca.Api.Localization;
 using Odca.Application.Tenancy;
 using Odca.Contracts.Tenancy;
 
@@ -78,26 +79,20 @@ public sealed class OrganizationsController(TenantAdministrationService service)
             string.IsNullOrWhiteSpace(request.Timezone) ||
             request.Timezone.Length > 80)
         {
-            return ValidationProblem();
+            return this.Invalid("api.org.update_invalid");
         }
 
         var timezone = request.Timezone.Trim();
         if (!TimeZoneInfo.TryFindSystemTimeZoneById(timezone, out _))
         {
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
-            {
-                ["timezone"] = ["Fuso horário não suportado por este ambiente."]
-            }));
+            return this.Field("timezone", "api.org.timezone_unsupported");
         }
 
         var activityProfile = request.ActivityProfile?.Trim();
         if (!string.IsNullOrWhiteSpace(activityProfile) &&
             activityProfile is not ("general" or "therapy_clinic" or "plastic_surgery"))
         {
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
-            {
-                ["activityProfile"] = ["Perfil de atuação inválido."]
-            }));
+            return this.Field("activityProfile", "api.org.profile_invalid");
         }
 
         var result = await service.UpdateOrganizationAsync(
@@ -112,15 +107,17 @@ public sealed class OrganizationsController(TenantAdministrationService service)
         return result switch
         {
             UpdateOrganizationResult.Updated => NoContent(),
+            // D-OC27: textos por chave; código wire existente preservado.
             UpdateOrganizationResult.Conflict => Conflict(new ProblemDetails
             {
-                Title = "A organização foi alterada em outra sessão.",
-                Detail = "Recarregue os dados e revise suas alterações."
+                Title = this.T("api.org.changed_other_session"),
+                Detail = this.T("api.org.changed_other_session.detail"),
+                Extensions = { ["code"] = "organization.version.conflict" }
             }),
             UpdateOrganizationResult.ProfileNotAllowed => Conflict(new ProblemDetails
             {
-                Title = "Perfil de atuação indisponível.",
-                Detail = "O perfil Cirurgião plástico exige plano Enterprise ativo.",
+                Title = this.T("api.organization.profile.plan_required"),
+                Detail = this.T("api.organization.profile.plan_required.detail"),
                 Extensions = { ["code"] = "organization.profile.plan_required" }
             }),
             UpdateOrganizationResult.NotFound => NotFound(),
@@ -129,7 +126,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
     }
 
     [HttpGet("{tenantId:guid}/members")]
-    public async Task<ActionResult<PaginatedResponse<TeamMemberResponse>>> Members(
+    public async Task<IActionResult> Members(
         Guid tenantId,
         [FromQuery] string? search,
         [FromQuery] string? status,
@@ -144,10 +141,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
 
         if (status is not null && status is not ("active" or "blocked" or "inactive" or "invited"))
         {
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
-            {
-                ["status"] = ["Status de membro inválido."]
-            }));
+            return this.Field("status", "api.org.member_status_invalid");
         }
 
         var result = await service.ListMembersAsync(actor, tenantId, search, status, page, pageSize, cancellationToken);
@@ -227,7 +221,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
 
         if (request.RoleIds is null || request.RoleIds.Length > 64)
         {
-            return ValidationProblem();
+            return this.Invalid("api.org.roles_invalid");
         }
 
         var result = await service.UpdateMemberRolesAsync(actor, tenantId, userId, request.RoleIds, cancellationToken);
@@ -252,7 +246,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
     }
 
     [HttpPost("{tenantId:guid}/roles")]
-    public async Task<ActionResult<TenantRoleResponse>> CreateRole(
+    public async Task<IActionResult> CreateRole(
         Guid tenantId,
         CreateTenantRoleRequest request,
         CancellationToken cancellationToken)
@@ -266,7 +260,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
             request.Name.Length > 100 ||
             request.Permissions.Length is 0 or > 64)
         {
-            return ValidationProblem();
+            return this.Invalid("api.org.role_fields_invalid");
         }
 
         var role = await service.CreateRoleAsync(actor, tenantId, request.Name.Trim(), request.Permissions, cancellationToken);
@@ -276,7 +270,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
     }
 
     [HttpPut("{tenantId:guid}/roles/{roleId:guid}")]
-    public async Task<ActionResult<TenantRoleResponse>> UpdateRole(
+    public async Task<IActionResult> UpdateRole(
         Guid tenantId,
         Guid roleId,
         [FromBody] UpdateTenantRoleRequest request,
@@ -292,7 +286,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
             request.Permissions is null ||
             request.Permissions.Length is 0 or > 64)
         {
-            return ValidationProblem();
+            return this.Invalid("api.org.role_fields_invalid");
         }
 
         var result = await service.UpdateRoleAsync(actor, tenantId, roleId, request.Name.Trim(), request.Permissions, cancellationToken);
@@ -304,15 +298,11 @@ public sealed class OrganizationsController(TenantAdministrationService service)
                 result.Role.IsSystem,
                 result.Role.Permissions)),
             UpdateRolePermissionsStatus.NotFound => NotFound(),
-            UpdateRolePermissionsStatus.InvalidPermissions => ValidationProblem(new ValidationProblemDetails(
-                new Dictionary<string, string[]>
-                {
-                    ["permissions"] = ["Uma ou mais permissões não podem ser atribuídas pelo ator atual."]
-                })),
+            UpdateRolePermissionsStatus.InvalidPermissions => this.Field("permissions", "api.org.permissions_not_assignable"),
             UpdateRolePermissionsStatus.Protected => Conflict(new ProblemDetails
             {
-                Title = "Perfil protegido",
-                Detail = "Perfis de sistema não podem ser alterados por esta operação.",
+                Title = this.T("api.protected_role"),
+                Detail = this.T("api.protected_role.detail"),
                 Extensions = { ["code"] = "protected_role" }
             }),
             _ => Forbid()
@@ -320,7 +310,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
     }
 
     [HttpPut("{tenantId:guid}/roles/{roleId:guid}/permissions")]
-    public async Task<ActionResult<UpdateTenantRolePermissionsResponse>> UpdateRolePermissions(
+    public async Task<IActionResult> UpdateRolePermissions(
         Guid tenantId,
         Guid roleId,
         [FromBody] UpdateTenantRolePermissionsRequest request,
@@ -333,7 +323,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
 
         if (request.Permissions is null || request.Permissions.Length is 0 or > 64)
         {
-            return ValidationProblem();
+            return this.Invalid("api.org.permissions_list_invalid");
         }
 
         var result = await service.UpdateRolePermissionsAsync(actor, tenantId, roleId, request.Permissions, cancellationToken);
@@ -344,15 +334,11 @@ public sealed class OrganizationsController(TenantAdministrationService service)
                 result.Role.Permissions,
                 result.AffectedMemberCount)),
             UpdateRolePermissionsStatus.NotFound => NotFound(),
-            UpdateRolePermissionsStatus.InvalidPermissions => ValidationProblem(new ValidationProblemDetails(
-                new Dictionary<string, string[]>
-                {
-                    ["permissions"] = ["Uma ou mais permissões não podem ser atribuídas pelo ator atual."]
-                })),
+            UpdateRolePermissionsStatus.InvalidPermissions => this.Field("permissions", "api.org.permissions_not_assignable"),
             UpdateRolePermissionsStatus.Protected => Conflict(new ProblemDetails
             {
-                Title = "Perfil protegido",
-                Detail = "Perfis de sistema não podem ser alterados por esta operação.",
+                Title = this.T("api.protected_role"),
+                Detail = this.T("api.protected_role.detail"),
                 Extensions = { ["code"] = "protected_role" }
             }),
             _ => Forbid()
@@ -372,7 +358,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
 
         if (request.TargetUserId == Guid.Empty || string.IsNullOrWhiteSpace(request.Justification))
         {
-            return ValidationProblem();
+            return this.Invalid("api.org.transfer_invalid");
         }
 
         var result = await service.TransferPrincipalAdministrationAsync(
@@ -382,21 +368,19 @@ public sealed class OrganizationsController(TenantAdministrationService service)
             "transferred" => NoContent(),
             "not_found" => NotFound(),
             "forbidden" => Forbid(),
-            "invalid" => ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
-            {
-                ["justification"] = ["Informe uma justificativa entre 5 e 500 caracteres e escolha outra pessoa ativa."]
-            })),
+            "invalid" => this.Field("justification", "api.org.transfer_justification_invalid"),
+            // Código wire dinâmico (result) preservado; textos por chave estável.
             _ => Conflict(new ProblemDetails
             {
-                Title = "Transferência não concluída",
-                Detail = "A administração principal não foi transferida.",
+                Title = this.T("api.org.transfer_failed"),
+                Detail = this.T("api.org.transfer_failed.detail"),
                 Extensions = { ["code"] = result }
             })
         };
     }
 
     [HttpGet("{tenantId:guid}/invitations")]
-    public async Task<ActionResult<PaginatedResponse<InvitationListItemResponse>>> Invitations(
+    public async Task<IActionResult> Invitations(
         Guid tenantId,
         [FromQuery] string? status,
         [FromQuery] int? page,
@@ -411,10 +395,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
         if (status is not null &&
             status is not ("pending" or "sent" or "failed" or "accepted" or "cancelled" or "expired"))
         {
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
-            {
-                ["status"] = ["Status de convite inválido."]
-            }));
+            return this.Field("status", "api.org.invitation_status_invalid");
         }
 
         var result = await service.ListInvitationsAsync(actor, tenantId, status, page, pageSize, cancellationToken);
@@ -441,7 +422,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
     }
 
     [HttpPost("{tenantId:guid}/invitations")]
-    public async Task<ActionResult<InvitationResponse>> Invite(
+    public async Task<IActionResult> Invite(
         Guid tenantId,
         CreateInvitationRequest request,
         CancellationToken cancellationToken)
@@ -455,7 +436,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
             string.IsNullOrWhiteSpace(request.IdempotencyKey) ||
             request.IdempotencyKey.Length > 100)
         {
-            return ValidationProblem();
+            return this.Invalid("api.org.invite_invalid");
         }
 
         var result = await service.CreateInvitationAsync(
@@ -476,18 +457,16 @@ public sealed class OrganizationsController(TenantAdministrationService service)
                     result.Invitation.ExpiresAt)),
             CreateInvitationResultStatus.QuotaExceeded => Conflict(new ProblemDetails
             {
-                Title = "Limite de assentos excedido",
-                Detail = "O limite de assentos ativos para a assinatura foi atingido."
+                Title = this.T("api.org.seats_limit_exceeded"),
+                Detail = this.T("api.org.seats_limit_exceeded.detail"),
+                Extensions = { ["code"] = "organization.seats_exceeded" }
             }),
-            CreateInvitationResultStatus.InvalidRole => ValidationProblem(new ValidationProblemDetails(
-                new Dictionary<string, string[]>
-                {
-                    ["roleId"] = ["O perfil selecionado não existe, não pertence a este tenant ou inclui permissões não atribuíveis."]
-                })),
+            CreateInvitationResultStatus.InvalidRole => this.Field("roleId", "api.org.role_not_assignable"),
             CreateInvitationResultStatus.Conflict => Conflict(new ProblemDetails
             {
-                Title = "Conflito de Idempotência",
-                Detail = "Uma requisição com a mesma chave, mas carga diferente, foi processada anteriormente."
+                Title = this.T("api.org.idempotency_conflict"),
+                Detail = this.T("api.org.idempotency_conflict.detail"),
+                Extensions = { ["code"] = "organization.idempotency_conflict" }
             }),
             _ => Forbid()
         };
@@ -553,10 +532,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
 
         if (request.Token.Length is < 32 or > 256)
         {
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
-            {
-                ["token"] = ["Token de convite inválido."]
-            }));
+            return this.Field("token", "api.org.invitation_token_invalid");
         }
 
         var accepted = await service.AcceptInvitationAsync(actor, request.InvitationId, HashToken(request.Token), cancellationToken);
@@ -567,8 +543,8 @@ public sealed class OrganizationsController(TenantAdministrationService service)
 
         return Conflict(new ProblemDetails
         {
-            Title = "Convite inválido",
-            Detail = "O convite não pertence ao e-mail verificado desta conta, expirou, já foi utilizado, ou a associação existente está bloqueada/inativa.",
+            Title = this.T("api.invitation_not_acceptable"),
+            Detail = this.T("api.invitation_not_acceptable.detail"),
             Extensions = { ["code"] = "invitation_not_acceptable" }
         });
     }
@@ -587,10 +563,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
 
         if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length is < 3 or > 500)
         {
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
-            {
-                ["reason"] = ["Informe um motivo entre 3 e 500 caracteres."]
-            }));
+            return this.Field("reason", "api.org.reason_required");
         }
 
         var result = await service.ChangeMemberStatusAsync(actor, tenantId, userId, targetStatus, reason.Trim(), cancellationToken);
@@ -604,19 +577,20 @@ public sealed class OrganizationsController(TenantAdministrationService service)
             MemberActionResult.NotFound => NotFound(),
             MemberActionResult.Conflict => Conflict(new ProblemDetails
             {
-                Title = "Conflito ao atualizar membro",
-                Detail = "A alteração solicitada conflita com o estado atual do membro ou dos perfis."
+                Title = this.T("api.org.member_update_conflict"),
+                Detail = this.T("api.org.member_update_conflict.detail"),
+                Extensions = { ["code"] = "member_update_conflict" }
             }),
             MemberActionResult.LastAdminProtected => Conflict(new ProblemDetails
             {
-                Title = "Último administrador protegido",
-                Detail = "A operação deixaria a organização sem administrador principal ativo.",
+                Title = this.T("api.last_admin_protected"),
+                Detail = this.T("api.last_admin_protected.detail"),
                 Extensions = { ["code"] = "last_admin_protected" }
             }),
             MemberActionResult.ElevationDenied => Conflict(new ProblemDetails
             {
-                Title = "Elevação recusada",
-                Detail = "Um administrador só pode delegar permissões que já possui. A administração principal não pode ser concedida por um perfil delegado.",
+                Title = this.T("api.elevation_denied"),
+                Detail = this.T("api.elevation_denied.detail"),
                 Extensions = { ["code"] = "elevation_denied" }
             }),
             _ => Forbid()
@@ -629,8 +603,8 @@ public sealed class OrganizationsController(TenantAdministrationService service)
             InvitationMutationResult.NotFound => NotFound(),
             InvitationMutationResult.Conflict => Conflict(new ProblemDetails
             {
-                Title = "Convite não pode ser alterado",
-                Detail = "O convite não está em um estado que permita cancelamento ou reenvio."
+                Title = this.T("api.org.invitation_cannot_modify"),
+                Detail = this.T("api.org.invitation_cannot_modify.detail")
             }),
             _ => Forbid()
         };

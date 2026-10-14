@@ -28,7 +28,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="..\..\src\Odca.Web\Localization\*.json" Link="Localization\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Catálogos i18n (fonte única em Odca.Configuration); a paridade é verificada sobre estes arquivos. -->
+    <Content Include="..\..\src\Odca.Configuration\Localization\*.json" Link="Localization\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

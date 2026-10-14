@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Net;
+using Microsoft.AspNetCore.Http;
 using Odca.Contracts.Patients;
+using Odca.Web.Middleware;
 using Odca.Web.Services;
 
 namespace Odca.Domain.Tests;
@@ -15,7 +17,7 @@ public sealed class OdcaApiClientTests
             """;
         var handler = new CapturingHandler(problem, HttpStatusCode.BadRequest);
         using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
-        var client = new OdcaApiClient(http);
+        var client = new OdcaApiClient(http, NoHttpContextAccessor.Instance);
 
         var result = await client.CreatePatientAsync("token", Guid.NewGuid(),
             new SavePatientRequest("", null, null, null, null, null, null, null), CancellationToken.None);
@@ -34,7 +36,7 @@ public sealed class OdcaApiClientTests
     {
         var handler = new CapturingHandler("{\"title\":\"Falha controlada\",\"code\":\"patient.version.conflict\"}", status);
         using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
-        var client = new OdcaApiClient(http);
+        var client = new OdcaApiClient(http, NoHttpContextAccessor.Instance);
 
         var result = await client.GetPatientAsync("token", Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
 
@@ -53,7 +55,7 @@ public sealed class OdcaApiClientTests
             CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(cultureName);
             var handler = new CapturingHandler();
             using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
-            var client = new OdcaApiClient(http);
+            var client = new OdcaApiClient(http, NoHttpContextAccessor.Instance);
 
             await client.GetContractImportsAsync("token", Guid.NewGuid(), null, false, false,
                 new DateOnly(2026, 9, 3), new DateOnly(2026, 10, 4), CancellationToken.None);
@@ -81,7 +83,7 @@ public sealed class OdcaApiClientTests
             CultureInfo.CurrentUICulture = culture;
             var handler = new CapturingHandler();
             using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
-            var client = new OdcaApiClient(http);
+            var client = new OdcaApiClient(http, NoHttpContextAccessor.Instance);
 
             await client.GetObligationsAsync("token", Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
                 "mine", null, null, null, null, new DateOnly(2026, 9, 3), new DateOnly(2026, 10, 4),
@@ -102,7 +104,7 @@ public sealed class OdcaApiClientTests
     {
         var handler = new CapturingHandler();
         using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
-        var client = new OdcaApiClient(http);
+        var client = new OdcaApiClient(http, NoHttpContextAccessor.Instance);
 
         await client.GetObligationsAsync("token", Guid.NewGuid(), "mine", null, null, null, null,
             null, null, "prazo especial", 2, 20, CancellationToken.None);
@@ -117,7 +119,7 @@ public sealed class OdcaApiClientTests
     {
         var handler = new CapturingHandler();
         using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
-        var client = new OdcaApiClient(http);
+        var client = new OdcaApiClient(http, NoHttpContextAccessor.Instance);
 
         await client.GetObligationsAsync("token", Guid.NewGuid(), "mine", null, null, null, null,
             null, null, "ação & revisão + fiscal", 1, 20, CancellationToken.None);
@@ -131,7 +133,7 @@ public sealed class OdcaApiClientTests
     {
         var handler = new CapturingHandler("{\"obligationId\":\"bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb\",\"title\":\"Relatório\",\"events\":[]}");
         using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
-        var client = new OdcaApiClient(http);
+        var client = new OdcaApiClient(http, NoHttpContextAccessor.Instance);
 
         var result = await client.GetObligationHistoryAsync(
             "token",
@@ -148,7 +150,7 @@ public sealed class OdcaApiClientTests
     {
         var handler = new CapturingHandler();
         using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
-        var client = new OdcaApiClient(http);
+        var client = new OdcaApiClient(http, NoHttpContextAccessor.Instance);
 
         await client.GetReviewsAsync("token", Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
             "in_review", "assigned", null, null, new DateOnly(2026, 9, 3), new DateOnly(2026, 10, 4),
@@ -159,6 +161,54 @@ public sealed class OdcaApiClientTests
         Assert.Contains($"search={Uri.EscapeDataString("ação & revisão")}", handler.RequestUri.Query, StringComparison.Ordinal);
         Assert.Contains("scope=assigned", handler.RequestUri.Query, StringComparison.Ordinal);
         Assert.Contains("page=2", handler.RequestUri.Query, StringComparison.Ordinal);
+    }
+
+    /// <summary>D-OC27: BFF em requisição HTTP com cultura ativa (CultureMiddleware) — o header
+    /// X-Odca-Culture deve viajar para a API em toda chamada autenticada.</summary>
+    [Theory]
+    [InlineData("en-US")]
+    [InlineData("es-ES")]
+    public async Task ActiveBffCultureTravelsToTheApiAsXOdcaCultureHeader(string cultureName)
+    {
+        var handler = new CapturingHandler("{\"title\":\"Campo inválido.\"}", HttpStatusCode.BadRequest);
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
+        var client = new OdcaApiClient(http, new HttpContextAccessorWithCulture(cultureName));
+
+        await client.GetPatientAsync("token", Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
+
+        Assert.True(handler.LastRequest!.Headers.TryGetValues("X-Odca-Culture", out var values));
+        Assert.Equal(new[] { cultureName }, values.ToArray());
+    }
+
+    [Fact]
+    public async Task MissingBffHttpContextSendsNoCultureHeader()
+    {
+        var handler = new CapturingHandler("{\"title\":\"Campo inválido.\"}", HttpStatusCode.BadRequest);
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
+        var client = new OdcaApiClient(http, NoHttpContextAccessor.Instance);
+
+        await client.GetPatientAsync("token", Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
+
+        Assert.False(handler.LastRequest!.Headers.Contains("X-Odca-Culture"));
+    }
+
+    /// <summary>D-OC27: BFF fora de uma requisição HTTP — sem HttpContext, sem header X-Odca-Culture.</summary>
+    private sealed class NoHttpContextAccessor : IHttpContextAccessor
+    {
+        public static readonly NoHttpContextAccessor Instance = new();
+        public HttpContext? HttpContext { get => null; set { } }
+    }
+
+    private sealed class HttpContextAccessorWithCulture(string culture) : IHttpContextAccessor
+    {
+        public HttpContext? HttpContext { get; set; } = CreateHttpContext(culture);
+
+        private static DefaultHttpContext CreateHttpContext(string culture)
+        {
+            var context = new DefaultHttpContext();
+            context.Items[CultureMiddleware.ItemsKey] = culture;
+            return context;
+        }
     }
 
     private sealed class CapturingHandler : HttpMessageHandler
@@ -173,10 +223,12 @@ public sealed class OdcaApiClientTests
         }
 
         public Uri? RequestUri { get; private set; }
+        public HttpRequestMessage? LastRequest { get; private set; }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             RequestUri = request.RequestUri;
+            LastRequest = request;
             return Task.FromResult(new HttpResponseMessage(status)
             {
                 Content = new StringContent(response)
