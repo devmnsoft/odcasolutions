@@ -14,11 +14,11 @@ public sealed class ApiLocalizationCoverageTests
     private static readonly string[] Cultures = ["pt-BR", "en-US", "fr-FR", "es-ES"];
 
     /// <summary>Literals api.* que não são chaves de catálogo: exemplo em comentário
-    /// de documentação e os dois prefixos MFA concatenados em tempo de execução com o
-    /// sufixo concreto.</summary>
+    /// de documentação e os três prefixos concatenados em tempo de execução com o sufixo
+    /// concreto (dois de MFA + o nome da feature do gate organizacional).</summary>
     private static readonly string[] NonCatalogLiterals =
     [
-        "api.area.erro", "api.auth.mfa_confirm_", "api.auth.mfa_challenge_"
+        "api.area.erro", "api.auth.mfa_confirm_", "api.auth.mfa_challenge_", "api.gate.feature_"
     ];
 
     [Fact]

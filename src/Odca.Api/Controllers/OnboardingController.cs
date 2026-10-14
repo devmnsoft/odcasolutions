@@ -50,7 +50,7 @@ public sealed class OnboardingController(
 
         return Accepted(new StartCustomerRegistrationResponse(
             result.RegistrationId.Value,
-            "Cadastro recebido. Confirme o e-mail para liberar a organização em estado comercial pendente.",
+            this.T("api.onboarding.registration_received"),
             result.DevelopmentConfirmationToken));
     }
 
@@ -77,7 +77,7 @@ public sealed class OnboardingController(
         }
 
         return Ok(new ConfirmCustomerRegistrationResponse(
-            "E-mail confirmado. A organização está acessível com contratação pendente."));
+            this.T("api.onboarding.email_confirmed")));
     }
 
     [HttpGet("customer-home")]

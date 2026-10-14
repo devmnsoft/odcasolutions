@@ -1,5 +1,17 @@
 # Status de execução
 
+## Incremento: Localização total das respostas de sucesso + erros remanescentes (D-OC28) (14/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `006f185` (= D-OC27). Build da solution (`Odca.sln`) **0W/0E**. Domain **358/358 PASS**. Suíte de integração em `odca_test_integration` zerado via `scripts/qa/run-integration-tests.ps1 -FreshDb`: **182/182 PASS — zero falhas** (linha de base D-OC27: 178; +4 casos e2e de duas culturas). Paridade de catálogos **4/4** (1317 chaves por idioma: 1186 + 131 `api.*`).
+- **Entrega**: `docs/execution/D-OC28_LOCALIZACAO_RESPOSTAS_API.md`. Todo texto de usuário PT em **respostas** da API sai pela cultura do usuário: (1) todos os payloads de sucesso/informativos (~90 textos distintos em 12 controllers + Program) e (2) os gaps de erro do D-OC27 (~25: JWT 401 ×2, ReleaseFeatureGate 503 title/detail, OrganizationFeatureGate 403 nos 8 códigos, ReviewRequests 400 datas, fallbacks genéricos dos envelopes SQL de Solicitations/PlatformOps). Sem nova infraestrutura: reaproveita `this.T(key,args)` / `ApiMessages.Localize` / `LocalizationService`+`ApiCulture.For` do D-OC27; literais emitidos por SQL são localizados por pós-processamento exato das linhas Dapper (queries inline intactas). Camada de armazenamento continua canônica pt-BR (`odca.sql` inalterado).
+- **Estabilidade de wire**: códigos dos gates preservados (`release_feature_disabled`, `feature_check_failed`, `permission_denied`, `organization_suspended`, `membership_blocked`, `feature_blocked`, `plan_restricted`, `quota_exhausted`) — só title/detail localizados; `{name}` resolve `api.gate.feature_<código>` com fallback ao `DisplayName` canônico; conteúdo de usuário e justificativas `{reason}` passam como vieram. Regra da casa mantida: texto desconhecido volta como veio; pt-BR byte-idêntico à fonte.
+- **Exclusões documentadas (valores de dados)**: sufixos `(cópia)`/`— cópia` de cópias geradas, fallbacks `"Documento"`/`"documento"` de nome de arquivo/título, fallback `'Documento gerado'` de contexto.
+- **Prova HTTP real em 4 idiomas** contra a API Development: registro válido + confirmação de e-mail (202/200 com `message` localizado) e problem 503 do gate de liberação (title/detail localizados + `code` estável) em pt-BR/en-US/fr-FR/es-ES (corpos completos na doc). Nota operacional: `POST /onboarding/registrations` tem a política `privacy-intake` (5 req/10 min/IP) — a primeira captura bateu em 429 no meio da janela (probes somadas); restart da API zerou o limitador em memória e as 4 culturas completaram em uma passada.
+- **Fora de escopo**: textos de 429/500 genéricos do framework (comportamento padrão desde D-OC27); dedup cosmética das regras `.studio-grid` em max-width:1100px (backlog). Sem push/merge/deploy automático.
+- **Próximos passos**:
+  - Push da branch quando o usuário pedir.
+  - Backlog cosmético: dedup das regras duplicadas de `.studio-grid`.
+
 ## Incremento: Localização total da API (D-OC27) (14/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `9eda889` (= D-OC26). Build da solution (`Odca.sln`) **0W/0E**. Domain **358/358 PASS** (355 de base + 3 novos de cultura BFF→API). Suíte de integração em `odca_test_integration` zerado via `scripts/qa/run-integration-tests.ps1 -FreshDb`: **178/178 PASS — zero falhas** (linha de base D-OC26: 173; +3 fatos de cobertura sem DB + 2 e2e de duas culturas). Paridade de catálogos **4/4** (1186 chaves por idioma: 749 BFF + 437 `api.*`).

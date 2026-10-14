@@ -1,3 +1,7 @@
+using Microsoft.Extensions.DependencyInjection;
+using Odca.Api.Localization;
+using Odca.Configuration.Localization;
+
 namespace Odca.Api;
 
 /// <summary>
@@ -31,17 +35,20 @@ public sealed class ReleaseFeatureGate(IConfiguration configuration) : IMiddlewa
 
         context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
         context.Response.ContentType = "application/problem+json";
+        // D-OC28: título/detalhe resolvidos por catálogo na cultura do usuário; o código no wire é preservado.
+        var localizer = context.RequestServices.GetRequiredService<LocalizationService>();
+        var culture = ApiCulture.For(context);
         await context.Response.WriteAsJsonAsync(new
         {
             type = "https://odca.local/problems/release-feature-disabled",
             title = feature switch
             {
-                ContractImports => "A Central de importações não está disponível nesta versão.",
-                DocumentUpload => "O envio de arquivos para contratos não está disponível nesta versão.",
-                _ => "A extração automática de dados não está disponível nesta versão."
+                ContractImports => localizer.T("api.gate.release_imports", culture),
+                DocumentUpload => localizer.T("api.gate.release_document_upload", culture),
+                _ => localizer.T("api.gate.release_ocr", culture)
             },
             status = StatusCodes.Status503ServiceUnavailable,
-            detail = "O recurso será habilitado em uma versão futura. Documentos, dados e histórico já existentes permanecem preservados.",
+            detail = localizer.T("api.gate.release_detail", culture),
             code = "release_feature_disabled",
             feature
         });

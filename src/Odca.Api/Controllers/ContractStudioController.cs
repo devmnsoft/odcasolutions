@@ -332,7 +332,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         await tx.CommitAsync(ct);
         if (isResumed)
         {
-            return Ok(new { id = draftId, contractId, resumed = true, message = "Continuando minuta existente." });
+            return Ok(new { id = draftId, contractId, resumed = true, message = this.T("api.studio.resume_existing_draft") });
         }
 
         return Created($"/api/v1/organizations/{tenantId}/studio/drafts/{draftId}", new { id = draftId, contractId });
@@ -622,15 +622,16 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             """, new { tenantId, draftId }, tx, cancellationToken: ct));
         if (row is null) return NotFound();
         var checklist = ContractStudioAnalysis.Checklist(row.Content, row.Fields, row.Values, true, false, 0);
+        // D-OC28: textos da conferência resolvidos por catálogo; códigos/permisões permanecem estáveis no wire.
         var pending = checklist.Where(x => x.Severity == "blocker")
-            .Select(x => new DocumentPendingItem(x.Code, x.Message,
-                "A geração final exige que esta pendência seja resolvida.", x.Reference is null ? "Dados do documento" : $"Campo {x.Reference}", canEdit)).ToList();
-        if (!row.PatientActive) pending.Add(new("patient.inactive", "O paciente está inativo.", "Cadastros inativos não permitem nova emissão.", "Ficha do paciente", canEdit));
-        if (row.SelectedPatientVersion != row.CurrentPatientVersion) pending.Add(new("patient.version.conflict", "O cadastro do paciente foi atualizado.", "Os dados precisam ser comparados e confirmados antes da emissão.", "Comparação cadastral", canEdit));
-        if (row.TemplateStatus != "published") pending.Add(new("template.unavailable", "O modelo não está disponível para nova geração.", "Somente modelos publicados podem originar uma nova emissão.", "Biblioteca de modelos", false));
+            .Select(x => new DocumentPendingItem(x.Code, LocalizeChecklistMessage(x.Code, x.Message, 0),
+                this.T("api.studio.conference_reason_blocker"), x.Reference is null ? this.T("api.studio.conference_target_document_data") : this.T("api.studio.conference_target_field", x.Reference!), canEdit)).ToList();
+        if (!row.PatientActive) pending.Add(new("patient.inactive", this.T("api.studio.conference_patient_inactive_message"), this.T("api.studio.conference_patient_inactive_detail"), this.T("api.studio.conference_patient_inactive_target"), canEdit));
+        if (row.SelectedPatientVersion != row.CurrentPatientVersion) pending.Add(new("patient.version.conflict", this.T("api.studio.conference_patient_updated_message"), this.T("api.studio.conference_patient_updated_detail"), this.T("api.studio.conference_patient_updated_target"), canEdit));
+        if (row.TemplateStatus != "published") pending.Add(new("template.unavailable", this.T("api.studio.conference_template_unavailable_message"), this.T("api.studio.conference_template_unavailable_detail"), this.T("api.studio.conference_template_unavailable_target"), false));
         var warnings = checklist.Where(x => x.Severity == "warning")
-            .Select(x => new DocumentPendingItem(x.Code, x.Message,
-                "Não impede a emissão; avalie antes de gerar.", x.Reference is null ? "Dados do documento" : $"Campo {x.Reference}", canEdit)).ToList();
+            .Select(x => new DocumentPendingItem(x.Code, LocalizeChecklistMessage(x.Code, x.Message, 0),
+                this.T("api.studio.conference_reason_warning"), x.Reference is null ? this.T("api.studio.conference_target_document_data") : this.T("api.studio.conference_target_field", x.Reference!), canEdit)).ToList();
         var changes = PatientChanges(row.SelectedPatientSnapshot, row.CurrentPatientSnapshot);
         var canGenerate = canEdit && pending.Count == 0;
         await tx.CommitAsync(ct);
@@ -1111,7 +1112,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         await AddPreparationEvent(c,tenantId,preparationId,preparation.ConfirmedRevision!.Value,actor,"reminded",new{unsignedCount,delivery=new{channel="not_configured",sent=false}},tx,ct);
         await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.audit_events(scope_type,tenant_id,actor_user_id,action,entity_type,entity_id,result,metadata) VALUES('tenant',@tenantId,@actor,'signature.reminded','generated_contract_version',@versionId,'success',jsonb_build_object('preparationId',@preparationId,'channel','not_configured','sent',false))",new{tenantId,actor,versionId,preparationId},tx,cancellationToken:ct));
         await tx.CommitAsync(ct);
-        return Ok(new{remindedAt=ToUtcOffset(now),version=nextVersion,delivery=new{channel="not_configured",sent=false,message="Lembrete registrado localmente com auditoria; o canal externo de envio ainda não está configurado."}});
+        return Ok(new{remindedAt=ToUtcOffset(now),version=nextVersion,delivery=new{channel="not_configured",sent=false,message=this.T("api.studio.reminder_local_only")}});
     }
 
     [HttpGet("reviewers")]
@@ -1206,7 +1207,23 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         if (draft is null) return NotFound();
         var open = await c.ExecuteScalarAsync<int>(new CommandDefinition("SELECT count(*)::int FROM odca.studio_comments WHERE tenant_id=@tenantId AND draft_id=@draftId AND resolved_at IS NULL AND deleted_at IS NULL", new { tenantId, draftId }, tx, cancellationToken: ct));
         var items = ContractStudioAnalysis.Checklist(draft.Content, draft.Fields, draft.Values, draft.Version == expectedVersion, draft.Version != expectedVersion, open);
-        await tx.CommitAsync(ct); return Ok(new ChecklistResponse(items.All(x => x.Severity != "blocker"), items.Select(x => new ChecklistItem(x.Severity, x.Code, x.Message, x.Reference)).ToArray()));
+        await tx.CommitAsync(ct); return Ok(new ChecklistResponse(items.All(x => x.Severity != "blocker"), items.Select(x => new ChecklistItem(x.Severity, x.Code, LocalizeChecklistMessage(x.Code, x.Message, open), x.Reference)).ToArray()));
+    }
+
+    // D-OC28: localiza as mensagens da checklist. Códigos fixos usam o catálogo;
+    // 'fields.invalid' (mensagens do StructuredContractDocument) resolve por mapa reverso.
+    private string LocalizeChecklistMessage(string code, string message, int openComments)
+    {
+        var culture = this.Culture();
+        var localizer = HttpContext.RequestServices.GetRequiredService<Odca.Configuration.Localization.LocalizationService>();
+        return code switch
+        {
+            "draft.unsaved" => this.T("api.studio.checklist_draft_unsaved"),
+            "draft.conflict" => this.T("api.studio.checklist_draft_conflict"),
+            "comments.open" => this.T("api.studio.checklist_comments_open", openComments.ToString(CultureInfo.InvariantCulture)),
+            "field.manual" => this.T("api.studio.checklist_field_manual"),
+            _ => ApiMessages.Localize(localizer, message, culture) ?? message
+        };
     }
 
     [HttpGet("drafts/{draftId:guid}/comments")]
@@ -1330,7 +1347,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         =>c.QuerySingleOrDefaultAsync<PreparationOperationRow>(new CommandDefinition("SELECT operation_type AS OperationType,command_sha256 AS CommandHash,response::text AS ResponseJson FROM odca.signature_preparation_operations WHERE tenant_id=@tenantId AND operation_id=@operationId",new{tenantId,operationId},tx,cancellationToken:ct));
     private static Task<int> AddOperation(NpgsqlConnection c,Guid tenantId,Guid preparationId,Guid operationId,string operationType,string commandHash,string response,Guid actor,NpgsqlTransaction tx,CancellationToken ct)
         =>c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.signature_preparation_operations(tenant_id,preparation_id,operation_id,operation_type,command_sha256,response,actor_user_id) VALUES(@tenantId,@preparationId,@operationId,@operationType,@commandHash,@response::jsonb,@actor)",new{tenantId,preparationId,operationId,operationType,commandHash,response,actor},tx,cancellationToken:ct));
-    private static List<SignatureCompositionChange> CompareCompositions(IEnumerable<ComparisonParticipant> before,IEnumerable<ComparisonParticipant> after)
+    private List<SignatureCompositionChange> CompareCompositions(IEnumerable<ComparisonParticipant> before,IEnumerable<ComparisonParticipant> after)
     {
         var left=before.ToDictionary(x=>x.Id);var right=after.ToDictionary(x=>x.Id);var changes=new List<SignatureCompositionChange>();
         foreach(var id in left.Keys.Union(right.Keys).OrderBy(x=>x))
@@ -1344,10 +1361,11 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         }
         return changes;
     }
-    private static string ParticipantOrigin(string type,Guid? sourceId)
+    // D-OC28: rótulos de tipo/origem resolvidos por catálogo; tipo desconhecido volta como veio.
+    private string ParticipantOrigin(string type,Guid? sourceId)
     {
-        var label=type switch{"patient"=>"Paciente","representative"=>"Representante","professional"=>"Profissional","organization_representative"=>"Representante da organização",_=>type};
-        return $"{label} · {(sourceId is null?"Informado manualmente":"Cadastro selecionado")}";
+        var label=type switch{"patient"=>this.T("api.studio.participant_type_patient"),"representative"=>this.T("api.studio.participant_type_representative"),"professional"=>this.T("api.studio.participant_type_professional"),"organization_representative"=>this.T("api.studio.participant_type_org_representative"),_=>type};
+        return $"{label} · {(sourceId is null?this.T("api.studio.participant_source_manual"):this.T("api.studio.participant_source_selected"))}";
     }
     private async Task<SignatureReadinessResponse?> CalculateReadiness(NpgsqlConnection c,Guid tenantId,Guid versionId,NpgsqlTransaction tx,CancellationToken ct)
     {
@@ -1367,7 +1385,8 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             WHERE v.tenant_id=@tenantId AND v.id=@versionId
             """,new{tenantId,versionId},tx,cancellationToken:ct));
         if(row is null)return null;var ok=new List<SignatureReadinessItem>();var blockers=new List<SignatureReadinessItem>();var warnings=new List<SignatureReadinessItem>();
-        ok.Add(new("document.exists","Versão documental localizada.","A preparação está vinculada a uma versão imutável.","Nenhuma ação.",null));
+        // D-OC28: textos de prontidão resolvidos por catálogo; code e RequiredPermission permanecem estáveis no wire.
+        ok.Add(new("document.exists",this.T("api.studio.readiness_document_exists_message"),this.T("api.studio.readiness_document_exists_reason"),this.T("api.studio.readiness_action_none"),null));
         if(OfficialContractTemplates.RequiresOdcaApproval(row.OfficialKey))
         {
             // Auditoria A §4: a aprovação cobre apenas a revisão aprovada; modelo
@@ -1375,25 +1394,25 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
             // permanecem cobertas por continuidade (template_version_id NULL).
             var approved=string.Equals(row.ApprovalDecision,"aprovado",StringComparison.Ordinal);
             var rejected=string.Equals(row.ApprovalDecision,"reprovado",StringComparison.Ordinal);
-            if(approved&&row.ApprovalRevisionMatches==true)ok.Add(new("approval.odca.granted","Modelo cirúrgico aprovado pela ODCA.","A aprovação da plataforma cobre a revisão publicada deste modelo.","Nenhuma ação.",null));
-            else if(rejected&&row.ApprovalRevisionMatches==true)blockers.Add(new("approval.odca.rejected","Modelo cirúrgico reprovado pela ODCA.","A ODCA registrou reprovação para este modelo nesta organização; ajuste o uso e aguarde nova análise.","Consultar a fila de aprovações na administração da plataforma.","platform.templates.approve"));
-            else if(approved&&row.ApprovalRevisionMatches==false)blockers.Add(new("approval.odca.stale","Modelo cirúrgico alterado após a aprovação da ODCA.","A aprovação está presa à revisão aprovada; o modelo publicado mudou desde então e exige nova análise.","Solicitar nova análise do modelo na administração da plataforma.","platform.templates.approve"));
-            else blockers.Add(new("approval.odca.required","Modelo cirúrgico pendente de aprovação ODCA.","Modelos cirúrgicos exigem aprovação da ODCA antes do preparativo de assinatura (seção C do plano).","Aguardar liberação do modelo pela ODCA.","tenant.templates.manage"));
+            if(approved&&row.ApprovalRevisionMatches==true)ok.Add(new("approval.odca.granted",this.T("api.studio.readiness_approval_granted_message"),this.T("api.studio.readiness_approval_granted_reason"),this.T("api.studio.readiness_action_none"),null));
+            else if(rejected&&row.ApprovalRevisionMatches==true)blockers.Add(new("approval.odca.rejected",this.T("api.studio.readiness_approval_rejected_message"),this.T("api.studio.readiness_approval_rejected_reason"),this.T("api.studio.readiness_approval_rejected_action"),"platform.templates.approve"));
+            else if(approved&&row.ApprovalRevisionMatches==false)blockers.Add(new("approval.odca.stale",this.T("api.studio.readiness_approval_stale_message"),this.T("api.studio.readiness_approval_stale_reason"),this.T("api.studio.readiness_approval_stale_action"),"platform.templates.approve"));
+            else blockers.Add(new("approval.odca.required",this.T("api.studio.readiness_approval_required_message"),this.T("api.studio.readiness_approval_required_reason"),this.T("api.studio.readiness_approval_required_action"),"tenant.templates.manage"));
         }
-        if(row.PdfStatus!="completed"||string.IsNullOrWhiteSpace(row.PdfStorageKey)||string.IsNullOrWhiteSpace(row.PdfSha256))blockers.Add(new("pdf.incomplete","Gere um PDF íntegro antes de confirmar.","A confirmação deve congelar o artefato exato.","Gerar PDF final.","tenant.contract_drafts.manage"));
+        if(row.PdfStatus!="completed"||string.IsNullOrWhiteSpace(row.PdfStorageKey)||string.IsNullOrWhiteSpace(row.PdfSha256))blockers.Add(new("pdf.incomplete",this.T("api.studio.readiness_pdf_incomplete_message"),this.T("api.studio.readiness_pdf_incomplete_reason"),this.T("api.studio.readiness_pdf_incomplete_action"),"tenant.contract_drafts.manage"));
         else
         {
             var root=configuration["Documents:StoragePath"]??Path.Combine(AppContext.BaseDirectory,"App_Data","documents");var path=Path.Combine(root,row.PdfStorageKey.Replace('/',Path.DirectorySeparatorChar));
-            if(!System.IO.File.Exists(path))blockers.Add(new("pdf.missing","O arquivo PDF publicado não foi localizado.","Os metadados não bastam sem o arquivo.","Solicitar reconciliação do armazenamento.","tenant.contract_drafts.manage"));
-            else{var bytes=await System.IO.File.ReadAllBytesAsync(path,ct);if(!CryptographicOperations.FixedTimeEquals(SHA256.HashData(bytes),Convert.FromHexString(row.PdfSha256)))blockers.Add(new("pdf.integrity","O hash do PDF diverge do artefato publicado.","A integridade precisa ser comprovada.","Solicitar reconciliação do armazenamento.","tenant.contract_drafts.manage"));else ok.Add(new("pdf.integrity","PDF concluído e íntegro.","O arquivo corresponde ao hash persistido.","Nenhuma ação.",null));}
+            if(!System.IO.File.Exists(path))blockers.Add(new("pdf.missing",this.T("api.studio.readiness_pdf_missing_message"),this.T("api.studio.readiness_pdf_missing_reason"),this.T("api.studio.readiness_storage_reconcile_action"),"tenant.contract_drafts.manage"));
+            else{var bytes=await System.IO.File.ReadAllBytesAsync(path,ct);if(!CryptographicOperations.FixedTimeEquals(SHA256.HashData(bytes),Convert.FromHexString(row.PdfSha256)))blockers.Add(new("pdf.integrity",this.T("api.studio.readiness_pdf_integrity_blocker_message"),this.T("api.studio.readiness_pdf_integrity_blocker_reason"),this.T("api.studio.readiness_storage_reconcile_action"),"tenant.contract_drafts.manage"));else ok.Add(new("pdf.integrity",this.T("api.studio.readiness_pdf_integrity_ok_message"),this.T("api.studio.readiness_pdf_integrity_ok_reason"),this.T("api.studio.readiness_action_none"),null));}
         }
-        if(row.PreparationId==Guid.Empty||row.ParticipantCount<1)blockers.Add(new("participants.empty","Inclua ao menos um participante válido.","Uma composição vazia não pode ser confirmada.","Editar participantes.","tenant.contract_drafts.manage"));else ok.Add(new("participants.valid",$"Composição com {row.ParticipantCount} participante(s).","A composição atual foi validada no servidor.","Nenhuma ação.",null));
+        if(row.PreparationId==Guid.Empty||row.ParticipantCount<1)blockers.Add(new("participants.empty",this.T("api.studio.readiness_participants_empty_message"),this.T("api.studio.readiness_participants_empty_reason"),this.T("api.studio.readiness_participants_empty_action"),"tenant.contract_drafts.manage"));else ok.Add(new("participants.valid",this.T("api.studio.readiness_participants_valid_message",row.ParticipantCount.ToString(CultureInfo.InvariantCulture)),this.T("api.studio.readiness_participants_valid_reason"),this.T("api.studio.readiness_action_none"),null));
         // Auditoria A §1: 'changes_requested' é estado do request, não da versão
         // (impossível pelo CHECK da tabela); o bloqueio deriva do request mais recente.
-        if(row.LatestReviewRequestStatus=="changes_requested")blockers.Add(new("review.changes","A revisão interna solicitou ajustes.","O request de revisão mais recente desta versão exige ajustes antes do uso.","Criar e revisar uma nova versão.","tenant.contract_drafts.manage"));
-        else if(row.ReviewStatus=="internally_approved")ok.Add(new("review.approved","Documento aprovado internamente.","A revisão aplicável foi concluída.","Nenhuma ação.",null));
-        else warnings.Add(new("review.separate","A revisão interna não está aprovada.","Aprovação só é obrigatória quando a política da organização assim determinar.","Consultar a revisão aplicável.","tenant.reviews.read"));
-        warnings.Add(new("integration.unavailable","Envio para assinatura indisponível.","Nenhum provedor de assinatura está configurado.","Aguardar integração posterior.",null));
+        if(row.LatestReviewRequestStatus=="changes_requested")blockers.Add(new("review.changes",this.T("api.studio.readiness_review_changes_message"),this.T("api.studio.readiness_review_changes_reason"),this.T("api.studio.readiness_review_changes_action"),"tenant.contract_drafts.manage"));
+        else if(row.ReviewStatus=="internally_approved")ok.Add(new("review.approved",this.T("api.studio.readiness_review_approved_message"),this.T("api.studio.readiness_review_approved_reason"),this.T("api.studio.readiness_action_none"),null));
+        else warnings.Add(new("review.separate",this.T("api.studio.readiness_review_separate_message"),this.T("api.studio.readiness_review_separate_reason"),this.T("api.studio.readiness_review_separate_action"),"tenant.reviews.read"));
+        warnings.Add(new("integration.unavailable",this.T("api.studio.readiness_integration_unavailable_message"),this.T("api.studio.readiness_integration_unavailable_reason"),this.T("api.studio.readiness_integration_unavailable_action"),null));
         return new(blockers.Count==0,row.ReviewStatus=="internally_approved",false,blockers.Count==0,ok,blockers,warnings);
     }
 

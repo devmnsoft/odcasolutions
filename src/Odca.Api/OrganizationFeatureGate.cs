@@ -1,6 +1,9 @@
 using System.Security.Claims;
 using Dapper;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using Odca.Api.Localization;
+using Odca.Configuration.Localization;
 
 namespace Odca.Api;
 
@@ -8,6 +11,9 @@ public sealed class OrganizationFeatureGate(NpgsqlDataSource dataSource) : IMidd
 {
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
+        // D-OC28: título/detalhe dos gates resolvidos por catálogo na cultura do usuário.
+        var localizer = context.RequestServices.GetRequiredService<LocalizationService>();
+        var culture = ApiCulture.For(context);
         var path = context.Request.Path.Value;
         var operations = context.GetEndpoint()?.Metadata.GetOrderedMetadata<TenantOperationAttribute>()
             ?? Array.Empty<TenantOperationAttribute>();
@@ -43,8 +49,8 @@ public sealed class OrganizationFeatureGate(NpgsqlDataSource dataSource) : IMidd
             await WriteProblem(
                 context,
                 "feature_check_failed",
-                "A consulta de acesso não foi concluída.",
-                "Não foi possível confirmar suspensão, bloqueio administrativo ou restrição de plano. A operação não foi executada.");
+                localizer.T("api.gate.access_incomplete", culture),
+                localizer.T("api.gate.access_incomplete_suspension", culture));
             return;
         }
 
@@ -62,8 +68,8 @@ public sealed class OrganizationFeatureGate(NpgsqlDataSource dataSource) : IMidd
                 await WriteProblem(
                     context,
                     "feature_check_failed",
-                    "A consulta de acesso não foi concluída.",
-                    "Não foi possível confirmar a permissão da operação. A operação não foi executada.");
+                    localizer.T("api.gate.access_incomplete", culture),
+                    localizer.T("api.gate.access_incomplete_permission", culture));
                 return;
             }
 
@@ -72,8 +78,8 @@ public sealed class OrganizationFeatureGate(NpgsqlDataSource dataSource) : IMidd
                 await WriteProblem(
                     context,
                     "permission_denied",
-                    "Permissão insuficiente.",
-                    "O vínculo não possui permissão para esta ação. Ocultar o menu não substitui esta verificação.");
+                    localizer.T("api.gate.permission_title", culture),
+                    localizer.T("api.gate.permission_detail", culture));
                 return;
             }
         }
@@ -85,49 +91,58 @@ public sealed class OrganizationFeatureGate(NpgsqlDataSource dataSource) : IMidd
         }
 
         var name = feature is null
-            ? "a operação"
-            : Odca.Application.Administration.OrganizationFeatureCatalog.DisplayName(feature);
+            ? localizer.T("api.gate.feature_name_generic", culture)
+            : LocalizeFeatureName(localizer, culture, feature);
         switch (gate.State)
         {
             case "organization_suspended":
                 await WriteProblem(
                     context,
                     "organization_suspended",
-                    "A organização está suspensa.",
-                    "Cadastros e documentos permanecem armazenados. As operações desta organização ficam indisponíveis até o superadministrador da plataforma restaurar o acesso. Este bloqueio é independente de permissão, vínculo e funcionalidade.");
+                    localizer.T("api.gate.suspended_title", culture),
+                    localizer.T("api.gate.suspended_detail", culture));
                 return;
             case "membership_blocked":
                 await WriteProblem(
                     context,
                     "membership_blocked",
-                    "O vínculo está bloqueado.",
-                    "O acesso desta pessoa a esta organização está suspenso. Vínculos com outras organizações não são alterados.");
+                    localizer.T("api.gate.membership_blocked_title", culture),
+                    localizer.T("api.gate.membership_blocked_detail", culture));
                 return;
             case "administratively_blocked":
                 await WriteProblem(
                     context,
                     "feature_blocked",
-                    $"A funcionalidade {name} está bloqueada pela administração.",
-                    $"Os dados permanecem preservados. A liberação é feita pelo superadministrador, com justificativa, e não altera plano, permissões nem outros bloqueios. Motivo registrado: {gate.Reason}");
+                    localizer.T("api.gate.feature_blocked_title", culture, name),
+                    localizer.T("api.gate.feature_blocked_detail", culture, gate.Reason ?? string.Empty));
                 return;
             case "plan_restricted":
                 await WriteProblem(
                     context,
                     "plan_restricted",
-                    $"O módulo {name} não está contratado.",
-                    "A habilitação do módulo é distinta da franquia quantitativa, do bloqueio administrativo e da permissão do perfil. A consulta não registra pagamento, cobrança ou quitação.");
+                    localizer.T("api.gate.plan_restricted_title", culture, name),
+                    localizer.T("api.gate.plan_restricted_detail", culture));
                 return;
             case "quota_exhausted":
                 await WriteProblem(
                     context,
                     "quota_exhausted",
-                    $"O limite de {name} foi atingido.",
-                    "O módulo está contratado, mas a franquia vigente não permite esta operação. Pessoas, documentos e histórico não são apagados.");
+                    localizer.T("api.gate.quota_exhausted_title", culture, name),
+                    localizer.T("api.gate.quota_exhausted_detail", culture));
                 return;
             default:
                 await next(context);
                 return;
         }
+    }
+
+    // D-OC28: rótulo da feature resolvido por catálogo (api.gate.feature_<código>);
+    // código desconhecido volta ao DisplayName canônico PT (nada é inventado).
+    private static string LocalizeFeatureName(LocalizationService localizer, string culture, string feature)
+    {
+        var key = "api.gate.feature_" + feature;
+        var label = localizer.T(key, culture);
+        return label == key ? Odca.Application.Administration.OrganizationFeatureCatalog.DisplayName(feature) : label;
     }
 
     private static bool TryReadTenant(string? path, out Guid tenantId)

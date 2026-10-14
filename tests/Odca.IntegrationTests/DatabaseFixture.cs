@@ -54,9 +54,9 @@ public sealed class DatabaseFixture : IAsyncLifetime
 
     public Task DisposeAsync() => Task.CompletedTask;
 
-    public WebApplicationFactory<global::Odca.Api.ApiAssemblyMarker> CreateApi()
+    public WebApplicationFactory<global::Odca.Api.ApiAssemblyMarker> CreateApi(Action<Dictionary<string, string?>>? configure = null)
     {
-        return new TestApiFactory(this);
+        return new TestApiFactory(this, configure);
     }
 
     public Task ResetAuthenticationScenarioAsync() => ResetTestUserAsync();
@@ -242,30 +242,29 @@ public sealed class DatabaseFixture : IAsyncLifetime
         throw new FileNotFoundException(string.Join(Path.DirectorySeparatorChar, segments));
     }
 
-    private sealed class TestApiFactory(DatabaseFixture fixture)
+    private sealed class TestApiFactory(DatabaseFixture fixture, Action<Dictionary<string, string?>>? configure)
         : WebApplicationFactory<global::Odca.Api.ApiAssemblyMarker>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
-            builder.ConfigureAppConfiguration((_, configuration) =>
+            var settings = new Dictionary<string, string?>
             {
-                configuration.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["ConnectionStrings:Database"] = fixture.AppConnectionString,
-                    ["Jwt:Issuer"] = "odca-api-tests",
-                    ["Jwt:Audience"] = "odca-api-tests",
-                    ["Jwt:SigningKey"] = JwtKey,
-                    ["Jwt:AccessTokenMinutes"] = "15",
-                    ["Security:MfaRequiredForSuperAdmin"] = "true",
-                    ["Security:AllowDevelopmentBootstrap"] = "false",
-                    // O gate do ciclo de liberação falha fechado; os testes exercitam os
-                    // endpoints canônicos de importação/upload/extração com eles habilitados.
-                    ["Features:ContractImports"] = "true",
-                    ["Features:DocumentUpload"] = "true",
-                    ["Features:OcrExtraction"] = "true"
-                });
-            });
+                ["ConnectionStrings:Database"] = fixture.AppConnectionString,
+                ["Jwt:Issuer"] = "odca-api-tests",
+                ["Jwt:Audience"] = "odca-api-tests",
+                ["Jwt:SigningKey"] = JwtKey,
+                ["Jwt:AccessTokenMinutes"] = "15",
+                ["Security:MfaRequiredForSuperAdmin"] = "true",
+                ["Security:AllowDevelopmentBootstrap"] = "false",
+                // O gate do ciclo de liberação falha fechado; os testes exercitam os
+                // endpoints canônicos de importação/upload/extração com eles habilitados.
+                ["Features:ContractImports"] = "true",
+                ["Features:DocumentUpload"] = "true",
+                ["Features:OcrExtraction"] = "true"
+            };
+            configure?.Invoke(settings);
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(settings));
         }
     }
 }

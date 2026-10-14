@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Odca.Api.Localization;
 using Odca.Application.Privacy;
 using Odca.Contracts.Privacy;
 
@@ -24,6 +25,6 @@ public sealed class PrivacyRequestsController(PrivacyRequestService service) : C
             cancellationToken);
         return Accepted(new PrivacyRequestCreated(
             protocol,
-            "Solicitação recebida. O protocolo não confirma a existência de dados ou contratos."));
+            this.T("api.privacy.request_received")));
     }
 }

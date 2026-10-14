@@ -3,6 +3,7 @@ using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
+using Odca.Api.Localization;
 
 namespace Odca.Api.Controllers;
 
@@ -215,28 +216,38 @@ OFFSET @offset LIMIT @limit";
 
     private Guid? Actor() => Guid.TryParse(User.FindFirstValue("sub"), out var id) ? id : null;
 
-    private static OperationActionDto ToDto(ActionItemRow r) => new(
-        r.source_type, r.source_id, r.context, r.reason, r.responsible,
+    private OperationActionDto ToDto(ActionItemRow r) => new(
+        r.source_type, r.source_id, r.context, LocalizeReason(r.reason), r.responsible,
         r.deadline, GetNextAction(r.source_type, r.category), r.priority, r.category);
 
-    private static string GetNextAction(string sourceType, string category) =>
+    // D-OC28: apenas os rótulos fixos emitidos pelas queries são localizados;
+    // conteúdo do usuário (descrições/serviços) passa como veio.
+    private string LocalizeReason(string reason) => reason switch
+    {
+        "Assinatura em andamento" => this.T("api.operations.reason_signature_in_progress"),
+        "Contrato vencido" => this.T("api.operations.reason_contract_expired"),
+        "Contrato expira em breve" => this.T("api.operations.reason_contract_expiring_soon"),
+        _ => reason
+    };
+
+    private string GetNextAction(string sourceType, string category) =>
         (sourceType, category) switch
         {
-            ("renewal", "my_action") => "Tratar alteracao contratual",
-            ("renewal", "conflict") => "Resolver conflito de alteracao",
-            ("renewal", "waiting_other") => "Aguardando formalizacao/aprovacao",
-            ("renewal", "info") => "Alteracao programada - acompanhar",
-            ("signature", "my_action") => "Assinar documento",
-            ("signature", "waiting_other") => "Aguardando demais signatarios",
-            ("obligation", "overdue") => "Cumprir obrigacao atrasada",
-            ("obligation", "upcoming") => "Preparar cumprimento de obrigacao",
-            ("obligation", "my_action") => "Cumprir obrigacao",
-            ("solicitation", "my_action") => "Responder solicitacao",
-            ("solicitation", "waiting_other") => "Aguardando atendimento ODCA",
-            ("solicitation", "info") => "Solicitacao pausada",
-            ("contract", "overdue") => "Analisar contrato vencido",
-            ("contract", "upcoming") => "Decidir sobre renovacao",
-            _ => "Consultar detalhes"
+            ("renewal", "my_action") => this.T("api.operations.next_handle_contractual_change"),
+            ("renewal", "conflict") => this.T("api.operations.next_resolve_change_conflict"),
+            ("renewal", "waiting_other") => this.T("api.operations.next_await_formalization_approval"),
+            ("renewal", "info") => this.T("api.operations.next_track_scheduled_change"),
+            ("signature", "my_action") => this.T("api.operations.next_sign_document"),
+            ("signature", "waiting_other") => this.T("api.operations.next_await_other_signers"),
+            ("obligation", "overdue") => this.T("api.operations.next_fulfill_overdue_obligation"),
+            ("obligation", "upcoming") => this.T("api.operations.next_prepare_obligation_fulfillment"),
+            ("obligation", "my_action") => this.T("api.operations.next_fulfill_obligation"),
+            ("solicitation", "my_action") => this.T("api.operations.next_respond_request"),
+            ("solicitation", "waiting_other") => this.T("api.operations.next_await_odca"),
+            ("solicitation", "info") => this.T("api.operations.next_request_paused"),
+            ("contract", "overdue") => this.T("api.common.next_analyze_expired_contract"),
+            ("contract", "upcoming") => this.T("api.operations.next_decide_renewal"),
+            _ => this.T("api.operations.next_view_details")
         };
 
     private sealed record ActionItemRow(

@@ -94,12 +94,18 @@ public sealed class SolicitationsController(NpgsqlDataSource dataSource) : Contr
             var code = codeEl.GetString() ?? "solicitations.error";
             // D-OC27: (código, mensagem canônica PT) → chave estável api.sql.* no catálogo;
             // par sem mapeamento preserva o texto original. Detalhe permanece o código estável.
-            var error = doc.RootElement.TryGetProperty("error", out var errEl) ? errEl.GetString() ?? "Operacao invalida." : "Operacao invalida.";
-            var sqlKey = ApiSqlMessages.KeyFor(code, error);
+            // D-OC28: sem "error" no envelope, o fallback genérico é resolvido por catálogo.
+            var errorText = doc.RootElement.TryGetProperty("error", out var errEl) ? errEl.GetString() : null;
+            var sqlKey = ApiSqlMessages.KeyFor(code, errorText ?? "Operacao invalida.");
+            string error;
             if (sqlKey is not null)
             {
                 var translated = localizer.T(sqlKey, culture);
-                if (translated != sqlKey) error = translated;
+                error = translated == sqlKey ? (errorText ?? "Operacao invalida.") : translated;
+            }
+            else
+            {
+                error = errorText ?? localizer.T("api.solicitations.operation_invalid", culture);
             }
             long? current = doc.RootElement.TryGetProperty("currentRowVersion", out var cv) && cv.ValueKind == JsonValueKind.Number ? cv.GetInt64() : null;
             IActionResult Problem(int status) => new ObjectResult(new ProblemDetails { Title = error, Status = status, Detail = code, Extensions = { ["code"] = code } }) { StatusCode = status };

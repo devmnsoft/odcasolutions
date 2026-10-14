@@ -14,9 +14,6 @@ namespace Odca.Api.Controllers;
 [Authorize(Policy = "PlatformAdministrator")]
 public sealed class PlansController(IPlanCatalogRepository repository) : ControllerBase
 {
-    private const string BillingLimitation =
-        "O faturamento não está operacional. A alteração de plano não registra pagamento nem quitação.";
-
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<PlanCatalogResponse>>> List(CancellationToken cancellationToken)
     {
@@ -40,7 +37,7 @@ public sealed class PlansController(IPlanCatalogRepository repository) : Control
                 actor, request.TenantId, request.PlanCode.Trim(), cancellationToken);
             return preview is null
                 ? NotFound()
-                : Ok(ToPreview(preview));
+                : Ok(ToPreview(preview, this.T("api.plans.billing_limitation")));
         }
         catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.InsufficientPrivilege)
         {
@@ -98,7 +95,7 @@ public sealed class PlansController(IPlanCatalogRepository repository) : Control
         plan.SignatureEnvelopesMonthly,
         plan.EnabledModules);
 
-    private static PlanChangePreviewResponse ToPreview(PlanChangePreview preview) => new(
+    private static PlanChangePreviewResponse ToPreview(PlanChangePreview preview, string billingLimitation) => new(
         preview.CurrentCode,
         preview.CurrentVersion,
         preview.CurrentPlanVersionId,
@@ -113,7 +110,7 @@ public sealed class PlansController(IPlanCatalogRepository repository) : Control
         preview.PatientCount,
         preview.DocumentCount,
         preview.Policy,
-        BillingLimitation);
+        billingLimitation);
 
     private bool Actor(out Guid actor) => Guid.TryParse(User.FindFirstValue("sub"), out actor);
 }

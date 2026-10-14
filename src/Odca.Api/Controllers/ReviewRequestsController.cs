@@ -25,7 +25,7 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
         var canManage = await Allowed(connection, actor.Value, tenantId, "tenant.reviews.decide", ct);
         scope = scope is "requested" or "assigned" or "all" ? scope : "requested";
         if ((scope == "all" || assigneeId.HasValue) && !canManage) return Forbid();
-        if (from > to) return ValidationProblem("A data inicial deve ser anterior ou igual à data final.");
+        if (from > to) return this.Invalid("api.reviews.date_range_invalid");
         await using var transaction = await connection.BeginTransactionAsync(ct);
         await SetTenant(connection, tenantId, actor.Value, transaction, ct);
         page = Math.Max(1, page); pageSize = Math.Clamp(pageSize, 1, 100);
@@ -86,7 +86,8 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
               AND odca.tenant_actor_has_permission(m.user_id,@tenantId,'tenant.reviews.decide')
             GROUP BY u.id,u.display_name ORDER BY u.display_name,u.id
             """, new { tenantId }, tx, cancellationToken: ct));
-        await tx.CommitAsync(ct); return Ok(assignees.AsList());
+        // D-OC28: fallback fixo 'Revisor' (membro sem papéis nomeados) resolvido por catálogo.
+        await tx.CommitAsync(ct); return Ok(assignees.Select(a => a with { Profile = a.Profile == "Revisor" ? this.T("api.reviews.assignee_profile_fallback") : a.Profile }).AsList());
     }
 
     [HttpPost("{reviewId:guid}/assignment")]

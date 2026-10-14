@@ -97,11 +97,14 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
         {
             OnTokenValidated = async context =>
             {
+                // D-OC28: razões de falha de sessão resolvidas por catálogo na cultura do usuário.
+                var sessionLocalizer = context.HttpContext.RequestServices.GetRequiredService<Odca.Configuration.Localization.LocalizationService>();
+                var sessionCulture = Odca.Api.Localization.ApiCulture.For(context.HttpContext);
                 if (!Guid.TryParse(context.Principal?.FindFirstValue("sub"), out var userId) ||
                     !Guid.TryParse(context.Principal?.FindFirstValue("sid"), out var sessionId) ||
                     !int.TryParse(context.Principal?.FindFirstValue("security_version"), out var securityVersion))
                 {
-                    context.Fail("Token sem identidade de sessão válida.");
+                    context.Fail(sessionLocalizer.T("api.auth.session_identity_invalid", sessionCulture));
                     return;
                 }
 
@@ -125,7 +128,7 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
                         context.HttpContext.RequestAborted);
                 if (!valid)
                 {
-                    context.Fail("Sessão revogada ou expirada.");
+                    context.Fail(sessionLocalizer.T("api.auth.session_revoked_expired", sessionCulture));
                     return;
                 }
 

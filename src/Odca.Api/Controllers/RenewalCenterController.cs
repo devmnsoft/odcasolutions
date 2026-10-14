@@ -46,8 +46,22 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
         var items = await c.QueryAsync<RenewalListItem>(new CommandDefinition(projection + "SELECT ContractId,RequestId,Name,Counterparty,OwnerName,EndDate,DecisionDueOn,Status,NextAction,DaysRemaining,ContractVersion,Priority,Kind FROM projected " + filter + " ORDER BY COALESCE(DecisionDueOn,EndDate),Name LIMIT @pageSize OFFSET @offset", args, tx, cancellationToken: ct));
         var counts = await c.QuerySingleAsync<CountRow>(new CommandDefinition(projection + "SELECT count(*) FILTER(WHERE Status='expiring')::int AS Expiring,count(*) FILTER(WHERE Status='expired')::int AS Expired,count(*) FILTER(WHERE Status='draft')::int AS Preparing,count(*) FILTER(WHERE Status='in_review')::int AS InReview,count(*) FILTER(WHERE Status='formalized')::int AS Scheduled,count(*) FILTER(WHERE Status='cancelled')::int AS NotRenewing,count(*) FILTER(WHERE Status='indeterminate')::int AS Indeterminate FROM projected " + filter, args, tx, cancellationToken: ct));
         await tx.CommitAsync(ct);
-        return Ok(new RenewalPage(items.AsList(), new(counts.Expiring, counts.Expired, counts.Preparing, counts.InReview, counts.Scheduled, counts.NotRenewing, counts.Indeterminate), page, pageSize, total, Today: today));
+        // D-OC28: rótulos fixos de NextAction emitidos pela query são localizados na fronteira da API.
+        var localized = items.Select(item => item with { NextAction = LocalizeNextAction(item.NextAction) }).ToList();
+        return Ok(new RenewalPage(localized, new(counts.Expiring, counts.Expired, counts.Preparing, counts.InReview, counts.Scheduled, counts.NotRenewing, counts.Indeterminate), page, pageSize, total, Today: today));
     }
+
+    private string LocalizeNextAction(string nextAction) => nextAction switch
+    {
+        "Aguardar aplicação programada" => this.T("api.renewals.next_await_scheduled"),
+        "Acompanhar revisão" => this.T("api.renewals.next_track_review"),
+        "Registrar formalização" => this.T("api.renewals.next_register_formalization"),
+        "Concluir proposta" => this.T("api.renewals.next_complete_proposal"),
+        "Definir prazo de vigência" => this.T("api.renewals.next_set_validity"),
+        "Analisar contrato vencido" => this.T("api.common.next_analyze_expired_contract"),
+        "Decidir renovação" => this.T("api.renewals.next_decide_renewal"),
+        _ => nextAction
+    };
 
     [HttpPost("contracts/{contractId:guid}")]
     public async Task<IActionResult> Create(Guid tenantId, Guid contractId, [FromBody] CreateRenewalRequest request, CancellationToken ct)

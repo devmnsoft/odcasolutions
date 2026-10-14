@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Odca.Api.Localization;
 using Odca.Application.Dashboard;
 using Odca.Contracts.Identity;
 
@@ -21,7 +22,7 @@ public sealed class DashboardController(IPlatformDashboardRepository repository)
 
         var snapshot = await repository.GetAsync(userId, cancellationToken);
         return Ok(new DashboardResponse(
-            User.FindFirstValue(ClaimTypes.Name) ?? "Administrador",
+            User.FindFirstValue(ClaimTypes.Name) ?? this.T("api.common.actor_fallback_administrator"),
             snapshot.TotalTenants,
             snapshot.ActiveTenants,
             snapshot.BlockedTenants,

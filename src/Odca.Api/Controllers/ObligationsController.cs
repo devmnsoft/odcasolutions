@@ -80,7 +80,7 @@ public sealed class ObligationsController(NpgsqlDataSource dataSource) : Control
           WHERE {where} ORDER BY (o.status IN('open','in_progress') AND o.due_date < (now() AT TIME ZONE t.timezone)::date) DESC,o.due_date,o.id LIMIT @pageSize OFFSET @offset
           """,args,tx,cancellationToken:ct));
         await tx.CommitAsync(ct);
-        return Ok(new ObligationPage(rows.Select(x=>new ObligationItem(x.Id,x.ContractId,x.Contract,x.Title,x.Category,x.ObligatedParty,x.OwnerId,x.Owner,x.DueDate,x.Priority,x.Status,x.Overdue,x.OwnerBlocked,x.Version,x.Amount,x.Currency,x.OwnerBlocked?"Reatribuir responsável":x.Status=="fulfilled"?"Consultar histórico":"Registrar andamento")).ToArray(),page,pageSize,total));
+        return Ok(new ObligationPage(rows.Select(x=>new ObligationItem(x.Id,x.ContractId,x.Contract,x.Title,x.Category,x.ObligatedParty,x.OwnerId,x.Owner,x.DueDate,x.Priority,x.Status,x.Overdue,x.OwnerBlocked,x.Version,x.Amount,x.Currency,x.OwnerBlocked?this.T("api.obligations.next_reassign"):x.Status=="fulfilled"?this.T("api.obligations.next_history"):this.T("api.obligations.next_progress"))).ToArray(),page,pageSize,total));
     }
 
     [HttpPost("contracts/{contractId:guid}")]

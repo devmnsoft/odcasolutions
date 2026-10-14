@@ -72,10 +72,19 @@ public sealed class PlatformOperationsController(NpgsqlDataSource dataSource) : 
         {
             // D-OC27: (código, mensagem canônica PT) → chave estável api.sql.* no catálogo; par sem mapeamento preserva o original.
             var code = codeEl.GetString() ?? "catalog.error";
-            var fallback = root.TryGetProperty("error", out var errEl) ? errEl.GetString() ?? "Operação inválida." : "Operação inválida.";
-            var sqlKey = ApiSqlMessages.KeyFor(code, fallback);
-            var translated = sqlKey is null ? null : this.T(sqlKey);
-            var title = translated is null || translated == sqlKey ? fallback : translated;
+            // D-OC28: sem "error" no envelope, o fallback genérico é resolvido por catálogo.
+            var errorText = root.TryGetProperty("error", out var errEl) ? errEl.GetString() : null;
+            var sqlKey = ApiSqlMessages.KeyFor(code, errorText ?? "Operação inválida.");
+            string title;
+            if (sqlKey is not null)
+            {
+                var translated = this.T(sqlKey);
+                title = translated == sqlKey ? (errorText ?? "Operação inválida.") : translated;
+            }
+            else
+            {
+                title = errorText ?? this.T("api.platform.operation_invalid");
+            }
             return code switch
             {
                 "catalog.not_found" => new ObjectResult(new ProblemDetails { Title = title, Status = 404, Detail = code, Extensions = { ["code"] = code } }) { StatusCode = 404 },
@@ -298,7 +307,7 @@ public sealed class PlatformOperationsController(NpgsqlDataSource dataSource) : 
         }
         catch { await tx.RollbackAsync(ct); throw; }
 
-        return Created($"api/v1/platform/templates/{templateId}", new { id = templateId, officialKey, status = "draft", message = "Modelo criado em rascunho. Publique para torná-lo disponível." });
+        return Created($"api/v1/platform/templates/{templateId}", new { id = templateId, officialKey, status = "draft", message = this.T("api.platform.template_created_draft") });
     }
 
     private static async Task EnsurePlatformGuc(NpgsqlConnection c, Guid actor, CancellationToken ct) =>
