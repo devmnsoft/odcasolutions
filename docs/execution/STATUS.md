@@ -1,5 +1,15 @@
 # Status de execução
 
+## Incremento: Dedup cosmética das regras `.studio-grid` em max-width:1100px (D-OC29) (14/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `76d2705` (= D-OC28). Build da solution (`Odca.sln`) **0W/0E**. Domain **358/358 PASS**. Suíte de integração em `odca_test_integration` zerado via `scripts/qa/run-integration-tests.ps1 -FreshDb`: **182/182 PASS — zero falhas** (FRESH-DB-OK → BUILD-OK → TEST-EXIT=0).
+- **Entrega**: `docs/execution/D-OC29_DEDUP_STUDIO_GRID.md`. Item cosmético do backlog desde o D-OC24: o `site.css` declarava **dois** blocos `@media(max-width:1100px)` para o Estúdio (um por seção, o segundo vindo de `7d2f20d`) com `grid-template-columns:minmax(0,1fr)` do `.studio-grid` e `min-width:0` do `.paper` duplicados, e um conflito em `.studio-document` (`overflow-x:auto` vs. shorthand `overflow:visible` do bloco posterior) resolvido só pela ordem da cascata — o `overflow-x:auto` era **código morto**. Consolidação num **único** bloco na posição do segundo (posição obrigatória: o override `.reading-mode .studio-grid` precisa permanecer após a regra base da linha anterior, ou o modo leitura quebraria em ≤1100px), com comentário marcando o local do bloco removido. Valor vencedor de cada propriedade preservado exato.
+- **Prova de equivalência renderizada**: harness CDP headless (msedge `--headless=new` + Node 24) com página-probe carregando a stylesheet real via query string → `getComputedStyle` de 7 grupos de seletores nas larguras exatas 1101/1100/900/768/600/360px (breakpoint contornado pelos dois lados) contra o CSS antigo (cópia pré-edito) e o novo → **COMPARISON=IDENTICAL (6 larguras × 2 css)**, zero diferença de pixel.
+- **Fora de escopo**: textos 429/500 genéricos do framework (exclusão desde D-OC27). Sem push/merge/deploy automático.
+- **Próximos passos**:
+  - Push da branch quando o usuário pedir.
+  - Backlog restante (único item): textos 429/500 do framework, se um dia entrar em escopo.
+
 ## Incremento: Localização total das respostas de sucesso + erros remanescentes (D-OC28) (14/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `006f185` (= D-OC27). Build da solution (`Odca.sln`) **0W/0E**. Domain **358/358 PASS**. Suíte de integração em `odca_test_integration` zerado via `scripts/qa/run-integration-tests.ps1 -FreshDb`: **182/182 PASS — zero falhas** (linha de base D-OC27: 178; +4 casos e2e de duas culturas). Paridade de catálogos **4/4** (1317 chaves por idioma: 1186 + 131 `api.*`).
