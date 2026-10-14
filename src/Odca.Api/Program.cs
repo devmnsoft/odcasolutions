@@ -36,6 +36,18 @@ builder.Services.AddProblemDetails(options =>
             context.ProblemDetails.Title = localizer.T("api.internal.error", culture);
             context.ProblemDetails.Extensions["code"] = "api.internal.error";
         }
+        // D-OC30: o 429 do rate limiter também passa por este hook — no .NET 10 o
+        // middleware gera o problem+json pela fábrica registrada (a presença de
+        // traceId no corpo o confirma). Título/detalhe na cultura do usuário e
+        // código estável rate_limited (mesma convenção dos gates de transporte).
+        else if (context.HttpContext.Response.StatusCode == StatusCodes.Status429TooManyRequests)
+        {
+            var localizer = context.HttpContext.RequestServices.GetRequiredService<Odca.Configuration.Localization.LocalizationService>();
+            var culture = Odca.Api.Localization.ApiCulture.For(context.HttpContext);
+            context.ProblemDetails.Title = localizer.T("api.rate_limited", culture);
+            context.ProblemDetails.Detail = localizer.T("api.rate_limited.detail", culture);
+            context.ProblemDetails.Extensions["code"] = "rate_limited";
+        }
     };
 });
 builder.Services.AddControllers();
@@ -173,6 +185,9 @@ app.UseMiddleware<OrganizationFeatureGate>();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    // Diagnóstico Development: exercita o caminho 500 (exceção não tratada) de forma
+    // determinística para homologação do problema+json em ambiente de desenvolvimento.
+    app.MapGet("/api/v1/diagnostics/fault", (Microsoft.AspNetCore.Http.HttpContext context) => throw new InvalidOperationException("D-OC30 diagnostico de erro nao tratado"));
 }
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions

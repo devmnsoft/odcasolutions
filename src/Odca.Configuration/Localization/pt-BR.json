@@ -1316,5 +1316,7 @@
   "api.gate.feature_documents": "Documentos e PDF",
   "api.gate.feature_reviews": "Revisões",
   "api.gate.feature_signatures": "Assinatura",
-  "api.gate.feature_imports": "Importações"
+  "api.gate.feature_imports": "Importações",
+  "api.rate_limited": "Muitas requisições.",
+  "api.rate_limited.detail": "O limite de requisições para este endereço foi atingido. Tente novamente em instantes."
 }

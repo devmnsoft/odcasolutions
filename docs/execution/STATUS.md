@@ -1,5 +1,16 @@
 # Status de execução
 
+## Incremento: Localização dos erros emitidos pelo framework — 429 rate limiting + 500 não tratado (D-OC30) (14/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `ea3ead3` (= D-OC29). Build da solution (`Odca.sln`) **0W/0E**. Domain **358/358 PASS**. Suíte de integração em `odca_test_integration` zerado via `scripts/qa/run-integration-tests.ps1 -FreshDb`: **186/186 PASS — zero falhas** (baseline 182 + 4 novos; FRESH-DB-OK → BUILD-OK → TEST-EXIT=0). Paridade de catálogos **4/4** (1319 chaves por idioma: 1317 + 2 `api.rate_limited.*`).
+- **Entrega**: `docs/execution/D-OC30_LOCALIZACAO_ERROS_FRAMEWORK.md`. Último item do backlog: os textos gerados **pelo próprio framework**. **429**: o `RateLimitingMiddleware` do .NET 10 já emitia problem+json pela fábrica registrada (o `traceId` no corpo confirma que passa pelo hook do D-OC27), mas com title hardcoded `"Too Many Requests"` (en) nas 4 culturas e sem detalhe/código estável → o mesmo `CustomizeProblemDetails` do D-OC27 foi estendido para 429: título/detalhe por catálogo na cultura do usuário + `code = rate_limited` (convenção curta dos gates de transporte). **500**: caminho já instalado pelo D-OC27 (título localizado + `code = api.internal.error`) — fixado agora como contrato em teste, com novo endpoint diagnóstico `/api/v1/diagnostics/fault` (somente Development, anônimo, exceção não tratada determinística; ausente em Production/Testing).
+- **Prova HTTP real em 4 idiomas** contra a API Development: 429 (5 logins consomem a janela `login` por IP + 4 rejeições nas 4 culturas, corpos completos na doc) e 500 (`GET /api/v1/diagnostics/fault` ×4 culturas com título localizado, `type`/`traceId` preservados).
+- **Estabilidade de wire**: status, `Content-Type: application/problem+json`, `traceId`, códigos, políticas e particionamento por IP inalterados; 429 do framework sem `Retry-After` antes e depois (comportamento do middleware, fora de escopo).
+- **Testes novos**: `FrameworkErrorLocalizationTests` ×4 casos (429 pt-BR/en-US assercionando title/detail/status/code; 500 pt-BR/en-US com host não-Testing + endpoint diagnóstico). Detalhe empírico registrado: `UseExceptionHandler()` sem argumento é a variante rethrow e o TestServer retorna a resposta completa quando a exceção é lançada após o início da resposta.
+- **Fora de escopo / backlog zerado**: 413 do Kestrel (sem corpo) e 404/405 (sem texto de usuário) não têm texto para localizar. Sem push/merge/deploy automático.
+- **Próximos passos**:
+  - Push da branch quando o usuário pedir.
+
 ## Incremento: Dedup cosmética das regras `.studio-grid` em max-width:1100px (D-OC29) (14/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `76d2705` (= D-OC28). Build da solution (`Odca.sln`) **0W/0E**. Domain **358/358 PASS**. Suíte de integração em `odca_test_integration` zerado via `scripts/qa/run-integration-tests.ps1 -FreshDb`: **182/182 PASS — zero falhas** (FRESH-DB-OK → BUILD-OK → TEST-EXIT=0).
