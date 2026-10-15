@@ -206,7 +206,11 @@ public static class BootstrapProgram
         var key = root["Jwt"]?["SigningKey"]?.GetValue<string>();
         if (string.IsNullOrWhiteSpace(key)) issues.Add("Jwt:SigningKey (ausente)");
         else if (Encoding.UTF8.GetByteCount(key) < 32) issues.Add("Jwt:SigningKey (tamanho insuficiente)");
-        if (string.IsNullOrWhiteSpace(root["DataProtection"]?["KeysPath"]?.GetValue<string>())) issues.Add("DataProtection:KeysPath (ausente)");
+        // D-OC31 A.4: com DataProtection:KeysStore=postgres as chaves ficam no banco;
+        // o KeysPath só é obrigatório no armazenamento em filesystem.
+        var keysStore = root["DataProtection"]?["KeysStore"]?.GetValue<string>();
+        if (!string.Equals(keysStore, "postgres", StringComparison.OrdinalIgnoreCase)
+            && string.IsNullOrWhiteSpace(root["DataProtection"]?["KeysPath"]?.GetValue<string>())) issues.Add("DataProtection:KeysPath (ausente)");
         if (string.IsNullOrWhiteSpace(root["DataProtection"]?["ApplicationName"]?.GetValue<string>())) issues.Add("DataProtection:ApplicationName (ausente)");
         return issues;
     }

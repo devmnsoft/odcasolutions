@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Tokens;
@@ -56,6 +57,10 @@ builder.Services.AddTransient<OrganizationFeatureGate>();
 builder.Services.AddTransient<ReleaseFeatureGate>();
 builder.Services.AddOpenApi();
 builder.Services.AddOdcaInfrastructure(builder.Configuration);
+// D-OC31 B.1: protetor dos títulos de notificação, compartilhado com o Worker pelo
+// mesmo repositório de chaves (dev: filesystem do runtime config; produção: store
+// Postgres v054). Resolvido sob demanda nos controladores via RequestServices.
+builder.Services.AddSingleton(sp => sp.GetRequiredService<IDataProtectionProvider>().CreateProtector("ODCA.UserNotification.v1"));
 builder.Services.AddHostedService<Odca.Api.StartupValidationService>();
 builder.Services.AddHostedService<Odca.Api.OfficialCatalogSeedingService>();
 builder.Services.AddHealthChecks()

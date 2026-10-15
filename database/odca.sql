@@ -5813,3 +5813,470 @@ VALUES(53,'Official catalog seed: admit template.official_catalog_seeded in plat
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 053
+-- ODCA-MIGRATION 054 CHECKSUM 0314c91091ca0c3af59dae9221a589fbd236b6b43203dddbe2ab8b1bd275a82b
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
+
+DO $odca$
+DECLARE
+    expected_checksum constant char(64) := '0314c91091ca0c3af59dae9221a589fbd236b6b43203dddbe2ab8b1bd275a82b';
+    recorded_checksum char(64);
+BEGIN
+    SELECT checksum INTO recorded_checksum FROM odca.schema_migrations WHERE version = 54;
+    IF recorded_checksum IS NOT NULL AND recorded_checksum <> expected_checksum THEN
+        RAISE EXCEPTION 'ODCA migration 054 checksum mismatch: stored %, expected %', recorded_checksum, expected_checksum;
+    END IF;
+END
+$odca$;
+
+-- D-OC31 (incremento integrado de operacao documental e preparacao comercial):
+-- 1) stores compartilhados em PostgreSQL para sessao/tickets BFF e chaves de Data Protection
+--    (operacao com multiplos processos/instancas); 2) limite de tentativas da outbox de
+--    notificacoes configuravel por processo; 3) funcoes de operacao de notificacoes para o
+--    superadministrador (listagem/detalhe sem payload protegido, retry auditado); 4)
+--    lembretes de renovacao conforme os dias configuraveis do tenant; 5) vinculacao opcional
+--    de documento do acervo (id + sha256) ao registro de assinatura por evidencia.
+
+CREATE TABLE IF NOT EXISTS odca.distributed_cache_entries(
+  cache_key varchar(436) PRIMARY KEY,
+  value bytea NOT NULL,
+  expires_at timestamptz NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS distributed_cache_entries_expires_ix ON odca.distributed_cache_entries(expires_at);
+ALTER TABLE odca.distributed_cache_entries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE odca.distributed_cache_entries FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS platform_cache_access ON odca.distributed_cache_entries;
+CREATE POLICY platform_cache_access ON odca.distributed_cache_entries TO odca_app USING(true) WITH CHECK(true);
+GRANT SELECT,INSERT,UPDATE,DELETE ON odca.distributed_cache_entries TO odca_app;
+
+CREATE OR REPLACE FUNCTION odca.purge_expired_cache_entries() RETURNS bigint
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, odca AS $$
+DECLARE n bigint;
+BEGIN
+  DELETE FROM odca.distributed_cache_entries WHERE expires_at < now();
+  GET DIAGNOSTICS n = ROW_COUNT;
+  RETURN n;
+END;
+$$;
+REVOKE ALL ON FUNCTION odca.purge_expired_cache_entries() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.purge_expired_cache_entries() TO odca_app;
+
+CREATE TABLE IF NOT EXISTS odca.data_protection_keys(
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  friendly_name text,
+  xml_payload text NOT NULL,
+  created timestamptz NOT NULL DEFAULT now(),
+  set_key_lifetime timestamptz,
+  deleted_utc timestamptz,
+  deleted_reason text);
+ALTER TABLE odca.data_protection_keys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE odca.data_protection_keys FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS platform_dp_keys_access ON odca.data_protection_keys;
+CREATE POLICY platform_dp_keys_access ON odca.data_protection_keys TO odca_app USING(true) WITH CHECK(true);
+GRANT SELECT,INSERT,UPDATE,DELETE ON odca.data_protection_keys TO odca_app;
+
+-- Limite de tentativas passa a ser parametro do worker (padrao 5, comportamento atual).
+-- O payload protegido so e apagado no sucesso: falha definitiva segue reentregavel via retry.
+DROP FUNCTION IF EXISTS odca.claim_notification(text);
+CREATE OR REPLACE FUNCTION odca.claim_notification(worker_id text, max_attempts integer DEFAULT 5)
+RETURNS TABLE(id uuid, tenant_id uuid, invitation_id uuid, destination text, protected_payload text, lease_token uuid)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, odca
+AS $$
+DECLARE
+  new_lease_token uuid := gen_random_uuid();
+BEGIN
+  RETURN QUERY
+  UPDATE odca.notification_outbox o
+     SET status = 'leased',
+         lease_until = now() + interval '2 minutes',
+         attempt_count = attempt_count + 1,
+         lease_token = new_lease_token,
+         lease_owner = worker_id
+   WHERE o.id = (
+     SELECT q.id
+       FROM odca.notification_outbox q
+      WHERE (q.status = 'pending' OR (q.status = 'leased' AND q.lease_until < now()))
+        AND q.available_at <= now()
+        AND q.attempt_count < GREATEST(1, coalesce(max_attempts, 5))
+      ORDER BY q.created_at
+      FOR UPDATE SKIP LOCKED
+      LIMIT 1)
+  RETURNING o.id, o.tenant_id, o.invitation_id, o.destination, o.protected_payload, o.lease_token;
+END;
+$$;
+REVOKE ALL ON FUNCTION odca.claim_notification(text,integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.claim_notification(text,integer) TO odca_app;
+
+DROP FUNCTION IF EXISTS odca.complete_notification(uuid,uuid,boolean,text);
+CREATE OR REPLACE FUNCTION odca.complete_notification(
+  message_id uuid,
+  presented_lease_token uuid,
+  succeeded boolean,
+  error_code text DEFAULT NULL,
+  max_attempts integer DEFAULT 5)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, odca
+AS $$
+DECLARE
+  outbox_status text;
+  related_invitation uuid;
+  max_try integer := GREATEST(1, coalesce(max_attempts, 5));
+BEGIN
+  UPDATE odca.notification_outbox
+     SET status = CASE
+           WHEN succeeded THEN 'sent'
+           WHEN attempt_count >= max_try THEN 'failed'
+           ELSE 'pending'
+         END,
+         sent_at = CASE WHEN succeeded THEN now() ELSE NULL END,
+         lease_until = NULL,
+         lease_token = NULL,
+         lease_owner = NULL,
+         available_at = CASE
+           WHEN succeeded THEN available_at
+           ELSE now() + make_interval(secs => least(300, attempt_count * attempt_count * 10))
+         END,
+         last_error_code = error_code,
+         protected_payload = CASE WHEN succeeded THEN '' ELSE protected_payload END
+   WHERE id = message_id
+     AND lease_token = presented_lease_token
+   RETURNING status, invitation_id INTO outbox_status, related_invitation;
+
+  IF related_invitation IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF succeeded THEN
+    UPDATE odca.tenant_invitations i
+       SET status = 'sent',
+           protected_token = NULL,
+           updated_at = now()
+     WHERE i.id = related_invitation
+       AND i.status IN ('pending','sent');
+  ELSIF outbox_status = 'failed' THEN
+    UPDATE odca.tenant_invitations i
+       SET status = 'failed',
+           updated_at = now()
+     WHERE i.id = related_invitation
+       AND i.status IN ('pending','sent');
+  END IF;
+END;
+$$;
+REVOKE ALL ON FUNCTION odca.complete_notification(uuid,uuid,boolean,text,integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.complete_notification(uuid,uuid,boolean,text,integer) TO odca_app;
+
+-- Operacao de notificacoes (superadministrador): listagem/detalhe sem payload protegido
+-- nem links; retry somente para falhas definitivas, auditado em escopo platform.
+CREATE OR REPLACE FUNCTION odca.notification_ops_page(p_actor uuid, p_status text DEFAULT NULL, p_kind text DEFAULT NULL, p_search text DEFAULT NULL, p_page integer DEFAULT 1, p_page_size integer DEFAULT 25)
+RETURNS TABLE(message_id uuid, organization_name text, kind text, destination text, status text, attempt_count integer, last_error_code text, created_at timestamptz, sent_at timestamptz, invitation_id uuid)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, odca
+AS $$
+BEGIN
+  PERFORM odca.assert_platform_actor(p_actor);
+  RETURN QUERY
+  SELECT o.id, t.display_name, o.kind, o.destination, o.status, o.attempt_count, o.last_error_code, o.created_at, o.sent_at, o.invitation_id
+    FROM odca.notification_outbox o
+    JOIN odca.tenants t ON t.id = o.tenant_id
+   WHERE (p_status IS NULL OR o.status = p_status)
+     AND (p_kind IS NULL OR o.kind = p_kind)
+     AND (p_search IS NULL OR o.destination ILIKE '%' || p_search || '%')
+   ORDER BY o.created_at DESC, o.id
+   LIMIT GREATEST(1, LEAST(coalesce(p_page_size, 25), 100))
+   OFFSET GREATEST(0, coalesce(p_page, 1) - 1) * GREATEST(1, LEAST(coalesce(p_page_size, 25), 100));
+END;
+$$;
+REVOKE ALL ON FUNCTION odca.notification_ops_page(uuid,text,text,text,integer,integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.notification_ops_page(uuid,text,text,text,integer,integer) TO odca_app;
+
+CREATE OR REPLACE FUNCTION odca.notification_ops_count(p_actor uuid, p_status text DEFAULT NULL, p_kind text DEFAULT NULL, p_search text DEFAULT NULL)
+RETURNS integer
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = pg_catalog, odca
+AS $$
+  SELECT count(*)::int
+    FROM odca.notification_outbox o
+   WHERE (p_status IS NULL OR o.status = p_status)
+     AND (p_kind IS NULL OR o.kind = p_kind)
+     AND (p_search IS NULL OR o.destination ILIKE '%' || p_search || '%');
+$$;
+REVOKE ALL ON FUNCTION odca.notification_ops_count(uuid,text,text,text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.notification_ops_count(uuid,text,text,text) TO odca_app;
+
+CREATE OR REPLACE FUNCTION odca.retry_notification(p_message_id uuid, p_actor uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, odca
+AS $$
+DECLARE changed integer; v_tenant uuid; v_kind text; v_invitation uuid;
+BEGIN
+  PERFORM odca.assert_platform_actor(p_actor);
+  SELECT tenant_id, kind, invitation_id INTO v_tenant, v_kind, v_invitation
+    FROM odca.notification_outbox
+   WHERE id = p_message_id;
+  IF NOT FOUND THEN
+    RETURN false;
+  END IF;
+
+  -- Convite cuja entrega falhou definitivamente volta a pending para o ciclo normal.
+  IF v_kind = 'invitation' AND v_invitation IS NOT NULL THEN
+    UPDATE odca.tenant_invitations
+       SET status = 'pending',
+           updated_at = now()
+     WHERE id = v_invitation
+       AND status = 'failed';
+  END IF;
+
+  UPDATE odca.notification_outbox
+     SET status = 'pending',
+         attempt_count = 0,
+         available_at = now(),
+         lease_until = NULL,
+         lease_token = NULL,
+         lease_owner = NULL
+   WHERE id = p_message_id
+     AND status = 'failed'
+  RETURNING 1;
+  GET DIAGNOSTICS changed = ROW_COUNT;
+
+  IF changed = 1 THEN
+    INSERT INTO odca.audit_events(scope_type, tenant_id, actor_user_id, action, entity_type, entity_id, result, metadata)
+    VALUES ('platform', NULL, p_actor, 'platform.notifications.retried', 'notification_outbox', p_message_id, 'success',
+            jsonb_build_object('tenantId', v_tenant, 'kind', v_kind));
+  END IF;
+
+  RETURN changed = 1;
+END;
+$$;
+REVOKE ALL ON FUNCTION odca.retry_notification(uuid,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.retry_notification(uuid,uuid) TO odca_app;
+
+-- A action platform de retry passa a ser admitida pela policy de auditoria de plataforma.
+DROP POLICY IF EXISTS platform_security_insert ON odca.audit_events;
+CREATE POLICY platform_security_insert ON odca.audit_events FOR INSERT TO odca_app
+    WITH CHECK
+    (
+        scope_type = 'platform'
+        AND tenant_id IS NULL
+        AND (action LIKE 'identity.%' OR action = 'template.official_catalog_seeded' OR action LIKE 'platform.notifications.%')
+    );
+
+-- Lembretes de renovacao: varredura idempotente contra os dias configurados do tenant,
+-- lease de 2 minutos como os lembretes de obrigacao; a conclusao insere a notificacao in-app.
+CREATE TABLE IF NOT EXISTS odca.renewal_reminders(
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  contract_id uuid NOT NULL,
+  end_date date NOT NULL,
+  days_before integer NOT NULL CHECK(days_before BETWEEN 0 AND 365),
+  deduplication_key varchar(160) NOT NULL,
+  scheduled_for date NOT NULL,
+  status text NOT NULL DEFAULT 'pending' CHECK(status IN('pending','delivered','obsolete')),
+  lease_token uuid,
+  lease_until timestamptz,
+  delivered_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(tenant_id,id),
+  UNIQUE(tenant_id,deduplication_key),
+  FOREIGN KEY(tenant_id,contract_id) REFERENCES odca.contracts(tenant_id,id));
+CREATE INDEX IF NOT EXISTS renewal_reminders_claim_ix ON odca.renewal_reminders(status, scheduled_for);
+ALTER TABLE odca.renewal_reminders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE odca.renewal_reminders FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON odca.renewal_reminders TO odca_app USING(tenant_id=nullif(current_setting('odca.tenant_id',true),'')::uuid) WITH CHECK(tenant_id=nullif(current_setting('odca.tenant_id',true),'')::uuid);
+GRANT SELECT,INSERT,UPDATE ON odca.renewal_reminders TO odca_app;
+
+CREATE OR REPLACE FUNCTION odca.claim_renewal_reminder(p_worker text, p_token uuid)
+RETURNS TABLE(id uuid, tenant_id uuid, contract_id uuid, recipient_ids uuid[])
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, odca
+AS $$
+BEGIN
+  -- Lembrete pendente deixa de valer se o contrato mudou de data ou saiu do ciclo ativo.
+  UPDATE odca.renewal_reminders r
+     SET status = 'obsolete'
+    FROM odca.contracts c
+   WHERE r.tenant_id = c.tenant_id
+     AND r.contract_id = c.id
+     AND r.status = 'pending'
+     AND (c.end_date IS DISTINCT FROM r.end_date OR c.archived_at IS NOT NULL OR c.closed_at IS NOT NULL);
+
+  -- Varredura: gera as ocorrencias devidas conforme os dias configurados do tenant.
+  INSERT INTO odca.renewal_reminders(tenant_id, contract_id, end_date, days_before, deduplication_key, scheduled_for)
+  SELECT c.tenant_id, c.id, c.end_date, d.day, (c.id::text || ':' || to_char(c.end_date,'YYYY-MM-DD') || ':d' || d.day)::varchar, c.end_date - d.day
+    FROM odca.contracts c
+    JOIN odca.tenants t ON t.id = c.tenant_id
+    CROSS JOIN LATERAL unnest(t.renewal_reminder_days::int[]) AS d(day)
+   WHERE c.end_date IS NOT NULL
+     AND c.archived_at IS NULL
+     AND c.closed_at IS NULL
+     AND NOT t.is_deleted
+     AND t.status <> 'suspended'
+     AND c.end_date >= CURRENT_DATE
+     AND (c.end_date - CURRENT_DATE) <= d.day
+  ON CONFLICT ON CONSTRAINT renewal_reminders_tenant_id_deduplication_key_key DO NOTHING;
+
+  RETURN QUERY
+  UPDATE odca.renewal_reminders r
+     SET lease_token = p_token,
+         lease_until = now() + interval '2 minutes'
+   WHERE r.id = (
+     SELECT x.id
+       FROM odca.renewal_reminders x
+      WHERE x.status = 'pending'
+        AND x.scheduled_for <= CURRENT_DATE
+        AND (x.lease_until IS NULL OR x.lease_until < now())
+      ORDER BY x.scheduled_for, x.id
+      FOR UPDATE OF x SKIP LOCKED
+      LIMIT 1)
+  RETURNING r.id, r.tenant_id, r.contract_id,
+    (SELECT coalesce(array_agg(m.user_id), ARRAY[]::uuid[])
+       FROM odca.memberships m
+      WHERE m.tenant_id = r.tenant_id
+        AND m.status = 'active'
+        AND odca.tenant_actor_has_permission(m.user_id, r.tenant_id, 'tenant.renewals.read'));
+END;
+$$;
+REVOKE ALL ON FUNCTION odca.claim_renewal_reminder(text,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.claim_renewal_reminder(text,uuid) TO odca_app;
+
+-- A conclusao devolve os destinatarios e o titulo exatamente como gravados na
+-- notificacao in-app, para o transporte proteger o mesmo conteudo sem duplicar regras.
+CREATE OR REPLACE FUNCTION odca.complete_renewal_reminder(p_id uuid, p_token uuid)
+RETURNS TABLE(recipient_id uuid, title text)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, odca
+AS $$
+BEGIN
+  UPDATE odca.renewal_reminders
+     SET status = 'delivered',
+         delivered_at = now(),
+         lease_token = NULL,
+         lease_until = NULL
+   WHERE id = p_id
+     AND lease_token = p_token
+     AND status = 'pending';
+  IF NOT FOUND THEN
+    RETURN;
+  END IF;
+
+  RETURN QUERY
+  INSERT INTO odca.user_notifications(tenant_id, user_id, kind, title, body)
+  SELECT r.tenant_id, u.user_id, 'renewal_due',
+         'Renovacao contratual: ' || c.title,
+         'A vigencia termina em ' || to_char(c.end_date, 'DD/MM/YYYY') || '.'
+    FROM odca.renewal_reminders r
+    JOIN odca.contracts c ON c.tenant_id = r.tenant_id AND c.id = r.contract_id
+    CROSS JOIN LATERAL (
+      SELECT m.user_id
+        FROM odca.memberships m
+       WHERE m.tenant_id = r.tenant_id
+         AND m.status = 'active'
+         AND odca.tenant_actor_has_permission(m.user_id, r.tenant_id, 'tenant.renewals.read')
+    ) AS u
+   WHERE r.id = p_id
+   RETURNING user_notifications.user_id AS recipient_id, user_notifications.title::text;
+END;
+$$;
+REVOKE ALL ON FUNCTION odca.complete_renewal_reminder(uuid,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.complete_renewal_reminder(uuid,uuid) TO odca_app;
+
+-- Registro de assinatura por evidencia pode vincular um documento autorizado do acervo;
+-- o hash e copiado pelo servidor na hora do ato (jamais aceito do cliente).
+ALTER TABLE odca.signature_participants
+  ADD COLUMN IF NOT EXISTS evidence_document_version_id uuid,
+  ADD COLUMN IF NOT EXISTS evidence_document_sha256 char(64);
+ALTER TABLE odca.signature_participants
+  ADD CONSTRAINT signature_participants_evidence_doc_fk FOREIGN KEY(tenant_id, evidence_document_version_id) REFERENCES odca.document_versions(tenant_id, id),
+  ADD CONSTRAINT signature_participants_evidence_doc_ck CHECK((evidence_document_version_id IS NULL) = (evidence_document_sha256 IS NULL));
+
+INSERT INTO odca.schema_migrations(version,name,checksum)
+VALUES(54,'Operacao documental e preparacao comercial: stores compartilhados, limite de retry configuravel, operacao de notificacoes, lembretes de renovacao e vinculo de evidencia em assinaturas','0314c91091ca0c3af59dae9221a589fbd236b6b43203dddbe2ab8b1bd275a82b')
+ON CONFLICT(version) DO NOTHING;
+COMMIT;
+-- ODCA-END 054
+-- ODCA-MIGRATION 055 CHECKSUM 9ca52603bbce7fc9fc154640cabc2e1adad31db9403691f45061636cdc97a8a2
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
+
+DO $odca$
+DECLARE
+    expected_checksum constant char(64) := '9ca52603bbce7fc9fc154640cabc2e1adad31db9403691f45061636cdc97a8a2';
+    recorded_checksum char(64);
+BEGIN
+    SELECT checksum INTO recorded_checksum FROM odca.schema_migrations WHERE version = 55;
+    IF recorded_checksum IS NOT NULL AND recorded_checksum <> expected_checksum THEN
+        RAISE EXCEPTION 'ODCA migration 055 checksum mismatch: stored %, expected %', recorded_checksum, expected_checksum;
+    END IF;
+END
+$odca$;
+
+-- D-OC31 (correcao do retry auditado da central de notificacoes): a v054 definiu
+-- retry_notification com 'UPDATE ... RETURNING 1;' como instrucao simples em PL/pgSQL,
+-- construcao que o PostgreSQL rejeita com 42601 ("query has no destination for result
+-- data"), de modo que toda chamada de retry respondia 500 antes de executar qualquer
+-- UPDATE. A funcao e redefinida sem o RETURNING; o GET DIAGNOSTICS ROW_COUNT continua
+-- decidindo o resultado e a condicao da auditoria (contrato identico: retorna true
+-- somente quando uma linha 'failed' efetivamente volta a 'pending').
+
+CREATE OR REPLACE FUNCTION odca.retry_notification(p_message_id uuid, p_actor uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, odca
+AS $$
+DECLARE changed integer; v_tenant uuid; v_kind text; v_invitation uuid;
+BEGIN
+  PERFORM odca.assert_platform_actor(p_actor);
+  SELECT tenant_id, kind, invitation_id INTO v_tenant, v_kind, v_invitation
+    FROM odca.notification_outbox
+   WHERE id = p_message_id;
+  IF NOT FOUND THEN
+    RETURN false;
+  END IF;
+
+  -- Convite cuja entrega falhou definitivamente volta a pending para o ciclo normal.
+  IF v_kind = 'invitation' AND v_invitation IS NOT NULL THEN
+    UPDATE odca.tenant_invitations
+       SET status = 'pending',
+           updated_at = now()
+     WHERE id = v_invitation
+       AND status = 'failed';
+  END IF;
+
+  UPDATE odca.notification_outbox
+     SET status = 'pending',
+         attempt_count = 0,
+         available_at = now(),
+         lease_until = NULL,
+         lease_token = NULL,
+         lease_owner = NULL
+   WHERE id = p_message_id
+     AND status = 'failed';
+  GET DIAGNOSTICS changed = ROW_COUNT;
+
+  IF changed = 1 THEN
+    INSERT INTO odca.audit_events(scope_type, tenant_id, actor_user_id, action, entity_type, entity_id, result, metadata)
+    VALUES ('platform', NULL, p_actor, 'platform.notifications.retried', 'notification_outbox', p_message_id, 'success',
+            jsonb_build_object('tenantId', v_tenant, 'kind', v_kind));
+  END IF;
+
+  RETURN changed = 1;
+END;
+$$;
+REVOKE ALL ON FUNCTION odca.retry_notification(uuid,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.retry_notification(uuid,uuid) TO odca_app;
+
+INSERT INTO odca.schema_migrations(version,name,checksum)
+VALUES(55,'Correcao da retry_notification: remove RETURNING de instrucao simples em PL/pgSQL (erro 42601 no retry auditado)','9ca52603bbce7fc9fc154640cabc2e1adad31db9403691f45061636cdc97a8a2')
+ON CONFLICT(version) DO NOTHING;
+COMMIT;
+-- ODCA-END 055

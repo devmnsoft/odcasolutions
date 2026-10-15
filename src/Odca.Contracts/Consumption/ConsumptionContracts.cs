@@ -1,7 +1,7 @@
 namespace Odca.Contracts.Consumption;
 
 public sealed record ConsumptionSummary(
-    Guid TenantId, string OrganizationName, string TenantStatus, string SubscriptionStatus,
+    Guid TenantId, string OrganizationName, string TenantStatus, string SubscriptionStatus, string CommercialState,
     string PlanCode, string PlanName, int PlanVersion, DateTimeOffset? PeriodStart, DateTimeOffset? PeriodEnd,
     int ContractedSeats, int ActiveUsers, int ReservedInvitations, int AvailableSeats,
     long ContractedStorageBytes, long AdditionalStorageBytes, long UsedStorageBytes,

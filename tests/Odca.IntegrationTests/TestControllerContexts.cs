@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
@@ -32,6 +33,11 @@ internal static class TestControllerContexts
         services.AddSingleton<ProblemDetailsFactory>(new DefaultProblemDetailsFactory(
             Options.Create(new ApiBehaviorOptions()),
             Options.Create(new ProblemDetailsOptions())));
+        // D-OC31 B.1: espelha a DI de produção do pipeline de notificações — logging e
+        // data protection (anel de chaves efêmero, sem lock de arquivo entre testes).
+        services.AddLogging();
+        services.AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider());
+        services.AddSingleton(sp => sp.GetRequiredService<IDataProtectionProvider>().CreateProtector("ODCA.UserNotification.v1"));
         context.RequestServices = services.BuildServiceProvider();
         return context;
     }

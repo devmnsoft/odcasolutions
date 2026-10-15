@@ -25,7 +25,7 @@
      data-compare-url="@Url.Action("Compare",new{tenantId})"
      data-comments-url="@Url.Action("Comments",new{tenantId,draftId=Model.Id})"
      data-generate-url="@Url.Action("GenerateJson",new{tenantId,draftId=Model.Id})" data-reviewers-url="@Url.Action("Reviewers",new{tenantId})" data-submit-url="@Url.Action("SubmitReview",new{tenantId})"
-     data-checklist-url="@Url.Action("Checklist",new{tenantId,draftId=Model.Id})" data-version="@Model.Version">
+     data-checklist-url="@Url.Action("Checklist",new{tenantId,draftId=Model.Id})" data-restore-url="@Url.Action("Restore",new{tenantId,draftId=Model.Id})" data-version="@Model.Version">
     <header class="studio-head">
         <div><p class="eyebrow">@L.T("studio.e_studio_eyebrow",_culture)</p><h1>@Model.Title</h1><span class="status-chip">@L.T("studio.e_status_editing",_culture)</span></div>
         <div class="studio-actions">
@@ -78,7 +78,7 @@
         </main>
         <aside class="studio-side studio-context">
             <div class="context-tabs" role="tablist"><button type="button" role="tab" aria-selected="true" data-tab="fields">@L.T("studio.tab_fields",_culture)</button><button type="button" role="tab" data-tab="comments">@L.T("studio.tab_comments",_culture) <span class="tab-count" data-comment-count aria-label="@L.T("studio.tab_comments_aria",_culture)">0</span></button><button type="button" role="tab" data-tab="checklist">@L.T("studio.tab_checklist",_culture)</button></div>
-            <section data-panel="fields"><h2>@L.T("studio.panel_fields_h",_culture) <span data-pending-count>0</span></h2><p class="muted">@L.T("studio.panel_fields_p",_culture)</p><div data-fields></div></section>
+            <section data-panel="fields"><h2>@L.T("studio.panel_fields_h",_culture) <span data-pending-count>0</span></h2><p class="muted">@L.T("studio.panel_fields_p",_culture)</p><label class="field-search"><span class="visually-hidden">@L.T("studio.field_search_label",_culture)</span><input type="search" data-field-search autocomplete="off" placeholder="@L.T("studio.field_search_placeholder",_culture)" /></label><div data-fields></div></section>
             <section data-panel="comments" hidden><h2>@L.T("studio.panel_comments_h",_culture)</h2><p class="muted">@L.T("studio.panel_comments_p",_culture)</p><label class="toggle"><input type="checkbox" data-resolved> @L.T("studio.panel_comments_toggle",_culture)</label><div data-comments></div><form data-comment-form><label>@L.T("studio.cf_reference",_culture)<input name="reference" maxlength="200" placeholder="section:clausula-1" required></label><label>@L.T("studio.cf_comment",_culture)<textarea name="body" maxlength="4000" required></textarea></label><button class="button button-link" type="submit">@L.T("studio.cf_comment_btn",_culture)</button></form></section>
             <section data-panel="checklist" hidden><h2>@L.T("studio.panel_checklist_h",_culture)</h2><p class="muted">@L.T("studio.panel_checklist_p",_culture)</p><div data-checklist></div></section>
             <section data-panel="history" hidden><h2>@L.T("studio.panel_history_h",_culture)</h2><div data-history></div></section>

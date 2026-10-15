@@ -92,7 +92,11 @@
 - [x] Seleção de organização, convites, equipe, perfis delegáveis e proteção do último administrador (API/SQL); prova concorrente A × B em PostgreSQL ainda pendente.
 - [ ] Operação autenticada do atendimento de direitos, prazos configurados, preferências e exportação revisada.
 - [ ] Sessão temporária de suporte com MFA recente, escopo, expiração, revogação e ator real.
-- [ ] Cache distribuído e Data Protection persistido para produção/múltiplas instâncias.
+- [x] Cache distribuído e Data Protection persistido para produção/múltiplas instâncias
+  (D-OC31 A.4/D: `PostgresDistributedCache` + repositório compartilhado de chaves na v054,
+  seleção condicional `Cache:Store`/`DataProtection:KeysStore`=postgres, dev simples em
+  memória/filesystem; prova 2 instâncias 17/17 — login numa, sessão continua na outra,
+  logout revoga nas duas; evidência `evidence/d31-gate-twostack.txt`).
 
 ## Sequência funcional posterior
 
@@ -110,7 +114,10 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [ ] Implementar transporte/outbox operacional (segredo protegido temporário, lease, retry, deduplicação e descarte), reenvio limitado/auditado e retomada de rascunho expirado.
 - [ ] Substituir versões `pending-legal-approval` por identificadores de textos aprovados e capturar contexto mínimo definido por Privacidade.
 - [x] Entregar seletor de organização, equipe, perfis delegáveis, convites e assentos com proteção do último administrador (API/SQL; BFF visual em andamento paralelo).
-- [ ] Configurar cache realmente compartilhado e validar Data Protection/tickets entre duas instâncias.
+- [x] Configurar cache realmente compartilhado e validar Data Protection/tickets entre duas
+  instâncias (D-OC31 A.4/D: stores v054 no Postgres + prova 17/17 entre duas instâncias
+  vivas — ticket válido na outra após login e revogado nas duas após logout;
+  evidência `evidence/d31-gate-twostack.txt`).
 - [ ] Depois: suporte temporário e operação de direitos; S02; S03; OCR/Office e sequência comercial, sem antecipar editor.
 
 ## Após prompt 11
@@ -194,3 +201,73 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
   `signatureStatus=not_available`, nunca “assinado”.
 - [ ] Carregar conteúdo clínico/jurídico aprovado. Testes devem continuar usando modelos
   sintéticos; nenhum texto demonstrativo deve ser publicado como conteúdo real.
+
+## D-OC31 — Operação documental integrada e preparação comercial (15/10/2026)
+
+- [x] GATE antes dos avanços dependentes: baseline compilável (build estrito 0W/0E), instalação
+  limpa validada (`-FreshDb` 188/188), regressões críticas resolvidas (42P10 no
+  `ON CONFLICT(source_id)` em três sites com predicado do índice parcial; 42601 no
+  `retry_notification` corrigido na **v055** sem reescrever a v054 congelada), regra canônica
+  de planos reconciliada e isolamento entre dois tenants provado (camada API 403/200/201 e
+  RLS como `odca_app`: nA=1/nB=1, contratos 55/0; evidência `evidence/d31-gate-twotenants.txt`).
+- [x] A.3: regra canônica preservada — base fresca 6/6/7 módulos (`module.reviews` apenas em
+  `enterprise-v2`); `PlanServiceGateTests` prova os quatro serviços diferenciados por plano
+  (documentais exigem Enterprise; `suporte_tecnico` aceita qualquer assinatura ativa;
+  demais → 409 `solicitations.plan.required`; contagens finais 1/1/4).
+- [x] B.1: notificação com outbox na mesma transação (evento + fila), retry/backoff/limite
+  configurável, lease recuperável após interrupção, reprocessamento sem duplicar confirmações
+  (source_id determinístico + índice parcial), estados enfileirado/aceito/entregue/comprovável/
+  falha temporária/falha definitiva, SMTP configurável e desativado até configuração válida,
+  central do superadmin com campos seguros, filtros e retry auditado
+  (`platform.notifications.retried`); smoke ao vivo 0 falhas (remind queued=1, retry 200+auditoria,
+  409 em pendente, pickup com 8 arquivos, zero erros no worker).
+- [x] B.2: assinatura vinculada à versão exata com hash do PDF confirmado no servidor;
+  evidência liga documento do acervo (id + sha256), exigindo varredura segura deste contrato;
+  justificativa e permissão específica para terceiros; sem sobrescrita de evidências
+  (correção por evento complementar auditado); idempotência/replay (`replayed=true`) e
+  negativos 400 sem máscara de estado assinado.
+- [x] A.4/D: `PostgresDistributedCache` + repositório compartilhado de chaves com seleção
+  condicional (`Cache:Store=postgres` e `DataProtection:KeysStore=postgres`; desenvolvimento
+  permanece simples em memória/filesystem); prova entre duas instâncias 17/17 PASS — login numa,
+  chave DP e ticket no Postgres (`odca.data_protection_keys`/`odca.distributed_cache_entries`,
+  v054), sessão válida na outra (200), logout numa → ticket removido do cache compartilhado →
+  revogada na outra (302 `/entrar`); evidência `evidence/d31-gate-twostack.txt`. Detalhe net10:
+  o repositório exige `AddKeyManagementOptions(o => o.XmlRepository = ...)` (singleton puro de
+  `IXmlRepository` deixa o Data Protection efêmero).
+- [x] B.3: jornada contínua na ficha (próxima ação priorizada overdue > revisão > alteração >
+  renovação > assinatura > solicitação > obrigações; pendências contadas por seção com âncora;
+  motivo de bloqueio em arquivado/encerrado; atalho para o histórico) calculada no BFF a partir
+  dos dados já projetados — editor com busca de campos e grupos por origem preservando o
+  preenchimento pós-falha; restaurar versão = nova revisão (`POST minutas/{id}/restaurar` →
+  `POST drafts/{draftId}/restore-from-version`: normaliza, valida structural, protege origens
+  automáticas, row_version otimista, evento `draft.restored` com fromVersionId/Number/newVersion,
+  409 `draft.save.conflict` em estado desatualizado); prova integrada 47/47 PASS (evidência
+  `evidence/d31-b345-final.txt`; rota dupla:
+  arquivado "Nenhuma ação — contrato arquivado" / ativa "Acompanhar obrigações abertas" + cartão
+  pendente ancorado) sem OCR/upload.
+- [x] B.4: prova ao vivo em stack viva — assinatura do participante não altera vigência/valor/
+  versão nem o conjunto de obrigações (snapshot idêntico antes/depois); obrigação aberta aparece
+  na caixa operacional (scope=mine, sem janela) e some das projeções ao ser atendida; aditivo
+  criado→enviado→formalizado→aplicado gera nova versão (1→2) com `obligations_preserved=true` e
+  md5 do conjunto idêntico, vínculo `contract_change_applications` registrado
+  (`NULL -> 100.00|BRL`) com trilha create/submit/formalização manual; histórico consultável
+  via `GET contracts/{id}/events` (200 com eventos do ciclo, inclusive `draft.restored` da prova).
+- [x] B.5: ficha administrativa diferencia "Situação administrativa" de "Situação comercial" e
+  afirma que ativação administrativa não equivale a pagamento recebido; estado
+  `commercial_pending` exibe "Aguardando confirmação comercial (sem pagamento recebido)";
+  mudança de plano mostra impacto antes de confirmar (preview basic→intermediate) e grava auditoria
+  `organization.plan_changed` com motivo, versão comercial anterior/nova e `payment_recorded=false`.
+- [x] C: sete telas prioritárias (login, caixa, ficha de contrato, estúdio/minuta, renovações,
+  cliente da administração, minha conta); quatro idiomas (pt-BR/en-US/es-ES/fr-FR) sem traduzir
+  códigos/identificadores/conteúdo do usuário; validação em 360/768/1280/1440px e zoom 200%;
+  **140 capturas full-page** headless das jornadas autenticadas (`CAPTURES-DONE ok=140 fail=0`,
+  140 hashes únicos) em `evidence/captures/`. Correção registrada entre rodadas: cookie
+  `__Host-odca-session` exige `secure:true` no CDP `Network.setCookies` (sem ele era
+  descartado → redirecionamento para `/entrar`) + login fresco via HTTP no driver com TOTP
+  controlado por passo (replay protection server-side).
+- [x] E: matriz de aceite com dez itens diferindo aprovado/falhou/bloqueado/não executado, cada
+  um com evidência apontada (tabela na doc D-OC31: 10 aprovados, 0 falhados/bloqueados/não
+  executados).
+- [x] F: resumo do implementado, arquivos + migrations, cenários e instruções de configuração
+  sem segredos, dependências restantes em `docs/execution/D-OC31_OPERACAO_DOCUMENTAL_COMERCIAL.md`;
+  STATUS.md atualizado; commit único "sem push".

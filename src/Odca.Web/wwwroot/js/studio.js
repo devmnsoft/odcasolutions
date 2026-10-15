@@ -210,8 +210,44 @@ if (studio) {
     const definition = fields.find(item => defId(item) === id);
     return { input, id, definition, label: definition?.label ?? definition?.Label ?? id, currency: input.dataset.currency === "true" };
   });
+  const searchInput = studio.querySelector("[data-field-search]");
+  const searchEmpty = document.createElement("p");
+  searchEmpty.className = "muted";
+  searchEmpty.dataset.fieldSearchEmpty = "true";
+  searchEmpty.textContent = t("studio.field_search_empty");
+  searchEmpty.hidden = true;
+  // D-OC31 B.3 — busca no painel de campos: filtra rótulo/identificador e esconde grupos vazios.
+  // O termo sobrevive às re-renderizações (refresh após cada commit).
+  const applyFieldSearch = () => {
+    const term = (searchInput ? searchInput.value : "").trim().toLowerCase();
+    let anyVisible = false;
+    for (const box of panel.querySelectorAll(".field-editor")) {
+      const hit = !term || (box.dataset.fieldKey || "").includes(term);
+      box.hidden = !hit;
+      if (hit) anyVisible = true;
+    }
+    for (const g of panel.querySelectorAll(".field-group")) {
+      g.hidden = ![...g.querySelectorAll(".field-editor")].some(b => !b.hidden);
+    }
+    searchEmpty.hidden = anyVisible || !term;
+    panel.append(searchEmpty);
+  };
+  if (searchInput) searchInput.addEventListener("input", applyFieldSearch);
+
   const renderFields = () => {
     panel.replaceChildren(); let pending = 0;
+    // D-OC31 B.3 — campos agrupados por origem declarada (organização/paciente/contratante/representante/manual).
+    const groups = new Map();
+    const ensureGroup = origin => {
+      let g = groups.get(origin);
+      if (!g) {
+        g = document.createElement("section"); g.className = "field-group";
+        const h = document.createElement("h3"); h.className = "field-group-title";
+        h.textContent = originLabels[origin] || origin;
+        g.append(h); groups.set(origin, g); panel.append(g);
+      }
+      return g;
+    };
     for (const definition of fields) {
       const id = defId(definition);
       if (!id) continue;
@@ -390,8 +426,11 @@ if (studio) {
       boxParts.push(fieldError);
       if (fieldType !== "Formula") boxParts.push(confirm);
       label.append(input);
-      box.append(...boxParts); panel.append(box);
+      box.append(...boxParts);
+      box.dataset.fieldKey = `${fieldLabelText} ${id}`.toLowerCase();
+      ensureGroup(configuredOrigin).append(box);
     }
+    applyFieldSearch();
     studio.querySelector("[data-pending-count]").textContent = String(pending);
   };
   const rejectNumericDrafts = () => {
@@ -498,7 +537,7 @@ if (studio) {
   };
   for(const tab of studio.querySelectorAll("[data-tab]"))tab.addEventListener("click",()=>openTab(tab.dataset.tab));
   const request = async (url, options={}) => {const token=studio.querySelector('input[name="__RequestVerificationToken"]')?.value;const response=await fetch(url,{...options,headers:{...(options.body?{"Content-Type":"application/json"}:{}),...(token?{"RequestVerificationToken":token}:{}),...options.headers}});if(!response.ok)throw new Error((await response.json().catch(()=>({}))).title||t("studio.ed_unconfirmed"));return response.status===204?null:response.json();};
-  const loadVersions=async()=>{const versions=await request(studio.dataset.versionsUrl);const history=studio.querySelector("[data-history]");history.replaceChildren(...versions.map(item=>{const p=document.createElement("p");p.textContent=t("studio.v_line",item.number,item.author,new Date(item.createdAt).toLocaleString(uiCulture));return p;}));return versions;};
+  const loadVersions=async()=>{const versions=await request(studio.dataset.versionsUrl);const history=studio.querySelector("[data-history]");history.replaceChildren(...versions.map(item=>{const p=document.createElement("p");p.append(document.createTextNode(t("studio.v_line",item.number,item.author,new Date(item.createdAt).toLocaleString(uiCulture))+" "));const b=document.createElement("button");b.type="button";b.className="button button-small button-link";b.textContent=t("studio.v_restore");b.addEventListener("click",()=>{if(!confirm(t("studio.v_restore_confirm")))return;if(localRevision!==acknowledgedRevision&&!confirm(t("studio.v_restore_confirm_dirty")))return;state.textContent=t("studio.ed_state_saving");state.dataset.state="saving";request(studio.dataset.restoreUrl,{method:"POST",body:JSON.stringify({versionId:item.id,expectedVersion:version})}).then(()=>window.location.reload()).catch(error=>{state.textContent=error.message||t("studio.ed_failed_comm");state.dataset.state="failed";});});p.append(b);return p;}));return versions;};
   const loadComments=async()=>{const items=await request(`${studio.dataset.commentsUrl}?resolved=${studio.querySelector("[data-resolved]").checked}`);const target=studio.querySelector("[data-comments]");studio.querySelector("[data-comment-count]").textContent=String(items.filter(item=>!item.resolved).length);target.replaceChildren(...items.map(item=>{const article=document.createElement("article");article.className=`comment${item.parentId?" reply":""}`;article.id=`comment-${item.id}`;const heading=document.createElement("strong");heading.textContent=`${item.author} · ${item.reference}`;const metadata=document.createElement("small");metadata.textContent=`${item.originVersion?t("studio.cm_origin_version",item.originVersion):t("studio.cm_origin_review",item.draftRevision)} · ${new Date(item.lastMovementAt||item.createdAt).toLocaleString(uiCulture)}`;const body=document.createElement("p");body.textContent=item.body;const location=document.createElement("p");location.className="muted";location.textContent=item.referenceLocated?t("studio.cm_excerpt_found"):t("studio.cm_excerpt_missing");const reply=document.createElement("button");reply.type="button";reply.className="button button-small button-link";reply.textContent=t("studio.cm_reply");reply.addEventListener("click",()=>{commentParentId=item.id;const form=studio.querySelector("[data-comment-form]");form.elements.reference.value=item.reference;form.elements.body.focus();});const history=document.createElement("button");history.type="button";history.className="button button-small button-link";history.textContent=t("studio.cm_history");history.addEventListener("click",()=>article.querySelector("p").focus());const button=document.createElement("button");button.type="button";button.className="button button-small button-link";button.textContent=item.resolved?t("studio.cm_reopen"):t("studio.cm_resolve");button.addEventListener("click",async()=>{const operation=item.resolved?"reopen":"resolve";const observation=operation==="reopen"?window.prompt(t("studio.cm_reopen_prompt")):null;if(operation==="reopen"&&!observation?.trim())return;const original=button.textContent;button.disabled=true;button.textContent=t("studio.cm_processing");try{await request(`${studio.dataset.commentsUrl}/${item.id}/${operation}`,{method:"POST",body:JSON.stringify({expectedResolved:item.resolved,observation})});await loadComments();}catch(error){button.disabled=false;button.textContent=original;state.textContent=error.message;state.dataset.state=error.message.includes("atualiz")?"conflict":"failed";}});article.append(heading,metadata,body,location,reply,history,button);return article;}));};
   studio.querySelector("[data-resolved]").addEventListener("change",loadComments);
   studio.querySelector("[data-comment-form]").addEventListener("submit",async event=>{event.preventDefault();const data=new FormData(event.currentTarget);try{await request(studio.dataset.commentsUrl,{method:"POST",body:JSON.stringify({draftRevision:version,reference:data.get("reference"),body:data.get("body"),parentId:commentParentId})});commentParentId=null;event.currentTarget.reset();await loadComments();}catch(error){state.textContent=error.message;state.dataset.state="failed";}});

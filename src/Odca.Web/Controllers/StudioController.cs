@@ -452,6 +452,9 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
      string? detail=r.ErrorDetail;
      if(string.IsNullOrEmpty(detail)&&r.ValidationErrors is not null) detail=string.Join(" ",r.ValidationErrors.Values.SelectMany(v=>v));
      return StatusCode(r.Status==ApiCallStatus.Conflict?409:422,new{title=r.ErrorTitle,detail});}
+    [HttpPost("minutas/{draftId:guid}/restaurar")]
+    public async Task<IActionResult> Restore(Guid tenantId,Guid draftId,[FromBody] RestoreDraftVersionRequest request,CancellationToken ct)
+    {var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var r=await api.RestoreStudioDraftAsync(token,tenantId,draftId,request,ct);TempData[r.Succeeded?"StudioSuccess":"StudioError"]=r.Succeeded?L("studio.ctl_restore_ok",r.Value!.SourceNumber.ToString(System.Globalization.CultureInfo.InvariantCulture)):r.UserMessage(L("studio.ctl_restore_fail"));return RedirectToAction(nameof(Edit),new{tenantId,draftId});}
     [HttpPost("minutas/{draftId:guid}/gerar")]
     public async Task<IActionResult> Generate(Guid tenantId,Guid draftId,long expectedVersion,Guid idempotencyKey,CancellationToken ct)
     {var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var r=await api.GenerateStudioVersionAsync(token,tenantId,draftId,new(idempotencyKey,expectedVersion),ct);string?pendings=null;if(!r.Succeeded&&r.ValidationErrors is not null&&r.ValidationErrors.TryGetValue("pendingFields",out var pendingFields)&&pendingFields.Length>0)pendings=string.Join(" ",pendingFields);TempData[r.Succeeded?"StudioSuccess":"StudioError"]=r.Succeeded?L("studio.ctl_version_generated",r.Value!.Number.ToString(System.Globalization.CultureInfo.InvariantCulture),r.Value.Sha256[..12]):string.IsNullOrEmpty(pendings)?r.ErrorDetail??L("studio.ctl_fill_confirm_fields"):L("studio.ctl_generation_blocked",pendings);return RedirectToAction(nameof(Edit),new{tenantId,draftId});}

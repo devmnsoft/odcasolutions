@@ -1,0 +1,77 @@
+@model Odca.Web.Controllers.PlatformNotificationsController.PageViewModel
+@{
+    var status = ViewData["Status"] as string; var kind = ViewData["Kind"] as string; var search = ViewData["Search"] as string;
+    var pagina = Math.Max(1, Convert.ToInt32(ViewData["Page"] ?? 1));
+    // D-OC31 B.1: tipos de mensagem da outbox (convite legado + 7 tipos de evento B.1
+    // + categoria 'user_notification' de linhas anteriores ao refinamento).
+    var kinds = new (string Value, string Label)[]
+    {
+        ("invitation", "Convite"),
+        ("obligation_due", "Obrigação a vencer"),
+        ("renewal_due", "Renovação próxima"),
+        ("review_assigned", "Revisão atribuída"),
+        ("review_decided", "Revisão decidida"),
+        ("solicitation_opened", "Solicitação aberta"),
+        ("solicitation_updated", "Solicitação atualizada"),
+        ("signature_pending", "Assinatura pendente"),
+        ("user_notification", "Notificação (legado)")
+    };
+    string KindLabel(string value) => kinds.FirstOrDefault(k => k.Value == value).Label ?? value;
+    string StatusLabel(string value) => value switch
+    {
+        "pending" => "Enfileirado",
+        "leased" => "Em entrega",
+        "sent" => "Aceito pelo provedor",
+        "failed" => "Falha definitiva",
+        _ => value
+    };
+    string Fmt(DateTimeOffset? value) => value?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "—";
+}
+<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-controller="Home" asp-action="Index">Visão global</a><span>/</span><span aria-current="page">Central de notificações</span></nav>
+<header class="page-heading"><div><p class="eyebrow">Plataforma MNSOFT</p><h1>Central de notificações</h1><p>Acompanhe a fila de entrega de e-mails da plataforma e reprocesse falhas definitivas.</p></div></header>
+@if(ViewData["LoadError"] is string loadError){<div class="alert alert-error" role="alert">@loadError</div>}
+@if(TempData["NotificationsNotice"] is string notice){<div class="alert alert-success" role="status">@notice</div>}
+<section class="help-card" aria-labelledby="notif-help"><h2 id="notif-help">O que cada situação significa</h2><p><strong>Enfileirado</strong>: aguardando o worker. <strong>Em entrega</strong>: reservado por um worker com lease de 2 minutos. <strong>Aceito pelo provedor</strong>: o provedor de correio aceitou a mensagem (no SMTP, o aceite é pelo servidor receptor); a chegada à caixa de entrada não é comprovável sem recibo. <strong>Falha definitiva</strong>: tentativas esgotadas — pode ser reprocessada aqui e a ação fica registrada na auditoria.</p><p>O detalhe exibe apenas campos seguros: organização, tipo, destino, situação e código de erro estável. O conteúdo protegido e os links com token nunca aparecem nesta tela.</p></section>
+<form method="get" class="review-filters" aria-label="Filtros da central de notificações">
+ <label>Situação<select name="status"><option value="">Todas</option>@foreach(var option in new[]{("pending","Enfileirado"),("leased","Em entrega"),("sent","Aceito pelo provedor"),("failed","Falha definitiva")}){<option value="@option.Item1" selected="@(status==option.Item1)">@option.Item2</option>}</select></label>
+ <label>Tipo<select name="kind"><option value="">Todos</option>@foreach(var option in kinds){<option value="@option.Value" selected="@(kind==option.Value)">@option.Label</option>}</select></label>
+ <label>Destino<input type="search" name="search" value="@search" placeholder="endereço de e-mail" /></label>
+ <button class="button button-quiet" type="submit">Aplicar filtros</button>
+</form>
+<section aria-label="Fila de notificações">
+ @if(Model.Items.Count==0){<div class="empty-state"><p>Nenhuma mensagem na fila com estes filtros.</p></div>}
+ else
+ {
+  <div class="table-scroll"><table><thead><tr><th>Organização</th><th>Tipo</th><th>Destino</th><th>Situação</th><th>Tentativas</th><th>Código de erro</th><th>Criado</th><th>Entrega aceita</th><th>Ação</th></tr></thead><tbody>
+  @foreach(var item in Model.Items)
+  {
+   <tr>
+    <td>@item.OrganizationName</td>
+    <td>@KindLabel(item.Kind)</td>
+    <td>@item.Destination</td>
+    <td><span class="status-badge status-@(item.Status=="failed"?"cancelled":(item.Status=="sent"?"resolved":"pending"))">@StatusLabel(item.Status)</span></td>
+    <td>@item.AttemptCount</td>
+    <td>@(item.LastErrorCode??"—")</td>
+    <td>@Fmt(item.CreatedAt)</td>
+    <td>@Fmt(item.SentAt)</td>
+    <td>
+     @if(item.Status=="failed"){
+      <form method="post" asp-action="Retry" asp-route-messageId="@item.MessageId" asp-route-status="@status" asp-route-kind="@kind" asp-route-search="@search" asp-route-page="@pagina" data-prevent-double-submit style="display:inline">
+       @Html.AntiForgeryToken()
+       <button type="submit" class="button button-quiet">Reprocessar</button>
+      </form>
+     }else{<span aria-hidden="true">—</span>}
+    </td>
+   </tr>
+  }
+  </tbody></table></div>
+  @if(Model.Pages>1)
+  {
+   <div class="button-row">
+    @if(pagina>1){<a class="button button-quiet" asp-action="Index" asp-route-status="@status" asp-route-kind="@kind" asp-route-search="@search" asp-route-page="@(pagina-1)">← Anterior</a>}
+    <span>Página @pagina de @Model.Pages (@Model.Total mensagens)</span>
+    @if(pagina<Model.Pages){<a class="button button-quiet" asp-action="Index" asp-route-status="@status" asp-route-kind="@kind" asp-route-search="@search" asp-route-page="@(pagina+1)">Próxima →</a>}
+   </div>
+  }
+ }
+</section>

@@ -133,6 +133,8 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         return View(new ContractSheetViewModel
         {
             Sheet = result.Value,
+            // D-OC31 B.3 — resumo contínuo da jornada calculado no BFF a partir dos dados já projetados na ficha.
+            Journey = result.Value is { } sheetData ? ContractJourney.Build(sheetData) : null,
             ActiveMembers = activeMembers,
             SelectedObligationId = obrigacao,
             FromSource = from,
@@ -974,6 +976,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         Guid participantClientId,
         string? signMode = null,
         string? evidence = null,
+        string? evidenceDocumentVersion = null,
         string? participantName = null,
         [FromQuery] string? from = null,
         [FromQuery] int? year = null,
@@ -991,7 +994,10 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         var name = string.IsNullOrWhiteSpace(participantName) ? "o participante" : participantName.Trim();
         var returnUrl = BuildReturnUrl(tenantId, contractId, "#assinatura", from, year, month, scope, kind, urgency, viewId, obrigacao);
 
-        var result = await api.SignSignatureParticipantAsync(token, tenantId, versionId, preparationId, participantClientId, new SignParticipantRequest(signMode, evidence), ct);
+        // D-OC31 B.2: vínculo opcional de documento do acervo como evidência (modo "evidence");
+        // o hash é copiado do servidor — apenas o id da versão viaja no formulário.
+        var evidenceDoc = Guid.TryParse(evidenceDocumentVersion?.Trim(), out var evDocParsed) ? evDocParsed : Guid.Empty;
+        var result = await api.SignSignatureParticipantAsync(token, tenantId, versionId, preparationId, participantClientId, new SignParticipantRequest(signMode, evidence, evidenceDoc == Guid.Empty ? null : evidenceDoc), ct);
         if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         if (result.Status == ApiCallStatus.NotFound)
@@ -1021,12 +1027,15 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
 
         var replayed = result.Value.TryGetProperty("replayed", out var r) && r.ValueKind == JsonValueKind.True;
         var allSigned = result.Value.TryGetProperty("allSigned", out var a) && a.ValueKind == JsonValueKind.True;
+        // D-OC31 B.2: o ato registra o hash do PDF confirmado; com vínculo de acervo, a evidência documental é registrada junto.
+        var evidenceLinked = result.Value.TryGetProperty("evidenceDocumentVersionId", out var ev) && ev.ValueKind == JsonValueKind.String;
+        var evidenceSuffix = evidenceLinked ? " A evidência documental do acervo foi vinculada ao ato (id e hash do documento registrados)." : string.Empty;
         if (replayed)
             TempData["ContractSheetNotice"] = $"A assinatura de {name} já havia sido registrada.";
         else if (allSigned)
-            TempData["ContractSheetNotice"] = $"Assinatura de {name} registrada. Todos os participantes assinaram — a versão foi marcada como assinada.";
+            TempData["ContractSheetNotice"] = $"Assinatura de {name} registrada. Todos os participantes assinaram — a versão foi marcada como assinada.{evidenceSuffix}";
         else
-            TempData["ContractSheetNotice"] = $"Assinatura de {name} registrada em nome do usuário conectado nesta sessão.";
+            TempData["ContractSheetNotice"] = $"Assinatura de {name} registrada em nome do usuário conectado nesta sessão.{evidenceSuffix}";
         return Redirect(returnUrl);
     }
 
@@ -1125,7 +1134,21 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
             return Redirect(returnUrl);
         }
 
-        TempData["ContractSheetNotice"] = "Lembrete registrado para os participantes pendentes. O envio por canal externo ainda não está configurado — avise os signatários pelos seus canais.";
+        if (result.Value is { ValueKind: System.Text.Json.JsonValueKind.Object } body
+            && body.TryGetProperty("delivery", out var delivery)
+            && delivery.TryGetProperty("queued", out var queuedEl)
+            && queuedEl.TryGetInt32(out var queued))
+        {
+            // D-OC31 B.1: o texto reflete o estado real — enfileirado na outbox (entrega
+            // assíncrona) ou apenas registrado quando nenhum participante tem canal e-mail.
+            TempData["ContractSheetNotice"] = queued > 0
+                ? $"Lembrete enfileirado para {queued} participante(s) com e-mail ativo; a entrega por e-mail é processada em segundo plano."
+                : "Lembrete registrado para os participantes pendentes. Nenhum participante com e-mail ativo foi enfileirado — avise os signatários pelos seus canais.";
+        }
+        else
+        {
+            TempData["ContractSheetNotice"] = "Lembrete registrado para os participantes pendentes. O envio por canal externo ainda não está configurado — avise os signatários pelos seus canais.";
+        }
         return Redirect(returnUrl);
     }
 

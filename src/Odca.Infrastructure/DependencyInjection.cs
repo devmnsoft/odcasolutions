@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Microsoft.AspNetCore.DataProtection;
 using Npgsql;
 using Odca.Application.Common;
 using Odca.Application.Dashboard;
@@ -18,6 +17,7 @@ using Odca.Infrastructure.Plans;
 using Odca.Infrastructure.Privacy;
 using Odca.Application.Tenancy;
 using Odca.Infrastructure.Tenancy;
+using Odca.Infrastructure.Distributed;
 using Odca.Application.Consumption;
 using Odca.Infrastructure.Consumption;
 using Odca.Application.Contracts;
@@ -61,13 +61,9 @@ public static class DependencyInjection
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IPasswordService, AspNetPasswordService>();
         services.AddSingleton<ITokenService, JwtTokenService>();
-        var dataProtection = services.AddDataProtection()
-            .SetApplicationName(configuration["DataProtection:ApplicationName"] ?? "ODCA Solutions");
-        var keysPath = configuration["DataProtection:KeysPath"];
-        if (!string.IsNullOrWhiteSpace(keysPath))
-        {
-            dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
-        }
+        // D-OC31 A.4: seleção condicional — dev mantém filesystem de chaves;
+        // produção usa DataProtection:KeysStore=postgres (v054).
+        services.AddOdcaDataProtection(configuration);
         services.AddSingleton<IMfaSecretProtector, DataProtectionMfaSecretProtector>();
         services.AddSingleton<TotpService>();
         services.AddScoped<IIdentityRepository, NpgsqlIdentityRepository>();

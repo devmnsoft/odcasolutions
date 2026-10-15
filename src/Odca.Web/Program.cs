@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.DataProtection;
 using System.Threading.RateLimiting;
 using Odca.Web.Services;
 using Odca.Web.Middleware;
 using Odca.Web.Security;
 using Odca.Configuration;
+using Odca.Infrastructure.Distributed;
 
 var builder = WebApplication.CreateBuilder(args);
 var localConfiguration = LocalRuntimeConfiguration.Add(builder.Configuration, builder.Environment, args);
@@ -13,14 +13,11 @@ Console.WriteLine($"Configuração: ambiente={localConfiguration.Environment}; c
 
 builder.Services.AddControllersWithViews(options =>
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
-builder.Services.AddDistributedMemoryCache();
-var dataProtection = builder.Services.AddDataProtection()
-    .SetApplicationName(builder.Configuration["DataProtection:ApplicationName"] ?? "ODCA Solutions");
-var keysPath = builder.Configuration["DataProtection:KeysPath"];
-if (!string.IsNullOrWhiteSpace(keysPath))
-{
-    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
-}
+// D-OC31 A.4: dev mantém cache em memória e chaves em filesystem (comportamento
+// atual); produção configura Cache:Store=postgres e DataProtection:KeysStore=postgres
+// para compartilhar sessão e chaves entre instâncias (tabela v054).
+builder.Services.AddOdcaDistributedCache(builder.Configuration);
+builder.Services.AddOdcaDataProtection(builder.Configuration);
 builder.Services.AddSingleton<DistributedCacheTicketStore>();
 builder.Services.AddSingleton<Odca.Configuration.Localization.LocalizationService>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

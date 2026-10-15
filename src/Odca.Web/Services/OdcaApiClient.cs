@@ -851,6 +851,13 @@ public sealed partial class OdcaApiClient(HttpClient client, IHttpContextAccesso
         return await SendAsync<SaveDraftResponse>(message, false, ct);
     }
 
+    public async Task<ApiCallResult<RestoreDraftResponse>> RestoreStudioDraftAsync(string token, Guid tenantId, Guid draftId, RestoreDraftVersionRequest request, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/restore-from-version", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<RestoreDraftResponse>(message, false, ct);
+    }
+
     public async Task<ApiCallResult<GeneratedVersionResponse>> GenerateStudioVersionAsync(string token, Guid tenantId, Guid draftId, CancellationToken ct)
     {
         using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/versions", token);

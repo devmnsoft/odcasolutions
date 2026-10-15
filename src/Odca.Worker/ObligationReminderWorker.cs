@@ -71,7 +71,7 @@ public sealed class ObligationReminderWorker(
 
             var protectedPayload = _protector.Protect(title);
             await connection.ExecuteAsync(new CommandDefinition(
-                "INSERT INTO odca.notification_outbox(tenant_id,invitation_id,kind,destination,protected_payload,source_id) VALUES(@tenantId,NULL,'user_notification',@email,@payload,@sourceId) ON CONFLICT(source_id) DO NOTHING",
+                "INSERT INTO odca.notification_outbox(tenant_id,invitation_id,kind,destination,protected_payload,source_id) VALUES(@tenantId,NULL,'obligation_due',@email,@payload,@sourceId) ON CONFLICT(source_id) WHERE source_id IS NOT NULL DO NOTHING",
                 new { tenantId, email, payload = protectedPayload, sourceId }, transaction: tx, cancellationToken: ct));
         }
         catch (Exception ex)

@@ -454,4 +454,52 @@ public sealed class MigrationChecksumTests
         Assert.Contains("action LIKE 'identity.%' OR action = 'template.official_catalog_seeded'", snapshot, StringComparison.Ordinal);
         Assert.DoesNotContain("ODCA-MIGRATION 054", snapshot, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ReleaseV054AddsSharedStoresNotificationOpsRenewalRemindersAndEvidenceLink()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var previous = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v053.sql")).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v054.sql")).Replace("\r\n", "\n");
+        DatabaseMigrator.ValidateChecksums(previous);
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        DatabaseMigrator.ValidateChecksums(canonical);
+        for (var version = 1; version <= 53; version++)
+            Assert.Equal(MigrationBlock(previous, version), MigrationBlock(canonical, version));
+        // D-OC31: stores compartilhados em PostgreSQL para sessao/tickets e chaves de
+        // Data Protection (operacao multi-instancia); limite de tentativas da outbox
+        // configuravel; operacao de notificacoes para superadministrador com retry
+        // auditado; lembretes de renovacao pelos dias configuraveis do tenant; vinculo
+        // opcional de documento do acervo ao registro de assinatura por evidencia.
+        Assert.Contains("CREATE TABLE IF NOT EXISTS odca.distributed_cache_entries(", canonical, StringComparison.Ordinal);
+        Assert.Contains("CREATE TABLE IF NOT EXISTS odca.data_protection_keys(", canonical, StringComparison.Ordinal);
+        Assert.Contains("CREATE OR REPLACE FUNCTION odca.claim_notification(worker_id text, max_attempts integer DEFAULT 5)", canonical, StringComparison.Ordinal);
+        Assert.Contains("CREATE OR REPLACE FUNCTION odca.notification_ops_page(p_actor uuid", canonical, StringComparison.Ordinal);
+        Assert.Contains("CREATE OR REPLACE FUNCTION odca.retry_notification(p_message_id uuid, p_actor uuid)", canonical, StringComparison.Ordinal);
+        Assert.Contains("action LIKE 'platform.notifications.%'", canonical, StringComparison.Ordinal);
+        Assert.Contains("CREATE TABLE IF NOT EXISTS odca.renewal_reminders(", canonical, StringComparison.Ordinal);
+        Assert.Contains("ADD COLUMN IF NOT EXISTS evidence_document_version_id uuid", canonical, StringComparison.Ordinal);
+        Assert.DoesNotContain("ODCA-MIGRATION 055", snapshot, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReleaseV055FixesRetryNotificationPlainUpdateReturningWithoutRewritingEarlierMigrations()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var previous = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v054.sql")).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v055.sql")).Replace("\r\n", "\n");
+        DatabaseMigrator.ValidateChecksums(previous);
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        DatabaseMigrator.ValidateChecksums(canonical);
+        for (var version = 1; version <= 54; version++)
+            Assert.Equal(MigrationBlock(previous, version), MigrationBlock(canonical, version));
+        // D-OC31 (GATE): a v054 definiu retry_notification com 'UPDATE ... RETURNING 1;'
+        // como instrucao simples em PL/pgSQL, construcao rejeitada pelo PostgreSQL com
+        // 42601 ("query has no destination for result data") — todo retry auditado da
+        // central respondia 500 antes de executar qualquer UPDATE. A correcao redefine a
+        // funcao sem o RETURNING, mantendo o GET DIAGNOSTICS ROW_COUNT que decide o
+        // resultado e a condicao da auditoria.
+        Assert.DoesNotContain("ODCA-MIGRATION 056", snapshot, StringComparison.Ordinal);
+        Assert.Contains("GET DIAGNOSTICS changed = ROW_COUNT;", MigrationBlock(canonical, 55), StringComparison.Ordinal);
+    }
 }

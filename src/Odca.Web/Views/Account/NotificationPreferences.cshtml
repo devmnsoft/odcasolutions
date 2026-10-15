@@ -33,7 +33,17 @@
                             <tr>
                                 <td>
                                     <input type="hidden" name="Kinds[@idx].Kind" value="@k.Kind" />
-                                    @(k.Kind == "obligation_due" ? "Lembrete de obrigação" : k.Kind)
+                                    @(k.Kind switch
+                                    {
+                                        "obligation_due" => "Lembrete de obrigação",
+                                        "renewal_due" => "Lembrete de renovação",
+                                        "review_assigned" => "Revisão atribuída",
+                                        "review_decided" => "Decisão de revisão",
+                                        "solicitation_opened" => "Nova solicitação (plataforma)",
+                                        "solicitation_updated" => "Atualização de solicitação",
+                                        "signature_pending" => "Assinatura pendente",
+                                        _ => k.Kind
+                                    })
                                 </td>
                                 <td><input type="checkbox" name="Kinds[@idx].Enabled" value="true" @(k.Enabled ? "checked" : "") /></td>
                                 <td><input type="checkbox" name="Kinds[@idx].ChannelInApp" value="true" @(k.ChannelInApp ? "checked" : "") /></td>

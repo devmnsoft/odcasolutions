@@ -1,0 +1,137 @@
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+using Dapper;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Npgsql;
+
+namespace Odca.Api;
+
+/// <summary>
+/// B.1 (D-OC31): enfileira o e-mail de um evento de negócio em
+/// odca.notification_outbox dentro da transação do chamador (evento + outbox juntos),
+/// respeitando as preferências por canal (enabled/channel_email, por tipo) e o e-mail
+/// do usuário. Nunca lança: uma falha aqui é registrada como log e preserva a
+/// consistência da operação de negócio (a outbox tem retry próprio). Quando o ponto
+/// de chamada não mantém transação aberta (envelopes de função SQL executam em
+/// autocommit), o overload sem NpgsqlTransaction abre uma transação curta com o GUC
+/// do tenant definido para satisfazer o RLS da outbox.
+/// </summary>
+public static partial class NotificationEnqueue
+{
+    public static async Task<bool> EnqueueEmailAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction tx,
+        Guid tenantId,
+        Guid recipientId,
+        string kind,
+        string title,
+        IDataProtector protector,
+        Guid? sourceId,
+        ILogger logger,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var state = await connection.QuerySingleOrDefaultAsync<ChannelState>(new CommandDefinition(
+                "SELECT enabled AS Enabled, channel_in_app AS InApp, channel_email AS Email FROM odca.notification_channel_state(@tenantId,@userId,@kind)",
+                new { tenantId, userId = recipientId, kind }, transaction: tx, cancellationToken: ct));
+            if (state is null || !state.Enabled || !state.Email) return false;
+
+            var email = await connection.ExecuteScalarAsync<string?>(new CommandDefinition(
+                "SELECT email FROM odca.users WHERE id=@userId",
+                new { userId = recipientId }, transaction: tx, cancellationToken: ct));
+            if (string.IsNullOrWhiteSpace(email)) return false;
+
+            var payload = protector.Protect(title);
+            if (sourceId is null)
+            {
+                await connection.ExecuteAsync(new CommandDefinition(
+                    """
+                    INSERT INTO odca.notification_outbox(tenant_id,invitation_id,kind,destination,protected_payload)
+                    VALUES(@tenantId,NULL,@kind,@email,@payload)
+                    """, new { tenantId, kind, email, payload }, transaction: tx, cancellationToken: ct));
+            }
+            else
+            {
+                // Identidade determinística opcional: reprocessamento do mesmo evento
+                // nunca duplica a mensagem (ex.: replay idempotente do endpoint).
+                await connection.ExecuteAsync(new CommandDefinition(
+                    """
+                    INSERT INTO odca.notification_outbox(tenant_id,invitation_id,kind,destination,protected_payload,source_id)
+                    VALUES(@tenantId,NULL,@kind,@email,@payload,@sourceId)
+                    ON CONFLICT(source_id) WHERE source_id IS NOT NULL DO NOTHING
+                    """, new { tenantId, kind, email, payload, sourceId }, transaction: tx, cancellationToken: ct));
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            EnqueueFailure(logger, kind, recipientId, tenantId, ex.Message);
+            return false;
+        }
+    }
+
+    public static async Task<bool> EnqueueEmailAsync(
+        NpgsqlConnection connection,
+        Guid tenantId,
+        Guid actorId,
+        Guid recipientId,
+        string kind,
+        string title,
+        IDataProtector protector,
+        Guid? sourceId,
+        ILogger logger,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            await using var tx = await connection.BeginTransactionAsync(ct);
+            await connection.ExecuteAsync(new CommandDefinition(
+                "SELECT set_config('odca.tenant_id',@tenant::text,true),set_config('odca.user_id',@actor::text,true)",
+                new { tenant = tenantId, actor = actorId }, transaction: tx, cancellationToken: ct));
+            var queued = await EnqueueEmailAsync(connection, tx, tenantId, recipientId, kind, title, protector, sourceId, logger, ct);
+            await tx.CommitAsync(ct);
+            return queued;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            TransactionFailure(logger, kind, recipientId, ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Resolve o protetor de dados (compartilhado com o Worker pelo mesmo repositório de
+    /// chaves) e um logger a partir do provedor de serviços do request. Centraliza a
+    /// resolução para os controladores, que constroem o helper por chamada.
+    /// </summary>
+    public static (IDataProtector Protector, ILogger Logger) Resolve(IServiceProvider services) =>
+        (services.GetRequiredService<IDataProtector>(),
+         services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(NotificationEnqueue)));
+
+    /// <summary>
+    /// Identidade determinística de mensagem de outbox (SHA-256 truncado a 16 bytes):
+    /// o mesmo evento produz sempre o mesmo source_id, o que torna a deduplicação por
+    /// ON CONFLICT(source_id) válida mesmo em replay de endpoints.
+    /// </summary>
+    public static Guid DeterministicSource(string scope, params object[] parts)
+    {
+        var raw = string.Join('|', new[] { scope }.Concat(parts.Select(p => Convert.ToString(p, CultureInfo.InvariantCulture) ?? string.Empty)));
+        return new Guid(SHA256.HashData(Encoding.UTF8.GetBytes(raw)).AsSpan(0, 16).ToArray());
+    }
+
+    [LoggerMessage(EventId = 2401, Level = LogLevel.Warning, Message = "Falha ao enfileirar e-mail do tipo {Kind} para o usuário {UserId} na organização {TenantId}: {Reason}.", SkipEnabledCheck = true)]
+    private static partial void EnqueueFailure(ILogger logger, string kind, Guid userId, Guid tenantId, string reason);
+
+    [LoggerMessage(EventId = 2402, Level = LogLevel.Warning, Message = "Falha na transação de enfileiramento do e-mail do tipo {Kind} para o usuário {UserId}: {Reason}.", SkipEnabledCheck = true)]
+    private static partial void TransactionFailure(ILogger logger, string kind, Guid userId, string reason);
+
+    private sealed record ChannelState(bool Enabled, bool InApp, bool Email);
+}

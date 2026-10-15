@@ -14,6 +14,9 @@ public sealed class Worker(
 {
     private readonly IDataProtector protector = protectionProvider.CreateProtector("ODCA.TenantInvitation.v1");
     private readonly IDataProtector _notifProtector = protectionProvider.CreateProtector("ODCA.UserNotification.v1");
+    // B.1 (D-OC31): limite de tentativas configurável por processo (Notifications:MaxAttempts);
+    // o padrão 5 preserva o comportamento histórico (backoff quadrático, teto de 300s).
+    private readonly int _maxAttempts = ResolveMaxAttempts(configuration["Notifications:MaxAttempts"]);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -46,6 +49,10 @@ public sealed class Worker(
     private async Task ProcessOneAsync(CancellationToken ct)
     {
         await using var connection = await dataSource.OpenConnectionAsync(ct);
+        // B.1 (D-OC31): limpeza periódica do store compartilhado de sessões/chaves (v054).
+        // Operação barata e idempotente; o worker é o executor periódico designado.
+        await connection.ExecuteAsync(new CommandDefinition(
+            "SELECT odca.purge_expired_cache_entries();", null, cancellationToken: ct));
         var item = await connection.QuerySingleOrDefaultAsync<OutboxItem>(new CommandDefinition(
             """
             SELECT id AS "Id",
@@ -54,9 +61,9 @@ public sealed class Worker(
                    destination AS "Destination",
                    protected_payload AS "ProtectedPayload",
                    lease_token AS "LeaseToken"
-               FROM odca.claim_notification(@worker);
+               FROM odca.claim_notification(@worker, @maxAttempts);
             """,
-            new { worker = Environment.MachineName },
+            new { worker = Environment.MachineName, maxAttempts = _maxAttempts },
             cancellationToken: ct));
         if (item is null)
         {
@@ -81,8 +88,8 @@ public sealed class Worker(
             }
 
             await connection.ExecuteAsync(new CommandDefinition(
-                "SELECT odca.complete_notification(@id, @token, true, NULL);",
-                new { id = item.Id, token = item.LeaseToken },
+                "SELECT odca.complete_notification(@id, @token, true, NULL, @maxAttempts);",
+                new { id = item.Id, token = item.LeaseToken, maxAttempts = _maxAttempts },
                 cancellationToken: ct));
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -98,8 +105,8 @@ public sealed class Worker(
                 item.TenantId,
                 code);
             await connection.ExecuteAsync(new CommandDefinition(
-                "SELECT odca.complete_notification(@id, @token, false, @code);",
-                new { id = item.Id, token = item.LeaseToken, code },
+                "SELECT odca.complete_notification(@id, @token, false, @code, @maxAttempts);",
+                new { id = item.Id, token = item.LeaseToken, code, maxAttempts = _maxAttempts },
                 cancellationToken: CancellationToken.None));
         }
     }
@@ -129,6 +136,9 @@ public sealed class Worker(
         var trimmed = raw.Trim();
         return trimmed.Length <= 80 ? trimmed : trimmed[..80];
     }
+
+    private static int ResolveMaxAttempts(string? raw) =>
+        int.TryParse(raw, out var value) && value >= 1 ? value : 5;
 
     private sealed record OutboxItem(
         Guid Id,

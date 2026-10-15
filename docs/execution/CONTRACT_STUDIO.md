@@ -20,6 +20,7 @@ O bearer permanece somente no BFF e requisições mutáveis da interface mantêm
 
 - Minuta: `Alterações não salvas` → `Salvando` → `Salvo`; falhas viram `Falha` e divergência vira `Conflito`.
 - Versão: `generated` → `submitted` → `internally_approved` → `externally_signed` (transições posteriores continuam no fluxo de revisão/assinatura existente).
+- `externally_signed` (D-OC31 B.2): conclui quando todos os participantes registraram a assinatura **dentro da plataforma** (sessão/MFA ou evidência). É conclusão interna — não é certificação de provedor/notário, e a interface exibe rótulo correspondente ("assinada pelos participantes na plataforma"). Cada ato fica vinculado à versão exata confirmada e ao hash SHA-256 do PDF, registrados nos metadados de auditoria (`signature.participant_signed` / `signature.completed`) e no evento `signature.completed`; a evidência pode vincular uma versão segura do acervo (id + hash copiados do servidor).
 - Revisão: `in_review`, `changes_requested`, `internally_approved`, `cancelled` ou `superseded`.
 - Comentário: aberto, resolvido, reaberto ou logicamente excluído; resolver nunca aprova uma etapa.
 

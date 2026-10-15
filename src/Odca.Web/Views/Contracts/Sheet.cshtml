@@ -148,6 +148,37 @@
     </div>
 </header>
 
+<!-- D-OC31 B.3 — Jornada contínua: próxima ação + pendências por seção + motivo de bloqueio -->
+@if (Model.Journey is { } journey)
+{
+    <section id="jornada" class="renewal-list" aria-label="@L.T("sheet.journey_aria", _culture)">
+        <div class="list-header">
+            <h2>@L.T("sheet.journey_h", _culture)</h2>
+            @if (Model.CanReadHistory)
+            {
+                <a class="button button-link" href="#historico">@L.T("sheet.journey_history_link", _culture)</a>
+            }
+        </div>
+        <div class="renewal-cards">
+            <div>
+                <strong>@L.T(journey.NextActionKey, _culture)</strong>
+                <span>@L.T("sheet.journey_next", _culture)</span>
+            </div>
+            @foreach (var item in journey.Pending)
+            {
+                <div>
+                    <a href="@item.Anchor"><strong>@L.T(item.LabelKey, _culture)</strong></a>
+                    <span>@item.Count</span>
+                </div>
+            }
+        </div>
+        @if (journey.BlockKey is not null)
+        {
+            <p class="muted">@L.T(journey.BlockKey, _culture)@(string.IsNullOrWhiteSpace(journey.BlockReason) ? "" : $" — {journey.BlockReason}")</p>
+        }
+    </section>
+}
+
 <!-- SUBNAV STICKY COM ARIA-CURRENT -->
 <nav class="sheet-subnav" aria-label="@L.T("sheet.subnav_aria", _culture)">
     <a href="#detalhes">@L.T("sheet.nav_details", _culture)</a>
@@ -1003,6 +1034,20 @@
                                             <label class="field-label" for="evidence-@participant.ClientId">Evidência da assinatura (mínimo 5 caracteres)</label>
                                             <textarea id="evidence-@participant.ClientId" name="evidence" rows="3" required minlength="5" maxlength="2000"
                                                       placeholder="Descreva o documento físico, contrato assinado fora da plataforma ou outra evidência"></textarea>
+                                            <!-- D-OC31 B.2: vínculo opcional de documento do acervo como evidência;
+                                                 o hash é copiado do servidor e gravado junto com o id do documento. -->
+                                            <label class="field-label" for="evidence-doc-@participant.ClientId">Documento de evidência (opcional — versão segura deste contrato)</label>
+                                            <select id="evidence-doc-@participant.ClientId" name="evidenceDocumentVersion">
+                                                <option value="">Sem vínculo documental</option>
+                                                @foreach (var doc in sheet.Documents.Where(d => d.SafetyState == "safe"))
+                                                {
+                                                    <option value="@doc.VersionId">@doc.Name</option>
+                                                }
+                                            </select>
+                                            @if (!sheet.Documents.Any(d => d.SafetyState == "safe"))
+                                            {
+                                                <p class="permission-note">Nenhum documento com varredura segura neste contrato — a descrição textual basta.</p>
+                                            }
                                             <button class="button button-primary" type="submit">Registrar por evidência</button>
                                         </div>
                                     </details>

@@ -35,7 +35,8 @@ public sealed class PlatformSolicitationsController(NpgsqlDataSource dataSource)
     {
         var actor = Actor(); if (actor is null) return Unauthorized();
         await using var c = await dataSource.OpenConnectionAsync(ct);
-        return await SolicitationsController.EnvelopeResult(c, "SELECT odca.solicitation_detail(@actor,@solicitation)", new { actor = actor.Value, solicitation = solicitationId }, HttpContext, ct);
+        var outcome = await SolicitationsController.EnvelopeResult(c, "SELECT odca.solicitation_detail(@actor,@solicitation)", new { actor = actor.Value, solicitation = solicitationId }, HttpContext, ct);
+        return outcome.Result;
     }
 
     [HttpPost("api/v1/platform/solicitations/{solicitationId:guid}/messages")]
@@ -44,8 +45,11 @@ public sealed class PlatformSolicitationsController(NpgsqlDataSource dataSource)
         var actor = Actor(); if (actor is null) return Unauthorized();
         if (string.IsNullOrWhiteSpace(request.Body) || request.Body.Trim().Length < 2 || request.TenantId is null) return this.Invalid("api.solicitations.message_invalid");
         await using var c = await dataSource.OpenConnectionAsync(ct);
-        return await SolicitationsController.EnvelopeResult(c, "SELECT odca.solicitations_message(@tenant,@actor,@solicitation,@body,@version)",
+        var outcome = await SolicitationsController.EnvelopeResult(c, "SELECT odca.solicitations_message(@tenant,@actor,@solicitation,@body,@version)",
             new { tenant = request.TenantId.Value, actor = actor.Value, solicitation = solicitationId, body = request.Body.Trim(), version = request.RowVersion }, HttpContext, ct);
+        // D-OC31 B.1: resposta da plataforma → e-mail ao autor da solicitação.
+        if (outcome.Data is { } data) await SolicitationsController.NotifyOpenedByAsync(c, request.TenantId.Value, actor.Value, HttpContext, data, ct);
+        return outcome.Result;
     }
 
     [HttpPost("api/v1/platform/solicitations/{solicitationId:guid}/actions")]
@@ -54,8 +58,11 @@ public sealed class PlatformSolicitationsController(NpgsqlDataSource dataSource)
         var actor = Actor(); if (actor is null) return Unauthorized();
         if (string.IsNullOrWhiteSpace(request.Action) || request.TenantId is null) return this.Invalid("api.solicitations.action_invalid");
         await using var c = await dataSource.OpenConnectionAsync(ct);
-        return await SolicitationsController.EnvelopeResult(c, "SELECT odca.solicitations_transition(@tenant,@actor,@solicitation,@action,@text,@priority,@assignee,@version)",
+        var outcome = await SolicitationsController.EnvelopeResult(c, "SELECT odca.solicitations_transition(@tenant,@actor,@solicitation,@action,@text,@priority,@assignee,@version)",
             new { tenant = request.TenantId.Value, actor = actor.Value, solicitation = solicitationId, action = request.Action.Trim(), text = string.IsNullOrWhiteSpace(request.Text) ? null : request.Text.Trim(), priority = string.IsNullOrWhiteSpace(request.Priority) ? null : request.Priority.Trim(), assignee = request.AssigneeUserId, version = request.RowVersion }, HttpContext, ct);
+        // D-OC31 B.1: transição da plataforma → e-mail ao autor da solicitação.
+        if (outcome.Data is { } data) await SolicitationsController.NotifyOpenedByAsync(c, request.TenantId.Value, actor.Value, HttpContext, data, ct);
+        return outcome.Result;
     }
 
     [HttpGet("api/v1/platform/template-approvals")]
@@ -76,8 +83,9 @@ public sealed class PlatformSolicitationsController(NpgsqlDataSource dataSource)
         if (string.IsNullOrWhiteSpace(request.Decision)) return this.Invalid("api.approvals.decision_invalid");
         await using var c = await dataSource.OpenConnectionAsync(ct);
         await EnsurePlatformGuc(c, actor.Value, ct);
-        return await SolicitationsController.EnvelopeResult(c, "SELECT odca.template_approval_decide(@actor,@tenant,@key,@decision,@note)",
+        var outcome = await SolicitationsController.EnvelopeResult(c, "SELECT odca.template_approval_decide(@actor,@tenant,@key,@decision,@note)",
             new { actor = actor.Value, tenant = tenantId, key = key.Trim(), decision = request.Decision.Trim(), note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim() }, HttpContext, ct);
+        return outcome.Result;
     }
 
     private static async Task EnsurePlatformGuc(NpgsqlConnection c, Guid actor, CancellationToken ct) =>

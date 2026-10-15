@@ -1,6 +1,6 @@
 # Matriz de Planos, Benefícios e Operações
 
-**Data**: 2026-10-11 · **Status**: Documentado e comprovado em `odca_test_disposable`
+**Data**: 2026-10-11 · **Status**: Documentado e comprovado em `odca_test_disposable` · **2026-10-14 (D-OC31)**: reconciliada com o canônico (`v038`/`v045`/`v051` e banco zerado `odca_test_integration`): `module.reviews` é **exclusiva do Enterprise** (catálogo canônico 6/6/7); os três serviços documentais exigem plano Enterprise na abertura; `suporte_tecnico` exige apenas assinatura ativa.
 
 ## 1. Visão geral dos planos
 
@@ -18,11 +18,11 @@
 | documents (acervo) | ✅ | ✅ | ✅ |
 | imports (importação) | ✅ | ✅ | ✅ |
 | patients (pacientes) | ✅ | ✅ | ✅ |
-| reviews (solicitações ODCA) | ✅ | ❌ | ✅ |
+| reviews (solicitações ODCA) | ❌ | ❌ | ✅ |
 | signatures (assinaturas) | ✅ | ✅ | ✅ |
 | templates (modelos) | ✅ | ✅ | ✅ |
 
-**Única diferença de módulo**: `module.reviews` (Solicitações ODCA — revisão/adaptação/esclarecimento) está **desativada** no plano Intermediário. O atendimento documental humano é benefício Enterprise/Basic.
+**Única diferença de módulo**: `module.reviews` (fila de revisões documentais / Solicitações ODCA) está **desativada nos planos não Enterprise** (Basic e Intermediário). Canônico desde a `v038` ("ODCA requests become an Enterprise capability from this version forward"), confirmado em banco zerado: **Basic 6 / Intermediário 6 / Enterprise 7** módulos. O atendimento documental humano é benefício **Enterprise**.
 
 ### O que é contado e quando ocorre consumo:
 
@@ -36,11 +36,14 @@
 
 ## 3. Serviços de solicitação e SLA por plano
 
-Todos os planos têm acesso aos 4 serviços de solicitação:
-- `revisao` — Revisão documental (Enterprise/Basic apenas — gate no plano)
-- `adaptacao` — Adaptação de modelo
-- `esclarecimento` — Esclarecimento contratual
-- `suporte_tecnico` — Suporte técnico e recuperação de acesso
+O acesso é validado **serviço a serviço** na abertura (`odca.solicitations_open`, v045/v051), independentemente do item de menu:
+
+- `revisao` — Revisão documental — **apenas Enterprise**
+- `adaptacao` — Adaptação de modelo — **apenas Enterprise**
+- `esclarecimento` — Esclarecimento contratual — **apenas Enterprise**
+- `suporte_tecnico` — Suporte técnico e recuperação de acesso — **qualquer plano com assinatura ativa**
+
+Em planos não Enterprise, abrir um serviço documental devolve 409 com código estável `solicitations.plan.required` ("Central de solicitações disponível apenas no plano Enterprise."). Os tempos de serviço documental abaixo existem semeados em `sla_policies` para os três planos, mas são **inativos** para Basic/Intermediário enquanto o gate de plano vigora.
 
 ### SLA — Tempo de primeira resposta (minutos)
 
@@ -94,9 +97,9 @@ Todos os planos têm acesso aos 4 serviços de solicitação:
 | Aspecto | Suporte técnico | Atendimento documental |
 |---------|----------------|----------------------|
 | Serviço no banco | `suporte_tecnico` | `revisao`, `adaptacao`, `esclarecimento` |
-| Disponibilidade | Todos os planos | Basic e Enterprise (gate `module.reviews`) |
+| Disponibilidade | Qualquer plano com assinatura ativa | **Enterprise apenas** (gate de plano em `solicitations_open`; o módulo `module.reviews` também só está habilitado no Enterprise) |
 | Exemplo de uso | Recuperação de acesso, erro técnico | Revisão de minuta, adaptação de cláusula |
-| SLA | Idêntico ao plano (mesma tabela) | Idêntico ao plano |
+| SLA | Idêntico ao plano (mesma tabela) | Idêntico ao plano (Enterprise) |
 | Canal de notificação | In-app + outbox | In-app + outbox |
 
 ## 6. Upgrade/Downgrade
@@ -113,6 +116,7 @@ Todos os planos têm acesso aos 4 serviços de solicitação:
 | Item | Suíte | Assert | Status |
 |------|-------|--------|--------|
 | Gate reviews no intermediate | E-suite S8 | `module.reviews` desativado → 403 na API + item oculto no menu | ✅ |
+| Gate services por plano | `PlanServiceGateTests` (D-OC31) | abertura revisao/adaptacao/esclarecimento em basic e intermediate → 409 `solicitations.plan.required`; suporte_tecnico abre nos três planos; catálogos 6/6/7 | ✅ |
 | Suporte técnico em basic | E-suite S8 | `suporte_tecnico` abre em basic (sem gate Enterprise) | ✅ |
 | Limite de assentos | E-suite S5 | 4º membro em basic → 409 `plan.seats.exceeded` | ✅ |
 | Storage excedido | D-suite D12 | Upload acima do limite → 503 problem+json | ✅ |

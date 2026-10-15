@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Odca.Contracts\Odca.Contracts.csproj" />
     <ProjectReference Include="..\Odca.Configuration\Odca.Configuration.csproj" />
+    <ProjectReference Include="..\Odca.Infrastructure\Odca.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

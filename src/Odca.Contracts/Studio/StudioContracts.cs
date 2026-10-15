@@ -32,6 +32,12 @@ public sealed record DraftCreatedResponse(Guid Id, Guid ContractId);
 public sealed record DraftResponse(Guid Id, Guid ContractId, string Title, Guid SourceTemplateId, Guid SourceTemplateVersionId, JsonElement Content, JsonElement Fields, JsonElement Values, long Version, Guid? LastClientRevision, DateTimeOffset UpdatedAt, bool RequiresOdcaApproval = false);
 public sealed record SaveDraftRequest(JsonElement Content, JsonElement Fields, JsonElement Values, long ExpectedVersion, Guid ClientRevision);
 public sealed record SaveDraftResponse(long Version, Guid ClientRevision, DateTimeOffset SavedAt);
+
+// D-OC31 B.3: restaurar o retrato de uma versão gerada na minuta cria uma nova
+// revisão (row_version+1); valores de origem automática seguem os dados atuais.
+public sealed record RestoreDraftVersionRequest(Guid VersionId, long ExpectedVersion);
+
+public sealed record RestoreDraftResponse(long Version, int SourceNumber, DateTimeOffset SavedAt);
 public sealed record GenerateVersionRequest(Guid IdempotencyKey, long ExpectedVersion = 0);
 public sealed record ConfirmPatientVersionRequest(long ExpectedDraftVersion, long ExpectedPatientVersion, IReadOnlyList<string>? AcceptedKeys = null, bool AcknowledgeRemaining = false);
 
@@ -88,7 +94,7 @@ public sealed record GeneratedVersionDetail(Guid Id, Guid ContractId, Guid Draft
     SignaturePreparationResponse? SignaturePreparation);
 public sealed record SignatureParticipantInput(Guid Id, string ParticipantType, Guid? SourceId, string Role, string Name, string? Email, string? Phone, int Position,
     DateTime? SignedAt = null, Guid? SignedBy = null, Guid? IdentityMembershipId = null, string? SignedThrough = null, bool IdentityLinkedToMe = false);
-public sealed record SignParticipantRequest(string? Mode, string? Evidence = null);
+public sealed record SignParticipantRequest(string? Mode, string? Evidence = null, Guid? EvidenceDocumentVersionId = null);
 public sealed record SaveSignaturePreparationRequest(long ExpectedVersion, bool Confirm, IReadOnlyList<SignatureParticipantInput>? Participants, Guid? OperationId = null);
 public sealed record ReopenSignaturePreparationRequest(long ExpectedVersion, string Justification, Guid OperationId);
 public sealed record SignatureReadinessItem(string Code, string Message, string Reason, string CorrectionAction, string? RequiredPermission);
