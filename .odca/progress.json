@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "baseline": {
+    "percent": 40,
+    "commit": "8095bc8d3f6576a4314591d0667f1a08018c93f1",
+    "source": "Referência aproximada do último briefing informada pelo responsável em 16/10/2026"
+  },
+  "method": "Índice de acompanhamento: base histórica de 40 pontos + 60 pontos distribuídos em marcos restantes. Pesos de planejamento não representam horas nem medição objetiva do software. Não contar commits, quantidade de testes ou simples alteração de arquivos.",
+  "instructions": "A cada entrega, registrar somente os marcos integralmente concluídos. Preencher completed_commit com o SHA de 40 caracteres que contém código e evidências; ci_run_id com execução CI de push na branch codex/s00-foundation no mesmo SHA; status=completed e acceptance.approved=true somente após aprovação real, approved_by e evidence_paths com arquivos rastreáveis no mesmo commit. O portal exige CI concluída com sucesso, job build-test e passo Tests aprovados; evidências devem existir e o commit deve ser ancestral do atual. Não declarar aprovação de usuário sem aceite. Documentação ou mudança de código sozinhas não geram pontos. Regressão: status=reopened remove o crédito do marco. Nunca alterar baseline, IDs ou pesos para inflar avanço.",
+  "milestones": [
+    {
+      "id": "templates",
+      "title": "Modelos de estreia aprovados",
+      "weight": 8,
+      "criterion": "Aprovação dos textos, campos e PDFs do catálogo de estreia.",
+      "status": "pending",
+      "completed_commit": null,
+      "ci_run_id": null,
+      "required_test_step": "Tests",
+      "acceptance": {
+        "approved": false,
+        "approved_by": null,
+        "evidence_paths": []
+      }
+    },
+    {
+      "id": "signature",
+      "title": "Assinatura externa completa",
+      "weight": 12,
+      "criterion": "Envio, eventos, negativas e documento final comprovados.",
+      "status": "pending",
+      "completed_commit": null,
+      "ci_run_id": null,
+      "required_test_step": "Tests",
+      "acceptance": {
+        "approved": false,
+        "approved_by": null,
+        "evidence_paths": []
+      }
+    },
+    {
+      "id": "operations",
+      "title": "Jornada contratual completa",
+      "weight": 8,
+      "criterion": "Paciente, documento, revisão, agenda e renovações validados juntos.",
+      "status": "pending",
+      "completed_commit": null,
+      "ci_run_id": null,
+      "required_test_step": "Tests",
+      "acceptance": {
+        "approved": false,
+        "approved_by": null,
+        "evidence_paths": []
+      }
+    },
+    {
+      "id": "production",
+      "title": "Serviços e segurança de produção",
+      "weight": 10,
+      "criterion": "E-mail, armazenamento, isolamento e recuperação comprovados.",
+      "status": "pending",
+      "completed_commit": null,
+      "ci_run_id": null,
+      "required_test_step": "Tests",
+      "acceptance": {
+        "approved": false,
+        "approved_by": null,
+        "evidence_paths": []
+      }
+    },
+    {
+      "id": "pilot",
+      "title": "Piloto e aceite de usuários",
+      "weight": 12,
+      "criterion": "Usuários convidados concluem cenários e responsáveis aprovam a versão.",
+      "status": "pending",
+      "completed_commit": null,
+      "ci_run_id": null,
+      "required_test_step": "Tests",
+      "acceptance": {
+        "approved": false,
+        "approved_by": null,
+        "evidence_paths": []
+      }
+    },
+    {
+      "id": "launch",
+      "title": "Implantação e sustentação",
+      "weight": 10,
+      "criterion": "Implantação, contingência e suporte aprovados para o uso real.",
+      "status": "pending",
+      "completed_commit": null,
+      "ci_run_id": null,
+      "required_test_step": "Tests",
+      "acceptance": {
+        "approved": false,
+        "approved_by": null,
+        "evidence_paths": []
+      }
+    }
+  ]
+}
