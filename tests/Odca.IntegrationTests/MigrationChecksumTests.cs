@@ -502,4 +502,26 @@ public sealed class MigrationChecksumTests
         Assert.DoesNotContain("ODCA-MIGRATION 056", snapshot, StringComparison.Ordinal);
         Assert.Contains("GET DIAGNOSTICS changed = ROW_COUNT;", MigrationBlock(canonical, 55), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ReleaseV056AddsContentIndexReservationExpiryAndDraftExtractionReviewsWithoutRewritingEarlierMigrations()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var previous = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v055.sql")).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v056.sql")).Replace("\r\n", "\n");
+        DatabaseMigrator.ValidateChecksums(previous);
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        DatabaseMigrator.ValidateChecksums(canonical);
+        for (var version = 1; version <= 55; version++)
+            Assert.Equal(MigrationBlock(previous, version), MigrationBlock(canonical, version));
+        // D-OC32: indice de consulta por hash de conteudo para o reupload idempotente por
+        // conteudo; funcao do worker que expira reservas de armazenamento pendentes apos o
+        // prazo e libera a cota reservada correspondente; registro idempotente de aplicacao
+        // de extracao/OCR ao rascunho do estudio.
+        Assert.Contains("CREATE INDEX IF NOT EXISTS ix_document_versions_content ON odca.document_versions(tenant_id,document_id,sha256);", canonical, StringComparison.Ordinal);
+        Assert.Contains("CREATE OR REPLACE FUNCTION odca.expire_storage_reservations(p_limit integer DEFAULT 500)", canonical, StringComparison.Ordinal);
+        Assert.Contains("GREATEST(0, u.reserved_bytes - agg.released)", canonical, StringComparison.Ordinal);
+        Assert.Contains("CREATE TABLE IF NOT EXISTS odca.draft_extraction_reviews(", canonical, StringComparison.Ordinal);
+        Assert.DoesNotContain("ODCA-MIGRATION 057", snapshot, StringComparison.Ordinal);
+    }
 }

@@ -228,6 +228,27 @@ public sealed class StructuredContractDocument
     }
 
     /// <summary>
+    /// Valida um valor escalar contra o tipo do campo, aplicando exatamente as mesmas regras
+    /// por tipo usadas em <see cref="ValidateValues"/> (fonte única das regras de formato).
+    /// </summary>
+    public static bool TryValidateValue(ContractFieldDefinition definition, string value)
+    {
+        if (string.IsNullOrEmpty(value)) return false;
+        return definition.Type switch
+        {
+            ContractFieldType.Date => DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _),
+            ContractFieldType.Number => CanonicalDecimal.IsStoredNumber(value),
+            ContractFieldType.Currency => CanonicalDecimal.IsStoredCurrency(value),
+            ContractFieldType.BrazilianDocument => BrazilianDocument.NormalizeAndValidate(value).Type != "invalid",
+            ContractFieldType.Choice => definition.Choices?.Contains(value, StringComparer.Ordinal) == true,
+            ContractFieldType.Formula => CanonicalDecimal.IsStoredCurrency(value),
+            ContractFieldType.ShortText => value.Length <= 300,
+            ContractFieldType.LongText => value.Length <= 20_000,
+            _ => false
+        };
+    }
+
+    /// <summary>
     /// Values claiming an automatic origin (patient, organization, representative or contractor)
     /// are only accepted when they match the configured origin and the previously stored value.
     /// Anything else is recorded as manual and unconfirmed so registrations cannot masquerade as

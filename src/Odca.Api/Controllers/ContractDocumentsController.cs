@@ -111,6 +111,19 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
             {
                 var lockedDocumentId = await connection.ExecuteScalarAsync<Guid?>(new CommandDefinition("SELECT id FROM odca.contract_documents WHERE id=@logicalId AND tenant_id=@tenantId AND contract_id=@contractId AND deleted_at IS NULL FOR UPDATE", new { logicalId, tenantId, contractId }, transaction, cancellationToken: ct));
                 if (lockedDocumentId is null) return NotFound();
+                // D-OC32 B.1: reupload por hash de conteudo — mesmo sha256 no mesmo documento
+                // e replay honesto: sem nova versao, sem cota dupla, reserva liberada.
+                var replayed = await connection.QuerySingleOrDefaultAsync<ReplayedVersion>(new CommandDefinition("SELECT id AS Id,version_number AS Version,security_status AS SecurityStatus FROM odca.document_versions WHERE tenant_id=@tenantId AND contract_id=@contractId AND document_id=@logicalId AND sha256=@hash ORDER BY version_number DESC LIMIT 1", new { tenantId, contractId, logicalId, hash }, transaction, cancellationToken: ct));
+                if (replayed is not null)
+                {
+                    await connection.ExecuteAsync(new CommandDefinition("""
+                        UPDATE odca.tenant_storage_usage SET reserved_bytes=GREATEST(0,reserved_bytes-@size) WHERE tenant_id=@tenantId;
+                        UPDATE odca.storage_reservations SET status='released',finalized_at=now() WHERE tenant_id=@tenantId AND id=@reservationId AND status='reserved';
+                        INSERT INTO odca.contract_events(tenant_id,contract_id,actor_id,event_type,details) VALUES(@tenantId,@contractId,@actor,'document_reuploaded',jsonb_build_object('sha256',@hash,'versionId',@matchedVersionId,'version',@matchedVersion));
+                        """, new { size, tenantId, reservationId, actor, contractId, hash, matchedVersionId = replayed.Id, matchedVersion = replayed.Version }, transaction, cancellationToken: ct));
+                    await transaction.CommitAsync(ct);
+                    return Ok(new { status = "replayed", replayed = true, documentId = logicalId, versionId = replayed.Id, version = replayed.Version, securityStatus = replayed.SecurityStatus });
+                }
             }
             var number = await connection.ExecuteScalarAsync<int>(new CommandDefinition("SELECT COALESCE(max(version_number),0)+1 FROM odca.document_versions WHERE document_id=@logicalId", new { logicalId }, transaction, cancellationToken: ct));
             await connection.ExecuteAsync(new CommandDefinition("""
@@ -134,7 +147,7 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
                 IOFile.Delete(destinationPath);
                 throw;
             }
-            return Created($"{Request.Path}/{logicalId:D}/versions/{versionId:D}", new { documentId = logicalId, versionId, version = number, securityStatus = "pending" });
+            return Created($"{Request.Path}/{logicalId:D}/versions/{versionId:D}", new { documentId = logicalId, versionId, version = number, securityStatus = "pending", replayed = false });
         }
         catch (InvalidDataException exception)
         {
@@ -245,6 +258,7 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
     private sealed record StoredVersion(string StorageKey, string DisplayName, string DetectedType, string SecurityStatus);
     private sealed record ExistingReservation(Guid Id,string Status);
     private sealed record SuggestionForApply(string FieldName, string? NormalizedValue);
+    private sealed record ReplayedVersion(Guid Id, int Version, string SecurityStatus);
     public sealed record ReviewDecision(Guid SuggestionId, string Status, string? Value);
     public sealed record ApplyReviewRequest(Guid IdempotencyKey, long ContractVersion, IReadOnlyList<ReviewDecision> Decisions);
 }

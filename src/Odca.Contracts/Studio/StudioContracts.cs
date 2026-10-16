@@ -38,6 +38,12 @@ public sealed record SaveDraftResponse(long Version, Guid ClientRevision, DateTi
 public sealed record RestoreDraftVersionRequest(Guid VersionId, long ExpectedVersion);
 
 public sealed record RestoreDraftResponse(long Version, int SourceNumber, DateTimeOffset SavedAt);
+
+// D-OC32 B.3: aplica sugestões de extração/OCR ao rascunho do estúdio — mapeamento
+// fechado conceito→campo (sem adivinhar), valores aterrissam source="extraction"
+// confirmed=false; idempotência por chave (payload divergente na mesma chave é 409).
+public sealed record DraftExtractionDecision(Guid SuggestionId, string Status, string? Value);
+public sealed record ApplyDraftExtractionRequest(Guid ExtractionId, long ExpectedVersion, Guid IdempotencyKey, IReadOnlyList<DraftExtractionDecision> Decisions);
 public sealed record GenerateVersionRequest(Guid IdempotencyKey, long ExpectedVersion = 0);
 public sealed record ConfirmPatientVersionRequest(long ExpectedDraftVersion, long ExpectedPatientVersion, IReadOnlyList<string>? AcceptedKeys = null, bool AcknowledgeRemaining = false);
 

@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Odca.Api.Localization;
 using Odca.Application.Contracts;
+using Odca.Application.Documents;
 using Odca.Application.Tenancy;
 using Odca.Contracts.Studio;
 
@@ -724,6 +725,115 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
         if(saved is null){var current=await c.ExecuteScalarAsync<long?>(new CommandDefinition("SELECT row_version FROM odca.contract_drafts WHERE tenant_id=@tenantId AND id=@draftId",new{tenantId,draftId},tx,cancellationToken:ct));return current is null?NotFound():Conflict(new{title=this.T("api.studio.draft_changed_other_session"),code="draft.save.conflict",currentVersion=current,clientRevision=request.ClientRevision});}
         await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.draft_save_receipts(tenant_id,draft_id,client_revision,saved_version,saved_at) VALUES(@tenantId,@draftId,@clientRevision,@version,@savedAt); INSERT INTO odca.contract_events(tenant_id,contract_id,actor_id,event_type,details) SELECT tenant_id,contract_id,@actor,'draft.saved',jsonb_build_object('version',row_version,'clientRevision',@clientRevision) FROM odca.contract_drafts WHERE id=@draftId AND tenant_id=@tenantId",new{actor,request.ClientRevision,draftId,tenantId,version=saved.Version,savedAt=saved.SavedAt},tx,cancellationToken:ct));await tx.CommitAsync(ct);return Ok(new SaveDraftResponse(saved.Version,saved.ClientRevision,ToUtcOffset(saved.SavedAt)));
     }
+
+    // D-OC32 B.3: aplica sugestoes de extracao/OCR ao rascunho do estudio. Mapeamento fechado
+    // (ExtractionDraftMapping): sem destino unico provavel, o campo fica para decissao humana.
+    // Valores aterrissam source="extraction" confirmed=false; nunca sobrescreve valor confirmado
+    // nem campo calculado; idempotencia por chave com payload registrado (divergente vira 409).
+    [HttpPost("drafts/{draftId:guid}/apply-extraction")]
+    public async Task<IActionResult> ApplyExtraction(Guid tenantId, Guid draftId, [FromBody] ApplyDraftExtractionRequest request, CancellationToken ct)
+    {
+        var actor = Actor(); if (actor is null) return Unauthorized();
+        if (request.Decisions is not { Count: > 0 and <= 30 } || request.Decisions.Any(x => x.Status is not ("accepted" or "edited" or "rejected"))) return this.Invalid("api.documents.apply_invalid");
+        await using var c = await dataSource.OpenConnectionAsync(ct);
+        if (!await Allowed(c, actor.Value, tenantId, "tenant.contract_drafts.manage", ct) || !await Allowed(c, actor.Value, tenantId, "tenant.extractions.apply", ct)) return Forbid();
+        await using var tx = await c.BeginTransactionAsync(ct);
+        await SetTenant(c, tenantId, actor.Value, tx, ct);
+        var draft = await c.QuerySingleOrDefaultAsync<ApplyDraftRow>(new CommandDefinition("SELECT d.id AS Id,d.contract_id AS ContractId,d.row_version AS Version,d.values::text AS Values,d.fields::text AS Fields FROM odca.contract_drafts d WHERE d.tenant_id=@tenantId AND d.id=@draftId FOR UPDATE", new { tenantId, draftId }, tx, cancellationToken: ct));
+        if (draft is null) return NotFound();
+        var prior = await c.QuerySingleOrDefaultAsync<PriorDraftReview>(new CommandDefinition("SELECT status AS Status,decisions::text AS Decisions FROM odca.draft_extraction_reviews WHERE tenant_id=@tenantId AND idempotency_key=@key", new { tenantId, key = request.IdempotencyKey }, tx, cancellationToken: ct));
+        if (prior?.Status == "applied")
+        {
+            await tx.CommitAsync(ct);
+            return SameDraftDecisions(prior.Decisions, request.Decisions)
+                ? Ok(new { status = "applied", repeated = true })
+                : Conflict(new { title = this.T("api.idempotency.payload.conflict"), code = "idempotency.payload.conflict" });
+        }
+        await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.draft_extraction_reviews(id,tenant_id,draft_id,job_id,reviewed_by,draft_row_version,idempotency_key,decisions) VALUES(@reviewId,@tenantId,@draftId,@extractionId,@actor,@expected,@key,@decisions::jsonb) ON CONFLICT(tenant_id,idempotency_key) DO NOTHING", new { reviewId = Guid.NewGuid(), tenantId, draftId, extractionId = request.ExtractionId, actor, expected = request.ExpectedVersion, key = request.IdempotencyKey, decisions = SerializeDraftDecisions(request.Decisions) }, tx, cancellationToken: ct));
+        if (draft.Version != request.ExpectedVersion)
+        {
+            await c.ExecuteAsync(new CommandDefinition("UPDATE odca.draft_extraction_reviews SET status='conflicting' WHERE tenant_id=@tenantId AND idempotency_key=@key", new { tenantId, key = request.IdempotencyKey }, tx, cancellationToken: ct));
+            await tx.CommitAsync(ct);
+            return Conflict(new { title = this.T("api.studio.draft_changed_other_session"), code = "draft.save.conflict", currentVersion = draft.Version });
+        }
+        var suggestions = (await c.QueryAsync<ApplySuggestionRow>(new CommandDefinition("""
+            SELECT s.id AS Id,s.field_name AS FieldName,s.normalized_value AS NormalizedValue
+              FROM odca.extraction_suggestions s
+              JOIN odca.extraction_results r ON r.id=s.result_id AND r.tenant_id=s.tenant_id
+              JOIN odca.extraction_jobs j ON j.id=r.job_id AND j.tenant_id=r.tenant_id
+             WHERE s.tenant_id=@tenantId AND j.id=@extractionId AND j.contract_id=@contractId
+             ORDER BY s.id FOR UPDATE
+            """, new { tenantId, extractionId = request.ExtractionId, contractId = draft.ContractId }, tx, cancellationToken: ct))).ToDictionary(x => x.Id);
+        var definitions = JsonSerializer.Deserialize<ContractFieldDefinition[]>(draft.Fields, CamelCaseJsonOptions) ?? [];
+        var values = JsonNode.Parse(draft.Values)?.AsArray() ?? new JsonArray();
+        var byId = definitions.ToDictionary(d => d.Id, StringComparer.Ordinal);
+        var applied = new JsonArray();
+        var skipped = new JsonArray();
+        foreach (var decision in request.Decisions)
+        {
+            if (!suggestions.TryGetValue(decision.SuggestionId, out var suggestion)) return this.Invalid("api.documents.suggestion_missing");
+            var value = decision.Status == "edited" ? decision.Value?.Trim() : suggestion.NormalizedValue;
+            await c.ExecuteAsync(new CommandDefinition("UPDATE odca.extraction_suggestions SET review_status=@status,reviewed_value=@value,reviewed_by=@actor,reviewed_at=now() WHERE tenant_id=@tenantId AND id=@id", new { decision.Status, value, actor, tenantId, id = decision.SuggestionId }, tx, cancellationToken: ct));
+            if (decision.Status == "rejected") continue;
+            var skip = (string why) => skipped.Add(new JsonObject { ["suggestionId"] = decision.SuggestionId.ToString(), ["reason"] = why, ["field"] = suggestion.FieldName });
+            var (fieldId, reason) = ExtractionDraftMapping.Resolve(suggestion.FieldName, suggestion.NormalizedValue, definitions);
+            if (fieldId is null) { skip(reason ?? ExtractionDraftMapping.Unmapped); continue; }
+            if (string.IsNullOrWhiteSpace(value)) { skip("value_missing"); continue; }
+            var definition = byId[fieldId];
+            if (definition.Type == ContractFieldType.Formula) { skip("calculated"); continue; }
+            var index = -1;
+            for (var i = 0; i < values.Count; i++)
+                if ((values[i] as JsonObject)?["fieldId"]?.GetValue<string>() == fieldId) { index = i; break; }
+            var current = index >= 0 ? values[index] as JsonObject : null;
+            if (current?["confirmed"]?.GetValue<bool>() == true && !string.IsNullOrWhiteSpace(current?["value"]?.GetValue<string>())) { skip("already_confirmed"); continue; }
+            if (!StructuredContractDocument.TryValidateValue(definition, value)) { skip("value_invalid_for_field"); continue; }
+            var entry = new JsonObject { ["fieldId"] = fieldId, ["value"] = value, ["confirmed"] = false, ["source"] = "extraction" };
+            if (index >= 0) values[index] = entry; else values.Add(entry);
+            applied.Add(new JsonObject { ["suggestionId"] = decision.SuggestionId.ToString(), ["fieldId"] = fieldId, ["field"] = suggestion.FieldName });
+        }
+        var jsonOptions = RelaxedJsonOptions;
+        var saved = await c.ExecuteScalarAsync<long?>(new CommandDefinition("UPDATE odca.contract_drafts SET values=@values::jsonb,row_version=row_version+1,updated_by=@actor,updated_at=now() WHERE tenant_id=@tenantId AND id=@draftId AND row_version=@expectedVersion RETURNING row_version", new { values = values.ToJsonString(jsonOptions), actor, tenantId, draftId, expectedVersion = request.ExpectedVersion }, tx, cancellationToken: ct));
+        if (saved is null)
+        {
+            await c.ExecuteAsync(new CommandDefinition("UPDATE odca.draft_extraction_reviews SET status='conflicting' WHERE tenant_id=@tenantId AND idempotency_key=@key", new { tenantId, key = request.IdempotencyKey }, tx, cancellationToken: ct));
+            await tx.CommitAsync(ct);
+            return Conflict(new { title = this.T("api.studio.draft_changed_other_session"), code = "draft.save.conflict", currentVersion = draft.Version });
+        }
+        await c.ExecuteAsync(new CommandDefinition("""
+            UPDATE odca.draft_extraction_reviews SET status='applied',applied_at=now(),applied_field_ids=@appliedFields::jsonb WHERE tenant_id=@tenantId AND idempotency_key=@key;
+            INSERT INTO odca.contract_events(tenant_id,contract_id,actor_id,event_type,details) VALUES(@tenantId,@contractId,@actor,'draft.extraction_applied',jsonb_build_object('extractionId',@extractionId,'version',@version,'applied',@appliedDetail::jsonb,'skipped',@skippedDetail::jsonb));
+            """, new { appliedFields = applied.ToJsonString(jsonOptions), tenantId, key = request.IdempotencyKey, contractId = draft.ContractId, actor, extractionId = request.ExtractionId, version = saved.Value, appliedDetail = applied.ToJsonString(jsonOptions), skippedDetail = skipped.ToJsonString(jsonOptions) }, tx, cancellationToken: ct));
+        await tx.CommitAsync(ct);
+        return Ok(new { status = "applied", repeated = false, version = saved.Value, applied, skipped });
+    }
+
+    private static string SerializeDraftDecisions(IReadOnlyList<DraftExtractionDecision> decisions)
+    {
+        var nodes = decisions.Select(x => (JsonNode)new JsonObject { ["suggestionId"] = x.SuggestionId.ToString(), ["status"] = x.Status, ["value"] = x.Value })
+            .OrderBy(x => x["suggestionId"]!.GetValue<string>(), StringComparer.Ordinal).ToArray();
+        return new JsonArray(nodes).ToJsonString();
+    }
+
+    private static bool SameDraftDecisions(string? storedJson, IReadOnlyList<DraftExtractionDecision> submitted)
+    {
+        var stored = JsonNode.Parse(storedJson ?? "[]")?.AsArray();
+        if (stored is null || stored.Count != submitted.Count) return false;
+        const char sep = '\u001F';
+        var normalized = new List<string>(stored.Count);
+        foreach (var node in stored)
+        {
+            if (node is not JsonObject item) continue;
+            normalized.Add(item["suggestionId"]!.GetValue<string>() + sep + item["status"]!.GetValue<string>() + sep + (item["value"]?.ToJsonString() ?? "null"));
+        }
+        var current = submitted.Select(x => x.SuggestionId.ToString() + sep + x.Status + sep + (System.Text.Json.Nodes.JsonValue.Create(x.Value)?.ToJsonString() ?? "null")).ToList();
+        normalized.Sort(StringComparer.Ordinal);
+        current.Sort(StringComparer.Ordinal);
+        return normalized.SequenceEqual(current, StringComparer.Ordinal);
+    }
+
+    private sealed record ApplyDraftRow(Guid Id, Guid ContractId, long Version, string Values, string Fields);
+    private sealed record PriorDraftReview(string Status, string Decisions);
+    private sealed record ApplySuggestionRow(Guid Id, string FieldName, string? NormalizedValue);
 
     [HttpPost("drafts/{draftId:guid}/restore-from-version")]
     public async Task<IActionResult> RestoreFromVersion(Guid tenantId,Guid draftId,[FromBody] RestoreDraftVersionRequest request,CancellationToken ct)
@@ -1487,6 +1597,7 @@ public sealed class ContractStudioController(NpgsqlDataSource dataSource, IConfi
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive=true, Converters={new JsonStringEnumConverter()} };
     private static readonly JsonSerializerOptions CamelCaseJsonOptions = new(JsonOptions) { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    private static readonly JsonSerializerOptions RelaxedJsonOptions = new() { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
     private static async Task<string> InitialDraftValuesAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, Guid tenantId, Guid? patientId, string fieldsJson, string? contractorSource, CancellationToken ct)
     {
         string? snapshot = null;

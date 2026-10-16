@@ -519,6 +519,72 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
     public Task<IActionResult> ReopenCommentAsync(Guid tenantId,Guid draftId,Guid commentId,[FromBody]ChangeStudioCommentStateRequest request,CancellationToken ct)=>ChangeCommentStateAsync(tenantId,draftId,commentId,"reopen",request,ct);
     private async Task<IActionResult> ChangeCommentStateAsync(Guid tenantId,Guid draftId,Guid commentId,string operation,ChangeStudioCommentStateRequest request,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Unauthorized();var r=await api.SetStudioCommentStateAsync(token,tenantId,draftId,commentId,operation,request,ct);return r.Succeeded?NoContent():StatusCode(r.Status==ApiCallStatus.Conflict?409:422,new{title=r.ErrorTitle,detail=r.ErrorDetail});}
 
+    // D-OC32: painel de documentos + extração no editor — o contrato é resolvido do rascunho no servidor;
+    // o navegador só trafega draftId/documentId/versionId/extractionId.
+
+    [HttpGet("minutas/{draftId:guid}/documentos")]
+    public async Task<IActionResult> ListDocuments(Guid tenantId, Guid draftId, CancellationToken ct)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Unauthorized();
+        var draft = await api.GetStudioDraftAsync(token, tenantId, draftId, ct);
+        if (!draft.Succeeded) return draft.Status == ApiCallStatus.NotFound ? NotFound() : StatusCode(422, new { title = draft.ErrorTitle });
+        var r = await api.GetContractDocumentVersionsAsync(token, tenantId, draft.Value!.ContractId, ct);
+        return r.Succeeded ? Json(r.Value) : StatusCode(422, new { title = r.ErrorTitle, detail = r.ErrorDetail });
+    }
+
+    [HttpPost("minutas/{draftId:guid}/documentos")]
+    [RequestSizeLimit(250_000_000)]
+    public async Task<IActionResult> UploadDocument(Guid tenantId, Guid draftId, IFormFile file, Guid? documentId, CancellationToken ct)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Unauthorized();
+        var draft = await api.GetStudioDraftAsync(token, tenantId, draftId, ct);
+        if (!draft.Succeeded) return draft.Status == ApiCallStatus.NotFound ? NotFound() : StatusCode(422, new { title = draft.ErrorTitle });
+        if (file is null || file.Length <= 0) return StatusCode(422, new { title = L("studio.up_empty") });
+        await using var stream = file.OpenReadStream();
+        var r = await api.UploadContractDocumentAsync(token, tenantId, draft.Value!.ContractId, documentId, stream, file.FileName, ct);
+        if (r.Succeeded) return Json(r.Value);
+        var status = r.Status switch
+        {
+            ApiCallStatus.Forbidden => 403,
+            ApiCallStatus.Conflict => 409,
+            _ => r.ErrorCode == "documents.file_too_large" ? 413 : 422
+        };
+        return StatusCode(status, new { title = r.ErrorTitle, detail = r.ErrorDetail, code = r.ErrorCode });
+    }
+
+    [HttpPost("minutas/{draftId:guid}/extrair")]
+    public async Task<IActionResult> ExtractDocument(Guid tenantId, Guid draftId, [FromBody] ExtractDocumentRequest request, CancellationToken ct)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Unauthorized();
+        if (request is null) return StatusCode(422, new { title = L("studio.request_invalid") });
+        var draft = await api.GetStudioDraftAsync(token, tenantId, draftId, ct);
+        if (!draft.Succeeded) return draft.Status == ApiCallStatus.NotFound ? NotFound() : StatusCode(422, new { title = draft.ErrorTitle });
+        var r = await api.CreateDocumentExtractionAsync(token, tenantId, draft.Value!.ContractId, request.DocumentId, request.VersionId, ct);
+        if (r.Succeeded) return Accepted(r.Value);
+        return StatusCode(r.Status == ApiCallStatus.Conflict ? 409 : 422, new { title = r.ErrorTitle, detail = r.ErrorDetail });
+    }
+
+    [HttpGet("minutas/{draftId:guid}/extracao/{extractionId:guid}")]
+    public async Task<IActionResult> GetExtraction(Guid tenantId, Guid draftId, Guid extractionId, CancellationToken ct)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Unauthorized();
+        var draft = await api.GetStudioDraftAsync(token, tenantId, draftId, ct);
+        if (!draft.Succeeded) return draft.Status == ApiCallStatus.NotFound ? NotFound() : StatusCode(422, new { title = draft.ErrorTitle });
+        var r = await api.GetDocumentExtractionAsync(token, tenantId, draft.Value!.ContractId, extractionId, ct);
+        if (r.Succeeded) return Json(r.Value);
+        return StatusCode(r.Status == ApiCallStatus.Conflict ? 409 : 422, new { title = r.ErrorTitle, detail = r.ErrorDetail });
+    }
+
+    [HttpPost("minutas/{draftId:guid}/aplicar-extracao")]
+    public async Task<IActionResult> ApplyExtraction(Guid tenantId, Guid draftId, [FromBody] ApplyDraftExtractionRequest request, CancellationToken ct)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Unauthorized();
+        if (request is null) return StatusCode(422, new { title = L("studio.request_invalid") });
+        var r = await api.ApplyDraftExtractionAsync(token, tenantId, draftId, request, ct);
+        if (r.Succeeded) return Json(r.Value);
+        return StatusCode(r.Status == ApiCallStatus.Conflict ? 409 : 422, new { title = r.ErrorTitle, detail = r.ErrorDetail, code = r.ErrorCode });
+    }
+
     private async Task<ApiCallResult<TemplateCatalogPage>> GetCatalogAsync(string token,Guid tenantId,string? search,string? type,string? scope,string? purpose,int page,CancellationToken ct)
     {
         var query=new List<string>{$"page={page}"};
@@ -545,3 +611,6 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         return new ApiCallResult<T>(status,default,L("studio.ctl_operation_incomplete"));
     }
 }
+
+// D-OC32: pedido de extração de texto vindo do painel do editor (o contrato é resolvido do rascunho).
+public sealed record ExtractDocumentRequest(Guid DocumentId, Guid VersionId);

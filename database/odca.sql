@@ -6280,3 +6280,87 @@ VALUES(55,'Correcao da retry_notification: remove RETURNING de instrucao simples
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 055
+-- ODCA-MIGRATION 056 CHECKSUM 4fde553fc9d60cc62913d22de318396867b55314e831f83e509cc109f6e688f6
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
+
+DO $odca$
+DECLARE
+    expected_checksum constant char(64) := '4fde553fc9d60cc62913d22de318396867b55314e831f83e509cc109f6e688f6';
+    recorded_checksum char(64);
+BEGIN
+    SELECT checksum INTO recorded_checksum FROM odca.schema_migrations WHERE version = 56;
+    IF recorded_checksum IS NOT NULL AND recorded_checksum <> expected_checksum THEN
+        RAISE EXCEPTION 'ODCA migration 056 checksum mismatch: stored %, expected %', recorded_checksum, expected_checksum;
+    END IF;
+END
+$odca$;
+
+-- D-OC32 (operacao documental do estudio): 1) indice de consulta por hash de conteudo em
+-- document_versions para o reupload idempotente por conteudo; 2) funcao do worker que expira
+-- reservas de armazenamento pendentes apos o prazo e libera a cota reservada correspondente
+-- (reservas de uploads interrompidos); 3) tabela de registro idempotente para aplicacao de
+-- extracao/OCR ao rascunho do estudio.
+
+CREATE INDEX IF NOT EXISTS ix_document_versions_content ON odca.document_versions(tenant_id,document_id,sha256);
+
+CREATE OR REPLACE FUNCTION odca.expire_storage_reservations(p_limit integer DEFAULT 500)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, odca
+AS $$
+DECLARE
+    batch uuid[];
+    lim integer := coalesce(nullif(p_limit,0),500);
+    changed integer := 0;
+BEGIN
+    SELECT array_agg(id) INTO batch FROM (
+        SELECT id FROM odca.storage_reservations
+         WHERE status = 'reserved' AND expires_at < now()
+         FOR UPDATE SKIP LOCKED
+         LIMIT lim) expired;
+    IF batch IS NULL THEN
+        RETURN 0;
+    END IF;
+
+    UPDATE odca.storage_reservations
+       SET status = 'expired', finalized_at = now()
+     WHERE id = ANY(batch) AND status = 'reserved';
+    GET DIAGNOSTICS changed = ROW_COUNT;
+
+    UPDATE odca.tenant_storage_usage u
+       SET reserved_bytes = GREATEST(0, u.reserved_bytes - agg.released)
+      FROM (SELECT tenant_id, sum(requested_bytes) AS released
+              FROM odca.storage_reservations
+             WHERE id = ANY(batch)
+             GROUP BY tenant_id) agg
+     WHERE u.tenant_id = agg.tenant_id;
+
+    RETURN changed;
+END;
+$$;
+REVOKE ALL ON FUNCTION odca.expire_storage_reservations(integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.expire_storage_reservations(integer) TO odca_app;
+
+CREATE TABLE IF NOT EXISTS odca.draft_extraction_reviews(
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(), tenant_id uuid NOT NULL REFERENCES odca.tenants(id),
+    draft_id uuid NOT NULL, job_id uuid NOT NULL, reviewed_by uuid NOT NULL REFERENCES odca.users(id),
+    draft_row_version bigint NOT NULL CHECK(draft_row_version>0), idempotency_key uuid NOT NULL,
+    decisions jsonb NOT NULL DEFAULT '[]'::jsonb CHECK(jsonb_typeof(decisions)='array'),
+    status text NOT NULL DEFAULT 'draft' CHECK(status IN('draft','applied','conflicting')),
+    applied_field_ids jsonb NOT NULL DEFAULT '[]'::jsonb CHECK(jsonb_typeof(applied_field_ids)='array'),
+    created_at timestamptz NOT NULL DEFAULT now(), applied_at timestamptz,
+    UNIQUE(tenant_id,id), UNIQUE(tenant_id,idempotency_key),
+    FOREIGN KEY(tenant_id,draft_id) REFERENCES odca.contract_drafts(tenant_id,id),
+    FOREIGN KEY(tenant_id,job_id) REFERENCES odca.extraction_jobs(tenant_id,id));
+ALTER TABLE odca.draft_extraction_reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE odca.draft_extraction_reviews FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON odca.draft_extraction_reviews TO odca_app USING (tenant_id = nullif(current_setting('odca.tenant_id',true),'')::uuid) WITH CHECK (tenant_id = nullif(current_setting('odca.tenant_id',true),'')::uuid);
+GRANT SELECT,INSERT,UPDATE ON odca.draft_extraction_reviews TO odca_app;
+
+INSERT INTO odca.schema_migrations(version,name,checksum)
+VALUES(56,'Operacao documental do estudio: indice por conteudo, expiracao de reservas com liberacao de cota e registro idempotente de aplicacao de extracao ao rascunho','4fde553fc9d60cc62913d22de318396867b55314e831f83e509cc109f6e688f6')
+ON CONFLICT(version) DO NOTHING;
+COMMIT;
+-- ODCA-END 056

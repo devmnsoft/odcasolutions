@@ -533,7 +533,7 @@ if (studio) {
   const openTab = async name => {
     for(const section of studio.querySelectorAll("[data-panel]"))section.hidden=section.dataset.panel!==name;
     for(const tab of studio.querySelectorAll("[data-tab]"))tab.setAttribute("aria-selected",String(tab.dataset.tab===name));
-    if(name==="comments")await loadComments();if(name==="checklist")await loadChecklist();if(name==="history")await loadVersions();
+    if(name==="comments")await loadComments();if(name==="checklist")await loadChecklist();if(name==="history")await loadVersions();if(name==="documents")await loadDocuments();
   };
   for(const tab of studio.querySelectorAll("[data-tab]"))tab.addEventListener("click",()=>openTab(tab.dataset.tab));
   const request = async (url, options={}) => {const token=studio.querySelector('input[name="__RequestVerificationToken"]')?.value;const response=await fetch(url,{...options,headers:{...(options.body?{"Content-Type":"application/json"}:{}),...(token?{"RequestVerificationToken":token}:{}),...options.headers}});if(!response.ok)throw new Error((await response.json().catch(()=>({}))).title||t("studio.ed_unconfirmed"));return response.status===204?null:response.json();};
@@ -545,6 +545,117 @@ if (studio) {
   studio.querySelector("[data-open-checklist]").addEventListener("click",async event=>{const trigger=event.currentTarget;await openTab("checklist");const result=await loadChecklist();if(!result.canSubmit||localRevision!==acknowledgedRevision||conflict)return;const reviewers=await request(studio.dataset.reviewersUrl);if(!reviewers.length){state.textContent=t("studio.cl_no_reviewer");state.dataset.state="failed";return;}const target=studio.querySelector("[data-checklist]");const label=document.createElement("label");label.textContent=t("studio.cl_reviewer");const select=document.createElement("select");for(const reviewer of reviewers)select.add(new Option(reviewer.name,reviewer.id));label.append(select);const submit=document.createElement("button");submit.type="button";submit.className="button button-primary";submit.textContent=t("studio.cl_submit_btn");submit.addEventListener("click",async()=>{submit.disabled=true;submit.textContent=t("studio.cl_preparing");const generationKey=crypto.randomUUID();try{const generated=await request(studio.dataset.generateUrl,{method:"POST",body:JSON.stringify({idempotencyKey:generationKey,expectedVersion:version})});submit.textContent=t("studio.cl_submitting");await request(studio.dataset.submitUrl,{method:"POST",body:JSON.stringify({generatedVersionId:generated.id,reviewerId:select.value,idempotencyKey:generationKey})});state.textContent=t("studio.cl_submitted_state");state.dataset.state="saved";submit.textContent=t("studio.cl_submitted_btn");}catch(error){submit.disabled=false;submit.textContent=t("studio.cl_retry_btn");state.textContent=error.message;state.dataset.state="failed";}});target.append(label,submit);trigger?.blur?.();});
   const dialog=studio.querySelector("[data-compare-dialog]");studio.querySelector("[data-open-compare]").addEventListener("click",async()=>{const versions=await loadVersions();for(const select of dialog.querySelectorAll("select")){select.replaceChildren(...versions.map(v=>new Option(t("studio.v_option",v.number,v.author),v.id)));}if(versions[1])dialog.querySelector("[data-before]").value=versions[1].id;dialog.showModal();});
   studio.querySelector("[data-run-compare]").addEventListener("click",async()=>{const before=dialog.querySelector("[data-before]").value,after=dialog.querySelector("[data-after]").value,target=dialog.querySelector("[data-comparison]");if(before===after){target.textContent=t("studio.cmp_select_two");return;}const result=await request(`${studio.dataset.compareUrl}?before=${before}&after=${after}`);const categories=[...new Set(result.changes.map(x=>x.category))];const filters=dialog.querySelector("[data-diff-filters]");filters.replaceChildren(...categories.map(category=>{const label=document.createElement("label");const input=document.createElement("input");input.type="checkbox";input.checked=true;input.addEventListener("change",()=>target.querySelectorAll(`[data-category="${CSS.escape(category)}"]`).forEach(x=>x.hidden=!input.checked));label.append(input,` ${category}`);return label;}));target.replaceChildren(...result.changes.map(change=>{const row=document.createElement("article");row.className="diff-row";row.dataset.category=change.category;const title=document.createElement("strong");title.textContent=`${change.category} · ${change.reference}`;const old=document.createElement("pre");old.className="removed";old.textContent=`− ${change.before??""}`;const next=document.createElement("pre");next.className="added";next.textContent=`+ ${change.after??""}`;row.append(title,old,next);return row;}));});
+  // D-OC32: painel de documentos do contrato + extração de texto aplicada ao rascunho.
+  let docVersions = []; let reuploadDocumentId = null; let extractionId = null; let extractionTimer = 0;
+  const suggestionDecisions = new Map();
+  const securityKey = { pending: "studio.sec_pending", scanning: "studio.sec_scanning", safe: "studio.sec_safe", quarantined: "studio.sec_quarantined", failed: "studio.sec_failed" };
+  const securityLabel = status => securityKey[status] ? t(securityKey[status]) : status;
+  const formatBytes = bytes => { let value = Number(bytes || 0); if (!value) return "0 B"; const units = ["B", "KB", "MB", "GB"]; let index = 0; while (value >= 1024 && index < units.length - 1) { value /= 1024; index++; } return `${value >= 10 || index === 0 ? Math.round(value) : value.toFixed(1)} ${units[index]}`; };
+  const renderDocuments = () => {
+    const target = studio.querySelector("[data-document-list]");
+    if (!docVersions.length) { const p = document.createElement("p"); p.className = "muted"; p.textContent = t("studio.doc_empty"); target.replaceChildren(p); return; }
+    const groups = new Map();
+    for (const item of docVersions) { if (!groups.has(item.id)) groups.set(item.id, []); groups.get(item.id).push(item); }
+    target.replaceChildren(...[...groups.values()].map(versions => {
+      const article = document.createElement("article"); article.className = "doc-entry";
+      const head = document.createElement("div"); head.className = "doc-entry-head";
+      const name = document.createElement("strong"); name.textContent = versions[0].title || versions[0].display_name || versions[0].id;
+      const replace = document.createElement("button"); replace.type = "button"; replace.className = "button button-small button-link"; replace.textContent = t("studio.doc_reupload");
+      replace.addEventListener("click", () => { reuploadDocumentId = versions[0].id; const input = studio.querySelector("[data-upload-form] input[type=file]"); input.value = ""; input.focus(); });
+      head.append(name, " ", replace); article.append(head);
+      for (const item of versions) {
+        const row = document.createElement("p"); row.className = "muted";
+        row.append(document.createTextNode(`${t("studio.doc_version", item.version_number)} · ${item.detected_type || "?"} · ${formatBytes(item.byte_size)} · ${new Date(item.uploaded_at).toLocaleString(uiCulture)} · `));
+        const badge = document.createElement("span"); badge.className = `status-chip sec-${item.security_status}`; badge.textContent = securityLabel(item.security_status); row.append(badge);
+        if (item.security_status === "safe") {
+          const extract = document.createElement("button"); extract.type = "button"; extract.className = "button button-small button-link"; extract.textContent = t("studio.doc_extract");
+          extract.addEventListener("click", () => startExtraction(versions[0].id, item.version_id));
+          row.append(" ", extract);
+        }
+        article.append(row);
+      }
+      return article;
+    }));
+  };
+  const loadDocuments = async () => { docVersions = await request(studio.dataset.documentsUrl) || []; renderDocuments(); return docVersions; };
+  studio.querySelector("[data-upload-form]").addEventListener("submit", async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const input = form.elements.file;
+    if (!input.files.length) return;
+    const statusEl = form.querySelector("[data-upload-status]");
+    const token = studio.querySelector('input[name="__RequestVerificationToken"]')?.value;
+    const payload = new FormData(); payload.append("file", input.files[0]); if (reuploadDocumentId) payload.append("documentId", reuploadDocumentId);
+    try {
+      const response = await fetch(studio.dataset.uploadUrl, { method: "POST", headers: token ? { RequestVerificationToken: token } : {}, body: payload });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.title || result.detail || t("studio.up_fail"));
+      statusEl.textContent = result.replayed ? t("studio.up_replayed") : t("studio.up_ok");
+      reuploadDocumentId = null; input.value = "";
+      await loadDocuments();
+    } catch (error) { statusEl.textContent = error.message || t("studio.up_fail"); }
+  });
+  const conceptKey = { title: "studio.x_title", reference: "studio.x_reference", start_date: "studio.x_start", end_date: "studio.x_end", renewal_notice_days: "studio.x_notice", value: "studio.x_value", currency: "studio.x_value", party_document: "studio.x_document" };
+  const renderSuggestions = items => {
+    studio.querySelector("[data-suggestions-empty]").hidden = items.length > 0;
+    studio.querySelector("[data-apply]").hidden = !items.length;
+    const target = studio.querySelector("[data-suggestions]");
+    target.replaceChildren(...items.map(item => {
+      const card = document.createElement("article"); card.className = "suggestion";
+      const heading = document.createElement("strong"); heading.textContent = conceptKey[item.field_name] ? t(conceptKey[item.field_name]) : item.field_name;
+      const evidence = document.createElement("p"); evidence.className = "muted";
+      evidence.textContent = `${item.evidence || item.extracted_value || ""}${item.page_number ? ` · ${t("studio.x_page", item.page_number)}` : ""}`;
+      const control = document.createElement("label"); control.textContent = `${t("studio.x_suggested")} `;
+      const valueInput = document.createElement("input"); valueInput.type = "text"; valueInput.value = item.normalized_value ?? item.extracted_value ?? "";
+      control.append(valueInput);
+      let decision = "accepted";
+      const sync = () => { suggestionDecisions.set(item.id, { status: decision, value: valueInput.value.trim() }); card.dataset.decision = decision; };
+      const makeButton = status => { const button = document.createElement("button"); button.type = "button"; button.className = "button button-small button-link"; button.textContent = t(status === "accepted" ? "studio.x_accept" : status === "edited" ? "studio.x_edit" : "studio.x_reject"); button.addEventListener("click", () => { decision = status; sync(); }); return button; };
+      const actions = document.createElement("div"); actions.append(makeButton("accepted"), " ", makeButton("edited"), " ", makeButton("rejected"));
+      valueInput.addEventListener("input", () => { if (decision !== "rejected") { decision = "edited"; } sync(); });
+      sync();
+      card.append(heading, evidence, control, actions);
+      return card;
+    }));
+  };
+  const startExtraction = async (documentId, versionId) => {
+    const box = studio.querySelector("[data-extraction]"); box.hidden = false;
+    const statusEl = studio.querySelector("[data-extraction-status]");
+    suggestionDecisions.clear(); studio.querySelector("[data-suggestions]").replaceChildren();
+    studio.querySelector("[data-suggestions-empty]").hidden = true;
+    studio.querySelector("[data-apply]").hidden = true;
+    studio.querySelector("[data-apply-result]").textContent = "";
+    clearInterval(extractionTimer);
+    statusEl.textContent = t("studio.x_queued");
+    try {
+      const created = await request(studio.dataset.extractUrl, { method: "POST", body: JSON.stringify({ documentId, versionId }) });
+      extractionId = created.extractionId;
+      extractionTimer = setInterval(async () => {
+        let data;
+        try { data = await request(`${studio.dataset.extractionBase}${extractionId}`); } catch (error) { statusEl.textContent = error.message; clearInterval(extractionTimer); return; }
+        const job = data.job || {};
+        if (job.status === "failed") { clearInterval(extractionTimer); statusEl.textContent = t("studio.x_failed"); return; }
+        if (job.status !== "ready_for_review") return;
+        clearInterval(extractionTimer);
+        renderSuggestions(data.suggestions || []);
+      }, 2500);
+    } catch (error) { statusEl.textContent = error.message; }
+  };
+  studio.querySelector("[data-apply]").addEventListener("click", async () => {
+    const resultEl = studio.querySelector("[data-apply-result]");
+    if (!extractionId) return;
+    const decisions = [...suggestionDecisions.entries()].map(([id, entry]) => ({ suggestionId: id, status: entry.status, value: entry.status === "rejected" ? null : entry.value }));
+    const token = studio.querySelector('input[name="__RequestVerificationToken"]')?.value;
+    try {
+      const response = await fetch(studio.dataset.applyExtractionUrl, { method: "POST", headers: { "Content-Type": "application/json", ...(token ? { RequestVerificationToken: token } : {}) }, body: JSON.stringify({ extractionId, expectedVersion: version, idempotencyKey: crypto.randomUUID(), decisions }) });
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 409 && data.code === "draft.save.conflict") { resultEl.textContent = t("studio.x_conflict", data.currentVersion ?? "?"); setTimeout(() => window.location.reload(), 1800); return; }
+      if (!response.ok) throw new Error(data.detail || data.title || t("studio.ed_unconfirmed"));
+      const appliedCount = (data.applied || []).length; const skippedCount = (data.skipped || []).length;
+      resultEl.textContent = data.repeated ? t("studio.x_repeated") : t("studio.x_applied", appliedCount, skippedCount);
+      setTimeout(() => window.location.reload(), data.repeated ? 1200 : 1800);
+    } catch (error) { resultEl.textContent = error.message; }
+  });
   window.addEventListener("beforeunload",event=>{if(localRevision!==acknowledgedRevision){event.preventDefault();event.returnValue="";}});
   refresh();
 }

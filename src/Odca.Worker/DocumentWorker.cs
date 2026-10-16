@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Dapper;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
@@ -15,7 +16,7 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
         {
             do
             {
-                try { if (!await ScanOne(stoppingToken)) await ExtractOne(stoppingToken); }
+                try { if (!await ScanOne(stoppingToken)) await ExtractOne(stoppingToken); await ReconcileOnce(stoppingToken); }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { throw; }
                 catch (Exception exception) { logger.LogError(exception, "Falha isolada no processamento documental; o ciclo continuará."); }
             } while (await timer.WaitForNextTickAsync(stoppingToken));
@@ -190,6 +191,81 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
             throw;
         }
     }
+    // D-OC32 B.2: reconciliacao de armazenamento. (1) Reservas 'reserved' com prazo vencido
+    // viram 'expired' e a cota reservada correspondente e liberada (funcao SECURITY DEFINER,
+    // lote limitado, FOR UPDATE SKIP LOCKED — segura para varios workers). (2) Arquivos sem
+    // dono — tmps da quarentena e arquivos finais cujos storage_keys nao aparecem em nenhuma
+    // tabela — mais velhos que a retencao configuravel sao MOVIDOS para reconciled/{yyyy-MM}/
+    // (retencao auditavel; nunca exclusao direta). Logs sem conteudo.
+    private DateTime lastReconcileSweep = DateTime.MinValue;
+
+    private async Task ReconcileOnce(CancellationToken ct)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(ct);
+        var expired = await connection.ExecuteScalarAsync<int>(new CommandDefinition("SELECT odca.expire_storage_reservations(500)", cancellationToken: ct));
+        if (expired > 0) logger.LogInformation("Reservas de armazenamento expiradas e cota reservada liberada: {Count}.", expired);
+
+        var interval = TimeSpan.FromSeconds(configuration.GetValue("Documents:ReconcileIntervalSeconds", 30));
+        if (DateTime.UtcNow - lastReconcileSweep < interval) return;
+        lastReconcileSweep = DateTime.UtcNow;
+
+        var root = Path.GetFullPath(configuration["Documents:StoragePath"] ?? "./private-documents");
+        if (!Directory.Exists(root)) return;
+        var cutoff = DateTime.UtcNow - TimeSpan.FromHours(configuration.GetValue("Documents:ReconcileOrphanRetentionHours", 24));
+
+        var movedQuarantine = 0;
+        var quarantine = Path.Combine(root, "quarantine");
+        if (Directory.Exists(quarantine))
+        {
+            foreach (var file in Directory.EnumerateFiles(quarantine, "*.tmp"))
+            {
+                if (File.GetLastWriteTimeUtc(file) > cutoff) continue;
+                MoveToReconciled(root, file, "quarantine/" + Path.GetFileName(file));
+                movedQuarantine++;
+            }
+        }
+
+        var referenced = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var key in await connection.QueryAsync<string>(new CommandDefinition("SELECT storage_key FROM odca.document_versions", cancellationToken: ct))) referenced.Add(key);
+        foreach (var key in await connection.QueryAsync<string>(new CommandDefinition("SELECT storage_key FROM odca.generated_contract_versions", cancellationToken: ct))) referenced.Add(key);
+        foreach (var key in await connection.QueryAsync<string>(new CommandDefinition("SELECT pdf_storage_key FROM odca.generated_contract_versions WHERE pdf_storage_key IS NOT NULL", cancellationToken: ct))) referenced.Add(key);
+
+        var movedFinal = 0;
+        foreach (var tenantDir in Directory.EnumerateDirectories(root))
+        {
+            var tenantName = Path.GetFileName(tenantDir);
+            if (tenantName is "quarantine" or "reconciled") continue;
+            if (!Guid.TryParse(tenantName, out _)) continue;
+            foreach (var file in Directory.EnumerateFiles(tenantDir, "*", SearchOption.AllDirectories))
+            {
+                var relative = file.Substring(root.Length).TrimStart(Path.DirectorySeparatorChar).Replace(Path.DirectorySeparatorChar, '/');
+                if (referenced.Contains(relative) || File.GetLastWriteTimeUtc(file) > cutoff) continue;
+                MoveToReconciled(root, file, relative);
+                movedFinal++;
+            }
+        }
+
+        if (movedQuarantine > 0 || movedFinal > 0)
+            logger.LogInformation("Reconciliacao documental: {Quarantine} tmp(s) de quarentena e {Final} arquivo(s) final(is) movidos para retencao.", movedQuarantine, movedFinal);
+    }
+
+    private void MoveToReconciled(string root, string file, string relativeKey)
+    {
+        try
+        {
+            var targetDir = Path.Combine(root, "reconciled", DateTime.UtcNow.ToString("yyyy-MM", CultureInfo.InvariantCulture));
+            Directory.CreateDirectory(targetDir);
+            var name = relativeKey.Replace('/', '-').Replace('\\', '-').Replace(' ', '_');
+            var target = Path.Combine(targetDir, name);
+            for (var i = 1; File.Exists(target); i++) target = Path.Combine(targetDir, $"{i}-{name}");
+            File.Move(file, target);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogWarning(exception, "Reconciliacao documental nao moveu um arquivo para retencao (sem expor caminho): {ErrorType}", exception.GetType().Name);
+        }
+    }
+
     private sealed record VersionItem(Guid Id, Guid TenantId, string StorageKey, string DetectedType);
     private sealed record JobItem(Guid Id, Guid TenantId, Guid ContractId, Guid VersionId, Guid LeaseToken);
 }

@@ -271,3 +271,35 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [x] F: resumo do implementado, arquivos + migrations, cenários e instruções de configuração
   sem segredos, dependências restantes em `docs/execution/D-OC31_OPERACAO_DOCUMENTAL_COMERCIAL.md`;
   STATUS.md atualizado; commit único "sem push".
+
+## D-OC32 — Reupload idempotente por conteúdo + reconciliação de armazenamento + extração para o estúdio (15/10/2026)
+
+- [x] GATE antes dos avanços dependentes: build estrito 0W/0E; baseline verde no `2af1c37`
+  (D-OC31: suíte `-FreshDb` 191/191); sem regressões críticas abertas.
+- [x] B.1: reupload por hash de conteúdo — mesmo sha256 enviado de novo ao MESMO documento
+  (`documentId` presente) é replay honesto (200 `replayed=true`, sem nova versão, sem cota
+  dupla, reserva liberada para `released`, evento `document_reuploaded` com sha256 e versão
+  correspondida); 201 ganha propriedade aditiva `replayed=false`; dedup por conteúdo não
+  aplica a documento novo (sem adivinhar).
+- [x] B.2: reconciliador de armazenamento — reservas `reserved` expiradas viram `expired`
+  (função SECURITY DEFINER v056, lote limitado, chamada pelo worker) e órfãos (tmp da
+  quarentena e arquivos finais sem linha referenciando o storage_key, ambos mais velhos que
+  retenção configurável) são movidos para pasta de retenção `reconciled/{yyyy-MM}/` (sem
+  exclusão direta), contagens em log sem conteúdo.
+- [x] B.3: aplicar extração/OCR ao rascunho do estúdio — `POST studio/drafts/{draftId}/apply-extraction`
+  com decisões accepted/edited/rejected por sugestão: mapeamento FECHADO conceito→field id
+  (match exato + alias documentados; candidatos monetários múltiplos só aplicam com candidato
+  único no rascunho; nunca sobrescreve valor confirmado nem campo calculado); valores aterrizam
+  `source="extraction"`, `confirmed=false`; bloqueio otimista por row_version (409
+  `draft.save.conflict`), idempotência por `draft_extraction_reviews` (v056), evento
+  `draft.extraction_applied` com applied/skipped detalhado; sugestões marcadas como revisadas.
+- [x] C: painel de documentos + extração no editor (proxies BFF de listagem/upload multipart/
+  extração/aplicação): versões com badge de status de segurança, upload, "extrair texto",
+  painel de sugestões com evidência e aceitar/editar/rejeitar, aplicação explícita ao rascunho;
+  chaves de catálogo ×4 idiomas com paridade.
+- [x] D: release v056 (`odca.expire_storage_reservations`, tabela `odca.draft_extraction_reviews`
+  + RLS + grants, índice não-único `document_versions(tenant_id,document_id,sha256)`),
+  CurrentVersion 56, teste de prefixo imutável 1..55 e ausência de 057.
+- [x] E: matriz de aceite com dez itens diferindo aprovado/falhou/bloqueado/não executado, cada
+  um com evidência apontada.
+- [x] F: doc de entrega, STATUS.md, backlog marcado, commit único "sem push".

@@ -101,6 +101,35 @@ public sealed partial class OdcaApiClient(HttpClient client, IHttpContextAccesso
         if (!response.IsSuccessStatusCode) return (response.StatusCode, null, null);
         return (response.StatusCode, await response.Content.ReadAsByteArrayAsync(ct), response.Content.Headers.ContentType?.MediaType);
     }
+
+    // D-OC32: painel de documentos + extração no editor — proxies da jornada documental do contrato.
+
+    public Task<ApiCallResult<JsonElement[]>> GetContractDocumentVersionsAsync(string token, Guid tenantId, Guid contractId, CancellationToken ct) =>
+        SendAsync<JsonElement[]>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contracts/{contractId}/documents", token), false, ct);
+
+    public async Task<ApiCallResult<JsonElement>> UploadContractDocumentAsync(string token, Guid tenantId, Guid contractId, Guid? documentId, Stream fileStream, string fileName, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/contracts/{contractId}/documents", token);
+        using var form = new MultipartFormDataContent();
+        var fileContent = new StreamContent(fileStream);
+        form.Add(fileContent, "file", string.IsNullOrWhiteSpace(fileName) ? "documento" : fileName);
+        if (documentId.HasValue) form.Add(new StringContent(documentId.Value.ToString()), "documentId");
+        message.Content = form;
+        return await SendAsync<JsonElement>(message, false, ct);
+    }
+
+    public Task<ApiCallResult<JsonElement>> CreateDocumentExtractionAsync(string token, Guid tenantId, Guid contractId, Guid documentId, Guid versionId, CancellationToken ct) =>
+        SendAsync<JsonElement>(CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/contracts/{contractId}/documents/{documentId}/versions/{versionId}/extractions", token), false, ct);
+
+    public Task<ApiCallResult<JsonElement>> GetDocumentExtractionAsync(string token, Guid tenantId, Guid contractId, Guid extractionId, CancellationToken ct) =>
+        SendAsync<JsonElement>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contracts/{contractId}/documents/extractions/{extractionId}", token), false, ct);
+
+    public async Task<ApiCallResult<JsonElement>> ApplyDraftExtractionAsync(string token, Guid tenantId, Guid draftId, ApplyDraftExtractionRequest request, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/apply-extraction", token);
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<JsonElement>(message, false, ct);
+    }
     public Task<ApiCallResult<ContractImportPage>> GetContractImportsAsync(string token, Guid tenantId, string? status, bool mine, bool awaitingReview, DateOnly? from, DateOnly? to, CancellationToken ct)
     {
         var query = new Dictionary<string, string?>
