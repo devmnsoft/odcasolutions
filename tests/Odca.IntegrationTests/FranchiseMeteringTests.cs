@@ -15,6 +15,28 @@ public sealed class FranchiseMeteringTests(DatabaseFixture database) : IClassFix
         Assert.Equal(2, DocumentWorker.CountOcrPages("primeira\fsegunda\f"));
     }
 
+    // D-OC33 C: o texto final do fallback renderizar->OCR e a juncao das paginas renderizadas
+    // com "\n\f\n"; a franquia ocr_credit deve consumir exatamente o numero de paginas.
+    [Fact]
+    public void JoinedScannedPagesConsumeOneOcrCreditPerPage()
+    {
+        Assert.Equal(1, DocumentWorker.CountOcrPages(string.Join("\n\f\n", ["página única"])));
+        Assert.Equal(2, DocumentWorker.CountOcrPages(string.Join("\n\f\n", ["primeira", "segunda"])));
+        Assert.Equal(3, DocumentWorker.CountOcrPages(string.Join("\n\f\n", ["primeira", "", "terceira"])));
+        Assert.Equal(4, DocumentWorker.CountOcrPages(string.Join("\n\f\n", ["a", "b", "", "d"])));
+    }
+
+    [Fact]
+    public void ScannedPageFileNamesParseToOrderedPageNumbers()
+    {
+        Assert.Equal(1, DocumentWorker.ScanPageNumber(@"C:\tmp\odca-scan-x\page-1.png"));
+        Assert.Equal(12, DocumentWorker.ScanPageNumber("page-12.png"));
+        Assert.Equal(-1, DocumentWorker.ScanPageNumber("page-.png"));
+        Assert.Equal(-1, DocumentWorker.ScanPageNumber("page-a.png"));
+        Assert.Equal(-1, DocumentWorker.ScanPageNumber("foo-page-3.png"));
+        Assert.Equal(-1, DocumentWorker.ScanPageNumber("outro.png"));
+    }
+
     [Fact]
     public async Task MonthlyFranchiseIsIdempotentAndBlocksWhenTheContractedPagesAreUsed()
     {

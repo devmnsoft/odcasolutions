@@ -50,4 +50,50 @@ public sealed class DocumentContentTests
         Assert.Contains(result, x => x.Field == "value" && x.NormalizedValue == "1234.56" && x.IsAmbiguous);
         Assert.DoesNotContain(result, x => x.Field == "end_date");
     }
+
+    // D-OC33 B: texto com separador de pagina (\f) recebe page_number 1-based por segmento.
+    [Fact]
+    public void AttributesPageNumbersOnlyWhenTheExtractedTextHasFormFeeds()
+    {
+        var page1 = "Título: Contrato de Prestação de Serviços\nReferência: CT-2026-042\nInício da vigência: 15/10/2026";
+        var page2 = "Termino da vigência: 14/10/2027\nValor total do contrato: R$ 12.345,67";
+        var result = DocumentContent.Suggest(page1 + "\f" + page2, "ocr");
+        Assert.Contains(result, x => x.Field == "title" && x.Page == 1);
+        Assert.Contains(result, x => x.Field == "reference" && x.ExtractedValue == "CT-2026-042" && x.Page == 1);
+        Assert.Contains(result, x => x.Field == "start_date" && x.NormalizedValue == "2026-10-15" && x.Page == 1);
+        Assert.Contains(result, x => x.Field == "end_date" && x.NormalizedValue == "2027-10-14" && x.Page == 2);
+        Assert.Contains(result, x => x.Field == "value" && x.NormalizedValue == "12345.67" && x.Page == 2 && x.IsAmbiguous);
+        Assert.All(result, x => Assert.NotNull(x.Page));
+    }
+
+    [Fact]
+    public void SinglePageTextKeepsPageUnset()
+    {
+        var result = DocumentContent.Suggest("Título: Serviço sintético\nInício da vigência: 14/09/2026", "pdf-native");
+        Assert.NotEmpty(result);
+        Assert.All(result, x => Assert.Null(x.Page));
+    }
+
+    [Fact]
+    public void BlankPageSegmentsAreCountedWithoutCreatingGhostSuggestions()
+    {
+        // Separador final e pagina em branco no meio: a numeracao segue a ordem real das paginas.
+        var result = DocumentContent.Suggest(
+            "Início da vigência: 01/01/2026\f\fTermino da vigência: 02/02/2026\f", "ocr");
+        Assert.Contains(result, x => x.Field == "start_date" && x.Page == 1);
+        Assert.Contains(result, x => x.Field == "end_date" && x.Page == 3);
+        Assert.Equal(2, result.Count);
+    }
+
+    // D-OC33 C: limiar honesto para considerar camada de texto no PDF.
+    [Fact]
+    public void PdfTextLayerThresholdDiscardsWhitespaceOnlyOutput()
+    {
+        Assert.False(DocumentContent.PdfHasUsableTextLayer(null!));
+        Assert.False(DocumentContent.PdfHasUsableTextLayer(""));
+        Assert.False(DocumentContent.PdfHasUsableTextLayer("   "));
+        Assert.False(DocumentContent.PdfHasUsableTextLayer(new string('a', DocumentContent.MinimumPdfTextLayerChars - 1)));
+        Assert.True(DocumentContent.PdfHasUsableTextLayer(new string('a', DocumentContent.MinimumPdfTextLayerChars)));
+        Assert.True(DocumentContent.PdfHasUsableTextLayer("   " + new string('b', DocumentContent.MinimumPdfTextLayerChars) + "  "));
+    }
 }

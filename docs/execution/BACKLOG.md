@@ -303,3 +303,29 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [x] E: matriz de aceite com dez itens diferindo aprovado/falhou/bloqueado/não executado, cada
   um com evidência apontada.
 - [x] F: doc de entrega, STATUS.md, backlog marcado, commit único "sem push".
+
+## D-OC33 — OCR real para imagens rasterizadas e PDF escaneado no fluxo de extração (16/10/2026)
+
+- [x] GATE antes dos avanços dependentes: build estrito 0W/0E sobre o `8d802bd` (D-OC32: suíte
+  `-FreshDb` 197/197); sem regressões críticas abertas.
+- [x] A: OCR de verdade para PNG/JPEG — o worker já invocava `Documents:OcrExecutable`
+  (convenção Tesseract, `-l por` hardcoded) sem o binário em lugar nenhum: instalar/configurar
+  Tesseract + traineddata pt (sem segredos; instruções de instalação na doc), linguagem via
+  `Documents:OcrLanguage` (padrão `por`), e degradação honesta: saída vazia do OCR não é falha do
+  job (página em branco → 0 sugestões), exit code "sem texto detectável" também não é erro.
+- [x] B: PDF com camada de texto multi-página (`Documents:PdfTextExecutable`, convenção pdftotext)
+  com atribuição por página: `Suggest` passa a reconhecer separadores de página (`\f`) no texto
+  extraído e preenche `page_number` (1-based) nas sugestões — coluna e UI (`studio.x_page`) já
+  existem; docx segue sem página (sem evidência de página).
+- [x] C: PDF escaneado (sem camada de texto) — detecção honesta de texto ausente e fallback
+  renderizar→OCR: páginas renderizadas por `Documents:PdfRenderExecutable` (convenção pdftoppm,
+  até `Documents:OcrMaxPages` padrão 20, dpi configurável) passam pelo mesmo OCR e o texto final
+  preserva os separadores de página (método vira `ocr` e a franquia `ocr_credit` consome as
+  páginas efetivas); sem renderer configurado o job falha com código estável `pdf-no-text-layer`.
+- [x] D: provas ao vivo — PNG de 1 página → OCR real com sugestões e evidência; PDF de 2 páginas
+  com texto → `pdf-native` com `page_number` 1 e 2; PDF composto só de imagem (JPEG embutido) →
+  fallback com páginas OCR; negativo sem executáveis → falha honesta; e a cadeia completa pelo
+  painel web (upload de imagem → safe → extrair → sugestões com página → aplicar).
+- [x] E: matriz de aceite com dez itens diferindo aprovado/falhou/bloqueado/não executado, cada
+  um com evidência apontada.
+- [x] F: doc de entrega, STATUS.md, backlog marcado, commit único "sem push".

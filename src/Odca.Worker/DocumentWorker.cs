@@ -119,8 +119,8 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
         catch (Exception exception)
         {
             logger.LogWarning("Extração {JobId} falhou sem registrar conteúdo: {ErrorType}", job.Id, exception.GetType().Name);
-            await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.extraction_jobs SET status=CASE WHEN attempt_count>=max_attempts THEN 'failed' ELSE 'queued' END,available_at=now()+make_interval(secs=>least(300,attempt_count*15)),failure_code=@code,lease_token=NULL,lease_expires_at=NULL WHERE id=@id AND lease_token=@lease", new { id = job.Id, lease = job.LeaseToken, code = exception is InvalidDataException ? "invalid-document" : "extractor-failed" }, cancellationToken: CancellationToken.None));
-            await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.contract_imports SET status=CASE WHEN (SELECT attempt_count>=max_attempts FROM odca.extraction_jobs WHERE id=@id) THEN 'failed' ELSE 'queued' END,current_step='document',attempt_count=(SELECT attempt_count FROM odca.extraction_jobs WHERE id=@id),safe_diagnostic_code=@code,updated_at=now() WHERE tenant_id=@tenant AND extraction_job_id=@id AND status NOT IN('confirmed','cancelled')", new { id = job.Id, tenant = job.TenantId, code = exception is InvalidDataException ? "invalid-document" : "extractor-unavailable" }, cancellationToken: CancellationToken.None));
+            await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.extraction_jobs SET status=CASE WHEN attempt_count>=max_attempts THEN 'failed' ELSE 'queued' END,available_at=now()+make_interval(secs=>least(300,attempt_count*15)),failure_code=@code,lease_token=NULL,lease_expires_at=NULL WHERE id=@id AND lease_token=@lease", new { id = job.Id, lease = job.LeaseToken, code = exception is NoPdfTextLayerException ? "pdf-no-text-layer" : exception is InvalidDataException ? "invalid-document" : "extractor-failed" }, cancellationToken: CancellationToken.None));
+            await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.contract_imports SET status=CASE WHEN (SELECT attempt_count>=max_attempts FROM odca.extraction_jobs WHERE id=@id) THEN 'failed' ELSE 'queued' END,current_step='document',attempt_count=(SELECT attempt_count FROM odca.extraction_jobs WHERE id=@id),safe_diagnostic_code=@code,updated_at=now() WHERE tenant_id=@tenant AND extraction_job_id=@id AND status NOT IN('confirmed','cancelled')", new { id = job.Id, tenant = job.TenantId, code = exception is NoPdfTextLayerException ? "pdf-no-text-layer" : exception is InvalidDataException ? "invalid-document" : "extractor-unavailable" }, cancellationToken: CancellationToken.None));
         }
     }
 
@@ -128,19 +128,114 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
     {
         var path = StoragePath(item.StorageKey);
         if (item.DetectedType == "docx") { await using var input = File.OpenRead(path); return await DocumentContent.ExtractDocxAsync(input, ct); }
-        var executable = item.DetectedType == "pdf" ? configuration["Documents:PdfTextExecutable"] : configuration["Documents:OcrExecutable"];
+        var isPdf = item.DetectedType == "pdf";
+        var executable = isPdf ? configuration["Documents:PdfTextExecutable"] : configuration["Documents:OcrExecutable"];
         if (string.IsNullOrWhiteSpace(executable)) throw new InvalidOperationException("extractor-not-configured");
+        var language = (configuration["Documents:OcrLanguage"] ?? string.Empty).Trim();
+        if (language.Length == 0) language = "por";
         var output = Path.GetTempFileName();
         try
         {
-            IReadOnlyList<string> args = item.DetectedType == "pdf" ? ["-f", "1", "-l", "200", path, output] : [path, output[..^4], "-l", "por"];
-            if (await Run(executable, args, TimeSpan.FromMinutes(2), ct) != 0) throw new InvalidDataException("parser-returned-error");
-            var textPath = item.DetectedType == "pdf" ? output : output[..^4] + ".txt";
-            var text = await File.ReadAllTextAsync(textPath, ct);
+            string text;
+            var method = isPdf ? "pdf-native" : "ocr";
+            if (isPdf)
+            {
+                if (await Run(executable, ["-f", "1", "-l", "200", path, output], TimeSpan.FromMinutes(2), ct) != 0) throw new InvalidDataException("parser-returned-error");
+                text = await File.ReadAllTextAsync(output, ct);
+                if (!DocumentContent.PdfHasUsableTextLayer(text))
+                {
+                    // D-OC33 C: PDF digitalizado. Com renderer configurado, renderiza as paginas
+                    // iniciais e roteia pelo OCR (metodo vira "ocr" e a franquia mensal consome as
+                    // paginas efetivas); sem renderer, falha honesta com codigo estavel.
+                    var rendered = await RenderScannedPagesToOcrText(path, language, ct);
+                    if (rendered is null) throw NoPdfTextLayerException.Instance;
+                    text = rendered;
+                    method = "ocr";
+                }
+            }
+            else
+            {
+                // Tesseract: exit 0 produz o .txt (pode ser vazio com legitimidade), exit 1 e
+                // "sem texto detectavel" (pagina em branco -> zero sugestoes, nao falha); demais
+                // codigos sao erro do parser.
+                var exit = await Run(executable, [path, output[..^4], "-l", language], TimeSpan.FromMinutes(2), ct);
+                text = exit switch
+                {
+                    0 => await File.ReadAllTextAsync(output[..^4] + ".txt", ct),
+                    1 => string.Empty,
+                    _ => throw new InvalidDataException("parser-returned-error"),
+                };
+            }
             if (text.Length > 5_000_000) throw new InvalidDataException("extracted-text-too-large");
-            return new ExtractedText(text, item.DetectedType == "pdf" ? "pdf-native" : "ocr");
+            return new ExtractedText(text, method);
         }
         finally { File.Delete(output); File.Delete(output[..^4] + ".txt"); }
+    }
+
+    // D-OC33 C: convencao pdftoppm ("-png -r {dpi} -f 1 -l {max} {pdf} {prefix}" -> prefix-N.png).
+    // Cada pagina renderizada passa pelo OCR com a mesma linguagem das imagens diretas e o texto
+    // final preserva form feeds para atribuicao por pagina e contagem da franquia ocr_credit.
+    private async Task<string?> RenderScannedPagesToOcrText(string pdfPath, string language, CancellationToken ct)
+    {
+        var renderer = configuration["Documents:PdfRenderExecutable"];
+        var ocrExecutable = configuration["Documents:OcrExecutable"];
+        if (string.IsNullOrWhiteSpace(renderer) || string.IsNullOrWhiteSpace(ocrExecutable)) return null;
+        var maxPages = Math.Max(1, configuration.GetValue("Documents:OcrMaxPages", 20));
+        var dpi = Math.Clamp(configuration.GetValue("Documents:OcrDpi", 300), 72, 600);
+        var dir = Path.Combine(Path.GetTempPath(), "odca-scan-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(dir);
+            var prefix = Path.Combine(dir, "page");
+            if (await Run(renderer, ["-png", "-r", dpi.ToString(CultureInfo.InvariantCulture), "-f", "1", "-l", maxPages.ToString(CultureInfo.InvariantCulture), pdfPath, prefix], TimeSpan.FromMinutes(2), ct) != 0)
+                throw new InvalidDataException("parser-returned-error");
+            var pages = Directory.EnumerateFiles(dir, "page-*.png")
+                .Select(file => (Number: ScanPageNumber(file), File: file))
+                .Where(page => page.Number > 0)
+                .OrderBy(page => page.Number)
+                .ToList();
+            if (pages.Count == 0) return null;
+            var rendered = new List<string>(pages.Count);
+            foreach (var page in pages)
+            {
+                var tmp = Path.GetTempFileName();
+                var exit = await Run(ocrExecutable, [page.File, tmp[..^4], "-l", language], TimeSpan.FromMinutes(2), ct);
+                rendered.Add(exit switch
+                {
+                    0 => await File.ReadAllTextAsync(tmp[..^4] + ".txt", ct),
+                    1 => string.Empty,
+                    _ => throw new InvalidDataException("parser-returned-error"),
+                });
+                File.Delete(tmp);
+                File.Delete(tmp[..^4] + ".txt");
+            }
+            return string.Join("\n\f\n", rendered);
+        }
+        finally
+        {
+            try { Directory.Delete(dir, recursive: true); }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                logger.LogWarning(exception, "OCR nao removeu o diretorio temporario de renderizacao (sem expor caminho): {ErrorType}", exception.GetType().Name);
+            }
+        }
+    }
+
+    internal static int ScanPageNumber(string fileName)
+    {
+        var name = Path.GetFileNameWithoutExtension(fileName);
+        const string marker = "page-";
+        if (!name.StartsWith(marker, StringComparison.Ordinal)) return -1;
+        var digits = name[marker.Length..];
+        return digits.Length > 0 && digits.All(char.IsDigit) ? int.Parse(digits, CultureInfo.InvariantCulture) : -1;
+    }
+
+    // D-OC33 C: PDF sem camada de texto e sem renderer configurado — falha com codigo estavel
+    // "pdf-no-text-layer" em vez de terminar "ready" com zero sugestoes por silencio.
+    private sealed class NoPdfTextLayerException : Exception
+    {
+        private NoPdfTextLayerException() { }
+        internal static readonly NoPdfTextLayerException Instance = new();
     }
 
     internal static int CountOcrPages(string text)

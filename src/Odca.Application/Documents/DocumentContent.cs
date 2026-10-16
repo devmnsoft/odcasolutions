@@ -98,34 +98,67 @@ public static partial class DocumentContent
         return new ExtractedText(text.ToString().Trim(), "docx-structure");
     }
 
+    // D-OC33 C: um PDF sem camada de texto devolve texto (quase) vazio ao pdftotext. Uma camada
+    // utilizavel sempre tem conteudo visivel; abaixo do minimo o documento e tratado como
+    // digitalizado (fallback renderizar->OCR ou falha honesta com codigo estavel), nunca como
+    // "zero sugestoes" em silencio.
+    public const int MinimumPdfTextLayerChars = 20;
+
+    public static bool PdfHasUsableTextLayer(string text)
+        => !string.IsNullOrEmpty(text) && text.Trim().Length >= MinimumPdfTextLayerChars;
+
+    // D-OC33 B: fontes que extraem de paginas reais (pdftotext e OCR multipagina) separam as
+    // paginas com form feed (\f). A deteccao roda por pagina e page_number (1-based) so e
+    // atribuido quando o texto extraido tem separador de pagina; DOCX e paginas unicas mantem
+    // page nulo, preservando o contrato existente da UI.
     public static IReadOnlyList<ExtractionSuggestion> Suggest(string text, string method)
     {
         if (string.IsNullOrWhiteSpace(text)) return [];
         var result = new List<ExtractionSuggestion>();
-        AddLabel(result, text, TitleRegex(), "title", method, static x => x.Trim(), false);
-        AddLabel(result, text, ReferenceRegex(), "reference", method, static x => x.Trim(), false);
-        AddLabel(result, text, StartDateRegex(), "start_date", method, NormalizeDate, true);
-        AddLabel(result, text, EndDateRegex(), "end_date", method, NormalizeDate, true);
-        AddLabel(result, text, NoticeRegex(), "renewal_notice_days", method, static x => int.TryParse(x, out var n) && n is > 0 and <= 3650 ? n.ToString(CultureInfo.InvariantCulture) : null, false);
-        AddLabel(result, text, ValueRegex(), "value", method, NormalizeMoney, true);
+        var starts = new List<int> { 0 };
+        var index = 0;
+        while (true)
+        {
+            var next = text.IndexOf('\f', index);
+            if (next < 0) break;
+            starts.Add(next + 1);
+            index = next + 1;
+        }
+        for (var i = 0; i < starts.Count; i++)
+        {
+            var end = i + 1 < starts.Count ? starts[i + 1] - 1 : text.Length;
+            var segment = text[starts[i]..end];
+            if (string.IsNullOrWhiteSpace(segment)) continue; // pagina em branco conta, mas nao sugere
+            AddLabels(result, segment, method, starts.Count > 1 ? i + 1 : null);
+        }
+        return result;
+    }
+
+    private static void AddLabels(List<ExtractionSuggestion> target, string text, string method, int? page)
+    {
+        AddLabel(target, text, TitleRegex(), "title", method, static x => x.Trim(), false, page);
+        AddLabel(target, text, ReferenceRegex(), "reference", method, static x => x.Trim(), false, page);
+        AddLabel(target, text, StartDateRegex(), "start_date", method, NormalizeDate, true, page);
+        AddLabel(target, text, EndDateRegex(), "end_date", method, NormalizeDate, true, page);
+        AddLabel(target, text, NoticeRegex(), "renewal_notice_days", method, static x => int.TryParse(x, out var n) && n is > 0 and <= 3650 ? n.ToString(CultureInfo.InvariantCulture) : null, false, page);
+        AddLabel(target, text, ValueRegex(), "value", method, NormalizeMoney, true, page);
         foreach (Match match in DocumentRegex().Matches(text))
         {
             var raw = match.Value;
             var normalized = new string(raw.Where(char.IsDigit).ToArray());
             if (normalized.Length is 11 or 14)
-                result.Add(new("party_document", raw, normalized, Evidence(text, match.Index, match.Length), null, method, false));
+                target.Add(new("party_document", raw, normalized, Evidence(text, match.Index, match.Length), page, method, false));
         }
-        return result;
     }
 
-    private static void AddLabel(List<ExtractionSuggestion> target, string text, Regex regex, string field, string method, Func<string, string?> normalize, bool ambiguous)
+    private static void AddLabel(List<ExtractionSuggestion> target, string text, Regex regex, string field, string method, Func<string, string?> normalize, bool ambiguous, int? page)
     {
         var matches = regex.Matches(text);
         foreach (Match match in matches.Cast<Match>().Take(3))
         {
             var raw = match.Groups[1].Value.Trim();
             var normalized = normalize(raw);
-            target.Add(new(field, raw, normalized, Evidence(text, match.Index, match.Length), null, method, ambiguous || normalized is null || matches.Count > 1));
+            target.Add(new(field, raw, normalized, Evidence(text, match.Index, match.Length), page, method, ambiguous || normalized is null || matches.Count > 1));
         }
     }
 
