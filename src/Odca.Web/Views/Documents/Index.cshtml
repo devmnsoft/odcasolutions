@@ -3,6 +3,8 @@
     ViewData["Title"] = "Central de Documentos";
     var tenantId = Model.TenantId;
     var docs = Model.Documents;
+    // D-OC37 (F-2): idioma para os rótulos de superfície de assinatura nesta view.
+    var _culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
 }
 
 <section class="page-heading">
@@ -30,7 +32,7 @@
 <details class="help">
     <summary>Como usar a Central de Documentos</summary>
     <p>
-        A assinatura eletrônica externa não está integrada: confirmar a composição não envia envelope nem consome a franquia de assinatura. Esta central reúne os documentos da organização. Cada documento evolui pelas seguintes etapas:
+        @L.T("documents.external_signing_note", _culture) Esta central reúne os documentos da organização. Cada documento evolui pelas seguintes etapas:
         <strong>1. Minuta:</strong> escolha um modelo publicado e preencha os dados do paciente ou contrato;
         <strong>2. Conferência:</strong> valide as pendências cadastrais e o checklist obrigatório;
         <strong>3. Versão & PDF:</strong> gere uma versão imutável com identificador criptográfico SHA-256 e gere o PDF para download;
@@ -258,12 +260,12 @@
                                     })
                                 </small>
                                 <small>
-                                    <strong>Assinatura:</strong>
+                                    <strong>@L.T("documents.signature_label", _culture):</strong>
                                     @(doc.SignatureStatus switch {
-                                        "not_started" => "Não iniciada",
-                                        "preparing" => "Em preparação",
-                                        "confirmed" => "Composição confirmada",
-                                        "externally_signed" => "Assinado",
+                                        "not_started" => L.T("documents.stage_signature_not_started", _culture),
+                                        "preparing" => L.T("documents.stage_signature_preparing", _culture),
+                                        "confirmed" => L.T("documents.stage_signature_confirmed", _culture),
+                                        "externally_signed" => L.T("documents.stage_signature_signed", _culture),
                                         _ => doc.SignatureStatus
                                     })
                                 </small>

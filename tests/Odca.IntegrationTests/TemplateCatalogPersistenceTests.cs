@@ -179,7 +179,7 @@ public sealed class TemplateCatalogPersistenceTests(DatabaseFixture database) : 
 
         await using var dataSource = NpgsqlDataSource.Create(database.AppConnectionString);
         var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build();
-        var controller = new Odca.Api.Controllers.ContractStudioController(dataSource, config, new StubTemplateCatalogRepository());
+        var controller = new Odca.Api.Controllers.ContractStudioController(dataSource, config, new StubTemplateCatalogRepository(), new Odca.Infrastructure.Signatures.DisabledSignatureEnvelopeProvider());
         controller.ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext { HttpContext = TestControllerContexts.Create(userId) };
 
         // Sem motivo (ou motivo curto demais) o arquivamento é recusado antes de qualquer efeito.

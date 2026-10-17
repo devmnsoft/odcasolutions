@@ -190,6 +190,10 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 4. **Assinatura:** implementar contrato de provedor, envelopes, signatários, eventos
    deduplicados, reconciliação e original/evidências. Escolha de provedor, modalidade,
    credenciais e conteúdo aprovado continuam decisões externas; não simular conclusão.
+   *(Avanço S3/D-OC37: contrato plugável do provedor + transporte de referência
+   `local-file` + envelopes/eventos tenant-scoped com RLS (v058) + reconciliação no worker;
+   assinatura por sessão e evidência documentais já existiam desde B.2. A escolha do
+   provedor segue decisão externa.)*
 5. **Acervo:** projetar referências existentes por paciente, com paginação, filtros,
    autorização e download revalidado, sem copiar bytes.
 
@@ -205,7 +209,9 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
   200%; os endpoints deste incremento não constituem sozinhos a jornada visual concluída.
 - [ ] Selecionar e integrar provedor real de assinatura (envio idempotente, signatários,
   eventos autenticados, reconciliação e evidências). Até lá o acervo informa
-  `signatureStatus=not_available`, nunca “assinado”.
+  `signatureStatus=not_available`, nunca “assinado”. Contrato plugável do provedor e
+  transporte de referência `local-file` entregues na Sprint 3 (D-OC37); seleção,
+  credenciais e conteúdo aprovado seguem decisões externas.
 - [ ] Carregar conteúdo clínico/jurídico aprovado. Testes devem continuar usando modelos
   sintéticos; nenhum texto demonstrativo deve ser publicado como conteúdo real.
 
@@ -416,3 +422,37 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [ ] CI oficial deste SHA: pendente — branch sem push; nenhum ID de execução inventado.
 - [ ] Aceite humano dos fluxos de paciente: pendente (capturas disponíveis para revisão).
 - [x] Commit único "sem push" fechando a Sprint 2.
+
+## Sprint 3 — assinatura: contrato de provedor de envelope externo + superfície em 4 idiomas (D-OC37) (17/10/2026)
+
+- [x] GATE sobre a árvore final (execução inicial 210/210 invalidada por mudanças pós-execução —
+  raciocínio na doc; reexecução final): builds estritos 0W/0E (Release+Debug), Domain 364/364, assets
+  exit=0 e suíte de integração `-FreshDb` **211/211** TEST-EXIT=0 (baseline 202 + 8 fatos do envelope
+  de assinatura + 1 fato de checksum da v058), catálogos 1622 chaves/cultura com paridade exata 4/4.
+- [x] F-1: `signatureStatus` derivado da preparação real no detalhe da versão (`not_started|preparing|confirmed`)
+  + readiness com advertência `integration.unavailable` fiel à configuração do transporte externo.
+  Defeito adjacente corrigido: 500 Dapper na leitura de participante (registro público com parâmetro
+  default) → `ParticipantReadRow` privado + projeção `.Select()`, coberto por fato de integração.
+- [x] F-2: superfície de assinatura em 4 idiomas (seção da ficha + `aria-label`, mensagens de
+  assinar/vincular/lembrete no `ContractsController` web, rótulos de estágio em `Documents/Index`);
+  +89 chaves por cultura (total 1622), reuso de chaves existentes antes de criar novas.
+- [x] F-3: triagem encerrada como **NÃO-defeito** — advertência de readiness com provider `none` é
+  fiel à decisão "proposto, não escolhido"; envio falha explicitamente `409 provider_unconfigured`.
+- [x] A-1: contrato plugável `ISignatureEnvelopeProvider` (`none` preserva a decisão; `local-file` é o
+  transporte de referência), migração **v058** (envelopes + eventos tenant-scoped com RLS, funções de
+  varredura/transição idempotente), endpoints send/sync/GET idempotentes (franquia consumida uma vez por
+  envelope; replay sem consumo; reenvio após declined consome nova unidade), reconciliador periódico
+  cross-tenant no worker, 8 fatos de integração. Nenhum fornecedor, credencial ou aprovação inventados.
+- [x] A-2: prova ao vivo `scripts/qa/validate-d37-signature-web.ps1` **fails=0** (24 checks; convergência
+  8→4→3→0 registrada; única falha de produto entre rodadas = defeito Dapper acima, corrigido; demais de
+  harness classificadas na doc) e capturas CDP `scripts/qa/capture-d37-screens.ps1`: 1 tela × 4 idiomas ×
+  360/768/1280/1440 + zoom 200% = **ok=20 fail=0** (PNGs fora do repo por tamanho).
+- [x] Doc D-OC37 consolidada e STATUS.md atualizado; `.odca/progress.json` inalterado (sem CI oficial
+  verde nem aceite humano para creditar marco).
+- [ ] Seleção e integração de provedor real de assinatura: pendente — contrato entregue nesta sprint;
+  decisão "proposto, não escolhido" preservada (credenciais/conteúdo aprovado seguem externos).
+- [ ] i18n do restante da ficha do contrato (seções renovação/obrigações/revisão/histórico/formulários,
+  pt-first desde antes de S3) e `aria-label` da navegação global (46 itens raw, padrão pré-S3).
+- [ ] CI oficial deste SHA: pendente — branch sem push; nenhum ID de execução inventado.
+- [ ] Aceite humano dos fluxos de assinatura: pendente (capturas disponíveis para revisão).
+- [x] Commit único "sem push" fechando a Sprint 3.

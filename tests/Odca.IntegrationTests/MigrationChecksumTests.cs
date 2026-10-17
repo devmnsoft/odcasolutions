@@ -549,4 +549,29 @@ public sealed class MigrationChecksumTests
         Assert.Contains("GRANT EXECUTE ON FUNCTION odca.platform_queue_summary() TO odca_app", canonical, StringComparison.Ordinal);
         Assert.DoesNotContain("ODCA-MIGRATION 058", snapshot, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ReleaseV058AddsSignatureEnvelopeProviderContractAndDeduplicatedEventsWithoutRewritingEarlierMigrations()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var previous = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v057.sql")).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v058.sql")).Replace("\r\n", "\n");
+        DatabaseMigrator.ValidateChecksums(previous);
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        DatabaseMigrator.ValidateChecksums(canonical);
+        for (var version = 1; version <= 57; version++)
+            Assert.Equal(MigrationBlock(previous, version), MigrationBlock(canonical, version));
+        // D-OC37 (Sprint 3/A-1): contrato de provedor externo de envelope de assinatura —
+        // persistencia tenant-scoped de um envelope por versao gerada, eventos deduplicados
+        // deterministicamente por source_event_id e varredura cross-tenant do worker no padrao
+        // SECURITY DEFINER de claim_notification (nenhum fornecedor externo foi escolhido; o
+        // transporte local-file de referencia materializa apenas a costura).
+        Assert.Contains("CREATE TABLE IF NOT EXISTS odca.signature_envelopes(", canonical, StringComparison.Ordinal);
+        Assert.Contains("CREATE TABLE IF NOT EXISTS odca.signature_envelope_events(", canonical, StringComparison.Ordinal);
+        Assert.Contains("UNIQUE(envelope_id,source_event_id)", canonical, StringComparison.Ordinal);
+        Assert.Contains("CREATE OR REPLACE FUNCTION odca.signature_envelope_pending_list(p_limit integer DEFAULT 20)", canonical, StringComparison.Ordinal);
+        Assert.Contains("CREATE OR REPLACE FUNCTION odca.signature_envelope_apply_state(p_tenant uuid,p_envelope uuid,p_status text,p_source text,p_occurred timestamptz)", canonical, StringComparison.Ordinal);
+        Assert.Contains("GRANT EXECUTE ON FUNCTION odca.signature_envelope_pending_list(integer),odca.signature_envelope_apply_state(uuid,uuid,text,text,timestamptz) TO odca_app", canonical, StringComparison.Ordinal);
+        Assert.DoesNotContain("ODCA-MIGRATION 059", snapshot, StringComparison.Ordinal);
+    }
 }

@@ -7,6 +7,7 @@ using Odca.Contracts.Contracts;
 using Odca.Contracts.Obligations;
 using Odca.Contracts.Renewals;
 using Odca.Contracts.Studio;
+using Odca.Configuration.Localization;
 using Odca.Web.Models;
 using Odca.Web.Services;
 
@@ -14,8 +15,11 @@ namespace Odca.Web.Controllers;
 
 [Authorize]
 [Route("organizacoes/{tenantId:guid}/contratos/{contractId:guid}")]
-public sealed class ContractsController(OdcaApiClient api, IUserTenantContext tenantContext) : Controller
+public sealed class ContractsController(OdcaApiClient api, IUserTenantContext tenantContext, LocalizationService loc) : Controller
 {
+    // D-OC37 (F-2): padrão canônico de cultura (CultureMiddleware) — Controller.Culture não é populado aqui.
+    private string? Culture => HttpContext.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] as string;
+    private string L(string key, params string[] args) => loc.T(key, Culture, args);
     [HttpGet]
     [Route("~/organizacoes/{tenantId:guid}/contratos")]
     public async Task<IActionResult> List(
@@ -991,7 +995,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         var token = await HttpContext.GetTokenAsync("access_token");
         if (token is null) return Challenge();
 
-        var name = string.IsNullOrWhiteSpace(participantName) ? "o participante" : participantName.Trim();
+        var name = string.IsNullOrWhiteSpace(participantName) ? L("sheet.sigmsg_participant_fallback") : participantName.Trim();
         var returnUrl = BuildReturnUrl(tenantId, contractId, "#assinatura", from, year, month, scope, kind, urgency, viewId, obrigacao);
 
         // D-OC31 B.2: vínculo opcional de documento do acervo como evidência (modo "evidence");
@@ -1002,7 +1006,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         if (result.Status == ApiCallStatus.NotFound)
         {
-            TempData["ContractSheetError"] = "A versão ou o participante de assinatura não estão mais disponíveis.";
+            TempData["ContractSheetError"] = L("sheet.sigmsg_sign_notfound");
             return Redirect(returnUrl);
         }
 
@@ -1010,18 +1014,18 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         {
             TempData["ContractSheetError"] = result.ErrorCode switch
             {
-                "preparation.not_confirmed" => "A preparação de assinatura ainda não foi confirmada no Estúdio do Contrato.",
-                "participant.already_signed" => $"A assinatura de {name} já havia sido registrada.",
-                "participant.identity_not_linked" => "Vincule sua conta a este participante antes de assinar pela sua sessão.",
-                "sign.mfa_required" => "A assinatura pela sua sessão exige verificação em dois fatores (MFA). Conclua o MFA e repita.",
-                _ => result.UserMessage("Não foi possível registrar a assinatura.")
+                "preparation.not_confirmed" => L("sheet.sigmsg_prep_not_confirmed"),
+                "participant.already_signed" => L("sheet.sigmsg_already_signed", name),
+                "participant.identity_not_linked" => L("sheet.sigmsg_identity_not_linked"),
+                "sign.mfa_required" => L("sheet.sigmsg_mfa_required"),
+                _ => result.UserMessage(L("sheet.sigmsg_sign_failed"))
             };
             return Redirect(returnUrl);
         }
 
         if (!result.Succeeded)
         {
-            TempData["ContractSheetError"] = result.UserMessage("Não foi possível registrar a assinatura.");
+            TempData["ContractSheetError"] = result.UserMessage(L("sheet.sigmsg_sign_failed"));
             return Redirect(returnUrl);
         }
 
@@ -1029,13 +1033,13 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         var allSigned = result.Value.TryGetProperty("allSigned", out var a) && a.ValueKind == JsonValueKind.True;
         // D-OC31 B.2: o ato registra o hash do PDF confirmado; com vínculo de acervo, a evidência documental é registrada junto.
         var evidenceLinked = result.Value.TryGetProperty("evidenceDocumentVersionId", out var ev) && ev.ValueKind == JsonValueKind.String;
-        var evidenceSuffix = evidenceLinked ? " A evidência documental do acervo foi vinculada ao ato (id e hash do documento registrados)." : string.Empty;
+        var evidenceSuffix = evidenceLinked ? L("sheet.sigmsg_evidence_linked_suffix") : string.Empty;
         if (replayed)
-            TempData["ContractSheetNotice"] = $"A assinatura de {name} já havia sido registrada.";
+            TempData["ContractSheetNotice"] = L("sheet.sigmsg_already_signed", name);
         else if (allSigned)
-            TempData["ContractSheetNotice"] = $"Assinatura de {name} registrada. Todos os participantes assinaram — a versão foi marcada como assinada.{evidenceSuffix}";
+            TempData["ContractSheetNotice"] = L("sheet.sigmsg_signed_all", name, evidenceSuffix);
         else
-            TempData["ContractSheetNotice"] = $"Assinatura de {name} registrada em nome do usuário conectado nesta sessão.{evidenceSuffix}";
+            TempData["ContractSheetNotice"] = L("sheet.sigmsg_signed_session", name, evidenceSuffix);
         return Redirect(returnUrl);
     }
 
@@ -1061,7 +1065,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         var token = await HttpContext.GetTokenAsync("access_token");
         if (token is null) return Challenge();
 
-        var name = string.IsNullOrWhiteSpace(participantName) ? "o participante" : participantName.Trim();
+        var name = string.IsNullOrWhiteSpace(participantName) ? L("sheet.sigmsg_participant_fallback") : participantName.Trim();
         var returnUrl = BuildReturnUrl(tenantId, contractId, "#assinatura", from, year, month, scope, kind, urgency, viewId, obrigacao);
 
         var result = await api.LinkSignatureParticipantIdentityAsync(token, tenantId, versionId, preparationId, participantClientId, ct);
@@ -1071,19 +1075,19 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         {
             TempData["ContractSheetError"] = result.ErrorCode switch
             {
-                "preparation.not_confirmed" => "A preparação de assinatura ainda não foi confirmada no Estúdio do Contrato.",
-                "link.not_member" => "Somente membros desta organização podem vincular a própria conta.",
-                _ => result.UserMessage("Não foi possível vincular sua conta a este participante.")
+                "preparation.not_confirmed" => L("sheet.sigmsg_prep_not_confirmed"),
+                "link.not_member" => L("sheet.sigmsg_link_not_member"),
+                _ => result.UserMessage(L("sheet.sigmsg_link_failed"))
             };
             return Redirect(returnUrl);
         }
         if (!result.Succeeded)
         {
-            TempData["ContractSheetError"] = result.UserMessage("Não foi possível vincular sua conta a este participante.");
+            TempData["ContractSheetError"] = result.UserMessage(L("sheet.sigmsg_link_failed"));
             return Redirect(returnUrl);
         }
 
-        TempData["ContractSheetNotice"] = $"Sua conta foi vinculada a {name}. Você já pode assinar pela sua sessão (com MFA).";
+        TempData["ContractSheetNotice"] = L("sheet.sigmsg_linked_success", name);
         return Redirect(returnUrl);
     }
 
@@ -1113,7 +1117,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         if (result.Status == ApiCallStatus.NotFound)
         {
-            TempData["ContractSheetError"] = "A versão ou a preparação de assinatura não estão mais disponíveis.";
+            TempData["ContractSheetError"] = L("sheet.sigmsg_remind_notfound");
             return Redirect(returnUrl);
         }
 
@@ -1121,16 +1125,16 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         {
             TempData["ContractSheetError"] = result.ErrorCode switch
             {
-                "reminder.too_soon" => result.UserMessage("Um lembrete foi enviado há pouco tempo; aguarde antes de reenviar."),
-                "preparation.not_confirmed" => "A preparação de assinatura ainda não foi confirmada no Estúdio do Contrato.",
-                _ => result.UserMessage("Não foi possível reenviar o lembrete de assinatura.")
+                "reminder.too_soon" => result.UserMessage(L("sheet.sigmsg_remind_too_soon")),
+                "preparation.not_confirmed" => L("sheet.sigmsg_prep_not_confirmed"),
+                _ => result.UserMessage(L("sheet.sigmsg_remind_failed"))
             };
             return Redirect(returnUrl);
         }
 
         if (!result.Succeeded)
         {
-            TempData["ContractSheetError"] = result.UserMessage("Não foi possível reenviar o lembrete de assinatura.");
+            TempData["ContractSheetError"] = result.UserMessage(L("sheet.sigmsg_remind_failed"));
             return Redirect(returnUrl);
         }
 
@@ -1142,12 +1146,12 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
             // D-OC31 B.1: o texto reflete o estado real — enfileirado na outbox (entrega
             // assíncrona) ou apenas registrado quando nenhum participante tem canal e-mail.
             TempData["ContractSheetNotice"] = queued > 0
-                ? $"Lembrete enfileirado para {queued} participante(s) com e-mail ativo; a entrega por e-mail é processada em segundo plano."
-                : "Lembrete registrado para os participantes pendentes. Nenhum participante com e-mail ativo foi enfileirado — avise os signatários pelos seus canais.";
+                ? L("sheet.sigmsg_remind_queued", queued.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                : L("sheet.sigmsg_remind_no_channel");
         }
         else
         {
-            TempData["ContractSheetNotice"] = "Lembrete registrado para os participantes pendentes. O envio por canal externo ainda não está configurado — avise os signatários pelos seus canais.";
+            TempData["ContractSheetNotice"] = L("sheet.sigmsg_remind_default");
         }
         return Redirect(returnUrl);
     }

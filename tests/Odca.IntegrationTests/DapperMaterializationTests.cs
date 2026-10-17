@@ -12,6 +12,7 @@ using Odca.Contracts.Patients;
 using Odca.Contracts.Studio;
 using Odca.Infrastructure.Operations;
 using Odca.Infrastructure.Patients;
+using Odca.Infrastructure.Signatures;
 
 namespace Odca.IntegrationTests;
 
@@ -202,7 +203,7 @@ public sealed class DapperMaterializationTests(DatabaseFixture database) : IClas
     {
         var config = new ConfigurationBuilder().Build();
         var catalog = new StubTemplateCatalogRepository();
-        var controller = new ContractStudioController(ds, config, catalog);
+        var controller = new ContractStudioController(ds, config, catalog, new DisabledSignatureEnvelopeProvider());
         controller.ControllerContext = new ControllerContext { HttpContext = TestControllerContexts.Create(actorId) };
         return controller;
     }

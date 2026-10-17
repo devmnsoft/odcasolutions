@@ -6440,3 +6440,85 @@ VALUES(57,'Preparacao de estreia: transparencia de paginas na extracao com metod
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 057
+-- ODCA-MIGRATION 058 CHECKSUM 4767a431f872d24c87077955a636e76272a793cc150afe72dcb010c448fc95c0
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
+
+DO $odca$
+DECLARE
+    expected_checksum constant char(64) := '4767a431f872d24c87077955a636e76272a793cc150afe72dcb010c448fc95c0';
+    recorded_checksum char(64);
+BEGIN
+    SELECT checksum INTO recorded_checksum FROM odca.schema_migrations WHERE version = 58;
+    IF recorded_checksum IS NOT NULL AND recorded_checksum <> expected_checksum THEN
+        RAISE EXCEPTION 'ODCA migration 058 checksum mismatch: stored %, expected %', recorded_checksum, expected_checksum;
+    END IF;
+END
+$odca$;
+
+-- D-OC37 (Sprint 3/A-1): contrato de provedor externo de envelopes de assinatura.
+-- Persistencia tenant-scoped do envelope por versao gerada (um por versao) e dos eventos
+-- recebidos, com deduplicacao deterministica por source_event_id. O transporte local-file
+-- de referencia apenas materializa/prova a costura: nenhum fornecedor externo foi escolhido.
+CREATE TABLE IF NOT EXISTS odca.signature_envelopes(
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(), tenant_id uuid NOT NULL, generated_version_id uuid NOT NULL,
+ preparation_id uuid NOT NULL, provider_code text NOT NULL CHECK(provider_code IN('local-file')),
+ envelope_ref text NOT NULL CHECK(length(btrim(envelope_ref))>0),
+ status text NOT NULL DEFAULT 'sent' CHECK(status IN('sent','accepted','declined','failed')),
+ sent_at timestamptz NOT NULL DEFAULT now(), state_at timestamptz, created_by uuid,
+ row_version bigint NOT NULL DEFAULT 1 CHECK(row_version>0),
+ created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(tenant_id,id), UNIQUE(tenant_id,generated_version_id),
+ FOREIGN KEY(tenant_id,preparation_id) REFERENCES odca.signature_preparations(tenant_id,id) ON DELETE CASCADE,
+ FOREIGN KEY(tenant_id,created_by) REFERENCES odca.memberships(tenant_id,user_id));
+CREATE INDEX IF NOT EXISTS signature_envelopes_pending_ix ON odca.signature_envelopes(tenant_id,status);
+
+CREATE TABLE IF NOT EXISTS odca.signature_envelope_events(
+ id bigserial PRIMARY KEY, tenant_id uuid NOT NULL, envelope_id uuid NOT NULL,
+ source_event_id text NOT NULL CHECK(length(btrim(source_event_id))>0),
+ event_type text NOT NULL CHECK(event_type IN('sent','accepted','declined','failed')),
+ payload jsonb NOT NULL DEFAULT '{}'::jsonb, occurred_at timestamptz,
+ received_at timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(envelope_id,source_event_id),
+ FOREIGN KEY(tenant_id,envelope_id) REFERENCES odca.signature_envelopes(tenant_id,id) ON DELETE CASCADE);
+
+ALTER TABLE odca.signature_envelopes ENABLE ROW LEVEL SECURITY; ALTER TABLE odca.signature_envelopes FORCE ROW LEVEL SECURITY;
+ALTER TABLE odca.signature_envelope_events ENABLE ROW LEVEL SECURITY; ALTER TABLE odca.signature_envelope_events FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON odca.signature_envelopes TO odca_app USING(tenant_id=nullif(current_setting('odca.tenant_id',true),'')::uuid) WITH CHECK(tenant_id=nullif(current_setting('odca.tenant_id',true),'')::uuid);
+CREATE POLICY tenant_isolation ON odca.signature_envelope_events TO odca_app USING(tenant_id=nullif(current_setting('odca.tenant_id',true),'')::uuid) WITH CHECK(tenant_id=nullif(current_setting('odca.tenant_id',true),'')::uuid);
+GRANT SELECT,INSERT,UPDATE ON odca.signature_envelopes,odca.signature_envelope_events TO odca_app;
+GRANT USAGE,SELECT ON SEQUENCE odca.signature_envelope_events_id_seq TO odca_app;
+
+-- Varredura cross-tenant do worker (padrao claim_notification): lista envelopes 'sent' e
+-- aplica uma transicao de estado com evento deduplicado, sem reescrever linhas concorrentes.
+CREATE OR REPLACE FUNCTION odca.signature_envelope_pending_list(p_limit integer DEFAULT 20)
+RETURNS TABLE(tenant_id uuid,envelope_id uuid,envelope_ref text,provider_code text,current_status text)
+LANGUAGE sql SECURITY DEFINER STABLE SET search_path=pg_catalog,odca AS $$
+ SELECT e.tenant_id,e.id,e.envelope_ref,e.provider_code,e.status FROM odca.signature_envelopes e
+ WHERE e.status='sent' ORDER BY e.sent_at ASC LIMIT greatest(1,least(200,coalesce(p_limit,20)));
+$$;
+CREATE OR REPLACE FUNCTION odca.signature_envelope_apply_state(p_tenant uuid,p_envelope uuid,p_status text,p_source text,p_occurred timestamptz)
+RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,odca AS $$
+DECLARE v_result text;
+BEGIN
+ IF p_status NOT IN ('accepted','declined','failed') THEN RAISE EXCEPTION 'signature_envelope_apply_state: estado desconhecido %', p_status; END IF;
+ UPDATE odca.signature_envelopes e SET status=p_status,state_at=coalesce(p_occurred,now()),row_version=e.row_version+1,updated_at=now()
+  WHERE e.id=p_envelope AND e.tenant_id=p_tenant AND e.status='sent'
+  RETURNING 'transitioned' INTO v_result;
+ INSERT INTO odca.signature_envelope_events(tenant_id,envelope_id,source_event_id,event_type,payload,occurred_at)
+ VALUES(p_tenant,p_envelope,p_source,p_status,'{}'::jsonb,p_occurred)
+ ON CONFLICT(envelope_id,source_event_id) DO NOTHING;
+ IF v_result IS NULL THEN
+   SELECT status INTO v_result FROM odca.signature_envelopes WHERE id=p_envelope AND tenant_id=p_tenant;
+   v_result := coalesce(v_result,'missing') || ':no-transition';
+ END IF;
+ RETURN v_result;
+END $$;
+REVOKE ALL ON FUNCTION odca.signature_envelope_pending_list(integer),odca.signature_envelope_apply_state(uuid,uuid,text,text,timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.signature_envelope_pending_list(integer),odca.signature_envelope_apply_state(uuid,uuid,text,text,timestamptz) TO odca_app;
+
+INSERT INTO odca.schema_migrations(version,name,checksum)
+VALUES(58,'Contrato de provedor de envelope externo de assinatura: persistencia tenant-scoped de envelopes por versao e eventos deduplicados para o transporte local-file de referencia','4767a431f872d24c87077955a636e76272a793cc150afe72dcb010c448fc95c0')
+ON CONFLICT(version) DO NOTHING;
+COMMIT;
+-- ODCA-END 058

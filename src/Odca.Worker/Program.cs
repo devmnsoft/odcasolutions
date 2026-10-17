@@ -2,6 +2,7 @@ using Odca.Worker;
 using Npgsql;
 using Odca.Configuration;
 using Odca.Infrastructure.Distributed;
+using Odca.Infrastructure.Signatures;
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.Configure<HostOptions>(options => options.ShutdownTimeout = TimeSpan.FromMinutes(2));
@@ -15,6 +16,9 @@ builder.Services.AddHostedService<ObligationReminderWorker>();
 builder.Services.AddHostedService<RenewalReminderWorker>();
 builder.Services.AddHostedService<RenewalApplicationWorker>();
 builder.Services.AddHostedService<SlaViolationScanWorker>();
+// D-OC37 (Sprint 3/A-1): provedor de envelope externo de assinatura + reconciliador periódico.
+builder.Services.AddHostedService<SignatureEnvelopeWorker>();
+builder.Services.AddOdcaSignatureEnvelopeProvider();
 builder.Services.AddSingleton(_=>NpgsqlDataSource.Create(builder.Configuration.GetConnectionString("Database")??throw new InvalidOperationException("ConnectionStrings:Database não foi configurada.")));
 
 var pickup = builder.Configuration["Notifications:DevelopmentPickupDirectory"];

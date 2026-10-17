@@ -9,6 +9,7 @@ using Npgsql;
 using Odca.Api.Controllers;
 using Odca.Application.Contracts;
 using Odca.Contracts.Studio;
+using Odca.Infrastructure.Signatures;
 
 namespace Odca.IntegrationTests;
 
@@ -386,7 +387,7 @@ public sealed class DocumentReuploadAndDraftExtractionTests(DatabaseFixture data
     private static ContractStudioController CreateStudioController(NpgsqlDataSource dataSource, Guid actorId)
     {
         var config = new ConfigurationBuilder().Build();
-        var controller = new ContractStudioController(dataSource, config, new StubTemplateCatalogRepository());
+        var controller = new ContractStudioController(dataSource, config, new StubTemplateCatalogRepository(), new DisabledSignatureEnvelopeProvider());
         controller.ControllerContext = new ControllerContext { HttpContext = TestControllerContexts.Create(actorId) };
         return controller;
     }

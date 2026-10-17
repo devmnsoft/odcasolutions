@@ -1,5 +1,20 @@
 # Status de execução
 
+## Incremento: Sprint 3 — assinatura: contrato plugável de provedor de envelope externo, consistência de status, superfície em 4 idiomas e prova ao vivo fails=0 (D-OC37) (17/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `528eff4` (Sprint 2). Migração **v058** (envelope externo + eventos, tenant-scoped com RLS; release byte-idêntica ao canônico). GATE reexecutado sobre a árvore final após correções descobertas na prova (execução inicial 210/210 invalidada — raciocínio na doc): builds Release+Debug estritos **0W/0E**, Domain **364/364**, assets exit=0, suíte de integração `-FreshDb` **211/211 TEST-EXIT=0** (baseline 202 + 8 fatos do envelope + 1 fato de checksum da v058); catálogos **1622 chaves/cultura, paridade 4/4**. Commit único ao final, **sem push**.
+- **F-1 (correção)**: `signatureStatus` no detalhe da versão (`GET .../studio/versions/{id}`) agora **derivado da preparação real** (`not_started|preparing|confirmed`) e o readiness de preparação mantém/remove a advertência `integration.unavailable` conforme o transporte externo configurado. **F-3 (triagem → NÃO-defeito)**: advertência de readiness com provider `none` é fiel à decisão "proposto, não escolhido" e o envio falha explicitamente (`409 provider_unconfigured`) — comportamento documentado, sem mudança de código.
+- **Defeito de produto descoberto e corrigido**: `GET versions/{id}` dava 500 com participante (materialização Dapper de registro público com parâmetro default) → `ParticipantReadRow` privado no controller + projeção `.Select()` (padrão da casa); cobertura por fato de integração e pela prova ao vivo.
+- **F-2 (correção)**: superfície de assinatura em 4 idiomas — seção de assinatura da ficha (incl. `aria-label`), mensagens das ações assinar/vincular/lembrete no `ContractsController` (web) e rótulos de estágio em `Documents/Index`; **+89 chaves/cultura** (total 1622), cookie canônico `odca_lang`.
+- **A-1 (avanço)**: contrato plugável `ISignatureEnvelopeProvider` (código `none` = decisão preservada; `local-file` = transporte de referência de drop), migração v058, endpoints send/sync/GET idempotentes (uma franquia consumida por envelope; replay = 0), reconciliador periódico cross-tenant no worker, 8 fatos de integração.
+- **Prova ao vivo**: `scripts/qa/validate-d37-signature-web.ps1` sobre base descartável — rodada final **fails=0 (24 checks)**; convergência 8→4→3→0 registrada (`evidence/d37-proof.txt`/`d37-proof-fim.txt`); única falha de produto entre as rodadas = defeito Dapper acima (corrigida); demais falhas de harness classificadas na doc (rota da ficha, asserção de página inteira vs. seção, BOM PS 5.1).
+- **Capturas CDP**: `scripts/qa/capture-d37-screens.ps1` — 1 tela × 4 idiomas × 360/768/1280/1440 + zoom 200% = **ok=20 fail=0** (PNGs em `%TEMP%\opencode\evidence\captures-d37\`, fora do repo por tamanho).
+- **Fora de escopo registrado**: fornecedor real de envio indefinido (decisão no DECISIONS-LOG — "proposto, não escolhido"); restante da ficha do contrato e `aria-label`s da navegação global permanecem pt-first/dívida pré-S3 (itens no BACKLOG).
+- **Separação de evidências**: teste local (GATE acima) · prova ao vivo (script reproduzível) · navegador (capturas para revisão) · **CI não verificada** (branch sem push; nenhum ID de execução inventado) · **aceite humano pendente** · `.odca/progress.json` inalterado.
+- **Próximos passos**:
+  - Push da branch quando solicitado (passa a verificar a CI oficial dos SHAs).
+  - Iniciar a Sprint 4 (atendimento, avisos e prazos) sobre este commit.
+
 ## Incremento: Sprint 2 — área de paciente em 4 idiomas, prova ao vivo fails=0 e 60 capturas CDP (D-OC36) (17/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `158a907` (Sprint 1). GATE **único sobre a árvore final** (raciocínio registrado na doc: baseline S1 verificado na mesma sessão; mudanças aditivas, sem migração): builds Release+Debug estritos **0W/0E**, Domain **364/364**, assets verdes, suíte de integração `-FreshDb` **202/202 TEST-EXIT=0** (inclui paridade 4/4 dos catálogos com as 123 chaves `patient.*` novas — total 1533/cultura). Commit único ao final, **sem push**.

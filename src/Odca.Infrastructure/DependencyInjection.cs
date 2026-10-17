@@ -27,6 +27,7 @@ using Odca.Infrastructure.Patients;
 using Odca.Application.Administration;
 using Odca.Infrastructure.Administration;
 using Odca.Infrastructure.Operations;
+using Odca.Infrastructure.Signatures;
 
 namespace Odca.Infrastructure;
 
@@ -80,6 +81,9 @@ public static class DependencyInjection
         services.AddScoped<IOrganizationFeatureRepository, NpgsqlOrganizationFeatureRepository>();
         services.AddScoped<IPlatformAuditRepository, NpgsqlPlatformAuditRepository>();
         services.AddOdcaOperationalInbox();
+        // D-OC37 (Sprint 3/A-1): provedor plugável de envelope externo de assinatura
+        // (Signatures:Provider; default "none" preserva a decisão "proposto, não escolhido").
+        services.AddOdcaSignatureEnvelopeProvider();
         services.AddScoped<AuthenticationService>();
         services.AddScoped<MfaService>();
         services.AddScoped<CustomerOnboardingService>();
