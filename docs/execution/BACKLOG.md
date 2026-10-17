@@ -37,13 +37,20 @@
 
 ## Estúdio de contratos
 
+> Seção remapeada em D-OC36 (17/10/2026): os itens que aqui constavam abertos foram entregues em
+> incrementos posteriores — persistência em migrations novas sem tocar releases aplicados (fundação
+> v011 de documento/minuta/versão + blocos v044–v057), casos de uso tenant-aware com API/BFF no núcleo
+> existente (blocos A/B e incrementos do estúdio), editor visual com autosave/conflito, PDF rastreável e
+> histórico autenticado (D-OC22–D-OC25 e suítes web 93/93–111/111) e PostgreSQL descartável + jornada no
+> navegador + inspeção do PDF + QA nas quatro larguras (D-OC23/D-OC24/D-OC25).
+
 - [x] Corrigir CA1859 sem alterar o contrato público ou materializar novamente o histórico.
 - [x] Definir JSON estruturado como fonte canônica, validar nós/formatação e recusar superfícies de conteúdo ativo.
 - [x] Modelar campos estáveis/repetidos, validação tipada, confirmação, conflito otimista, publicação imutável e restauração não destrutiva na camada Application.
-- [ ] Persistir modelos, cláusulas, concessões, rascunhos, versões e emissões em migration nova, sem modificar releases aplicados.
-- [ ] Integrar casos de uso tenant-aware, permissões/limites/auditoria, API e BFF ao núcleo existente.
-- [ ] Entregar editor visual modular, autosave com retry/conflito, PDF rastreável e histórico autenticado.
-- [ ] Executar PostgreSQL descartável, jornada no navegador, inspeção do PDF e QA 360/768/1280/1440 e zoom 200%.
+- [x] Persistir modelos, cláusulas, concessões, rascunhos, versões e emissões em migration nova, sem modificar releases aplicados.
+- [x] Integrar casos de uso tenant-aware, permissões/limites/auditoria, API e BFF ao núcleo existente.
+- [x] Entregar editor visual modular, autosave com retry/conflito, PDF rastreável e histórico autenticado.
+- [x] Executar PostgreSQL descartável, jornada no navegador, inspeção do PDF e QA 360/768/1280/1440 e zoom 200%.
 
 ## Recuperação da referência S02
 
@@ -388,3 +395,24 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [ ] CI oficial deste SHA: pendente — branch sem push; nenhum ID de execução inventado.
 - [ ] Aceite humano dos fluxos da jornada: pendente (capturas disponíveis para revisão).
 - [x] Commit único "sem push" fechando a Sprint 1.
+
+## Sprint 2 — área de paciente em 4 idiomas (D-OC36) (17/10/2026)
+
+- [x] GATE sobre a árvore final (execução única com raciocínio registrado na doc): builds estritos 0W/0E
+  (Release+Debug), Domain 364/364, assets 4/4 e suíte de integração `-FreshDb` 202/202 TEST-EXIT=0, incluindo
+  paridade dos 4 catálogos com as 123 chaves `patient.*` novas (total 1533/cultura).
+- [x] F-1 (P1): área de paciente em 4 idiomas (Index/Form/Details + `PatientsController` + 8 mensagens de
+  paciente no `DocumentsController` + cadastro rápido em novo documento); validação server-side pelo catálogo
+  no lugar de atributos de `FullName`/`Email` (sem mensagens padrão em inglês duplicadas); chaves existentes
+  reutilizadas antes de criar novas; cookie canônico `odca_lang` preservado; datas localizadas por
+  `CulturedTime` (novo overload `Date(DateOnly)`).
+- [x] A-1: prova ao vivo `scripts/qa/validate-d35-patient-i18n-web.ps1` **fails=0** (27 checks; sessão cliente
+  sem MFA; purga determinística; transcript `evidence/d35-proof-rodada-final.txt` + trace; falhas das rodadas
+  1–3 100% classificadas como de harness) e capturas CDP `scripts/qa/capture-d35-patient-screens.ps1`:
+  3 telas × 4 idiomas × 360/768/1280/1440 + zoom 200% = **ok=60 fail=0** (PNGs fora do repo por tamanho).
+- [x] Higiene documental: seção obsoleta "Estúdio de contratos" remapeada acima, com as entregas reais apontadas.
+- [ ] Pendente (fora de escopo da S2): i18n do restante da área Documentos (Index/Novo Documento com literais
+  não relacionados a paciente — hoje pt-first).
+- [ ] CI oficial deste SHA: pendente — branch sem push; nenhum ID de execução inventado.
+- [ ] Aceite humano dos fluxos de paciente: pendente (capturas disponíveis para revisão).
+- [x] Commit único "sem push" fechando a Sprint 2.

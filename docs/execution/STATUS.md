@@ -1,5 +1,18 @@
 # Status de execução
 
+## Incremento: Sprint 2 — área de paciente em 4 idiomas, prova ao vivo fails=0 e 60 capturas CDP (D-OC36) (17/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `158a907` (Sprint 1). GATE **único sobre a árvore final** (raciocínio registrado na doc: baseline S1 verificado na mesma sessão; mudanças aditivas, sem migração): builds Release+Debug estritos **0W/0E**, Domain **364/364**, assets verdes, suíte de integração `-FreshDb` **202/202 TEST-EXIT=0** (inclui paridade 4/4 dos catálogos com as 123 chaves `patient.*` novas — total 1533/cultura). Commit único ao final, **sem push**.
+- **Correção (P1) — área de paciente em 4 idiomas**: views Index/Form/Details via `L.T`/`CulturedTime` (novo overload `Date(DateOnly)`), `PatientsController` reescrito (propriedade-shadow `Culture` no padrão `StudioController` + `L()` + validação manual pelo catálogo — atributos `[Required]`/`[EmailAddress]` retirados de `FullName`/`Email` para eliminar mensagens padrão em inglês duplicadas), 8 mensagens de paciente no `DocumentsController` e bloco de cadastro rápido em `NewDocument`. Chaves existentes reutilizadas antes de criar novas; caminho canônico de idioma = cookie `odca_lang`; datas localizadas de fato (prova `17/10/2026` pt vs `10/17/2026` en).
+- **Fora de escopo registrado**: restante da área Documentos permanece **pt-first** (literals não-paciente) → item pendente no BACKLOG. Higiene documental: seção obsoleta "Estúdio de contratos" do BACKLOG remapeada com as entregas reais apontadas.
+- **Prova ao vivo**: `scripts/qa/validate-d35-patient-i18n-web.ps1` sobre a base descartável — rodada final **fails=0** (27 checks; transcript `evidence/d35-proof-rodada-final.txt` + trace): telas nos 4 idiomas com asserções negativas pt-BR, criação real via web, validação server-side, cadastro rápido, ciclo inativar/restaurar. Falhas das rodadas 1–3 **100% classificadas como de harness** (CPF sintético c/ dígito inválido, regex capturando GUID do tenant, `.ps1` UTF-8 sem BOM sob PS 5.1, `Location` relativa) — **zero falhas de produto**.
+- **Capturas CDP**: `scripts/qa/capture-d35-patient-screens.ps1` — 3 telas × 4 idiomas × 360/768/1280/1440 + zoom 200% = **ok=60 fail=0** (PNGs em `%TEMP%\opencode\evidence\captures-d35\`, fora do repo por tamanho). Driver `cdp-capture-v2.mjs` melhorado: sessões eagress opcionais quando ausentes do cfg (comportamento idêntico quando presentes).
+- **Separação de evidências**: teste local (GATE acima) · prova ao vivo (script reproduzível) · navegador (capturas para revisão) · **CI não verificada** (branch sem push; nenhum ID de execução inventado) · **aceite humano pendente**.
+- **Portal**: `.odca/progress.json` inalterado (nenhum marco credenciável neste incremento).
+- **Próximos passos**:
+  - Iniciar a Sprint 3 (assinatura) sobre este commit; bloqueio conhecido: fornecedor de envio externo indefinido (decisão registrada no D-OC34).
+  - Push da branch quando o usuário pedir (a CI oficial passará a verificar os SHAs).
+
 ## Incremento: Sprint 1 — automação confiável e consolidação das provas ao vivo do D-OC34 (D-OC35) (17/10/2026)
 
 - **Base**: `codex/s00-foundation` @ `27b19b6` (inclui o D-OC34, commitado em `aecfca7`). Builds estritos (Release+Debug, `-warnaserror`) **0W/0E**. Domain **364/364 PASS**. Suíte de integração via `scripts/qa/run-integration-tests.ps1 -FreshDb`: **202/202 PASS — zero falhas** (FRESH-DB-OK → BUILD-OK → TEST-EXIT=0; log `%TEMP%\opencode\d34-suite-freshdb-r2.log`). Paridade de catálogos **4/4** pelo gate determinístico `scripts/check-assets.mjs` (19 chaves i18n × 4 catálogos + 10 assets + round trips decimal/editor). Commit único ao final, **sem push**.

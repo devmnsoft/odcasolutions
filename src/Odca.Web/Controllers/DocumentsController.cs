@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Odca.Contracts.Patients;
 using Odca.Contracts.Studio;
+using Odca.Configuration.Localization;
 using Odca.Web.Models;
 using Odca.Web.Services;
 
@@ -10,8 +11,10 @@ namespace Odca.Web.Controllers;
 
 [Authorize]
 [Route("organizacoes/{tenantId:guid}/documentos")]
-public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext tenantContext) : Controller
+public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext tenantContext, LocalizationService loc) : Controller
 {
+    private string? Culture => HttpContext.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] as string;
+    private string L(string key, params string[] args) => loc.T(key, Culture, args);
     [HttpGet("")]
     public async Task<IActionResult> Index(
         Guid tenantId,
@@ -59,7 +62,7 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
             }
             else if (!patientsRes.Succeeded && patientsRes.Status != ApiCallStatus.Forbidden)
             {
-                patientErrorMessage = patientsRes.UserMessage("Não foi possível carregar a lista de pacientes.");
+                patientErrorMessage = patientsRes.UserMessage(L("patient.list_load_error"));
             }
 
             if (patientId.HasValue)
@@ -161,7 +164,7 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
             {
                 if (!patient.Value.Active)
                 {
-                    TempData["ErrorMessage"] = "Pacientes inativos não podem ser selecionados para novas emissões.";
+                    TempData["ErrorMessage"] = L("patient.inactive_not_selectable");
                     return RedirectToAction(nameof(Index), new { tenantId });
                 }
                 selectedPatient = patient.Value;
@@ -184,7 +187,7 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
             }
             else if (!pRes.Succeeded)
             {
-                patientErrorMessage = pRes.UserMessage("Não foi possível carregar os pacientes. A busca não ficou limitada à primeira página; tente novamente.");
+                patientErrorMessage = pRes.UserMessage(L("patient.list_page_limited_error"));
             }
             if (selectedPatient != null && !activePatients.Any(p => p.Id == selectedPatient.Id))
             {
@@ -225,14 +228,14 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
         if (access is null) return Forbid();
         if (!access.HasPermission("tenant.patients.manage"))
         {
-            TempData["ErrorMessage"] = "Você não possui permissão para cadastrar pacientes.";
+            TempData["ErrorMessage"] = L("patient.no_permission_create");
             return RedirectToAction(nameof(NewDocument), new { tenantId });
         }
         var name = (fullName ?? string.Empty).Trim();
         var cleanedIdentifier = (identifierValue ?? string.Empty).Trim();
         if (name.Length is < 2 or > 160 || cleanedIdentifier.Length < 3)
         {
-            TempData["ErrorMessage"] = "Informe o nome completo e um documento válido para o cadastro rápido.";
+            TempData["ErrorMessage"] = L("patient.quick_form_invalid");
             return RedirectToAction(nameof(NewDocument), new { tenantId });
         }
         DateOnly? birth = DateOnly.TryParse(birthDate, out var parsedBirth) ? parsedBirth : null;
@@ -245,12 +248,12 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
         var result = await api.CreatePatientAsync(token, tenantId, request, ct);
         if (result.Succeeded && result.Value is not null)
         {
-            TempData["SuccessMessage"] = "Paciente cadastrado. Os demais campos podem ser complementados depois na ficha.";
+            TempData["SuccessMessage"] = L("patient.quick_created");
             return RedirectToAction(nameof(NewDocument), new { tenantId, patientId = result.Value.Id });
         }
         TempData["ErrorMessage"] = result.Status == ApiCallStatus.Conflict
-            ? "Já existe um paciente ativo com esse documento."
-            : result.UserMessage("Não foi possível cadastrar o paciente.");
+            ? L("patient.quick_duplicate")
+            : result.UserMessage(L("patient.quick_fail"));
         return RedirectToAction(nameof(NewDocument), new { tenantId });
     }
 

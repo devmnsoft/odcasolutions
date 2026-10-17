@@ -1,0 +1,66 @@
+﻿
+patientA count=1
+STACK pronta (http puro)
+CAPTURES: telas=3 langs=4 viewports=4+zoom2x => 60 png em C:\Users\NCELL-DEV-020\AppData\Local\Temp\opencode\evidence\captures-d35
+CDP| LOGIN cliente ok (3 cookies)
+CDP| OK   d35-pacientes-list/pt-BR/360x780@1x
+CDP| OK   d35-pacientes-list/pt-BR/768x1024@1x
+CDP| OK   d35-pacientes-list/pt-BR/1280x800@1x
+CDP| OK   d35-pacientes-list/pt-BR/1440x900@1x
+CDP| OK   d35-pacientes-list/en-US/360x780@1x
+CDP| OK   d35-pacientes-list/en-US/768x1024@1x
+CDP| OK   d35-pacientes-list/en-US/1280x800@1x
+CDP| OK   d35-pacientes-list/en-US/1440x900@1x
+CDP| OK   d35-pacientes-list/es-ES/360x780@1x
+CDP| OK   d35-pacientes-list/es-ES/768x1024@1x
+CDP| OK   d35-pacientes-list/es-ES/1280x800@1x
+CDP| OK   d35-pacientes-list/es-ES/1440x900@1x
+CDP| OK   d35-pacientes-list/fr-FR/360x780@1x
+CDP| OK   d35-pacientes-list/fr-FR/768x1024@1x
+CDP| OK   d35-pacientes-list/fr-FR/1280x800@1x
+CDP| OK   d35-pacientes-list/fr-FR/1440x900@1x
+CDP| OK   d35-pacientes-list/pt-BR/1280x800@2x
+CDP| OK   d35-pacientes-list/en-US/1280x800@2x
+CDP| OK   d35-pacientes-list/es-ES/1280x800@2x
+CDP| OK   d35-pacientes-list/fr-FR/1280x800@2x
+CDP| OK   d35-paciente-novo/pt-BR/360x780@1x
+CDP| OK   d35-paciente-novo/pt-BR/768x1024@1x
+CDP| OK   d35-paciente-novo/pt-BR/1280x800@1x
+CDP| OK   d35-paciente-novo/pt-BR/1440x900@1x
+CDP| OK   d35-paciente-novo/en-US/360x780@1x
+CDP| OK   d35-paciente-novo/en-US/768x1024@1x
+CDP| OK   d35-paciente-novo/en-US/1280x800@1x
+CDP| OK   d35-paciente-novo/en-US/1440x900@1x
+CDP| OK   d35-paciente-novo/es-ES/360x780@1x
+CDP| OK   d35-paciente-novo/es-ES/768x1024@1x
+CDP| OK   d35-paciente-novo/es-ES/1280x800@1x
+CDP| OK   d35-paciente-novo/es-ES/1440x900@1x
+CDP| OK   d35-paciente-novo/fr-FR/360x780@1x
+CDP| OK   d35-paciente-novo/fr-FR/768x1024@1x
+CDP| OK   d35-paciente-novo/fr-FR/1280x800@1x
+CDP| OK   d35-paciente-novo/fr-FR/1440x900@1x
+CDP| OK   d35-paciente-novo/pt-BR/1280x800@2x
+CDP| OK   d35-paciente-novo/en-US/1280x800@2x
+CDP| OK   d35-paciente-novo/es-ES/1280x800@2x
+CDP| OK   d35-paciente-novo/fr-FR/1280x800@2x
+CDP| OK   d35-paciente-ficha/pt-BR/360x780@1x
+CDP| OK   d35-paciente-ficha/pt-BR/768x1024@1x
+CDP| OK   d35-paciente-ficha/pt-BR/1280x800@1x
+CDP| OK   d35-paciente-ficha/pt-BR/1440x900@1x
+CDP| OK   d35-paciente-ficha/en-US/360x780@1x
+CDP| OK   d35-paciente-ficha/en-US/768x1024@1x
+CDP| OK   d35-paciente-ficha/en-US/1280x800@1x
+CDP| OK   d35-paciente-ficha/en-US/1440x900@1x
+CDP| OK   d35-paciente-ficha/es-ES/360x780@1x
+CDP| OK   d35-paciente-ficha/es-ES/768x1024@1x
+CDP| OK   d35-paciente-ficha/es-ES/1280x800@1x
+CDP| OK   d35-paciente-ficha/es-ES/1440x900@1x
+CDP| OK   d35-paciente-ficha/fr-FR/360x780@1x
+CDP| OK   d35-paciente-ficha/fr-FR/768x1024@1x
+CDP| OK   d35-paciente-ficha/fr-FR/1280x800@1x
+CDP| OK   d35-paciente-ficha/fr-FR/1440x900@1x
+CDP| OK   d35-paciente-ficha/pt-BR/1280x800@2x
+CDP| OK   d35-paciente-ficha/en-US/1280x800@2x
+CDP| OK   d35-paciente-ficha/es-ES/1280x800@2x
+CDP| OK   d35-paciente-ficha/fr-FR/1280x800@2x
+CDP| CAPTURES-DONE ok=60 fail=0

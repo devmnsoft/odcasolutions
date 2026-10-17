@@ -1,0 +1,35 @@
+﻿
+[PASS] P0 binarios Debug presentes (api/web) 
+[PASS] P0b purga da base descartavel (estado idem ao setup + fixture de paciente) 
+[PASS] S1 api pronta 
+[PASS] S2 web pronta 
+Fase stack ok 2026-10-17T11:01:30.9724143-03:00
+[PASS] W1 login web do cliente (302, sem MFA) 
+[PASS] P1-1 indice en-US (titulo/CTA/linha ativa, sem pt-BR) len=12268
+[PASS] P1-2a formulario en-US (rotulos de identificacao/contatos/representante) len=17090
+[PASS] P1-2b formulario es-ES len=17217
+[PASS] P1-2c formulario fr-FR len=17283
+[PASS] P1-3 ficha en-US (secoes + acervo vazio + data en 10/17/2026) len=14279
+[PASS] P1-4a POST /pacientes/novo en-US -> 302 p/ ficha code=302 loc=/organizacoes/20000000-0000-4000-8000-000000000001/pacientes/f503c82e-321b-4f07-b215-bcf1a44d1bb6
+[PASS] P1-4b ficha do novo paciente com alert de sucesso en-US len=14355
+[PASS] P1-4c registro persistido (count=1) count=1
+[PASS] P1-5 validacao en-US (mensagem do catalogo, sem pt-BR) code=200
+[PASS] P1-6a formulario rapido presente e traduzido em en-US len=18300
+[PASS] P1-6b POST /documentos/novo/paciente -> 302 c/ patientId code=302 loc=/organizacoes/20000000-0000-4000-8000-000000000001/documentos/novo?patientId=8a7e5dd6-65f0-407b-a1e5-cc6208cf4424
+[PASS] P1-6c alert de cadastro rapido em en-US len=18854
+[PASS] P1-7a POST situacao active=false -> 302 code=302
+[PASS] P1-7b ficha mostra inativacao preservando acervo (en-US) len=14281
+[PASS] P1-7c paciente inativo nao selecionavel p/ novas emissoes (en-US) len=15997
+[PASS] P1-7d restauracao em en-US code=302
+[PASS] P1-8a indice pt-BR len=13313
+[PASS] P1-8b formulario pt-BR len=17207
+[PASS] P1-8c ficha pt-BR (data 17/10/2026 + secoes) len=14363
+[PASS] P1-9a indice es-ES len=13338
+[PASS] P1-9b indice fr-FR len=13430
+[PASS] P1-10 estado final: 3 pacientes ativos (fixture + criado + rapido) total=3 rapido=1
+RESULTADO fails=0 ts=2026-10-17T11:01:48-03:00
+PROVA-FIM fails=7 ts=2026-10-17T10:53:22-03:00
+PROVA-FIM fails=5 ts=2026-10-17T10:56:21-03:00
+PROVA-FIM fails=5 ts=2026-10-17T11:00:53-03:00
+PROVA-FIM fails=0 ts=2026-10-17T11:01:48-03:00
+

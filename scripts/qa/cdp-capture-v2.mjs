@@ -200,12 +200,18 @@ await psend('Network.enable');
 // ---------- sessoes fresas ----------
 const jars = {};
 try {
+  // Sessoes eager sao opcionais: o cfg declara apenas as credenciais que possui.
+  // Sessoes ausentes aqui (ex.: admin em d34) sao logadas sob demanda no retry abaixo.
   const cCli = cfg.creds.cliente;
-  jars.cliente = await httpLogin(cCli.email, cCli.pass, '');
-  console.log('LOGIN cliente ok (' + jars.cliente.length + ' cookies)');
+  if (cCli) {
+    jars.cliente = await httpLogin(cCli.email, cCli.pass, '');
+    console.log('LOGIN cliente ok (' + jars.cliente.length + ' cookies)');
+  }
   const cOp = cfg.creds.operador;
-  jars.operador = await httpLogin(cOp.email, cOp.pass, cOp.mfaKey || '');
-  console.log('LOGIN operador ok (' + jars.operador.length + ' cookies)');
+  if (cOp) {
+    jars.operador = await httpLogin(cOp.email, cOp.pass, cOp.mfaKey || '');
+    console.log('LOGIN operador ok (' + jars.operador.length + ' cookies)');
+  }
 
   let okCount = 0, failCount = 0; const fails = [];
   for (const screen of cfg.screens) {

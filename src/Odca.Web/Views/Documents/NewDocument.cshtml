@@ -3,6 +3,7 @@
     ViewData["Title"] = "Novo documento";
     var tenantId = Model.TenantId;
     var returnUrlForNewPatient = Url.Action("NewDocument", "Documents", new { tenantId, patientSearch = Model.PatientSearch, patientPage = Model.PatientPage });
+    var _culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
 }
 
 <section class="page-heading">
@@ -117,17 +118,17 @@
             @if (Model.CanManagePatients)
             {
                 <details class="help" style="margin-top: 1rem;">
-                    <summary>Cadastro rápido — paciente não está na lista?</summary>
-                    <p class="muted">Dados mínimos para vincular agora; os demais campos podem ser complementados depois na ficha do paciente.</p>
+                    <summary>@L.T("patient.quick_summary",_culture)</summary>
+                    <p class="muted">@L.T("patient.quick_hint",_culture)</p>
                     <form method="post" asp-action="CreatePatientInline" asp-route-tenantId="@tenantId">
                         @Html.AntiForgeryToken()
-                        <label>Nome completo<input name="fullName" required minlength="2" maxlength="160" /></label>
-                        <label>Documento<select name="identifierType"><option value="cpf">CPF</option><option value="cnpj">CNPJ</option><option value="passport">Passaporte</option><option value="other">Outro</option></select></label>
-                        <label>Número do documento<input name="identifierValue" required minlength="3" maxlength="60" /></label>
-                        <label>Data de nascimento (opcional)<input type="date" name="birthDate" max="@DateTime.Now.ToString("yyyy-MM-dd")" /></label>
-                        <label>Representante (opcional)<input name="representativeName" maxlength="160" /></label>
-                        <label>Vínculo do representante (opcional)<input name="representativeRelation" maxlength="120" /></label>
-                        <button class="button button-primary" type="submit">Cadastrar e selecionar</button>
+                        <label>@L.T("patient.full_name",_culture)<input name="fullName" required minlength="2" maxlength="160" /></label>
+                        <label>@L.T("patient.quick_doc_label",_culture)<select name="identifierType"><option value="cpf">@L.T("patient.id_cpf",_culture)</option><option value="cnpj">@L.T("patient.id_cnpj",_culture)</option><option value="passport">@L.T("patient.id_passport",_culture)</option><option value="other">@L.T("patient.id_other",_culture)</option></select></label>
+                        <label>@L.T("patient.quick_doc_number",_culture)<input name="identifierValue" required minlength="3" maxlength="60" /></label>
+                        <label>@L.T("patient.birth_optional",_culture)<input type="date" name="birthDate" max="@DateTime.Now.ToString("yyyy-MM-dd")" /></label>
+                        <label>@L.T("patient.rep_optional",_culture)<input name="representativeName" maxlength="160" /></label>
+                        <label>@L.T("patient.rep_relation_optional",_culture)<input name="representativeRelation" maxlength="120" /></label>
+                        <button class="button button-primary" type="submit">@L.T("patient.quick_submit",_culture)</button>
                     </form>
                 </details>
             }

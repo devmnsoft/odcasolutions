@@ -14,6 +14,9 @@ public static class CulturedTime
 
     public static string Date(DateTime value, string? culture) => Format(ToOffset(value), culture, null);
 
+    /// <summary>Data pura (ex.: nascimento) na ordem da data da língua ativa.</summary>
+    public static string Date(DateOnly value, string? culture) => Format(new DateTimeOffset(value.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero), culture, null);
+
     public static string DateTime(DateTimeOffset value, string? culture) => Format(value, culture, " HH:mm");
 
     public static string DateTime(DateTime value, string? culture) => Format(ToOffset(value), culture, " HH:mm");

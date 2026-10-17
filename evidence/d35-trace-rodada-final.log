@@ -1,0 +1,76 @@
+﻿
+2026-10-17 11:01:30.986 WL-inicio cliente.teste@odca.local
+2026-10-17 11:01:31.010 WC-inicio n_args=11
+2026-10-17 11:01:31.400 WC-done exit=0 apos_ms=394
+2026-10-17 11:01:31.408 WL-GET-entrar-ok bytes=4007
+2026-10-17 11:01:31.419 WC-inicio n_args=21
+2026-10-17 11:01:32.164 WC-done exit=0 apos_ms=744
+2026-10-17 11:01:32.169 WL-POST-entrar tent=1 -> 302
+2026-10-17 11:01:32.194 WL-fim 302
+2026-10-17 11:01:36.278 WC-inicio n_args=18
+2026-10-17 11:01:36.988 WC-done exit=0 apos_ms=710
+2026-10-17 11:01:36.992 GET-end code=200 bytes=12550 url=http://localhost:5144/organizacoes/20000000-0000-4000-8000-000000000001/pacientes
+2026-10-17 11:01:37.013 WC-inicio n_args=18
+2026-10-17 11:01:37.721 WC-done exit=0 apos_ms=707
+2026-10-17 11:01:37.724 GET-end code=200 bytes=17377 url=http://localhost:5144/organizacoes/20000000-0000-4000-8000-000000000001/pacientes/novo
+2026-10-17 11:01:37.730 WC-inicio n_args=18
+2026-10-17 11:01:38.125 WC-done exit=0 apos_ms=395
+2026-10-17 11:01:38.128 GET-end code=200 bytes=17583 url=http://localhost:5144/organizacoes/20000000-0000-4000-8000-000000000001/pacientes/novo
+2026-10-17 11:01:38.135 WC-inicio n_args=18
+2026-10-17 11:01:38.532 WC-done exit=0 apos_ms=398
+2026-10-17 11:01:38.538 GET-end code=200 bytes=17805 url=http://localhost:5144/organizacoes/20000000-0000-4000-8000-000000000001/pacientes/novo
+2026-10-17 11:01:38.545 WC-inicio n_args=18
+2026-10-17 11:01:38.952 WC-done exit=0 apos_ms=406
+2026-10-17 11:01:38.955 GET-end code=200 bytes=14568 url=http://localhost:5144/organizacoes/20000000-0000-4000-8000-000000000001/pacientes/75c87013-4595-41dd-93d9-ac2e9c1f8fc4
+2026-10-17 11:01:38.966 WC-inicio n_args=18
+2026-10-17 11:01:39.373 WC-done exit=0 apos_ms=407
+2026-10-17 11:01:39.378 GET-end code=200 bytes=17377 url=http://localhost:5144/organizacoes/20000000-0000-4000-8000-000000000001/pacientes/novo
+2026-10-17 11:01:39.409 WC-inicio n_args=27
+2026-10-17 11:01:39.883 WC-done exit=0 apos_ms=474
+2026-10-17 11:01:39.900 WC-inicio n_args=18
+2026-10-17 11:01:40.302 WC-done exit=0 apos_ms=403
+2026-10-17 11:01:40.305 GET-end code=200 bytes=14644 url=http://localhost:5144/organizacoes/20000000-0000-4000-8000-000000000001/pacientes/f503c82e-321b-4f07-b215-bcf1a44d1bb6
+2026-10-17 11:01:40.459 WC-inicio n_args=27
+2026-10-17 11:01:40.925 WC-done exit=0 apos_ms=466
+2026-10-17 11:01:40.935 WC-inicio n_args=18
+2026-10-17 11:01:41.345 WC-done exit=0 apos_ms=410
+2026-10-17 11:01:41.349 GET-end code=200 bytes=18644 url=http://localhost:5144/organizacoes/20000000-0000-4000-8000-000000000001/documentos/novo
+2026-10-17 11:01:41.358 WC-inicio n_args=27
+2026-10-17 11:01:41.830 WC-done exit=0 apos_ms=472
+2026-10-17 11:01:41.839 WC-inicio n_args=18
+2026-10-17 11:01:42.266 WC-done exit=0 apos_ms=427
+2026-10-17 11:01:42.271 GET-end code=200 bytes=19199 url=http://localhost:5144/organizacoes/20000000-0000-4000-8000-000000000001/documentos/novo?patientId=8a7e5dd6-65f0-407b-a1e5-cc6208cf4424
+2026-10-17 11:01:42.526 WC-inicio n_args=18
+2026-10-17 11:01:42.965 WC-done exit=0 apos_ms=438
+2026-10-17 11:01:42.968 GET-end code=200 bytes=14559 url=http://localhost:5144/organizacoes/20000000-0000-4000-8000-000000000001/pacientes/f503c82e-321b-4f07-b215-bcf1a44d1bb6
+2026-10-17 11:01:42.974 WC-inicio n_args=27
+2026-10-17 11:01:43.445 WC-done exit=0 apos_ms=473
+2026-10-17 11:01:43.453 WC-inicio n_args=18
+2026-10-17 11:01:43.866 WC-done exit=0 apos_ms=412
+2026-10-17 11:01:43.869 GET-end code=200 bytes=14570 url=http://localhost:5144/organizacoes/20000000-0000-4000-8000-000000000001/pacientes/f503c82e-321b-4f07-b215-bcf1a44d1bb6
+2026-10-17 11:01:43.878 WC-inicio n_args=18
+2026-10-17 11:01:44.273 WC-done exit=0 apos_ms=396
+2026-10-17 11:01:44.278 GET-end code=200 bytes=16330 url=http://localhost:5144/organizacoes/20000000-0000-4000-8000-000000000001/documentos/novo?patientId=f503c82e-321b-4f07-b215-bcf1a44d1bb6
+2026-10-17 11:01:44.487 WC-inicio n_args=18
+2026-10-17 11:01:44.898 WC-done exit=0 apos_ms=410
+2026-10-17 11:01:44.901 GET-end code=200 bytes=14459 url=http://localhost:5144/organizacoes/20000000-0000-4000-8000-000000000001/pacientes/f503c82e-321b-4f07-b215-bcf1a44d1bb6
+2026-10-17 11:01:44.905 WC-inicio n_args=27
+2026-10-17 11:01:45.369 WC-done exit=0 apos_ms=464
+2026-10-17 11:01:45.384 WC-inicio n_args=18
+2026-10-17 11:01:45.802 WC-done exit=0 apos_ms=418
+2026-10-17 11:01:45.805 GET-end code=200 bytes=14629 url=http://localhost:5144/organizacoes/20000000-0000-4000-8000-000000000001/pacientes/f503c82e-321b-4f07-b215-bcf1a44d1bb6
+2026-10-17 11:01:45.811 WC-inicio n_args=18
+2026-10-17 11:01:46.231 WC-done exit=0 apos_ms=420
+2026-10-17 11:01:46.262 GET-end code=200 bytes=13819 url=http://localhost:5144/organizacoes/20000000-0000-4000-8000-000000000001/pacientes
+2026-10-17 11:01:46.269 WC-inicio n_args=18
+2026-10-17 11:01:46.680 WC-done exit=0 apos_ms=410
+2026-10-17 11:01:46.684 GET-end code=200 bytes=17683 url=http://localhost:5144/organizacoes/20000000-0000-4000-8000-000000000001/pacientes/novo
+2026-10-17 11:01:46.693 WC-inicio n_args=18
+2026-10-17 11:01:47.100 WC-done exit=0 apos_ms=407
+2026-10-17 11:01:47.104 GET-end code=200 bytes=14941 url=http://localhost:5144/organizacoes/20000000-0000-4000-8000-000000000001/pacientes/75c87013-4595-41dd-93d9-ac2e9c1f8fc4
+2026-10-17 11:01:47.114 WC-inicio n_args=18
+2026-10-17 11:01:47.573 WC-done exit=0 apos_ms=459
+2026-10-17 11:01:47.577 GET-end code=200 bytes=13699 url=http://localhost:5144/organizacoes/20000000-0000-4000-8000-000000000001/pacientes
+2026-10-17 11:01:47.583 WC-inicio n_args=18
+2026-10-17 11:01:47.966 WC-done exit=0 apos_ms=383
+2026-10-17 11:01:47.968 GET-end code=200 bytes=13873 url=http://localhost:5144/organizacoes/20000000-0000-4000-8000-000000000001/pacientes

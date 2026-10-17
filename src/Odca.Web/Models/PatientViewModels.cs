@@ -6,7 +6,10 @@ namespace Odca.Web.Models;
 public sealed class PatientFormViewModel
 {
     public Guid? Id { get; set; }
-    [Required(ErrorMessage = "Informe o nome completo."), StringLength(160, MinimumLength = 2)] public string FullName { get; set; } = string.Empty;
+    // D-OC36: validação de nome/e-mail feita em PatientsController.ValidatePatientForm
+    // (mensagens pelo catálogo i18n dos 4 idiomas); sem ErrorMessage em atributo para não
+    // duplicar a mensagem nem fixar pt-BR no binding.
+    public string FullName { get; set; } = string.Empty;
     [StringLength(120)] public string? PreferredName { get; set; }
     public DateOnly? BirthDate { get; set; }
     [EmailAddress(ErrorMessage = "Informe um e-mail válido."), StringLength(254)] public string? Email { get; set; }
