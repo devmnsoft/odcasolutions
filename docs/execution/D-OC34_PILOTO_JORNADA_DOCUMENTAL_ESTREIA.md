@@ -68,8 +68,10 @@ Semântica implementada no worker (códigos centralizados em `MarkExtractionFail
 - **`pdfinfo` opcional**: quando ausente, `pages_total` fica NULL e a UI declara "total não pôde
   ser confirmado" (mensagem própria `studio.x_scope_unknown`) — jamais presumido.
 - **Códigos de falha distintos e estáveis**: `extraction-timeout` (limite excedido),
-  `extractor-failed` (executável ausente/falhou) e `pdf-no-text-layer` (PDF só de imagem sem
-  renderer) — centralizados, retratáveis até o limite de tentativas.
+  `extractor-not-configured` (executável de extração ausente na configuração),
+  `extractor-failed` (executável presente que falhou) e `pdf-no-text-layer` (PDF só de imagem sem
+  renderer); entrada não suportada vira `invalid-document` — centralizados em
+  `MarkExtractionFailed`, retratáveis até o limite de tentativas.
 - Revisão humana e origem das sugestões preservadas (nada muda no fluxo aceitar/editar/rejeitar).
 
 ## B.5 — Arquivar exige motivo + gate opcional por perfil
@@ -142,11 +144,94 @@ no DECISIONS-LOG — sem inventar integração, custo ou status de homologação
 
 ## D — Provas ao vivo (contra a base descartável `odca_test_disposable`)
 
-[consolidação da rodada final de A–N — `%TEMP%\opencode\evidence\d34-proof-a.txt`]
+Método: jornada fim-a-fim A–N sobre a base descartável `odca_test_disposable` (separada da
+`odca_test_integration` da suíte), conduzida por script reproduzível em um único comando —
+`scripts/qa/validate-d34-an-web.ps1`. Cada rodada começa com **purga determinística** dos dados do
+tenant + fixtures fixas (plano enterprise v2 para o módulo de revisões, paciente da jornada,
+canal de e-mail `signature_completed` opt-in, diretório de pickup limpo), sobe stack própria
+(api :5143 / web :5144 / worker), executa os segmentos A→N e termina com marker `PROVA-FIM
+fails=<n>` em `d34-proof-fim.txt`. Dados sintéticos ancorados (tenant/contas/pacientes de fixture);
+sem credenciais nos relatórios.
+
+Convergência das rodadas locais (todas em 17/10, máquina de desenvolvimento compartilhada):
+
+| Rodada | Falhas | Causa (compartilhada em `evidence/d34-proof-an-rodada10-falhas-classificadas.md`) |
+|---|---|---|
+| 10 | 31 | zero falhas de produto: 6 causas próprias do script (purga de tabelas sem `tenant_id`, quoting PS 5.1 p/ psql, assembly base do `ZipArchiveMode`, dígito verificador CPF/CNPJ) + 15 cascata (suíte paralela derrubou dotnet da prova) + 10 OCR na fase X/T/N |
+| 11a / 11b (final-1) | abortadas | cura aplicada no ponto de morte de cada rodada (privacy_request_events; CPF inválido no fixture J0) |
+| FINAL-2 | abortada | MFA challenge 400: anti-replay TOTP da `MfaService` rejeita código de janela igual à confirmação da inscrição; retry antigo não esperava janela nova |
+| FINAL-3 | 15 | primeiro `vidB` real: `plan_restricted` — módulo de revisões só existe habilitado no enterprise v2; X1-2 causa própria (paginação extra do wkhtmltopdf: 26≠25); demais em cascata do J4 |
+| FINAL-4 | 12 | contato obrigatório do participante de assinatura (`Informe e-mail ou telefone.`) — validação real da API; J0→J4 verde pela 1ª vez |
+| FINAL-5 | 5 | só B10: coluna `payload` inexistente (attribution por `source_id` determinístico), pickup dir via runtime config (não appsettings) |
+| FINAL-6 | **0** | todos os checks PASS (transcript em `evidence/d34-proof-an-rodada-final.txt`) |
+
+O que foi provado na rodada final (todos os checks PASS):
+
+- **A** (diagnóstico operacional): página do superadmin renderiza; 8 dependências sondadas com
+  rótulos; envelope externo `Indisponível` com decisão registrada; renderer em estado honesto
+  (nunca "Configurado"); nenhum valor de configuração exposto; resumo de filas visível.
+- **W/F**: login web do cliente sem MFA (302 direto); catálogo único de planos v2 sem fantasma.
+- **B.5–B.7**: arquivar exige motivo (persistido + estado), versões imutáveis, gate de perfil
+  (rejeição + nenhuma minuta criada); vincular/desvincular paciente com snapshot imutável,
+  autofill só de campos não confirmados e evento `patient.linked`; cadastro rápido (cria, valida
+  CPF/CNPJ e explica erro).
+- **J (jornada de assinatura completa)**: fixture NDA (8 campos manual+confirmado, documentos
+  sintéticos válidos), gerar versão, PDF completo, solicitação de revisão ao operador (login com
+  MFA), aprovação interna, preparação confirmada, assinatura em modalidade **evidence** — linha
+  persiste modalidade + descrição (rastreável) e a versão fica `externally_signed`.
+- **B.8/B.9**: banner de modalidades reais na ficha (nenhum envelope enviado, franquia intacta);
+  central de documentos exibe "Concluído — disponível para download".
+- **B.10**: exatamente **um** `signature_completed` na outbox, amarrado ao ato por `source_id`
+  determinístico (SHA-256 de `signature.completed|preparação|versão`, reproduzido pelo script);
+  destinatário = criador da preparação; replay do ato avisa e não duplica; transporte local
+  devolve notificação renderizada com assunto genérico fixo, mencionando o destinatário sem segredos.
+- **X (escopo OCR honesto)**: PDF escaneado 25 páginas → `ready_for_review` com `total=25,
+  processed=20, truncated=true` e banco/API concordando; docx não fabrica paginação; imagem única
+  reporta 1 de 1.
+- **T/N (códigos de falha estáveis)**: OCR pendurado → `extraction-timeout` (distinto de
+  `extractor-failed`); PDF sem renderer → `pdf-no-text-layer`; imagem sem OCR →
+  `extractor-not-configured`; worker principal de volta íntegro.
+
+Capturas (prova em navegador): `scripts/qa/capture-d34-screens.ps1` +
+`scripts/qa/cdp-capture-v2.mjs` (msedge headless, sessões MFA reais) produziram **100 PNGs** —
+5 telas da jornada × 360/768/1280/1440 + zoom 200% × 4 idiomas — em
+`%TEMP%\opencode\evidence\captures-d34\` (`CAPTURES-DONE ok=100 fail=0`). Ficam fora do
+repositório (tamanho) e são regeneráveis em um comando a partir do estado da rodada final.
+
+Separação explícita dos tipos de evidência (regra do portal):
+
+- **Teste local**: builds/suítes (GATE acima e seção Sprint 1 do STATUS.md).
+- **Prova ao vivo (esta seção)**: script reproduzível contra base descartável.
+- **Prova em navegador**: capturas CDP das telas renderizadas.
+- **CI**: **não verificada** para estes SHAs — branch sem push oficial; nenhum ID de execução inventado.
+- **Aceite humano**: pendente — nenhum responsável ou aprovação inventada.
 
 ## E — Matriz de estreia
 
-[consolidação — cada item com evidência apontada; sem percentuais inventados]
+Cada item do escopo de estreia com a evidência que o comprova na rodada final (rodada 10→6 em
+`evidence/`; nenhum percentual inventado):
+
+| Item da estreia | Evidência (check da prova A–N) | Status |
+|---|---|---|
+| OCR parcial nunca aparece como integral | X1-1 `total=25 proc=20 truncated=true`; X1-2 banco/API concordam | provado |
+| Códigos de falha distintos e estáveis (timeout ≠ falha ≠ camada de texto) | T1 `extraction-timeout`; N1 `pdf-no-text-layer`; N2 `extractor-not-configured` | provado |
+| docx/imagem sem paginação fabricada | X2-1/X2-2 `(null,null,false)`; X3 `(1,1,false)` | provado |
+| Assinatura real sem fornecedor inventado (sessão/evidência) | J5/J6/J7 + B8 (nenhum envelope enviado, franquia intacta); decisão no DECISIONS-LOG | provado |
+| Assinatura vinculada à versão exata | J6 `confirmedPdfSha256` no ato; J7 linha com modalidade+descrição; B9-1 `externally_signed` | provado |
+| Notificação sem duplicata e sem segredos no assunto | B10-1..B10-5 (um evento por preparação+versão; assunto fixo "Assinatura concluída") | provado |
+| Paciente dentro da jornada, com proteção de dados confirmados | B6-1..B6-6 (snapshot imutável, autofill só não confirmados, `patient.linked`), B7-1..B7-3 | provado |
+| Arquivamento com motivo + versões imutáveis + gate de perfil | B5-1..B5-6 | provado |
+| Catálogo único de planos (sem fantasma) | F1 `basic\|enterprise\|intermediate` | provado |
+| Diagnóstico honesto para superadmin (estados 4 níveis, sem valores) | A2..A7 | provado |
+| MFA exigido para superadmin (API + web) | A0b/A1 (inscrição+desafio TOTP), J3 (operador com MFA), W1 (cliente sem MFA segue direto) | provado |
+| Envelope externo exibido como indisponível (decisão registrada) | A4 | provado |
+
+Itens que dependem de fora do repositório (registrados como pendência, não como entrega):
+
+- **CI oficial**: branch ainda sem push — nenhuma execução CI verificada para estes SHAs.
+- **Aceite humano** dos fluxos da jornada (superadmin/cliente/operador) — capturas disponíveis
+  para revisão.
+- **Envio externo real** (SMTP/envelope comercial) — sem homologação, por decisão registrada.
 
 ## Configuração (sem novos segredos; arquivo de desenvolvimento untracked)
 
@@ -203,6 +288,47 @@ no DECISIONS-LOG — sem inventar integração, custo ou status de homologação
   a prova revalida a API com `Ensure-Api` (health + restart se morto) antes das fases críticas e
   registra explicitamente no log quando reinicia — instabilidade de ambiente fica separada de
   defeito de produto na leitura da evidência.
+- **MFA tem anti-replay por timestep TOTP** (`MfaService`): código com timestep `<=` o último
+  aceito é rejeitado como "já utilizado" — a confirmação da inscrição do boot conta. Quando ela e o
+  desafio caem na mesma janela de 30 s (rodadas rápidas), o mesmo código volta 400. Retry correto:
+  esperar a próxima janela antes de reenviar (código fresco), com captura do corpo da resposta em
+  falha para a mensagem de erro virar evidência. O loop de retry deve **esperar o fim da janela
+  atual**, não contar iterações de sleep fixo: 12 skips de 2 s (~22 s) esgotavam as tentativas
+  dentro de uma única janela (bug próprio do driver de capturas, curado em
+  `scripts/qa/cdp-capture-v2.mjs`).
+- **Polling grosso mascara latência real**: `Start-Sleep -Milliseconds 5000` no loop de detecção
+  de fim do curl somava ~5,1 s a *toda* chamada observada (rede medida em ~50–70 ms). Reduzir para
+  300 ms devolve timing verdadeiro aos traces.
+- **Módulo de revisões só existe habilitado no enterprise v2** (`plan_entitlements`: basic/intermediate
+  v2 declaram `module.reviews = f`) — a jornada J precisa dele; fixture determinística ativa a
+  assinatura do tenant no enterprise v2 (ativação ≠ pagamento; catálogo intacto). Sem isso o
+  BFF redireciona de volta à versão sem criar revisão (302 enganoso de sucesso).
+- **Contato é obrigatório na composição de assinatura**: participante sem e-mail nem telefone
+  falha com 400 `participants[0].contact` — o BFF devolve 302 (redirect back) e quem espera a
+  criação da preparação vê `row=` vazio.
+- **E-mail por tipo de notificação é opt-in**: `odca.notification_channel_state` dá
+  `channel_email = false` como padrão — sem preferência explícita, o ato de negócio commita evento
+  e auditoria mas a outbox fica vazia *sem erro* (apenas warning de log). Fixture dá opt-in do
+  criador para `signature_completed`.
+- **O payload da outbox é protegido (DataProtection)**: não contém os ids em texto puro. A
+  atribuição da linha ao ato é pela `source_id` determinística
+  (`SHA-256('scope|id|id')[0..16]`, `NotificationEnqueue.DeterministicSource`) — reproduzível fora
+  do processo e imune a replay.
+- **O diretório do FilePickup vem da runtime config em uso** (`development-runtime.json`, caminho
+  absoluto sob `%TEMP%`), não do `appsettings.Development.json` relativo: a prova lê o diretório do
+  JSON que efetivamente carrega e o limpa na purga (arquivo de rodada anterior cascaria com o
+  check do assunto).
+- **PS 5.1 corrompe argumento nativo com aspas duplas + espaços** (psql `-c "SQL 'com aspas'"`):
+  SQL com aspas internas sempre via `psql -f arquivo` ou pipe de stdin; e `Fn "a" + $v` liga o
+  `+` ao RETORNO da função — parentizar a concatenação no ponto de chamada.
+- **Purga precisa auditar tabelas sem `tenant_id`**: `support_session_events` e
+  `privacy_request_events` só existem via referência (sessão/requisição do tenant); DELETE genérico
+  por `tenant_id` falhava nelas (auditoria das 49 tabelas via `information_schema`).
+- **wkhtmltopdf cria página vazia extra** quando o último bloco tem `page-break-after: always`
+  (PDF 26 em vez de 25): quebra somente entre páginas.
+- **Regra de processo**: nunca rodar a suíte de integração em paralelo à prova A–N — o runner mata
+  todo `dotnet.exe` cuja CommandLine contenha a raiz do repositório (derrubou api+web da prova e
+  produziu falhas em cascata, classificadas na rodada 10).
 
 ## Dependências restantes / próximo backlog
 
@@ -211,6 +337,26 @@ no DECISIONS-LOG — sem inventar integração, custo ou status de homologação
 - Homologação real de envio externo: SMTP com credenciais e envelope comercial escolhido.
 - Deploy físico multi-instância.
 
-## Evidências (fora do repositório, em `%TEMP%\opencode\evidence\`)
+## Evidências (reproduzíveis)
 
-[consolidação ao final]
+No repositório:
+
+- `evidence/d34-proof-an-rodada-final.txt` — transcript completo da rodada final A–N
+  (todos os checks PASS + marker `PROVA-FIM fails=0`).
+- `evidence/d34-proof-an-rodada10-falhas-classificadas.md` — classificação das 31 falhas da
+  rodada 10 (causa raiz + cura por grupo) com adendos das rodadas seguintes.
+- `scripts/qa/validate-d34-an-web.ps1` — prova A–N reproduzível em um comando (purga + fixtures
+  + stack + segmentos A→N + marker).
+- `scripts/qa/capture-d34-screens.ps1` + `scripts/qa/cdp-capture-v2.mjs` — capturas CDP das telas
+  da jornada (sessões MFA reais, msedge headless).
+
+Fora do repositório (máquina local, `%TEMP%\opencode\`):
+
+- `evidence\d34-proof-a.txt` (transcript vivo) e `d34-proof-fim.txt` (marker `PROVA-FIM fails=0`).
+- `d34-a1-trace.log` (marcas WC-inicio/WC-done por curl), `d34-proof-run{,-err}.log`,
+  logs dos serviços (`d34-svc-{api,web,worker,worker-final,wtimeout,wnoocr}.log`).
+- `evidence\captures-d34\` — 100 capturas PNG da rodada final (log em `d34-captures.txt`).
+- `odca-notification-pickup\` (transporte local de e-mail).
+
+Dados sintéticos em todos os artefatos; sem credenciais ou valores pessoais. CI: não verificada
+(sem push oficial — ver §D). Aceite humano: pendente.

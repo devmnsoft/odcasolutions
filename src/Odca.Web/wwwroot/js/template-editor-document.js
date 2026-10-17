@@ -1,4 +1,10 @@
-const t = (window.OdcaI18n && window.OdcaI18n.t) || ((k) => k);
+// Resolucao de traducao no momento da chamada: o modulo permanece importavel
+// em Node (sem window) para o verificador de assets, e no navegador usa o bag
+// OdcaI18n quando presente (ordem de carga irrelevante).
+const t = key => {
+  const i18n = (typeof window !== "undefined" && window.OdcaI18n) || null;
+  return i18n && typeof i18n.t === "function" ? i18n.t(key) : key;
+};
 
 export function extractInlineText(node) {
   if (!node) return "";

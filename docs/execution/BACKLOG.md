@@ -362,3 +362,29 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
   200% das telas afetadas.
 - [x] E: matriz de estreia com evidência apontada por item (sem percentuais inventados).
 - [x] F: doc de entrega, STATUS.md, backlog marcado, commit único "sem push".
+
+## Sprint 1 — automação confiável e consolidação das provas ao vivo do D-OC34 (D-OC35) (17/10/2026)
+
+- [x] GATE antes dos avanços: sobre o `27b19b6`, builds estritos 0W/0E (Release+Debug),
+  Domain 364/364, suíte de integração `-FreshDb` 202/202 TEST-EXIT=0 e paridade de catálogos
+  4/4 via `scripts/check-assets.mjs` (o "201" do GATE do D-OC34 é histórico de 16/10).
+- [x] Correções (P0/P1) de confiabilidade antes dos avanços: desacoplamento do `window` em tempo
+  de avaliação de módulo nos módulos puros `studio-decimal.js` / `template-editor-document.js`
+  (importáveis em Node sem `window`, ordem de carga irrelevante) e gate i18n no
+  `check-assets.mjs` (19 chaves dos módulos × 4 catálogos não vazias, com strip de BOM).
+  Zero mudança de comportamento de produto.
+- [x] Prova A–N reproduzível em um comando: `scripts/qa/validate-d34-an-web.ps1` (purga +
+  fixtures determinísticas por rodada, stack própria, marker `PROVA-FIM`); 31 falhas da rodada
+  10 classificadas por causa raiz em `evidence/d34-proof-an-rodada10-falhas-classificadas.md`
+  — zero falhas de produto; convergência FINAL-3 (15) → FINAL-4 (12) → FINAL-5 (5) →
+  FINAL-6 (0).
+- [x] Rodada final **fails=0** (61 checks) com transcript no repositório
+  (`evidence/d34-proof-an-rodada-final.txt`) e capturas CDP: 100 PNGs
+  (`scripts/qa/capture-d34-screens.ps1` + `scripts/qa/cdp-capture-v2.mjs` — 5 telas ×
+  360/768/1280/1440 + zoom 200% × 4 idiomas, sessões MFA reais).
+- [x] Doc D-OC34 consolidada (§D provas ao vivo, §E matriz de estreia, Evidências, Lições novas)
+  e STATUS.md atualizado; `.odca/progress.json` inalterado (sem CI oficial verde nem aceite
+  humano para creditar marco).
+- [ ] CI oficial deste SHA: pendente — branch sem push; nenhum ID de execução inventado.
+- [ ] Aceite humano dos fluxos da jornada: pendente (capturas disponíveis para revisão).
+- [x] Commit único "sem push" fechando a Sprint 1.

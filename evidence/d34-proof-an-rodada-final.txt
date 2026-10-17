@@ -1,0 +1,67 @@
+﻿
+[PASS] P0 binaries Debug presentes (api/web/worker/bootstrap) 
+[PASS] P0b purga da base descartavel (estado idem ao setup + plano enterprise v2 + opt-in e-mail signature_completed) 
+[PASS] S1 api pronta 
+[PASS] S2 web pronta 
+Fase stack ok 2026-10-17T09:31:05.1137873-03:00
+[PASS] A0a senha inicial do superadmin obtida via show-login len=20
+[PASS] A0b login API superadmin + MFA inscrito com TOTP local key_len=32
+[PASS] A1 login web superadmin convergiu apos desafio MFA 302 /mfa/desafio
+[PASS] A2 pagina de diagnostico renderiza para superadmin len=16430
+[PASS] A3 as 8 dependencias sondadas aparecem com rotulos 
+[PASS] A4 envelope externo marcado Indisponivel (decisao registrada, sem inventar fornecedor) bloco=                    <td data-label="Estado"><span class="badge badge-info">Acessível</span></td>                     <td data-label="Detalhe da sonda">transporte local de coleta (FilePickup) configura
+[PASS] A5 renderer em estado honesto (Acessivel ou Comprovado, nunca Configurado) bloco=            <tr><th>Dependência</th><th>Configuração</th><th>Estado</th><th>Detalhe da sonda</th></tr>         </thead>         <tbody>                 <tr>                     <td data-label="Dependê
+[PASS] A6 nenhum valor de configuracao (senha/connection string) exibido na pagina 
+[PASS] A7 resumo de filas da plataforma exibido 
+[PASS] W1 login web cliente 302 sem desafio MFA 302 /
+[PASS] F1 planos canonicos v2 sem plano fantasma (basic|enterprise|intermediate) codes=basic|enterprise|intermediate psql_err=
+[PASS] B5-1 arquivar sem motivo volta 302 com erro amigavel (nada mudou) status=published
+[PASS] B5-2 arquivar com motivo persiste estado + razao e avisa sucesso row=archived|Modelo substituido pelo padrao corporativo v2|1
+[PASS] B5-3 versoes publicadas permanecem imutaveis apos arquivamento antes=1 depois=1
+[PASS] B5-4 fixture restaurada (modelo publicado sem razao) row=published|NULL
+[PASS] B5-5 gate de perfil rejeita draft com mensagem estavel code=302
+[PASS] B5-6 nenhuma minuta criada quando o perfil diverge count=0
+[PASS] B6-1 pagina de edicao exibe form de vincular c/ paciente ativo listado len=67047
+[PASS] B6-2 chip de checklist + botoes de conflito (carregar/manter) presentes no DOM 
+[PASS] B6-3 vincular persiste patient_id + snapshot imutavel e incrementa versao otimista row=75c87013-4595-41dd-93d9-ac2e9c1f8fc4|true|2 psql_err=
+[PASS] B6-4 evento auditavel patient.linked registrado no contrato row=patient.linked|75c87013-4595-41dd-93d9-ac2e9c1f8fc4
+[PASS] B6-5 campos de paciente nao confirmados foram autofilhados (source=patient) campos=1
+[PASS] B6-6 desvincular restaura patient_id nulo (snapshot preservado) patient_id=NULL
+[PASS] B7-1 formulario de cadastro rapido presente na pagina de novo documento len=18771
+[PASS] B7-2 cadastro rapido cria paciente e devolve feedback na tela criados=1
+[PASS] B7-3 identificador invalido nao cria paciente e explica o erro invalidos=0 total=2
+[PASS] J0 fixture: campos obrigatorios do NDA preenchidos como manual+confirmado campos=8 upd=UPDATE 1 err=
+[PASS] J1 gerar versao cria registro navegavel version=28696475-1b16-4de8-984f-773a977d19ce code=302
+[PASS] J2 PDF da versao gerado (comprovacao visual disponivel) status=completed
+[PASS] J2b requisicao de revisao criada e atribuida ao revisor review=d624737e-1a06-4e24-ae1e-64b06fc03352 code=302
+[PASS] J3 login web do revisor (operador) apos desafio MFA 302 /mfa/desafio
+[PASS] J3b pagina da solicitacao de revisao renderiza para o revisor atribuido review=d624737e-1a06-4e24-ae1e-64b06fc03352 len=16005 af=198
+[PASS] J4 decisao do revisor aprova a versao internamente status=internally_approved code=302
+[PASS] J5 preparacao de assinatura confirmada com participante unico row=b28024fe-11c4-42be-9059-01fd483b7508|confirmed|9f76911e-c0a1-4c97-bf4f-cd4ef1039e89 psql_err=
+[PASS] J6 assinatura em modalidade evidence registrada; todos assinaram len=58264
+[PASS] J7 linha de assinatura guarda modalidade evidence + descricao (rastreavel) row=evidence|true|true
+[PASS] B8 banner de modalidades na ficha apos assinatura real (nenhum envelope enviado, franquia intacta) len=58264
+[PASS] B10-1 outbox recebe exatamente um signature_completed (dedup preparation+versao) count=1 source_id=36b10005-262c-4ecc-4f54-d3e1190dcd1a psql_err=
+[PASS] B10-2 destinatario e quem criou a preparacao (conta do cliente) destino=cliente.teste@odca.local
+[PASS] B10-3 replay do ato avis que ja estava registrado e nao duplica notificacao count=1
+[PASS] B10-4 transporte devolve notificacao renderizada com o assunto Assinatura concluida arquivo=notif-70ff8c58b15742ad84f34a937bb9d391.txt
+[PASS] B10-5 notificacao menciona o destinatario sem expor segredos bytes=137
+[PASS] B9-1 versao marcada externamente assinada apos todos os atos status=externally_signed
+[PASS] B9-2 central de documentos mostra Concluído — disponível para download len=21476
+[PASS] X0 fixture PDF escaneado de 25 paginas gerada bytes=37326
+[PASS] X0b fixture docx minimo gerada bytes=949
+[PASS] X1-1 PDF escaneado 25 paginas: pronto com truncacao honesta (20 processadas) total=25 proc=20 trunc=True status=ready_for_review
+[PASS] X1-2 banco e API concordam sobre o escopo (total|20|true) row=25|20|true api_total=25 psql_err=
+X1-3 sugestoes retornadas para o escopo truncado: 0
+[PASS] X2-1 docx chega a ready_for_review (texto direto, sem fabricar paginas) status=ready_for_review code=
+[PASS] X2-2 docx nao fabrica paginas (total/processado ausentes, truncado false) total=[] proc=[] trunc=False
+[PASS] X3 imagem unica reporta escopo 1 de 1 (sem truncacao) total=1 proc=1 trunc=False
+[PASS] T0 worker alternativo (OCR pendurado) vivo pid=48780
+[PASS] T1 OCR pendurado falha como extraction-timeout (distinto de extractor-failed) status=failed code=extraction-timeout
+[PASS] N0 worker alternativo (sem OCR/renderer) vivo pid=58540
+[PASS] N1 PDF escaneado sem renderer falha com codigo estavel pdf-no-text-layer status=failed code=pdf-no-text-layer
+[PASS] N2 imagem sem OcrExecutable falha com codigo estavel extractor-not-configured status=failed code=extractor-not-configured
+[PASS] N3 worker principal de volta (config completa) pid=25004
+RESULTADO: TODOS OS CHECKS PASSARAM
+
+PROVA-FIM fails=0 ts=2026-10-17T09:42:59.4766988-03:00

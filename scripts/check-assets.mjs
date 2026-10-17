@@ -1,4 +1,5 @@
 import { access } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { isPartialDecimal, parseDecimal } from "../src/Odca.Web/wwwroot/js/studio-decimal.js";
 import { collectEditorLosses, documentRoundTrips } from "../src/Odca.Web/wwwroot/js/template-editor-document.js";
@@ -81,4 +82,24 @@ for (const lossy of [nested, multiCell, aligned, combined]) {
   assert.ok(collectEditorLosses(lossy).length > 0);
 }
 
-console.log(`Validated ${requiredAssets.length} web asset(s) and the decimal and template round trips.`);
+// As chaves de catálogo usadas pelos módulos puros precisam existir e ser não vazias
+// nos 4 idiomas: os textos de erro de moeda/número e as perdas do editor aparecem
+// traduzidas no navegador em qualquer uma das línguas suportadas.
+const moduleSources = [
+  "src/Odca.Web/wwwroot/js/studio-decimal.js",
+  "src/Odca.Web/wwwroot/js/template-editor-document.js"
+].map((p) => readFileSync(new URL("../" + p, import.meta.url), "utf8"));
+const i18nKeys = new Set();
+for (const source of moduleSources) {
+  for (const match of source.matchAll(/\bt\(\s*'([a-z][a-z0-9_.]*)'\s*\)/g)) i18nKeys.add(match[1]);
+}
+assert.ok(i18nKeys.size >= 15, `esperadas 15+ chaves i18n nos módulos puros; encontradas ${i18nKeys.size}`);
+for (const lang of ["pt-BR", "en-US", "es-ES", "fr-FR"]) {
+  const raw = readFileSync(new URL(`../src/Odca.Configuration/Localization/${lang}.json`, import.meta.url), "utf8");
+  const catalog = JSON.parse(raw.replace(/^\uFEFF/, ""));
+  for (const key of i18nKeys) {
+    assert.ok(typeof catalog[key] === "string" && catalog[key].trim().length > 0, `chave ${key} ausente ou vazia em ${lang}.json`);
+  }
+}
+
+console.log(`Validated ${requiredAssets.length} web asset(s), ${i18nKeys.size} i18n key(s) across 4 catalog(s), and the decimal and template round trips.`);
