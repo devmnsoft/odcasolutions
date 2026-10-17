@@ -14,6 +14,7 @@
         ("solicitation_opened", "Solicitação aberta"),
         ("solicitation_updated", "Solicitação atualizada"),
         ("signature_pending", "Assinatura pendente"),
+        ("signature_completed", "Assinatura concluída"),
         ("user_notification", "Notificação (legado)")
     };
     string KindLabel(string value) => kinds.FirstOrDefault(k => k.Value == value).Label ?? value;

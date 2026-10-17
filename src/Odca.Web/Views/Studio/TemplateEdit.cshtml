@@ -239,6 +239,7 @@
             }
             @if (!isNew && isPublished)
             {
+                <label class="field-label" for="archiveReason" style="display:inline-flex;align-items:center;gap:0.4rem;">@L.T("studio.tpl_archive_reason",_culture)<input id="archiveReason" name="reason" required minlength="5" maxlength="500" placeholder="@L.T("studio.tpl_archive_reason_placeholder",_culture)" /></label>
                 <button type="submit" formaction="@Url.Action("ArchiveTemplate", "Studio", new { tenantId, templateId = Model.TemplateId })" class="button button-quiet" style="color: #dc2626;" onclick="return confirm(window.OdcaI18n.t('studio.tpl_archive_confirm'));">
                     @L.T("studio.tpl_archive",_culture)
                 </button>

@@ -44,7 +44,7 @@ public sealed class RenewalReminderWorker(
             // permitindo novo claim no próximo tick sem duplicar o e-mail confirmado.
             await using var tx = await connection.BeginTransactionAsync(ct);
             var recipients = (await connection.QueryAsync<Recipient>(new CommandDefinition(
-                "SELECT recipient_id AS RecipientId,title AS Title FROM odca.complete_renewal_reminder(@id,@token)",
+                "SELECT recipient_id AS RecipientId FROM odca.complete_renewal_reminder(@id,@token)",
                 new { item.Id, token }, transaction: tx, cancellationToken: ct))).ToList();
             if (recipients.Count == 0)
             {
@@ -55,7 +55,7 @@ public sealed class RenewalReminderWorker(
 
             foreach (var recipient in recipients)
             {
-                await MaybeEnqueueNotificationEmailAsync(connection, tx, item.TenantId, item.Id, recipient.RecipientId, recipient.Title, ct);
+                await MaybeEnqueueNotificationEmailAsync(connection, tx, item.TenantId, item.Id, recipient.RecipientId, ct);
             }
             await tx.CommitAsync(ct);
         }
@@ -63,7 +63,7 @@ public sealed class RenewalReminderWorker(
         catch (Exception exception) { logger.LogError(exception, "Falha transitória no processamento de lembrete de renovação."); }
     }
 
-    private async Task MaybeEnqueueNotificationEmailAsync(NpgsqlConnection connection, NpgsqlTransaction tx, Guid tenantId, Guid reminderId, Guid userId, string title, CancellationToken ct)
+    private async Task MaybeEnqueueNotificationEmailAsync(NpgsqlConnection connection, NpgsqlTransaction tx, Guid tenantId, Guid reminderId, Guid userId, CancellationToken ct)
     {
         try
         {
@@ -77,6 +77,9 @@ public sealed class RenewalReminderWorker(
                 new { userId }, transaction: tx, cancellationToken: ct));
             if (string.IsNullOrWhiteSpace(email)) return;
 
+            // D-OC34 B.10: assunto genérico por tipo — o título do lembrete em app pode citar o
+            // contrato e não vai no subject SMTP.
+            const string title = "Lembrete de renovação de contrato";
             // Identidade determinística (lembrete × destinatário): reprocessamento após
             // expiração de lease nunca duplica uma mensagem já aceita pela outbox.
             var sourceId = SourceIdFor(reminderId, userId);
@@ -98,6 +101,6 @@ public sealed class RenewalReminderWorker(
     }
 
     private sealed record Reminder(Guid Id, Guid TenantId, Guid ContractId);
-    private sealed record Recipient(Guid RecipientId, string Title);
+    private sealed record Recipient(Guid RecipientId);
     private sealed record ChannelState(bool Enabled, bool InApp, bool Email);
 }

@@ -215,6 +215,45 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
         return View(vm);
     }
 
+    [HttpPost("novo/paciente")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreatePatientInline(Guid tenantId, string fullName, string identifierType, string identifierValue, string? birthDate, string? representativeName, string? representativeRelation, CancellationToken ct)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token is null) return Challenge();
+        var access = await tenantContext.GetAccessAsync(tenantId, ct);
+        if (access is null) return Forbid();
+        if (!access.HasPermission("tenant.patients.manage"))
+        {
+            TempData["ErrorMessage"] = "Você não possui permissão para cadastrar pacientes.";
+            return RedirectToAction(nameof(NewDocument), new { tenantId });
+        }
+        var name = (fullName ?? string.Empty).Trim();
+        var cleanedIdentifier = (identifierValue ?? string.Empty).Trim();
+        if (name.Length is < 2 or > 160 || cleanedIdentifier.Length < 3)
+        {
+            TempData["ErrorMessage"] = "Informe o nome completo e um documento válido para o cadastro rápido.";
+            return RedirectToAction(nameof(NewDocument), new { tenantId });
+        }
+        DateOnly? birth = DateOnly.TryParse(birthDate, out var parsedBirth) ? parsedBirth : null;
+        bool hasRepresentative = !string.IsNullOrWhiteSpace(representativeName) && !string.IsNullOrWhiteSpace(representativeRelation);
+        var request = new Odca.Contracts.Patients.SavePatientRequest(
+            name, null, birth, null, null, null,
+            new Odca.Contracts.Patients.PatientIdentifierInput(identifierType.Trim().ToLowerInvariant(), cleanedIdentifier),
+            hasRepresentative ? new Odca.Contracts.Patients.PatientRepresentativeInput((representativeName ?? string.Empty).Trim(), null, null, (representativeRelation ?? string.Empty).Trim()) : null,
+            0);
+        var result = await api.CreatePatientAsync(token, tenantId, request, ct);
+        if (result.Succeeded && result.Value is not null)
+        {
+            TempData["SuccessMessage"] = "Paciente cadastrado. Os demais campos podem ser complementados depois na ficha.";
+            return RedirectToAction(nameof(NewDocument), new { tenantId, patientId = result.Value.Id });
+        }
+        TempData["ErrorMessage"] = result.Status == ApiCallStatus.Conflict
+            ? "Já existe um paciente ativo com esse documento."
+            : result.UserMessage("Não foi possível cadastrar o paciente.");
+        return RedirectToAction(nameof(NewDocument), new { tenantId });
+    }
+
     private static string MaskIdentifier(string value)
     {
         var clean = value.Trim();

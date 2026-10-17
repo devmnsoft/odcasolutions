@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Odca.Contracts.Administration;
 using Odca.Contracts.Consumption;
 using Odca.Contracts.Plans;
@@ -19,10 +20,23 @@ public sealed class CustomersController(OdcaApiClient api):Controller
  [HttpPost("{tenantId:guid}/solicitacoes/{requestId:guid}")][ValidateAntiForgeryToken]public async Task<IActionResult> Decide(Guid tenantId,Guid requestId,string decision,string? reason,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var result=await api.DecideStorageAsync(token,tenantId,requestId,new(decision,reason),ct);TempData[result.Succeeded?"Success":"Error"]=result.Succeeded?"Decisão confirmada e auditada.":result.UserMessage("A solicitação já foi decidida ou não está disponível.");return RedirectToAction(nameof(Details),new{tenantId});}
  [HttpPost("{tenantId:guid}/concessoes")][ValidateAntiForgeryToken]public async Task<IActionResult> Grant(Guid tenantId,decimal? quantity,string? unit,long? quantityBytes,string reason,Guid idempotencyKey,CancellationToken ct){var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();long bytes;if(quantity.HasValue&&quantity.Value>0){var cleanUnit=unit?.Trim().ToUpperInvariant()??"GB";bytes=cleanUnit switch{"TB"=>(long)Math.Round(quantity.Value*1024L*1024L*1024L*1024L),"MB"=>(long)Math.Round(quantity.Value*1024L*1024L),_ =>(long)Math.Round(quantity.Value*1024L*1024L*1024L)};}else if(quantityBytes.HasValue&&quantityBytes.Value>0){bytes=quantityBytes.Value;}else{TempData["Error"]="Informe uma quantidade válida maior que zero.";return RedirectToAction(nameof(Details),new{tenantId});}if(bytes<=0||bytes>100L*1024L*1024L*1024L*1024L){TempData["Error"]="A capacidade informada está fora dos limites operacionais permitidos.";return RedirectToAction(nameof(Details),new{tenantId});}var result=await api.GrantStorageAsync(token,tenantId,new(bytes,reason,idempotencyKey,null),ct);TempData[result.Succeeded?"Success":"Error"]=result.Succeeded?"Capacidade adicional concedida e auditada.":result.UserMessage("Não foi possível conceder a capacidade.");return RedirectToAction(nameof(Details),new{tenantId});}
  [HttpGet("novo")]
- public IActionResult Create()
+ public async Task<IActionResult> Create(CancellationToken ct)
  {
      ViewData["Title"] = "Nova organização";
-     return View(new CreateCustomerViewModel());
+     var token = await HttpContext.GetTokenAsync("access_token");
+     if (token is null) return Challenge();
+     // D-OC34: a lista de planos vem do catálogo vigente (sem código fantasma hardcoded); o
+     // default selecionado e sempre um codigo valido do catalogo.
+     var plans = await api.GetPlansAsync(token, ct);
+     var model = new CreateCustomerViewModel();
+     if (plans.Succeeded && plans.Value is not null)
+     {
+         if (!plans.Value.Any(plan => string.Equals(plan.Code, model.PlanCode, StringComparison.Ordinal))) model.PlanCode = plans.Value[0].Code;
+         ViewData["PlanItems"] = PlanItems(plans.Value);
+         return View(model);
+     }
+     ViewData["PlanItems"] = new List<SelectListItem> { new("Não foi possível consultar o catálogo vigente de planos.", string.Empty) };
+     return View(model);
  }
 
  [HttpPost("novo")]
@@ -33,6 +47,16 @@ public sealed class CustomersController(OdcaApiClient api):Controller
      if (!ModelState.IsValid) return View(model);
      var token = await HttpContext.GetTokenAsync("access_token");
      if (token is null) return Challenge();
+     var plans = await api.GetPlansAsync(token, ct);
+     // D-OC34: plano desconhecido (ou catalogo indisponivel) falha com erro estavel antes de
+     // tocar no cadastro (a API continua revalidando com 400 api.consumption.invalid_plan).
+     if (!plans.Succeeded || plans.Value is null) { Response.StatusCode = 503; return View("ServiceUnavailable"); }
+     if (!plans.Value.Any(plan => string.Equals(plan.Code, model.PlanCode.Trim(), StringComparison.Ordinal)))
+     {
+         ModelState.AddModelError(nameof(CreateCustomerViewModel.PlanCode), "Escolha um plano do catálogo vigente.");
+         ViewData["PlanItems"] = PlanItems(plans.Value);
+         return View(model);
+     }
      var result = await api.CreatePlatformCustomerAsync(token, new CreatePlatformCustomerRequest(
          model.OrganizationName.Trim(),
          model.Document.Trim(),
@@ -44,11 +68,15 @@ public sealed class CustomersController(OdcaApiClient api):Controller
      if (!result.Succeeded)
      {
          ModelState.AddModelError(string.Empty, result.ErrorDetail ?? result.ErrorTitle ?? "Não foi possível cadastrar a organização. Verifique se o CNPJ/CPF já está em uso.");
+         ViewData["PlanItems"] = PlanItems(plans.Value);
          return View(model);
      }
      TempData["Success"] = $"Organização '{result.Value!.OrganizationName}' cadastrada com sucesso.";
      return RedirectToAction(nameof(Details), new { tenantId = result.Value.TenantId });
  }
+
+ private static System.Collections.Generic.List<SelectListItem> PlanItems(PlanCatalogResponse[] plans)
+     => plans.Select(plan => new SelectListItem($"{plan.DisplayName} — {plan.ActiveSeats.ToString(System.Globalization.CultureInfo.InvariantCulture)} usuário(s)", plan.Code)).ToList();
 
  [HttpPost("{tenantId:guid}/funcionalidades/{featureCode}")]
  [ValidateAntiForgeryToken]

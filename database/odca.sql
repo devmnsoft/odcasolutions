@@ -6364,3 +6364,79 @@ VALUES(56,'Operacao documental do estudio: indice por conteudo, expiracao de res
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 056
+-- ODCA-MIGRATION 057 CHECKSUM d5d5874350849b8f7c4594b0974f40c5a6511551b2d058f4dccdb644d2dd7b13
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
+
+DO $odca$
+DECLARE
+    expected_checksum constant char(64) := 'd5d5874350849b8f7c4594b0974f40c5a6511551b2d058f4dccdb644d2dd7b13';
+    recorded_checksum char(64);
+BEGIN
+    SELECT checksum INTO recorded_checksum FROM odca.schema_migrations WHERE version = 57;
+    IF recorded_checksum IS NOT NULL AND recorded_checksum <> expected_checksum THEN
+        RAISE EXCEPTION 'ODCA migration 057 checksum mismatch: stored %, expected %', recorded_checksum, expected_checksum;
+    END IF;
+END
+$odca$;
+
+-- D-OC34 (preparacao de estreia): 1) transparencia de paginas na extracao: total de paginas
+-- conhecido (contador opcional configuravel), paginas efetivamente analisadas e bandeira de
+-- truncamento, para que um documento processado apenas ate o limite nunca apareca como
+-- integralmente analisado; o metodo 'pdf-mixed' registra PDFs com paginas de texto e paginas
+-- digitalizadas tratadas por OCR. 2) perfil de atividade opcional nos templates para o catalogo
+-- de estreia (dado pendente de decisao comercial, sem obrigatoriedade). 3) resumo somente
+-- leitura das filas de scan/extracao/notificacao para o diagnostico operacional da plataforma
+-- (funcao SECURITY DEFINER, padrao da notification_ops_page).
+
+ALTER TABLE odca.extraction_results ADD COLUMN pages_total integer CHECK(pages_total IS NULL OR pages_total > 0);
+ALTER TABLE odca.extraction_results ADD COLUMN pages_processed integer CHECK(pages_processed IS NULL OR pages_processed >= 0);
+ALTER TABLE odca.extraction_results ADD COLUMN truncated boolean NOT NULL DEFAULT false;
+ALTER TABLE odca.extraction_results DROP CONSTRAINT extraction_results_method_check;
+ALTER TABLE odca.extraction_results ADD CONSTRAINT extraction_results_method_ck CHECK(method IN('pdf-native','pdf-mixed','ocr','docx-structure'));
+
+ALTER TABLE odca.contract_templates ADD COLUMN required_activity_profile text;
+-- D-OC34 B.5: arquivar modelo e ato com motivo obrigatorio - o historico preservado deve
+-- dizer por que o modelo deixou de estar disponivel para novas minutas (padrao dos contratos).
+ALTER TABLE odca.contract_templates ADD COLUMN archive_reason text;
+
+CREATE OR REPLACE FUNCTION odca.platform_queue_summary()
+RETURNS TABLE(queue text, pending_count integer, stalled_count integer, failed_count integer, oldest_pending_at timestamptz)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, odca
+AS $$
+BEGIN
+    RETURN QUERY
+      SELECT 'document_scan'::text,
+             (count(*) FILTER (WHERE dv.security_status IN ('pending','scan_failed') AND NOT tenant.is_deleted AND tenant.status <> 'suspended'))::integer,
+             0,
+             (count(*) FILTER (WHERE dv.security_status = 'scan_failed' AND NOT tenant.is_deleted AND tenant.status <> 'suspended'))::integer,
+             min(dv.uploaded_at) FILTER (WHERE dv.security_status IN ('pending','scan_failed') AND NOT tenant.is_deleted AND tenant.status <> 'suspended')
+        FROM odca.document_versions AS dv
+        JOIN odca.tenants AS tenant ON tenant.id = dv.tenant_id
+      UNION ALL
+      SELECT 'extraction'::text,
+             (count(*) FILTER (WHERE ej.status = 'queued'))::integer,
+             (count(*) FILTER (WHERE ej.status = 'processing' AND ej.lease_expires_at IS NOT NULL AND ej.lease_expires_at < now()))::integer,
+             (count(*) FILTER (WHERE ej.status = 'failed'))::integer,
+             min(ej.requested_at) FILTER (WHERE ej.status = 'queued')
+        FROM odca.extraction_jobs AS ej
+      UNION ALL
+      SELECT 'notifications'::text,
+             (count(*) FILTER (WHERE outbox.status = 'pending'))::integer,
+             (count(*) FILTER (WHERE outbox.status = 'leased' AND outbox.lease_until IS NOT NULL AND outbox.lease_until < now()))::integer,
+             (count(*) FILTER (WHERE outbox.status = 'failed'))::integer,
+             min(outbox.created_at) FILTER (WHERE outbox.status = 'pending')
+        FROM odca.notification_outbox AS outbox;
+END;
+$$;
+REVOKE ALL ON FUNCTION odca.platform_queue_summary() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.platform_queue_summary() TO odca_app;
+
+INSERT INTO odca.schema_migrations(version,name,checksum)
+VALUES(57,'Preparacao de estreia: transparencia de paginas na extracao com metodo pdf-mixed, perfil opcional de atividade em templates e resumo de filas da plataforma','d5d5874350849b8f7c4594b0974f40c5a6511551b2d058f4dccdb644d2dd7b13')
+ON CONFLICT(version) DO NOTHING;
+COMMIT;
+-- ODCA-END 057

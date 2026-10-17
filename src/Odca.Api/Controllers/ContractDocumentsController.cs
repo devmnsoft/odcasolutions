@@ -204,7 +204,13 @@ public sealed class ContractDocumentsController(NpgsqlDataSource dataSource, ICo
         await using var transaction = await connection.BeginTransactionAsync(ct);
         await SetContext(connection, actor.Value, tenantId, transaction, ct);
         if (!await Allowed(connection, transaction, actor.Value, tenantId, "tenant.extractions.review", ct)) return Forbid();
-        var job = await connection.QuerySingleOrDefaultAsync(new CommandDefinition("SELECT id,status,attempt_count,failure_code,version_id,completed_at FROM odca.extraction_jobs WHERE tenant_id=@tenantId AND contract_id=@contractId AND id=@extractionId", new { tenantId, contractId, extractionId }, transaction, cancellationToken: ct));
+        var job = await connection.QuerySingleOrDefaultAsync(new CommandDefinition("""
+            SELECT j.id,j.status,j.attempt_count,j.failure_code,j.version_id,j.completed_at,
+                   r.method AS result_method,r.pages_total,r.pages_processed,r.truncated
+              FROM odca.extraction_jobs AS j
+              LEFT JOIN odca.extraction_results AS r ON r.tenant_id=j.tenant_id AND r.job_id=j.id
+             WHERE j.tenant_id=@tenantId AND j.contract_id=@contractId AND j.id=@extractionId
+            """, new { tenantId, contractId, extractionId }, transaction, cancellationToken: ct));
         if (job is null) return NotFound();
         var suggestions = await connection.QueryAsync(new CommandDefinition("SELECT s.id,s.field_name,s.extracted_value,s.normalized_value,s.evidence,s.page_number,s.method,s.review_status,s.reviewed_value FROM odca.extraction_suggestions s JOIN odca.extraction_results r ON r.id=s.result_id AND r.tenant_id=s.tenant_id WHERE r.job_id=@extractionId ORDER BY s.field_name,s.id", new { extractionId }, transaction, cancellationToken: ct));
         await transaction.CommitAsync(ct);

@@ -386,7 +386,8 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
             TempData["StudioError"] = L("studio.ctl_stale_version");
             return RedirectToAction(nameof(EditTemplate), new { tenantId, templateId });
         }
-        var r = await api.ArchiveStudioTemplateAsync(token, tenantId, templateId, expectedVersion, ct);
+        var r = await api.ArchiveStudioTemplateAsync(token, tenantId, templateId, expectedVersion,
+            Request.Form["reason"].ToString().Trim(), ct);
         if (r.Succeeded)
         {
             TempData["StudioSuccess"] = L("studio.ctl_archive_ok");
@@ -432,6 +433,13 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         var conference=await api.GetDocumentConferenceAsync(token,tenantId,draftId,ct);
         ViewData["Title"]=L("studio.title_edit_page");ViewData["TenantId"]=tenantId;
         ViewData["Conference"]=conference.Value;ViewData["ConferenceError"]=conference.Succeeded?null:conference.UserMessage(L("studio.ctl_conference_load_fail"));
+        // D-OC34 B.6/B.7: pacientes ativos para o vinculo direto na conferencia e resumo do
+        // checklist no rail de etapas (contagem de bloqueios sem abrir a aba).
+        IReadOnlyList<Odca.Contracts.Patients.PatientSummary> linkPatients=Array.Empty<Odca.Contracts.Patients.PatientSummary>();
+        if(conference.Succeeded&&conference.Value!.PatientId is null){var patients=await api.GetPatientsAsync(token,tenantId,null,includeInactive:false,1,ct);if(patients.Succeeded&&patients.Value is not null)linkPatients=patients.Value.Items.Take(20).ToList();}
+        ViewData["LinkPatients"]=linkPatients;
+        var checklist=await api.GetStudioChecklistAsync(token,tenantId,draftId,result.Value!.Version,ct);
+        ViewData["Checklist"]=checklist.Succeeded?checklist.Value:null;
         return View(result.Value);
     }
     [HttpPost("minutas/{draftId:guid}/confirmar-paciente")]
@@ -444,6 +452,10 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
             :result.UserMessage(L("studio.ctl_conference_redo"));
         return RedirectToAction(nameof(Edit),new{tenantId,draftId});
     }
+    [HttpPost("minutas/{draftId:guid}/vincular-paciente")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> LinkPatient(Guid tenantId,Guid draftId,Guid? patientId,long expectedVersion,CancellationToken ct)
+    {var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Challenge();var r=await api.SetDraftPatientAsync(token,tenantId,draftId,patientId,expectedVersion,ct);TempData[r.Succeeded?"StudioSuccess":"StudioError"]=r.Succeeded?L("studio.ctl_patient_linked"):r.UserMessage(L("studio.ctl_patient_link_fail"));return RedirectToAction(nameof(Edit),new{tenantId,draftId});}
     [HttpPut("minutas/{draftId:guid}")]
     public async Task<IActionResult> Save(Guid tenantId,Guid draftId,[FromBody] SaveDraftRequest request,CancellationToken ct)
     {var token=await HttpContext.GetTokenAsync("access_token");if(token is null)return Unauthorized();var r=await api.SaveStudioDraftAsync(token,tenantId,draftId,request,ct);if(r.Succeeded)return Json(r.Value);

@@ -528,6 +528,10 @@ if (studio) {
   });
   studio.querySelector("[data-save]").addEventListener("click",()=>save(true));
   studio.querySelector("[data-retry]").addEventListener("click",()=>{conflict=false;save();});
+  // D-OC34 B.7: conflito de versao com decisao explicita — recarregar descarta o estado local;
+  // manter preserva as edicoes nao salvas e permite repetir o salvamento depois.
+  studio.querySelector("[data-conflict-reload]").addEventListener("click",()=>{window.location.assign(studio.dataset.draftUrl);});
+  studio.querySelector("[data-conflict-keep]").addEventListener("click",()=>{conflict=false;studio.querySelector("[data-conflict]").hidden=true;});
   studio.querySelector("[data-zoom]").addEventListener("change",event=>paper.style.zoom=`${event.target.value}%`);
   studio.querySelector("[data-reading]").addEventListener("click",event=>{const reading=studio.classList.toggle("reading-mode");event.currentTarget.setAttribute("aria-pressed",String(reading));});
   const openTab = async name => {
@@ -621,10 +625,12 @@ if (studio) {
   const startExtraction = async (documentId, versionId) => {
     const box = studio.querySelector("[data-extraction]"); box.hidden = false;
     const statusEl = studio.querySelector("[data-extraction-status]");
+    const scopeEl = studio.querySelector("[data-extraction-scope]");
     suggestionDecisions.clear(); studio.querySelector("[data-suggestions]").replaceChildren();
     studio.querySelector("[data-suggestions-empty]").hidden = true;
     studio.querySelector("[data-apply]").hidden = true;
     studio.querySelector("[data-apply-result]").textContent = "";
+    scopeEl.textContent = ""; scopeEl.hidden = true;
     clearInterval(extractionTimer);
     statusEl.textContent = t("studio.x_queued");
     try {
@@ -634,9 +640,19 @@ if (studio) {
         let data;
         try { data = await request(`${studio.dataset.extractionBase}${extractionId}`); } catch (error) { statusEl.textContent = error.message; clearInterval(extractionTimer); return; }
         const job = data.job || {};
-        if (job.status === "failed") { clearInterval(extractionTimer); statusEl.textContent = t("studio.x_failed"); return; }
+        if (job.status === "failed") { clearInterval(extractionTimer); statusEl.textContent = `${t("studio.x_failed")} (${job.failure_code ?? "?"})`; return; }
         if (job.status !== "ready_for_review") return;
         clearInterval(extractionTimer);
+        // D-OC34: analise parcial nunca aparece como integral — pagina processada/total e a
+        // proxima acao ficam declaradas junto das sugestoes (revisao humana preservada).
+        scopeEl.textContent = "";
+        if (job.truncated === true) {
+          const processed = Number(job.pages_processed ?? 0);
+          scopeEl.textContent = (job.pages_total != null
+            ? t("studio.x_scope_partial", processed, Number(job.pages_total), Math.max(0, Number(job.pages_total) - processed))
+            : t("studio.x_scope_unknown", processed)) + " " + t("studio.x_scope_next");
+          scopeEl.hidden = false;
+        } else { scopeEl.hidden = true; }
         renderSuggestions(data.suggestions || []);
       }, 2500);
     } catch (error) { statusEl.textContent = error.message; }

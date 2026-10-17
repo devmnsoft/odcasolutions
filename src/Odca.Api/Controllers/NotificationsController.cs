@@ -18,7 +18,7 @@ namespace Odca.Api.Controllers;
 [Route("api/v1/organizations/{tenantId:guid}/notifications")]
 public sealed class NotificationsController(NpgsqlDataSource dataSource) : ControllerBase
 {
-    private static readonly string[] KnownKinds = ["obligation_due", "renewal_due", "review_assigned", "review_decided", "solicitation_opened", "solicitation_updated", "signature_pending"];
+    private static readonly string[] KnownKinds = ["obligation_due", "renewal_due", "review_assigned", "review_decided", "solicitation_opened", "solicitation_updated", "signature_pending", "signature_completed"];
     private static readonly string[] AllowedLanguages = ["pt-BR", "en-US", "fr-FR", "es-ES"];
     private const int DefaultPageSize = 25;
     private const int MaxPageSize = 100;

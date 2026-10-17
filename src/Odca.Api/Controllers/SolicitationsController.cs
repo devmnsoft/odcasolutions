@@ -157,8 +157,9 @@ public sealed class SolicitationsController(NpgsqlDataSource dataSource) : Contr
             new { }, cancellationToken: ct))).ToList();
         foreach (var admin in admins)
         {
+            // D-OC34 B.10: assunto genérico por tipo (protocolo/assunto livres não vão no subject).
             await NotificationEnqueue.EnqueueEmailAsync(c, tenantId, actor, admin, "solicitation_opened",
-                $"Nova solicitação ODCA {protocol}: {subject}", protector,
+                "Nova solicitação registrada à plataforma", protector,
                 NotificationEnqueue.DeterministicSource("solicitation.opened", solId, admin), logger, ct);
         }
     }
@@ -171,8 +172,9 @@ public sealed class SolicitationsController(NpgsqlDataSource dataSource) : Contr
         long version = data.TryGetProperty("rowVersion", out var rvEl) && rvEl.ValueKind == JsonValueKind.Number ? rvEl.GetInt64() : 0;
         var protector = context.RequestServices.GetRequiredService<IDataProtector>();
         var logger = context.RequestServices.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>().CreateLogger("solicitations");
+        // D-OC34 B.10: assunto genérico por tipo (protocolo/assunto livres não vão no subject).
         await NotificationEnqueue.EnqueueEmailAsync(c, tenantId, actor, openedBy, "solicitation_updated",
-            $"Atualização na solicitação ODCA {protocol}: {subject}", protector,
+            "Atualização da sua solicitação à plataforma", protector,
             NotificationEnqueue.DeterministicSource("solicitation.updated", solId, version), logger, ct);
     }
 

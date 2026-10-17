@@ -329,3 +329,36 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [x] E: matriz de aceite com dez itens diferindo aprovado/falhou/bloqueado/não executado, cada
   um com evidência apontada.
 - [x] F: doc de entrega, STATUS.md, backlog marcado, commit único "sem push".
+
+## D-OC34 — Piloto da jornada documental para a estreia (16/10/2026)
+
+- [x] GATE antes dos avanços dependentes: build estrito 0W/0E sobre o `8095bc8` (D-OC33),
+  domain 364/364 e suíte de integração `-FreshDb` 201/201 (P1 F1/F2 corrigidos antes das
+  funcionalidades dependentes).
+- [x] F1: plano fantasma `odca-pro` eliminado — catálogo único com os planos canônicos v2
+  (basic/intermediate/enterprise); zero resíduos em código, seed e base.
+- [x] F2: escopo OCR honesto — `pages_total`/`pages_processed`/`truncated` persistidos (v057 +
+  worker + API), banner de análise parcial com o que ficou fora e a próxima ação, páginas brancas
+  contam, docx/imagem não fabricam paginação, `pdfinfo` ausente → total desconhecido declarado,
+  códigos de falha distintos e estáveis (timeout ≠ falha de extração ≠ camada de texto ausente).
+- [x] B.5: arquivar modelo exige motivo (5..500) persistido em `archive_reason`; versões
+  publicadas imutáveis; gate opcional `required_activity_profile` (409
+  `draft.profile.template_mismatch`; nulo = sem gate).
+- [x] B.6/B.7: vincular/desvincular paciente na minuta (row_version otimista, snapshot imutável,
+  autofill só de campos não confirmados, evento `patient.linked`, botões explícitos de conflito)
+  e cadastro rápido de paciente na página de novo documento.
+- [x] B.8/B.9: banner de modalidades de assinatura nas fichas (nenhum envelope externo enviado;
+  franquia não consumida por isso) e próxima ação "Concluído — disponível para download" na
+  central de documentos.
+- [x] B.10: assuntos SMTP genéricos e fixos por kind (sem dados livres); novo kind
+  `signature_completed` com deduplicação determinística (preparação+versão); envio segue sem
+  homologação externa.
+- [x] A.3: diagnóstico operacional para superadministrador — estados em quatro níveis
+  (unavailable < configured < accessible < verified + not_applicable), valores configurados nunca
+  exibidos, resumo de filas da plataforma (`odca.platform_queue_summary()`).
+- [x] Decisão registrada no DECISIONS-LOG: envelope externo de assinatura "proposto, não
+  escolhido" para a estreia (sem inventar fornecedor pago ou homologação de envio).
+- [x] D: prova ao vivo A–N com evidência apontada por item e capturas 360/768/1280/1440 + zoom
+  200% das telas afetadas.
+- [x] E: matriz de estreia com evidência apontada por item (sem percentuais inventados).
+- [x] F: doc de entrega, STATUS.md, backlog marcado, commit único "sem push".

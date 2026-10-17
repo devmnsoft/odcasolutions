@@ -125,6 +125,94 @@ public sealed class TemplateCatalogPersistenceTests(DatabaseFixture database) : 
         Assert.True(installResp2.AlreadyPresent >= 2);
     }
 
+    private sealed class StubTemplateCatalogRepository : Odca.Application.Contracts.ITemplateCatalogRepository
+    {
+        public Task<Odca.Contracts.Studio.TemplateCatalogPage> ListAsync(Guid tenantId, string? search, string? contractType, string? scope, string? documentPurpose, int page, int pageSize, CancellationToken cancellationToken) =>
+            Task.FromResult(new Odca.Contracts.Studio.TemplateCatalogPage([], page, pageSize, 0));
+    }
+
+    [Fact]
+    public async Task ArchiveRequiresReasonPersistsItAndKeepsPublishedVersionImmutable()
+    {
+        // D-OC34 B.5: arquivar exige motivo (5..500), o motivo fica gravado na linha e o
+        // conteúdo da versão vigente não muda com o arquivamento (imutabilidade preservada).
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.Parse("20000000-0000-0000-0000-000000000001");
+        var templateId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        await using var adminConn = new NpgsqlConnection(database.AdminConnectionString);
+        await adminConn.OpenAsync();
+        await adminConn.ExecuteAsync("""
+            INSERT INTO odca.tenants(id, business_code, display_name, timezone)
+            VALUES (@TenantId, @Code, 'Modelo Arquivo Teste', 'America/Sao_Paulo');
+
+            INSERT INTO odca.memberships(tenant_id, user_id, status)
+            VALUES (@TenantId, @UserId, 'active');
+
+            INSERT INTO odca.roles(scope_type, tenant_id, code, display_name, is_system)
+            VALUES ('tenant', @TenantId, 'tenant-administrator', 'Administrador', true)
+            ON CONFLICT DO NOTHING;
+
+            INSERT INTO odca.role_permissions(role_id, permission_code)
+            SELECT r.id, p.code FROM odca.roles r CROSS JOIN odca.permissions p
+            WHERE r.tenant_id = @TenantId AND r.code = 'tenant-administrator' AND p.code LIKE 'tenant.%'
+            ON CONFLICT DO NOTHING;
+
+            INSERT INTO odca.member_roles(tenant_id, user_id, role_id, assigned_by)
+            SELECT @TenantId, @UserId, r.id, @UserId FROM odca.roles r
+            WHERE r.tenant_id = @TenantId AND r.code = 'tenant-administrator'
+            ON CONFLICT DO NOTHING;
+
+            INSERT INTO odca.contract_templates(id, owner_tenant_id, name, contract_type, scope, status, current_version, author_id, published_at)
+            VALUES (@TemplateId, @TenantId, 'Modelo arquivável', 'service', 'private', 'published', 1, @UserId, now());
+
+            INSERT INTO odca.contract_template_versions(id, template_id, version_number, content, fields, created_by, published_at)
+            VALUES (@VersionId, @TemplateId, 1, '{"type":"document","content":[]}', '[]', @UserId, now());
+            """, new { TenantId = tenantId, UserId = userId, TemplateId = templateId, VersionId = versionId, Code = "ARCHIVE-" + Guid.NewGuid().ToString("N")[..8] });
+
+        var versionBefore = await adminConn.QuerySingleAsync<string>(new CommandDefinition("""
+            SELECT t.current_version::text || '|' || v.content::text || '|' || v.fields::text
+              FROM odca.contract_templates t
+              JOIN odca.contract_template_versions v ON v.template_id=t.id AND v.version_number=t.current_version
+             WHERE t.id=@TemplateId
+            """, new { TemplateId = templateId }, cancellationToken: CancellationToken.None));
+
+        await using var dataSource = NpgsqlDataSource.Create(database.AppConnectionString);
+        var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build();
+        var controller = new Odca.Api.Controllers.ContractStudioController(dataSource, config, new StubTemplateCatalogRepository());
+        controller.ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext { HttpContext = TestControllerContexts.Create(userId) };
+
+        // Sem motivo (ou motivo curto demais) o arquivamento é recusado antes de qualquer efeito.
+        var invalid = await controller.ArchiveTemplate(tenantId, templateId, expectedVersion: 1, reason: "   ", CancellationToken.None);
+        Assert.IsType<Microsoft.AspNetCore.Mvc.BadRequestObjectResult>(invalid);
+        var stillPublished = await adminConn.ExecuteScalarAsync<string>(new CommandDefinition(
+            "SELECT status FROM odca.contract_templates WHERE id=@TemplateId", new { TemplateId = templateId }, cancellationToken: CancellationToken.None));
+        Assert.Equal("published", stillPublished);
+
+        var ok = await controller.ArchiveTemplate(tenantId, templateId, expectedVersion: 1, reason: "Substituído pelo modelo de serviços v2", CancellationToken.None);
+        Assert.IsType<Microsoft.AspNetCore.Mvc.NoContentResult>(ok);
+
+        var stateAfter = await adminConn.QuerySingleAsync<string>(new CommandDefinition("""
+            SELECT t.status || '|' || coalesce(t.archive_reason,'') || '|' || t.row_version::text || '|' ||
+                   (t.archived_at IS NOT NULL)::text
+              FROM odca.contract_templates t WHERE t.id=@TemplateId
+            """, new { TemplateId = templateId }, cancellationToken: CancellationToken.None));
+        Assert.Equal("archived|Substituído pelo modelo de serviços v2|2|true", stateAfter);
+
+        // A versão vigente permanece intacta: mesmo conteúdo, campos e número de versão.
+        var versionAfter = await adminConn.QuerySingleAsync<string>(new CommandDefinition("""
+            SELECT t.current_version::text || '|' || v.content::text || '|' || v.fields::text
+              FROM odca.contract_templates t
+              JOIN odca.contract_template_versions v ON v.template_id=t.id AND v.version_number=t.current_version
+             WHERE t.id=@TemplateId
+            """, new { TemplateId = templateId }, cancellationToken: CancellationToken.None));
+        Assert.Equal(versionBefore, versionAfter);
+
+        // Segunda tentativa sobre a linha já arquivada é conflito estável.
+        var stale = await controller.ArchiveTemplate(tenantId, templateId, expectedVersion: 2, reason: "Segundo arquivamento", CancellationToken.None);
+        Assert.IsType<Microsoft.AspNetCore.Mvc.ConflictObjectResult>(stale);
+    }
+
     private async Task SeedAsync()
     {
         const string sql = """

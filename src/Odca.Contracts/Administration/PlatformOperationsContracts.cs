@@ -81,3 +81,13 @@ public sealed record SlaPolicyRow(
     string BusinessStart,
     string BusinessEnd,
     bool Enabled);
+
+// D-OC34 A.3: diagnóstico de dependências operacionais (plataforma). Estados honestos em
+// corrente: unavailable (não configurado) < configured (valor presente, binário não localizado)
+// < accessible (binário responde) < verified (sonda funcional passou); not_applicable quando a
+// dependência depende de outra que falhou na sonda. Nunca expõe valores configurados sensíveis.
+public sealed record PlatformDiagnosticsDependency(string Key, string ConfigKey, string Status, string Detail);
+
+public sealed record PlatformDiagnosticsQueueSummary(string Queue, int PendingCount, int StalledCount, int FailedCount, DateTime? OldestPendingAt);
+
+public sealed record PlatformDiagnosticsPayload(DateTime GeneratedAt, IReadOnlyList<PlatformDiagnosticsDependency> Dependencies, IReadOnlyList<PlatformDiagnosticsQueueSummary> Queues);

@@ -7,6 +7,45 @@ namespace Odca.Domain.Tests;
 public sealed class DocumentContentTests
 {
     [Fact]
+    public void ClassifiesPageSegmentsAndSplicesWithoutShiftingPageAttribution()
+    {
+        var text = string.Join("\f", ["curta", "Título: Contrato de Teste ABC", "fora de alcance"]);
+        var segments = DocumentContent.SplitPageSegments(text);
+        Assert.Equal(3, segments.Count);
+        Assert.False(DocumentContent.PageHasUsableText(segments[0]));
+        Assert.True(DocumentContent.PageHasUsableText(segments[1]));
+        Assert.False(DocumentContent.PageHasUsableText(segments[2]));
+
+        var spliced = DocumentContent.SplicePageSegments(segments, 1, "Título: Contrato Digitalizado XYZ");
+        var resplit = DocumentContent.SplitPageSegments(spliced);
+        Assert.Equal(3, resplit.Count);
+        Assert.Contains("Contrato de Teste ABC", resplit[1]);
+
+        // A paginação das sugestoes (1-based, por form feed) sobrevive a costura: o titulo da
+        // pagina OCRizada aponta para a pagina 1 e o original continua na pagina 2.
+        var suggestions = DocumentContent.Suggest(spliced, "pdf-mixed");
+        var titles = suggestions.Where(s => s.Field == "title").ToList();
+        Assert.Contains(titles, s => s.ExtractedValue == "Contrato Digitalizado XYZ" && s.Page == 1);
+        Assert.Contains(titles, s => s.ExtractedValue == "Contrato de Teste ABC" && s.Page == 2);
+    }
+
+    [Fact]
+    public void ExposesHonestPageScopeInExtractionResult()
+    {
+        var docx = new ExtractedText("texto", "docx-structure");
+        Assert.Null(docx.PagesTotal);
+        Assert.Null(docx.PagesProcessed);
+        Assert.False(docx.Truncated);
+        Assert.Equal(0, docx.OcrPages);
+
+        var scanned = new ExtractedText("a\fb", "ocr", 25, 20, true, 20);
+        Assert.Equal(25, scanned.PagesTotal);
+        Assert.Equal(20, scanned.PagesProcessed);
+        Assert.True(scanned.Truncated);
+        Assert.Equal(20, scanned.OcrPages);
+    }
+
+    [Fact]
     public void RequiresMatchingContentSignatureAndExtension()
     {
         Assert.Equal(SupportedDocumentType.Pdf, DocumentContent.Detect("%PDF-1.7"u8, "contrato.pdf"));

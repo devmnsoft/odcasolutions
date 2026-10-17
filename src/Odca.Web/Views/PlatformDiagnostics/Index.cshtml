@@ -1,0 +1,85 @@
+@model Odca.Contracts.Administration.PlatformDiagnosticsPayload
+@{
+    ViewData["Title"] = "Diagnóstico de dependências";
+    var labels = new Dictionary<string, string>
+    {
+        ["pdf.renderer"] = "Renderizador PDF interno",
+        ["documents.pdf-text"] = "Extração de texto de PDF (pdftotext)",
+        ["documents.pdf-render"] = "Renderização de páginas (pdftoppm)",
+        ["documents.ocr"] = "OCR de páginas escaneadas (tesseract)",
+        ["documents.pdf-info"] = "Metadados de PDF (pdfinfo)",
+        ["security.scanner"] = "Scanner de malware (clamscan)",
+        ["notifications.transport"] = "Transporte de notificações (FilePickup/SMTP)",
+        ["signatures.external-envelope"] = "Envelope de assinatura externa"
+    };
+    string Label(string key) => labels.TryGetValue(key, out var label) ? label : key;
+    string StatusBadge(string status) => status switch
+    {
+        "verified" => "badge-success",
+        "accessible" => "badge-info",
+        "configured" => "badge-warning",
+        "unavailable" => "badge-danger",
+        _ => "badge-muted"
+    };
+    string StatusLabel(string status) => status switch
+    {
+        "verified" => "Comprovado",
+        "accessible" => "Acessível",
+        "configured" => "Configurado",
+        "unavailable" => "Indisponível",
+        "not_applicable" => "Não aplicável",
+        _ => status
+    };
+}
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">Plataforma</p>
+        <h1>Diagnóstico de dependências</h1>
+        <p class="muted">
+            Estado real das dependências externas e das filas da plataforma, com corrente honesta:
+            configurado ≠ acessível ≠ comprovado. Nenhum valor configurado sensível é exibido — apenas presença e resultado da sonda.
+        </p>
+    </div>
+    <div class="button-row">
+        <a class="button button-quiet" asp-controller="Home" asp-action="Index">← Voltar</a>
+    </div>
+</section>
+<div class="panel responsive-table">
+    <table>
+        <thead>
+            <tr><th>Dependência</th><th>Configuração</th><th>Estado</th><th>Detalhe da sonda</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var d in Model.Dependencies)
+            {
+                <tr>
+                    <td data-label="Dependência"><strong>@Label(d.Key)</strong></td>
+                    <td data-label="Configuração"><code>@d.ConfigKey</code></td>
+                    <td data-label="Estado"><span class="badge @(StatusBadge(d.Status))">@StatusLabel(d.Status)</span></td>
+                    <td data-label="Detalhe da sonda">@d.Detail</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+<h2>Filas da plataforma</h2>
+<p class="muted">Contagens atuais por fila de trabalho (escaneamento, extração e notificações), considerando apenas tenants ativos. Itens parados ou falhos ficam visíveis aqui para triagem.</p>
+<div class="panel responsive-table">
+    <table>
+        <thead>
+            <tr><th>Fila</th><th>Pendentes</th><th>Paradas</th><th>Falhas</th><th>Mais antigo pendente</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var q in Model.Queues)
+            {
+                <tr>
+                    <td data-label="Fila">@q.Queue</td>
+                    <td data-label="Pendentes">@q.PendingCount</td>
+                    <td data-label="Paradas">@q.StalledCount</td>
+                    <td data-label="Falhas">@q.FailedCount</td>
+                    <td data-label="Mais antigo pendente">@(q.OldestPendingAt is { } oldest ? oldest.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "—")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

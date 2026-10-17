@@ -17,7 +17,7 @@ public sealed class CreateCustomerViewModel
 
     [Required(ErrorMessage = "Selecione um plano.")]
     [Display(Name = "Plano")]
-    public string PlanCode { get; set; } = "odca-pro";
+    public string PlanCode { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Informe o nome do administrador.")]
     [Display(Name = "Nome do administrador")]

@@ -64,10 +64,9 @@ public sealed class ObligationReminderWorker(
                 new { userId }, transaction: tx, cancellationToken: ct));
             if (string.IsNullOrWhiteSpace(email)) return;
 
-            var title = await connection.ExecuteScalarAsync<string?>(new CommandDefinition(
-                "SELECT title FROM odca.user_notifications WHERE tenant_id=@tenantId AND user_id=@userId AND kind='obligation_due' ORDER BY created_at DESC LIMIT 1",
-                new { tenantId, userId }, transaction: tx, cancellationToken: ct));
-            if (string.IsNullOrWhiteSpace(title)) return;
+            // D-OC34 B.10: assunto genérico por tipo — o texto livre da notificação em app pode
+            // citar o contrato e não vai no subject SMTP.
+            const string title = "Lembrete de obrigação do contrato";
 
             var protectedPayload = _protector.Protect(title);
             await connection.ExecuteAsync(new CommandDefinition(

@@ -8,7 +8,11 @@ namespace Odca.Application.Documents;
 
 public enum SupportedDocumentType { Pdf, Png, Jpeg, Docx }
 
-public sealed record ExtractedText(string Text, string Method, int? Pages = null);
+// D-OC34: transparencia de paginas. PagesTotal/PagesProcessed dizem o que o job realmente
+// cobriu (NULL quando a fonte nao e paginada, ex.: DOCX); Truncated declara documento processado
+// apenas ate um limite ou com paginas nao analisadas; OcrPages conta apenas paginas que passaram
+// pelo OCR (base do consumo da franquia ocr_credit, idempotente por job).
+public sealed record ExtractedText(string Text, string Method, int? PagesTotal = null, int? PagesProcessed = null, bool Truncated = false, int OcrPages = 0);
 public sealed record ExtractionSuggestion(
     string Field, string ExtractedValue, string? NormalizedValue,
     string Evidence, int? Page, string Method, bool IsAmbiguous);
@@ -106,6 +110,37 @@ public static partial class DocumentContent
 
     public static bool PdfHasUsableTextLayer(string text)
         => !string.IsNullOrEmpty(text) && text.Trim().Length >= MinimumPdfTextLayerChars;
+
+    // D-OC34: classificacao e costura por pagina para PDF misto (texto + digitalizado). O
+    // contrato de pagina das sugestoes permanece o de Suggest: pagina 1-base apenas quando ha
+    // separador, e cada segmento e o conteudo bruto da sua pagina entre form feeds.
+    public static IReadOnlyList<string> SplitPageSegments(string text)
+    {
+        var segments = new List<string>();
+        var start = 0;
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (text[i] != '\f') continue;
+            segments.Add(text[start..i]);
+            start = i + 1;
+        }
+        segments.Add(text[start..]);
+        return segments;
+    }
+
+    // Pagina fraca: tem conteudo visivel mas abaixo do minimo de camada de texto — candidato a
+    // digitalizada. Vai para OCR quando ha renderer configurado; sem renderer, o job deve
+    // declarar truncamento explicito, nunca silencio.
+    public static bool PageHasUsableText(string segment) => segment.Trim().Length >= MinimumPdfTextLayerChars;
+
+    public static string SplicePageSegments(IReadOnlyList<string> segments, int oneBasedPageNumber, string replacement)
+    {
+        if (oneBasedPageNumber < 1 || oneBasedPageNumber > segments.Count) throw new ArgumentOutOfRangeException(nameof(oneBasedPageNumber));
+        var copy = new List<string>(segments.Count);
+        copy.AddRange(segments);
+        copy[oneBasedPageNumber - 1] = replacement;
+        return string.Join("\n\f\n", copy);
+    }
 
     // D-OC33 B: fontes que extraem de paginas reais (pdftotext e OCR multipagina) separam as
     // paginas com form feed (\f). A deteccao roda por pagina e page_number (1-based) so e

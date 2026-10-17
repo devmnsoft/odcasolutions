@@ -15,6 +15,11 @@
     <li><span>5</span> @L.T("studio.e_journey_review",_culture)</li>
 </ol>
 <p class="next-step">@L.T("studio.e_next_prefix",_culture) @(conference?.CanGenerate == true ? L.T("studio.e_next_generate",_culture) : conference?.PatientReconfirmationRequired == true ? L.T("studio.e_next_conference",_culture) : L.T("studio.e_next_fields",_culture))</p>
+@if (ViewData["Checklist"] is Odca.Contracts.Studio.ChecklistResponse checklistSummary)
+{
+    var blockerCount = checklistSummary.Items.Count(item => item.Severity == "blocker");
+    <p class="muted" role="status">@L.T(blockerCount == 0 ? "studio.e_checklist_ok" : "studio.e_checklist_blocked", _culture, blockerCount.ToString(System.Globalization.CultureInfo.InvariantCulture))</p>
+}
 @if (Model.RequiresOdcaApproval)
 {
     <div class="error" role="alert" data-pending-odca-approval><strong>@L.T("studio.e_odca_title",_culture)</strong> @L.T("studio.e_odca_body",_culture)</div>
@@ -57,6 +62,19 @@
                 <article><span>@L.T("studio.conf_review",_culture)</span><strong>@conference.ReviewStatus</strong></article>
             </div>
             <h3>@L.T("studio.conf_pending_h",_culture)</h3>
+            @if (conference.PatientId is null && conference.CanEdit)
+            {
+                <h3>@L.T("studio.conf_link_h",_culture)</h3>
+                var linkPatients = ViewData["LinkPatients"] as IReadOnlyList<Odca.Contracts.Patients.PatientSummary> ?? [];
+                @if (linkPatients.Count > 0)
+                {
+                    <form method="post" asp-action="LinkPatient" asp-route-tenantId="@tenantId" asp-route-draftId="@Model.Id">@Html.AntiForgeryToken()<input type="hidden" name="expectedVersion" value="@conference.DraftVersion"/><label>@L.T("studio.conf_link_label",_culture)<select name="patientId" required><option value="">—</option>@foreach(var p in linkPatients){<option value="@p.Id">@p.FullName</option>}</select></label><button class="button button-primary" type="submit">@L.T("studio.conf_link_btn",_culture)</button></form>
+                }
+                else
+                {
+                    <p class="muted">@L.T("studio.conf_link_empty",_culture)</p>
+                }
+            }
             @if (conference.PendingItems.Count == 0) { <p class="success" role="status">@L.T("studio.conf_pending_ok",_culture)</p> }
             else { <p class="muted">@L.T("studio.conf_pending_errors",_culture)</p> <ul class="check-list">@foreach(var item in conference.PendingItems){<li><strong>@item.Message</strong><br/><span>@item.Reason</span><br/><small>@L.T("studio.conf_correct_at",_culture) @item.CorrectionTarget · @(item.CanCorrect?L.T("studio.conf_can_correct",_culture):L.T("studio.conf_ask_authorized",_culture))</small></li>}</ul> }
             @if (conference.Warnings is not null && conference.Warnings.Count > 0) { <h4>@L.T("studio.conf_warnings_h",_culture)</h4> <p class="muted">@L.T("studio.conf_warnings_p",_culture)</p> <ul class="check-list">@foreach(var item in conference.Warnings){<li><strong>@item.Message</strong><br/><span>@item.Reason</span><br/><small>@L.T("studio.conf_warning_origin",_culture) @item.CorrectionTarget</small></li>}</ul> }
@@ -74,7 +92,7 @@
             <details class="help"><summary>@L.T("common.how_to_use",_culture)</summary><p>@L.T("studio.conf_help_body",_culture)</p></details>
         </section>
     }
-    <div class="conflict-banner" data-conflict hidden role="alert"><strong>@L.T("studio.cb_title",_culture)</strong> @L.T("studio.cb_body",_culture) <a href="@Url.Action("Edit",new{tenantId,draftId=Model.Id})" target="_blank" rel="noopener">@L.T("studio.cb_link",_culture)</a> <button type="button" class="button button-link" data-retry>@L.T("studio.cb_retry",_culture)</button></div>
+    <div class="conflict-banner" data-conflict hidden role="alert"><strong>@L.T("studio.cb_title",_culture)</strong> @L.T("studio.cb_body",_culture) <button type="button" class="button button-link" data-conflict-reload>@L.T("studio.cb_reload",_culture)</button> <button type="button" class="button button-link" data-conflict-keep>@L.T("studio.cb_keep",_culture)</button> <button type="button" class="button button-link" data-retry>@L.T("studio.cb_retry",_culture)</button></div>
     <div class="studio-grid">
         <aside class="studio-side"><h2>@L.T("studio.side_sections",_culture)</h2><nav data-sections aria-label="@L.T("studio.side_sections_aria",_culture)"></nav><button class="side-link" type="button" data-tab="history">@L.T("studio.side_history",_culture)</button><details class="help"><summary>@L.T("common.how_to_use",_culture)</summary><p>@L.T("studio.side_help_body",_culture)</p></details></aside>
         <main class="studio-document">
@@ -95,6 +113,7 @@
                 <div data-document-list></div>
                 <div data-extraction hidden>
                     <p data-extraction-status class="muted"></p>
+                    <p data-extraction-scope class="warning" role="status" hidden></p>
                     <p data-suggestions-empty class="muted" hidden>@L.T("studio.x_none",_culture)</p>
                     <div data-suggestions></div>
                     <button type="button" class="button button-primary" data-apply hidden>@L.T("studio.x_apply_btn",_culture)</button>

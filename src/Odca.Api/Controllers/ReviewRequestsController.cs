@@ -142,12 +142,10 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
         if (changed != 1) return OdcaErrors.Conflict(this, "api.reviews.reassign_changed_or_same");
         // D-OC31 B.1: e-mail ao novo revisor na mesma transação da reatribuição;
         // deduplicação por source_id determinístico (evento + chave de idempotência).
-        var contractTitle = await connection.ExecuteScalarAsync<string?>(new CommandDefinition(
-            "SELECT c.title FROM odca.contract_review_requests r JOIN odca.contracts c ON c.id=r.contract_id WHERE r.tenant_id=@tenantId AND r.id=@reviewId",
-            new { tenantId, reviewId }, tx, cancellationToken: ct));
+        // D-OC34 B.10: assunto genérico por tipo (o título livre do contrato não vai no subject).
         var (protector, notifLogger) = NotificationEnqueue.Resolve(HttpContext.RequestServices);
         await NotificationEnqueue.EnqueueEmailAsync(connection, tx, tenantId, request.AssigneeId, "review_assigned",
-            $"Revisão atribuída: {contractTitle ?? "contrato"}", protector,
+            "Você recebeu uma solicitação de revisão", protector,
             NotificationEnqueue.DeterministicSource("review.assigned", reviewId, request.IdempotencyKey), notifLogger, ct);
         await tx.CommitAsync(ct); return Ok(new { version=request.ExpectedVersion+1, replayed=false });
     }
@@ -295,16 +293,17 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
         if (updated != 1) return Conflict(new { title=this.T("api.reviews.review_changed"), code="review.version.conflict", currentVersion=review.Version });
         // D-OC31 B.1: e-mail ao solicitante na mesma transação da decisão; deduplicação
         // por source_id determinístico (evento + chave de idempotência).
-        var requester = await connection.QuerySingleOrDefaultAsync<RequesterInfo>(new CommandDefinition(
-            "SELECT r.requested_by AS RequestedBy,c.title AS Contract FROM odca.contract_review_requests r JOIN odca.contracts c ON c.id=r.contract_id WHERE r.tenant_id=@tenantId AND r.id=@reviewId",
+        // D-OC34 B.10: assunto genérico por tipo (o título livre do contrato não vai no subject).
+        var requester = await connection.QuerySingleOrDefaultAsync<Guid?>(new CommandDefinition(
+            "SELECT r.requested_by FROM odca.contract_review_requests r WHERE r.tenant_id=@tenantId AND r.id=@reviewId",
             new { tenantId, reviewId }, tx, cancellationToken: ct));
         if (requester is not null)
         {
             var (protector, notifLogger) = NotificationEnqueue.Resolve(HttpContext.RequestServices);
             var decisionTitle = request.Action == "approve"
-                ? $"Revisão aprovada internamente: {requester.Contract}"
-                : $"Alterações solicitadas na revisão: {requester.Contract}";
-            await NotificationEnqueue.EnqueueEmailAsync(connection, tx, tenantId, requester.RequestedBy, "review_decided",
+                ? "Revisão aprovada internamente"
+                : "Alterações solicitadas na revisão";
+            await NotificationEnqueue.EnqueueEmailAsync(connection, tx, tenantId, requester.Value, "review_decided",
                 decisionTitle, protector,
                 NotificationEnqueue.DeterministicSource("review.decided", reviewId, request.IdempotencyKey), notifLogger, ct);
         }
@@ -391,7 +390,6 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
         public int PublicMessages { get; set; }
         public int PendingComments { get; set; }
     }
-    private sealed record RequesterInfo(Guid RequestedBy, string Contract);
     private static DateTimeOffset ToUtcOffset(DateTime dt) => dt.Kind == DateTimeKind.Utc ? new DateTimeOffset(dt, TimeSpan.Zero) : new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc), TimeSpan.Zero);
     private static DateTimeOffset? ToUtcOffset(DateTime? dt) => dt.HasValue ? ToUtcOffset(dt.Value) : null;
     private sealed class DetailRow

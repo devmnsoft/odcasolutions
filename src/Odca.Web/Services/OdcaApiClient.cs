@@ -810,11 +810,14 @@ public sealed partial class OdcaApiClient(HttpClient client, IHttpContextAccesso
         return await SendAsync<TemplateMutationResponse>(message, false, ct);
     }
 
-    public async Task<ApiCallResult<object>> ArchiveStudioTemplateAsync(string token, Guid tenantId, Guid templateId, long expectedVersion, CancellationToken ct)
+    public async Task<ApiCallResult<object>> ArchiveStudioTemplateAsync(string token, Guid tenantId, Guid templateId, long expectedVersion, string? reason, CancellationToken ct)
     {
-        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/templates/{templateId}/archive?expectedVersion={expectedVersion}", token);
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/templates/{templateId}/archive?expectedVersion={expectedVersion}&reason={Uri.EscapeDataString(reason ?? string.Empty)}", token);
         return await SendAsync<object>(message, false, ct);
     }
+
+    public Task<ApiCallResult<Odca.Contracts.Administration.PlatformDiagnosticsPayload>> GetPlatformDiagnosticsAsync(string token, CancellationToken ct) =>
+        SendAsync<Odca.Contracts.Administration.PlatformDiagnosticsPayload>(CreateAuthorized(HttpMethod.Get, "api/v1/platform/diagnostics", token), false, ct);
 
     public Task<ApiCallResult<StudioDocumentPage>> GetStudioDocumentsAsync(
         string token, Guid tenantId, string? search = null, string? type = null, string? stage = null, Guid? patientId = null, int page = 1, int pageSize = 20, string? reference = null, string? responsible = null, DateOnly? updatedFrom = null, DateOnly? updatedTo = null, CancellationToken ct = default)
@@ -871,6 +874,13 @@ public sealed partial class OdcaApiClient(HttpClient client, IHttpContextAccesso
         using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/patient-confirmation", token);
         message.Content = JsonContent.Create(request);
         return await SendAsync<bool>(message, false, ct, emptyBodyIsSuccess: true);
+    }
+
+    public async Task<ApiCallResult<object>> SetDraftPatientAsync(string token, Guid tenantId, Guid draftId, Guid? patientId, long expectedVersion, CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Put, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/patient", token);
+        message.Content = JsonContent.Create(new { patientId, expectedVersion });
+        return await SendAsync<object>(message, false, ct);
     }
 
     public async Task<ApiCallResult<SaveDraftResponse>> SaveStudioDraftAsync(string token, Guid tenantId, Guid draftId, SaveDraftRequest request, CancellationToken ct)

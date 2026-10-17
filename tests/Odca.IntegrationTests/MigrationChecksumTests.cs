@@ -524,4 +524,29 @@ public sealed class MigrationChecksumTests
         Assert.Contains("CREATE TABLE IF NOT EXISTS odca.draft_extraction_reviews(", canonical, StringComparison.Ordinal);
         Assert.DoesNotContain("ODCA-MIGRATION 057", snapshot, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ReleaseV057AddsExtractionPageTransparencyTemplateProfileAndPlatformQueueSummaryWithoutRewritingEarlierMigrations()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var previous = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v056.sql")).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v057.sql")).Replace("\r\n", "\n");
+        DatabaseMigrator.ValidateChecksums(previous);
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        DatabaseMigrator.ValidateChecksums(canonical);
+        for (var version = 1; version <= 56; version++)
+            Assert.Equal(MigrationBlock(previous, version), MigrationBlock(canonical, version));
+        // D-OC34: transparencia de paginas na extracao (total/processadas/truncado + metodo
+        // 'pdf-mixed'), perfil de atividade opcional em templates e resumo somente leitura das
+        // filas para o diagnostico operacional da plataforma.
+        Assert.Contains("ADD COLUMN pages_total integer CHECK(pages_total IS NULL OR pages_total > 0)", canonical, StringComparison.Ordinal);
+        Assert.Contains("ADD COLUMN pages_processed integer CHECK(pages_processed IS NULL OR pages_processed >= 0)", canonical, StringComparison.Ordinal);
+        Assert.Contains("ADD COLUMN truncated boolean NOT NULL DEFAULT false", canonical, StringComparison.Ordinal);
+        Assert.Contains("extraction_results_method_ck CHECK(method IN('pdf-native','pdf-mixed','ocr','docx-structure'))", canonical, StringComparison.Ordinal);
+        Assert.Contains("ALTER TABLE odca.contract_templates ADD COLUMN required_activity_profile text", canonical, StringComparison.Ordinal);
+        Assert.Contains("ALTER TABLE odca.contract_templates ADD COLUMN archive_reason text", canonical, StringComparison.Ordinal);
+        Assert.Contains("CREATE OR REPLACE FUNCTION odca.platform_queue_summary()", canonical, StringComparison.Ordinal);
+        Assert.Contains("GRANT EXECUTE ON FUNCTION odca.platform_queue_summary() TO odca_app", canonical, StringComparison.Ordinal);
+        Assert.DoesNotContain("ODCA-MIGRATION 058", snapshot, StringComparison.Ordinal);
+    }
 }

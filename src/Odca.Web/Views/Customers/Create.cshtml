@@ -1,6 +1,7 @@
 @model Odca.Web.Models.CreateCustomerViewModel
 @{
     ViewData["Title"] = "Nova organização";
+    var planItems = ViewData["PlanItems"] as System.Collections.Generic.IList<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>;
 }
 <nav class="breadcrumb">
     <a asp-controller="Home" asp-action="Index">Visão global</a>
@@ -41,11 +42,8 @@
             </label>
             <label>
                 Plano contratado *
-                <select asp-for="PlanCode" required>
-                    <option value="odca-pro">ODCA Pro (Recomendado)</option>
-                    <option value="odca-starter">ODCA Starter</option>
-                    <option value="odca-enterprise">ODCA Enterprise</option>
-                </select>
+                <select asp-for="PlanCode" asp-items="planItems" required></select>
+                <small class="muted">Lista carregada do catálogo vigente de planos.</small>
                 <span asp-validation-for="PlanCode" class="validation"></span>
             </label>
         </div>

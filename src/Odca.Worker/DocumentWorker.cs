@@ -90,11 +90,14 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
                 await PauseJob(connection, job, "organization-unavailable", ct);
                 return;
             }
-            if (extracted.Method == "ocr")
+            // D-OC34: consome apenas paginas que efetivamente passaram pelo OCR (PDF escaneado =
+            // paginas renderizadas; misto = somente as digitalizadas; PDF textual e DOCX nao
+            // consomem). Idempotente por job via key, retry nao duplica consumo.
+            if (extracted.OcrPages > 0)
             {
                 var outcome = await connection.ExecuteScalarAsync<string>(new CommandDefinition(
                     "SELECT odca.consume_monthly_franchise(@tenant,'ocr_credit',@pages,@key,'extraction_job',@jobId,'document-worker')",
-                    new { tenant = job.TenantId, pages = CountOcrPages(extracted.Text), key = "ocr-job:" + job.Id.ToString("N"), jobId = job.Id }, tx, cancellationToken: ct));
+                    new { tenant = job.TenantId, pages = extracted.OcrPages, key = "ocr-job:" + job.Id.ToString("N"), jobId = job.Id }, tx, cancellationToken: ct));
                 if (outcome is not ("consumed" or "duplicate"))
                 {
                     await tx.RollbackAsync(ct);
@@ -105,9 +108,9 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
             }
             var resultId = Guid.NewGuid();
             var inserted = await connection.ExecuteAsync(new CommandDefinition("""
-                INSERT INTO odca.extraction_results(id,tenant_id,job_id,version_id,method,raw_text)
-                SELECT @resultId,@tenantId,@jobId,@versionId,@method,@text WHERE EXISTS(SELECT 1 FROM odca.extraction_jobs WHERE id=@jobId AND lease_token=@lease AND status='processing');
-                """, new { resultId, tenantId = job.TenantId, jobId = job.Id, versionId = job.VersionId, method = extracted.Method, text = extracted.Text, lease = job.LeaseToken }, tx, cancellationToken: ct));
+                INSERT INTO odca.extraction_results(id,tenant_id,job_id,version_id,method,raw_text,pages_total,pages_processed,truncated)
+                SELECT @resultId,@tenantId,@jobId,@versionId,@method,@text,@pagesTotal,@pagesProcessed,@truncated WHERE EXISTS(SELECT 1 FROM odca.extraction_jobs WHERE id=@jobId AND lease_token=@lease AND status='processing');
+                """, new { resultId, tenantId = job.TenantId, jobId = job.Id, versionId = job.VersionId, method = extracted.Method, text = extracted.Text, pagesTotal = extracted.PagesTotal, pagesProcessed = extracted.PagesProcessed, truncated = extracted.Truncated, lease = job.LeaseToken }, tx, cancellationToken: ct));
             if (inserted == 0) { await tx.RollbackAsync(ct); return; }
             foreach (var suggestion in suggestions)
                 await connection.ExecuteAsync(new CommandDefinition("INSERT INTO odca.extraction_suggestions(tenant_id,result_id,version_id,field_name,extracted_value,normalized_value,evidence,page_number,method) VALUES(@tenantId,@resultId,@versionId,@Field,@ExtractedValue,@NormalizedValue,@Evidence,@Page,@Method)", new { tenantId = job.TenantId, resultId, versionId = job.VersionId, suggestion.Field, suggestion.ExtractedValue, suggestion.NormalizedValue, suggestion.Evidence, suggestion.Page, suggestion.Method }, tx, cancellationToken: ct));
@@ -116,21 +119,46 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
             await tx.CommitAsync(ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (ExtractorNotConfiguredException)
+        {
+            // D-OC34: executavel ausente/nao configurado — erro de configuracao com codigo
+            // estavel proprio, distinguido de falha de processamento e de timeout.
+            logger.LogWarning("Extração {JobId} indisponível: extractor não configurado.", job.Id);
+            await MarkExtractionFailed(connection, job, "extractor-not-configured", "extractor-unavailable");
+        }
+        catch (OperationCanceledException)
+        {
+            // D-OC34: tempo limite interno do executável (shutdown do worker já foi tratado acima).
+            logger.LogWarning("Extração {JobId} excedeu o tempo limite do processador.", job.Id);
+            await MarkExtractionFailed(connection, job, "extraction-timeout", "extraction-timeout");
+        }
         catch (Exception exception)
         {
             logger.LogWarning("Extração {JobId} falhou sem registrar conteúdo: {ErrorType}", job.Id, exception.GetType().Name);
-            await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.extraction_jobs SET status=CASE WHEN attempt_count>=max_attempts THEN 'failed' ELSE 'queued' END,available_at=now()+make_interval(secs=>least(300,attempt_count*15)),failure_code=@code,lease_token=NULL,lease_expires_at=NULL WHERE id=@id AND lease_token=@lease", new { id = job.Id, lease = job.LeaseToken, code = exception is NoPdfTextLayerException ? "pdf-no-text-layer" : exception is InvalidDataException ? "invalid-document" : "extractor-failed" }, cancellationToken: CancellationToken.None));
-            await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.contract_imports SET status=CASE WHEN (SELECT attempt_count>=max_attempts FROM odca.extraction_jobs WHERE id=@id) THEN 'failed' ELSE 'queued' END,current_step='document',attempt_count=(SELECT attempt_count FROM odca.extraction_jobs WHERE id=@id),safe_diagnostic_code=@code,updated_at=now() WHERE tenant_id=@tenant AND extraction_job_id=@id AND status NOT IN('confirmed','cancelled')", new { id = job.Id, tenant = job.TenantId, code = exception is NoPdfTextLayerException ? "pdf-no-text-layer" : exception is InvalidDataException ? "invalid-document" : "extractor-unavailable" }, cancellationToken: CancellationToken.None));
+            await MarkExtractionFailed(connection, job,
+                exception is NoPdfTextLayerException ? "pdf-no-text-layer" : exception is InvalidDataException ? "invalid-document" : "extractor-failed",
+                exception is NoPdfTextLayerException ? "pdf-no-text-layer" : exception is InvalidDataException ? "invalid-document" : "extractor-unavailable");
         }
     }
+
+    // D-OC34: registro central da falha de extração — job retratável com backoff até max_attempts
+    // e código estável espelhado no import vinculado, quando existir.
+    private static async Task MarkExtractionFailed(NpgsqlConnection connection, JobItem job, string jobCode, string importCode)
+    {
+        await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.extraction_jobs SET status=CASE WHEN attempt_count>=max_attempts THEN 'failed' ELSE 'queued' END,available_at=now()+make_interval(secs=>least(300,attempt_count*15)),failure_code=@code,lease_token=NULL,lease_expires_at=NULL WHERE id=@id AND lease_token=@lease", new { id = job.Id, lease = job.LeaseToken, code = jobCode }, cancellationToken: CancellationToken.None));
+        await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.contract_imports SET status=CASE WHEN (SELECT attempt_count>=max_attempts FROM odca.extraction_jobs WHERE id=@id) THEN 'failed' ELSE 'queued' END,current_step='document',attempt_count=(SELECT attempt_count FROM odca.extraction_jobs WHERE id=@id),safe_diagnostic_code=@code,updated_at=now() WHERE tenant_id=@tenant AND extraction_job_id=@id AND status NOT IN('confirmed','cancelled')", new { id = job.Id, tenant = job.TenantId, code = importCode }, cancellationToken: CancellationToken.None));
+    }
+
+    private const int NativePdfPageCap = 200;
 
     private async Task<ExtractedText> Extract(VersionItem item, CancellationToken ct)
     {
         var path = StoragePath(item.StorageKey);
         if (item.DetectedType == "docx") { await using var input = File.OpenRead(path); return await DocumentContent.ExtractDocxAsync(input, ct); }
         var isPdf = item.DetectedType == "pdf";
-        var executable = isPdf ? configuration["Documents:PdfTextExecutable"] : configuration["Documents:OcrExecutable"];
-        if (string.IsNullOrWhiteSpace(executable)) throw new InvalidOperationException("extractor-not-configured");
+        // D-OC34: EnsureExecutable garante valor nao nulo e existente em disco antes do uso.
+        var executable = (isPdf ? configuration["Documents:PdfTextExecutable"] : configuration["Documents:OcrExecutable"])!;
+        EnsureExecutable(executable);
         var language = (configuration["Documents:OcrLanguage"] ?? string.Empty).Trim();
         if (language.Length == 0) language = "por";
         var output = Path.GetTempFileName();
@@ -138,26 +166,73 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
         {
             string text;
             var method = isPdf ? "pdf-native" : "ocr";
+            int? pagesTotal = null, pagesProcessed = null;
+            var ocrPages = 0;
+            var truncated = false;
             if (isPdf)
             {
-                if (await Run(executable, ["-f", "1", "-l", "200", path, output], TimeSpan.FromMinutes(2), ct) != 0) throw new InvalidDataException("parser-returned-error");
+                if (await Run(executable, ["-f", "1", "-l", NativePdfPageCap.ToString(CultureInfo.InvariantCulture), path, output], TimeSpan.FromMinutes(2), ct) != 0) throw new InvalidDataException("parser-returned-error");
                 text = await File.ReadAllTextAsync(output, ct);
+                var totalPages = await TryGetPdfPageCount(path, ct);
                 if (!DocumentContent.PdfHasUsableTextLayer(text))
                 {
                     // D-OC33 C: PDF digitalizado. Com renderer configurado, renderiza as paginas
                     // iniciais e roteia pelo OCR (metodo vira "ocr" e a franquia mensal consome as
-                    // paginas efetivas); sem renderer, falha honesta com codigo estavel.
+                    // paginas efetivas); sem renderer, falha honesta com codigo estavel. D-OC34:
+                    // declara total/processadas/truncado — documento processado apenas ate o
+                    // limite nunca aparece como integralmente analisado.
+                    var maxPages = Math.Max(1, configuration.GetValue("Documents:OcrMaxPages", 20));
                     var rendered = await RenderScannedPagesToOcrText(path, language, ct);
                     if (rendered is null) throw NoPdfTextLayerException.Instance;
-                    text = rendered;
+                    text = rendered.Value.Text;
                     method = "ocr";
+                    pagesTotal = totalPages;
+                    pagesProcessed = rendered.Value.PageCount;
+                    ocrPages = rendered.Value.PageCount;
+                    truncated = totalPages.HasValue ? rendered.Value.PageCount < totalPages.Value : rendered.Value.PageCount >= maxPages;
+                }
+                else
+                {
+                    // D-OC34: classificacao por pagina. Pagina fraca (tem conteudo visivel abaixo
+                    // do minimo de camada de texto) e tratada como digitalizada: com renderer,
+                    // passa por OCR e o metodo vira 'pdf-mixed' (franquia consome so essas
+                    // paginas); sem renderer, fica declarada como nao analisada — truncado.
+                    var segments = DocumentContent.SplitPageSegments(text);
+                    var weakPages = new List<int>();
+                    for (var page = 1; page <= segments.Count; page++)
+                        if (!string.IsNullOrWhiteSpace(segments[page - 1]) && !DocumentContent.PageHasUsableText(segments[page - 1])) weakPages.Add(page);
+                    pagesTotal = totalPages;
+                    var visiblePages = segments.Count;
+                    var capped = totalPages.HasValue ? visiblePages < totalPages.Value : visiblePages >= NativePdfPageCap;
+                    if (weakPages.Count > 0)
+                    {
+                        var spliced = await SpliceWeakScannedPages(path, language, segments, weakPages, ct);
+                        if (spliced is not null)
+                        {
+                            text = spliced;
+                            method = "pdf-mixed";
+                            pagesProcessed = visiblePages;
+                            ocrPages = weakPages.Count;
+                            truncated = capped;
+                        }
+                        else
+                        {
+                            pagesProcessed = visiblePages - weakPages.Count;
+                            truncated = true;
+                        }
+                    }
+                    else
+                    {
+                        pagesProcessed = visiblePages;
+                        truncated = capped;
+                    }
                 }
             }
             else
             {
                 // Tesseract: exit 0 produz o .txt (pode ser vazio com legitimidade), exit 1 e
                 // "sem texto detectavel" (pagina em branco -> zero sugestoes, nao falha); demais
-                // codigos sao erro do parser.
+                // codigos sao erro do parser. D-OC34: fonte unica — total/processadas/OCR = 1.
                 var exit = await Run(executable, [path, output[..^4], "-l", language], TimeSpan.FromMinutes(2), ct);
                 text = exit switch
                 {
@@ -165,17 +240,103 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
                     1 => string.Empty,
                     _ => throw new InvalidDataException("parser-returned-error"),
                 };
+                pagesTotal = 1;
+                pagesProcessed = 1;
+                ocrPages = 1;
             }
             if (text.Length > 5_000_000) throw new InvalidDataException("extracted-text-too-large");
-            return new ExtractedText(text, method);
+            return new ExtractedText(text, method, pagesTotal, pagesProcessed, truncated, ocrPages);
         }
         finally { File.Delete(output); File.Delete(output[..^4] + ".txt"); }
     }
 
+    // D-OC34: executavel ausente ou inexistente em disco e erro de configuracao, nao falha de
+    // processamento — vira codigo estavel 'extractor-not-configured'.
+    private static void EnsureExecutable(string? executable)
+    {
+        if (string.IsNullOrWhiteSpace(executable) || !File.Exists(executable)) throw ExtractorNotConfiguredException.Instance;
+    }
+
+    // D-OC34: total de paginas via pdfinfo (dependencia opcional). Ausente ou indescritivel
+    // devolve null: o resultado declara truncamento de forma conservadora, sem inventar total.
+    private async Task<int?> TryGetPdfPageCount(string pdfPath, CancellationToken ct)
+    {
+        var info = configuration["Documents:PdfInfoExecutable"];
+        if (string.IsNullOrWhiteSpace(info) || !File.Exists(info)) return null;
+        try
+        {
+            var (exit, stdout) = await RunCaptured(info, [pdfPath], TimeSpan.FromSeconds(30), ct);
+            if (exit != 0) return null;
+            foreach (var line in stdout.Split('\n'))
+            {
+                var trimmed = line.Trim();
+                if (!trimmed.StartsWith("Pages:", StringComparison.OrdinalIgnoreCase)) continue;
+                if (int.TryParse(trimmed.Substring(6).Trim(), CultureInfo.InvariantCulture, out var pages) && pages > 0) return pages;
+            }
+            return null;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogWarning("Contagem de paginas indisponivel sem expor conteudo: {ErrorType}", exception.GetType().Name);
+            return null;
+        }
+    }
+
+    // D-OC34: renderiza + OCR as paginas fracas de um PDF misto (uma de cada vez, mesma lingua).
+    // Null quando renderer/OCR nao estao configurados (o chamador declara truncamento em vez de
+    // falhar); erro do parser falha o job como sempre. A posicao das paginas fortes e preservada.
+    private async Task<string?> SpliceWeakScannedPages(string pdfPath, string language, IReadOnlyList<string> segments, IReadOnlyList<int> pageNumberList, CancellationToken ct)
+    {
+        var renderer = configuration["Documents:PdfRenderExecutable"];
+        var ocrExecutable = configuration["Documents:OcrExecutable"];
+        if (string.IsNullOrWhiteSpace(renderer) || string.IsNullOrWhiteSpace(ocrExecutable)) return null;
+        var dpi = Math.Clamp(configuration.GetValue("Documents:OcrDpi", 300), 72, 600);
+        var dir = Path.Combine(Path.GetTempPath(), "odca-scan-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(dir);
+            var spliced = new List<string>(segments.Count);
+            spliced.AddRange(segments);
+            foreach (var pageNumber in pageNumberList)
+            {
+                var pageArg = pageNumber.ToString(CultureInfo.InvariantCulture);
+                var prefix = Path.Combine(dir, "page-" + pageArg);
+                if (await Run(renderer, ["-png", "-r", dpi.ToString(CultureInfo.InvariantCulture), "-f", pageArg, "-l", pageArg, pdfPath, prefix], TimeSpan.FromMinutes(2), ct) != 0)
+                    throw new InvalidDataException("parser-returned-error");
+                var renderedFile = Directory.EnumerateFiles(dir, $"page-{pageNumber}-*.png").FirstOrDefault();
+                if (renderedFile is null) throw new InvalidDataException("parser-produced-no-output");
+                var tmp = Path.GetTempFileName();
+                try
+                {
+                    var exit = await Run(ocrExecutable, [renderedFile, tmp[..^4], "-l", language], TimeSpan.FromMinutes(2), ct);
+                    var pageText = exit switch
+                    {
+                        0 => await File.ReadAllTextAsync(tmp[..^4] + ".txt", ct),
+                        1 => string.Empty,
+                        _ => throw new InvalidDataException("parser-returned-error"),
+                    };
+                    File.Delete(tmp); File.Delete(tmp[..^4] + ".txt");
+                    spliced[pageNumber - 1] = pageText;
+                }
+                finally { File.Delete(renderedFile); }
+            }
+            return string.Join("\n\f\n", spliced);
+        }
+        finally
+        {
+            try { Directory.Delete(dir, recursive: true); }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                logger.LogWarning(exception, "OCR nao removeu o diretorio temporario de renderizacao (sem expor caminho): {ErrorType}", exception.GetType().Name);
+            }
+        }
+    }
+
     // D-OC33 C: convencao pdftoppm ("-png -r {dpi} -f 1 -l {max} {pdf} {prefix}" -> prefix-N.png).
     // Cada pagina renderizada passa pelo OCR com a mesma linguagem das imagens diretas e o texto
-    // final preserva form feeds para atribuicao por pagina e contagem da franquia ocr_credit.
-    private async Task<string?> RenderScannedPagesToOcrText(string pdfPath, string language, CancellationToken ct)
+    // final preserva form feeds para atribuicao por pagina. D-OC34: retorna a quantidade de
+    // paginas efetivamente renderizadas (base da franquia e da declaracao de truncamento).
+    private async Task<(string Text, int PageCount)?> RenderScannedPagesToOcrText(string pdfPath, string language, CancellationToken ct)
     {
         var renderer = configuration["Documents:PdfRenderExecutable"];
         var ocrExecutable = configuration["Documents:OcrExecutable"];
@@ -209,7 +370,7 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
                 File.Delete(tmp);
                 File.Delete(tmp[..^4] + ".txt");
             }
-            return string.Join("\n\f\n", rendered);
+            return (string.Join("\n\f\n", rendered), rendered.Count);
         }
         finally
         {
@@ -236,6 +397,14 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
     {
         private NoPdfTextLayerException() { }
         internal static readonly NoPdfTextLayerException Instance = new();
+    }
+
+    // D-OC34: executavel ausente ou inexistente em disco — codigo estavel "extractor-not-
+    // configured", distinguido de falha de processamento ("extractor-failed") e timeout.
+    private sealed class ExtractorNotConfiguredException : Exception
+    {
+        private ExtractorNotConfiguredException() { }
+        internal static readonly ExtractorNotConfiguredException Instance = new();
     }
 
     internal static int CountOcrPages(string text)
@@ -283,6 +452,33 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
                 process.Kill(entireProcessTree: true);
                 await process.WaitForExitAsync(CancellationToken.None);
             }
+            throw;
+        }
+    }
+    // D-OC34: variante do Run que tambem captura o stdout (usada pelo contador de paginas
+    // pdfinfo; o pdf info sai por saida padrao e nao por arquivo).
+    internal static async Task<(int ExitCode, string Stdout)> RunCaptured(string executable, IReadOnlyList<string> arguments, TimeSpan timeout, CancellationToken ct)
+    {
+        var start = new ProcessStartInfo(executable) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
+        foreach (var argument in arguments) start.ArgumentList.Add(argument);
+        using var process = Process.Start(start) ?? throw new InvalidOperationException("process-start-failed");
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct); limit.CancelAfter(timeout);
+        var stdoutTask = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
+        var stderrTask = process.StandardError.ReadToEndAsync(CancellationToken.None);
+        try
+        {
+            await process.WaitForExitAsync(limit.Token);
+            return (process.ExitCode, await stdoutTask);
+        }
+        catch (OperationCanceledException)
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+                await process.WaitForExitAsync(CancellationToken.None);
+            }
+            try { await Task.WhenAll(stdoutTask, stderrTask).WaitAsync(TimeSpan.FromSeconds(2), CancellationToken.None); }
+            catch (Exception) { /* fluxo de encerramento: descarta saida incompleta */ }
             throw;
         }
     }

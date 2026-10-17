@@ -22,6 +22,9 @@
     </div>
 </section>
 
+@if (TempData["SuccessMessage"] is string successNotice) { <div class="success" role="status">@successNotice</div> }
+@if (TempData["ErrorMessage"] is string errorNotice) { <div class="error" role="alert">@errorNotice</div> }
+
 <ol class="journey" aria-label="Etapas do documento">
     <li class="is-current"><span>1</span> Modelo</li>
     <li class="is-current"><span>2</span> Partes</li>
@@ -111,6 +114,23 @@
                     Avançar para escolha de modelo →
                 </button>
             </form>
+            @if (Model.CanManagePatients)
+            {
+                <details class="help" style="margin-top: 1rem;">
+                    <summary>Cadastro rápido — paciente não está na lista?</summary>
+                    <p class="muted">Dados mínimos para vincular agora; os demais campos podem ser complementados depois na ficha do paciente.</p>
+                    <form method="post" asp-action="CreatePatientInline" asp-route-tenantId="@tenantId">
+                        @Html.AntiForgeryToken()
+                        <label>Nome completo<input name="fullName" required minlength="2" maxlength="160" /></label>
+                        <label>Documento<select name="identifierType"><option value="cpf">CPF</option><option value="cnpj">CNPJ</option><option value="passport">Passaporte</option><option value="other">Outro</option></select></label>
+                        <label>Número do documento<input name="identifierValue" required minlength="3" maxlength="60" /></label>
+                        <label>Data de nascimento (opcional)<input type="date" name="birthDate" max="@DateTime.Now.ToString("yyyy-MM-dd")" /></label>
+                        <label>Representante (opcional)<input name="representativeName" maxlength="160" /></label>
+                        <label>Vínculo do representante (opcional)<input name="representativeRelation" maxlength="120" /></label>
+                        <button class="button button-primary" type="submit">Cadastrar e selecionar</button>
+                    </form>
+                </details>
+            }
         </div>
     </section>
 

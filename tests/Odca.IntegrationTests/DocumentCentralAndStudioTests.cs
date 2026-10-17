@@ -25,6 +25,21 @@ public sealed class DocumentCentralAndStudioTests(DatabaseFixture database) : IC
     private static readonly Guid ChangeRequest2Id = Guid.Parse("73000000-0000-0000-0000-000000000042");
 
     [Fact]
+    public void FirstPatientLinkSeesAllRegistrationFieldsAsChanges()
+    {
+        // D-OC34: a primeira vinculacao (before=null) deve ver cada campo presente no
+        // snapshot como mudanca; com acceptedKeys vazio o autofill inicial nao preenchia
+        // nenhum campo de paciente (prova B6-5 caiu em zero).
+        var changes = ContractStudioController.PatientChanges(null, """{"fullName":"Ana Paula","identifierValue":"11144777735"}""");
+        Assert.Contains(changes, item => item.Field == "fullName");
+        Assert.Contains(changes, item => item.Field == "identifierValue");
+        Assert.DoesNotContain(changes, item => item.Field == "email");
+
+        Assert.Empty(ContractStudioController.PatientChanges("""{"fullName":"Ana"}""", """{"fullName":"Ana"}"""));
+        Assert.Empty(ContractStudioController.PatientChanges("""{"fullName":"Ana"}""", null));
+    }
+
+    [Fact]
     public async Task ReviewRowVersionChangeDoesNotAlterDisplayedDocumentVersionNumber()
     {
         await SeedScenarioAsync();
