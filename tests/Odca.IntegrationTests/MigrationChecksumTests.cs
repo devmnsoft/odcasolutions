@@ -616,4 +616,30 @@ public sealed class MigrationChecksumTests
         Assert.Contains("GRANT EXECUTE ON FUNCTION odca.support_session_tenant_name(uuid,uuid) TO odca_app", canonical, StringComparison.Ordinal);
         Assert.DoesNotContain("ODCA-MIGRATION 061", snapshot, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ReleaseV061AddsAuditedDeepImpersonationWithoutRewritingEarlierMigrations()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var previous = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v060.sql")).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v061.sql")).Replace("\r\n", "\n");
+        DatabaseMigrator.ValidateChecksums(previous);
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        DatabaseMigrator.ValidateChecksums(canonical);
+        for (var version = 1; version <= 60; version++)
+            Assert.Equal(MigrationBlock(previous, version), MigrationBlock(canonical, version));
+        // D-OC43 (Sprint 9/F-1): impersonacao profunda na janela de suporte — sessao
+        // dedicada por concessao (revogacao instantanea via sid), no maximo uma ativa
+        // por janela, expiracao nunca alem da janela, eventos/auditoria com o operador real.
+        Assert.True(string.Equals(snapshot, canonical, StringComparison.Ordinal), "o release v061 precisa ser byte-idêntico ao canônico");
+        var block = MigrationBlock(canonical, 61);
+        Assert.Contains("CREATE TABLE IF NOT EXISTS odca.support_impersonations(", block, StringComparison.Ordinal);
+        Assert.Contains("support_impersonations_active_uq ON odca.support_impersonations(session_id) WHERE ended_at IS NULL", block, StringComparison.Ordinal);
+        Assert.Contains("LEAST(now() + make_interval(mins => p_minutes), v_session.expires_at)", block, StringComparison.Ordinal);
+        Assert.Contains("'impersonation_started','impersonation_ended','impersonation_revoked'", block, StringComparison.Ordinal);
+        Assert.Contains("GRANT EXECUTE ON FUNCTION odca.start_support_impersonation(uuid,uuid,uuid,integer) TO odca_app", block, StringComparison.Ordinal);
+        Assert.Contains("GRANT EXECUTE ON FUNCTION odca.end_support_impersonation(uuid,uuid,boolean) TO odca_app", block, StringComparison.Ordinal);
+        Assert.Contains("GRANT EXECUTE ON FUNCTION odca.support_impersonation_is_valid(uuid) TO odca_app", block, StringComparison.Ordinal);
+        Assert.Contains("REVOKE ALL ON odca.support_impersonations FROM odca_app", block, StringComparison.Ordinal);
+    }
 }

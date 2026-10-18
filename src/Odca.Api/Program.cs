@@ -149,6 +149,27 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
                     return;
                 }
 
+                // D-OC43 (Sprint 9/F-1): impersonacao profunda — o token ja foi emitido contra o
+                // usuario-alvo e a sua sessao dedicada (verificada acima por sid/security_version);
+                // aqui fecha-se a janela por request: concessao encerrada/revogada/expirada ou a
+                // sessao de suporte fora do ar invalidam o token imediatamente (sem cache).
+                if (Guid.TryParse(context.Principal!.FindFirstValue("imp_grant"), out var impersonationGrant))
+                {
+                    var supportRepository = context.HttpContext.RequestServices
+                        .GetRequiredService<Odca.Application.Support.ISupportSessionRepository>();
+                    var grantValid = await supportRepository.IsImpersonationValidAsync(
+                        impersonationGrant, context.HttpContext.RequestAborted);
+                    if (!grantValid)
+                    {
+                        context.Fail(sessionLocalizer.T("api.impersonation.expired", sessionCulture));
+                        return;
+                    }
+
+                    // Atribuição ao operador real para auditoria/observabilidade a jusante.
+                    context.HttpContext.Items["odca.impersonation.operator"] =
+                        context.Principal.FindFirstValue("imp_op");
+                }
+
                 // O requisito de MFA para superadministradores é aplicado na camada de
                 // autorização (políticas PasswordChanged/PlatformAdministrator), de modo
                 // que uma sessão autenticada sem MFA recebe 403 Forbidden nas operações

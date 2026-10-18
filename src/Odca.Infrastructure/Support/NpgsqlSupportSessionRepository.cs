@@ -205,4 +205,117 @@ public sealed class NpgsqlSupportSessionRepository(NpgsqlDataSource dataSource) 
             return [];
         }
     }
+
+    // D-OC43 (Sprint 9/F-1): impersonação profunda na janela de suporte.
+
+    private sealed class ImpersonationRow
+    {
+        public Guid imp_grant { get; init; }
+        public Guid imp_target_session { get; init; }
+        public DateTimeOffset imp_expires { get; init; }
+    }
+
+    private sealed class MemberRow
+    {
+        public Guid user_id { get; init; }
+        public string display_name { get; init; } = "";
+        public string email { get; init; } = "";
+    }
+
+    private static SupportImpersonationStart Failed(SupportImpersonationStartError error) => new(
+        false, error, Guid.Empty, Guid.Empty, Guid.Empty, DateTimeOffset.MinValue);
+
+    public async Task<SupportImpersonationStart> StartImpersonationAsync(
+        Guid actorId, Guid sessionId, Guid targetUserId, int minutes, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+            await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+            await connection.ExecuteAsync(new CommandDefinition(
+                "SELECT set_config('odca.user_id', @actor, true)",
+                new { actor = actorId.ToString() },
+                transaction,
+                cancellationToken: cancellationToken));
+            var row = await connection.QueryFirstOrDefaultAsync<ImpersonationRow>(new CommandDefinition(
+                "SELECT * FROM odca.start_support_impersonation(@actor, @session, @target, @minutes)",
+                new { actor = actorId, session = sessionId, target = targetUserId, minutes },
+                transaction,
+                cancellationToken: cancellationToken));
+            await transaction.CommitAsync(cancellationToken);
+            return row is null
+                ? Failed(SupportImpersonationStartError.Unavailable)
+                : new(true, SupportImpersonationStartError.None, row.imp_grant, targetUserId, row.imp_target_session, row.imp_expires);
+        }
+        catch (PostgresException exception) when (exception.SqlState is "23505" or "02000" or "22023")
+        {
+            return Failed(exception.SqlState == "23505"
+                ? SupportImpersonationStartError.AlreadyActive
+                : SupportImpersonationStartError.Validation);
+        }
+        catch (PostgresException)
+        {
+            return Failed(SupportImpersonationStartError.Unavailable);
+        }
+    }
+
+    public async Task<bool> EndImpersonationAsync(
+        Guid actorId, Guid grantId, bool revoked, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+            await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+            await connection.ExecuteAsync(new CommandDefinition(
+                "SELECT set_config('odca.user_id', @actor, true)",
+                new { actor = actorId.ToString() },
+                transaction,
+                cancellationToken: cancellationToken));
+            var ended = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
+                "SELECT odca.end_support_impersonation(@actor, @grant, @revoked)",
+                new { actor = actorId, grant = grantId, revoked },
+                transaction,
+                cancellationToken: cancellationToken));
+            await transaction.CommitAsync(cancellationToken);
+            return ended;
+        }
+        catch (PostgresException)
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> IsImpersonationValidAsync(Guid grantId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+            return await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
+                "SELECT odca.support_impersonation_is_valid(@grant)",
+                new { grant = grantId },
+                cancellationToken: cancellationToken));
+        }
+        catch (PostgresException)
+        {
+            return false;
+        }
+    }
+
+    public async Task<IReadOnlyList<SupportSessionMemberInfo>> ListMembersAsync(
+        Guid actorId, Guid tenantId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+            var rows = (await connection.QueryAsync<MemberRow>(new CommandDefinition(
+                "SELECT * FROM odca.support_session_members(@actor, @tenant)",
+                new { actor = actorId, tenant = tenantId },
+                cancellationToken: cancellationToken))).AsList();
+            return rows.Select(r => new SupportSessionMemberInfo(r.user_id, r.display_name, r.email)).ToArray();
+        }
+        catch (PostgresException)
+        {
+            return [];
+        }
+    }
 }

@@ -13,6 +13,20 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : ITokenServic
     private readonly JwtOptions _options = options.Value;
 
     public IssuedToken Issue(UserCredential user, SessionRecord session)
+        => WriteToken(BuildClaims(user, session), session.ExpiresAt);
+
+    // D-OC43 (Sprint 9/F-1): token da visão do cliente (impersonação profunda). A identidade
+    // emitida é a do usuário-alvo na sua sessão dedicada; imp_op/imp_grant preservam a
+    // atribuição ao operador real para auditoria e para o fechamento da janela por request.
+    public IssuedToken IssueImpersonation(UserCredential target, SessionRecord session, Guid operatorUserId, Guid grantId)
+    {
+        var claims = BuildClaims(target, session);
+        claims.Add(new Claim("imp_op", operatorUserId.ToString()));
+        claims.Add(new Claim("imp_grant", grantId.ToString()));
+        return WriteToken(claims, session.ExpiresAt);
+    }
+
+    private static List<Claim> BuildClaims(UserCredential user, SessionRecord session)
     {
         var claims = new List<Claim>
         {
@@ -38,6 +52,11 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : ITokenServic
             claims.Add(new Claim(ClaimTypes.Role, "SuperAdministrator"));
         }
 
+        return claims;
+    }
+
+    private IssuedToken WriteToken(List<Claim> claims, DateTimeOffset expiresAt)
+    {
         var credentials = new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey)),
             SecurityAlgorithms.HmacSha256);
@@ -46,9 +65,9 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : ITokenServic
             audience: _options.Audience,
             claims: claims,
             notBefore: DateTime.UtcNow,
-            expires: session.ExpiresAt.UtcDateTime,
+            expires: expiresAt.UtcDateTime,
             signingCredentials: credentials);
 
-        return new IssuedToken(new JwtSecurityTokenHandler().WriteToken(token), session.ExpiresAt);
+        return new IssuedToken(new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
     }
 }

@@ -1,0 +1,116 @@
+{
+  "support.imp_view_btn": {
+    "pt-BR": "Ver como cliente",
+    "en-US": "View as client",
+    "es-ES": "Ver como cliente",
+    "fr-FR": "Voir en tant que client"
+  },
+  "support.imp_view_title": {
+    "pt-BR": "Visão do cliente",
+    "en-US": "Client view",
+    "es-ES": "Vista del cliente",
+    "fr-FR": "Vue client"
+  },
+  "support.imp_subtitle": {
+    "pt-BR": "Escolha um membro da organização para agir com a visão exata desse cliente, dentro da janela de suporte ativa.",
+    "en-US": "Choose an organization member to act with exactly that client's view, within the active support window.",
+    "es-ES": "Elija un miembro de la organización para actuar con la vista exacta de ese cliente, dentro de la ventana de soporte activa.",
+    "fr-FR": "Choisissez un membre de l'organisation pour agir avec exactement le point de vue de ce client, dans la fenêtre d'assistance active."
+  },
+  "support.imp_window_info": {
+    "pt-BR": "A janela de suporte expira em {0}.",
+    "en-US": "The support window expires at {0}.",
+    "es-ES": "La ventana de soporte expira el {0}.",
+    "fr-FR": "La fenêtre d'assistance expire le {0}."
+  },
+  "support.imp_members_heading": {
+    "pt-BR": "Membros elegíveis desta organização",
+    "en-US": "Eligible members of this organization",
+    "es-ES": "Miembros elegibles de esta organización",
+    "fr-FR": "Membres éligibles de cette organisation"
+  },
+  "support.imp_members_load_fail": {
+    "pt-BR": "Não foi possível carregar os membros desta organização.",
+    "en-US": "Could not load the members of this organization.",
+    "es-ES": "No se pudo cargar los miembros de esta organización.",
+    "fr-FR": "Impossible de charger les membres de cette organisation."
+  },
+  "support.imp_member": {
+    "pt-BR": "Membro",
+    "en-US": "Member",
+    "es-ES": "Miembro",
+    "fr-FR": "Membre"
+  },
+  "support.imp_duration": {
+    "pt-BR": "Duração (minutos)",
+    "en-US": "Duration (minutes)",
+    "es-ES": "Duración (minutos)",
+    "fr-FR": "Durée (minutes)"
+  },
+  "support.imp_enter": {
+    "pt-BR": "Entrar",
+    "en-US": "Enter",
+    "es-ES": "Entrar",
+    "fr-FR": "Entrer"
+  },
+  "support.imp_empty": {
+    "pt-BR": "Nenhum membro elegível nesta organização agora (exige membership ativa, sem troca de senha pendente e conta não excluída).",
+    "en-US": "No eligible member in this organization right now (requires an active membership, no pending password change, and a non-deleted account).",
+    "es-ES": "Ningún miembro elegible en esta organización ahora (requiere membresía activa, sin cambio de contraseña pendiente y cuenta no eliminada).",
+    "fr-FR": "Aucun membre éligible dans cette organisation pour l'instant (exige un membership actif, aucun changement de mot de passe en attente et un compte non supprimé)."
+  },
+  "support.imp_err_invalid": {
+    "pt-BR": "Confira o membro selecionado e a duração (5 a 60 minutos).",
+    "en-US": "Check the selected member and the duration (5 to 60 minutes).",
+    "es-ES": "Revise el miembro seleccionado y la duración (5 a 60 minutos).",
+    "fr-FR": "Vérifiez le membre sélectionné et la durée (5 à 60 minutes)."
+  },
+  "support.imp_err_active_exists": {
+    "pt-BR": "Já existe uma visão do cliente ativa nesta sessão de suporte.",
+    "en-US": "A client view is already active in this support session.",
+    "es-ES": "Ya existe una vista del cliente activa en esta sesión de soporte.",
+    "fr-FR": "Une vue client est déjà active dans cette session d'assistance."
+  },
+  "support.imp_err_start_fail": {
+    "pt-BR": "Não foi possível entrar na visão do cliente. Tente novamente.",
+    "en-US": "Could not enter the client view. Please try again.",
+    "es-ES": "No fue posible entrar en la vista del cliente. Intente de nuevo.",
+    "fr-FR": "Impossible d'entrer dans la vue client. Veuillez réessayer."
+  },
+  "support.imp_banner": {
+    "pt-BR": "Você está agindo como {0} (atendimento ODCA conduzido por {1}). A visão expira às {2}.",
+    "en-US": "You are acting as {0} (ODCA support run by {1}). This view expires at {2}.",
+    "es-ES": "Está actuando como {0} (atención ODCA conducida por {1}). La vista expira a las {2}.",
+    "fr-FR": "Vous agissez en tant que {0} (assistance ODCA conduite par {1}). Cette vue expire à {2}."
+  },
+  "support.imp_exit": {
+    "pt-BR": "Sair da visão do cliente",
+    "en-US": "Leave client view",
+    "es-ES": "Salir de la vista del cliente",
+    "fr-FR": "Quitter la vue client"
+  },
+  "api.impersonation.expired": {
+    "pt-BR": "A visão do cliente do atendimento terminou ou expirou.",
+    "en-US": "The support client view has ended or expired.",
+    "es-ES": "La vista del cliente del soporte terminó o expiró.",
+    "fr-FR": "La vue client d'assistance a pris fin ou a expiré."
+  },
+  "api.support_impersonation.validation": {
+    "pt-BR": "Informe um membro válido e uma duração entre 5 e 60 minutos.",
+    "en-US": "Provide a valid member and a duration between 5 and 60 minutes.",
+    "es-ES": "Indique un miembro válido y una duración entre 5 y 60 minutos.",
+    "fr-FR": "Indiquez un membre valide et une durée entre 5 et 60 minutes."
+  },
+  "api.support_impersonation.active_exists": {
+    "pt-BR": "Já existe uma visão do cliente ativa nesta sessão de suporte.",
+    "en-US": "A client view is already active in this support session.",
+    "es-ES": "Ya existe una vista del cliente activa en esta sesión de soporte.",
+    "fr-FR": "Une vue client est déjà active dans cette session d'assistance."
+  },
+  "api.support_impersonation.not_found": {
+    "pt-BR": "Concessão da visão do cliente não encontrada ou já encerrada.",
+    "en-US": "Client view grant not found or already ended.",
+    "es-ES": "Concesión de la vista del cliente no encontrada o ya finalizada.",
+    "fr-FR": "Concession de vue client introuvable ou déjà close."
+  }
+}

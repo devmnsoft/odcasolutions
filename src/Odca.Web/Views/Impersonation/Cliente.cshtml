@@ -1,0 +1,71 @@
+@model Odca.Web.Models.SupportImpersonationViewModel
+@using System.Globalization
+@{
+    // D-OC42 (S8): padrão canônico de cultura e localização das mensagens BFF.
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("support.imp_view_title", _c);
+    var ptBr = CultureInfo.GetCultureInfo("pt-BR");
+}
+<nav class="breadcrumb" aria-label="@L.T("common.breadcrumb_aria",_c)">
+    <a asp-controller="SupportSessions" asp-action="Index">@L.T("support.title",_c)</a><span aria-hidden="true">/</span><span>@L.T("support.imp_view_title",_c)</span>
+</nav>
+<header class="page-heading">
+    <div>
+        <p class="eyebrow">@L.T("support.eyebrow",_c)</p>
+        <h1>@L.T("support.imp_view_title",_c)</h1>
+        <p>@L.T("support.imp_subtitle",_c)</p>
+    </div>
+    <a class="button button-primary" asp-controller="SupportSessions" asp-action="Index">@L.T("support.back_panel",_c)</a>
+</header>
+
+@if (TempData["Error"] is string impError)
+{
+    <div class="alert alert-error" role="alert">@impError</div>
+}
+
+<section class="panel">
+    <h2>@Model.Session.TenantName</h2>
+    <p class="muted">@L.T("support.imp_window_info",_c,Model.Session.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm",ptBr))</p>
+    <h3>@L.T("support.imp_members_heading",_c)</h3>
+    @if (Model.MembersLoadFailed)
+    {
+        <div class="alert alert-error" role="alert">@L.T("support.imp_members_load_fail",_c)</div>
+    }
+    else if (Model.Members.Length == 0)
+    {
+        <p class="muted">@L.T("support.imp_empty",_c)</p>
+    }
+    else
+    {
+        <table class="data-table">
+            <thead>
+                <tr><th>@L.T("support.imp_member",_c)</th><th class="actions">@L.T("common.actions",_c)</th></tr>
+            </thead>
+            <tbody>
+            @foreach (var member in Model.Members)
+            {
+                <tr>
+                    <td><strong>@member.DisplayName</strong><br/><small>@member.Email</small></td>
+                    <td class="actions">
+                        <form method="post" asp-action="Entrar" class="inline-form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="SessionId" value="@Model.Session.Id"/>
+                            <input type="hidden" name="TenantId" value="@Model.Session.TenantId"/>
+                            <input type="hidden" name="TargetUserId" value="@member.UserId"/>
+                            <input type="hidden" name="TargetName" value="@member.DisplayName"/>
+                            <select name="Minutes" aria-label="@L.T("support.imp_duration",_c)">
+                                <option value="5">5</option>
+                                <option value="10">10</option>
+                                <option value="15" selected>15</option>
+                                <option value="30">30</option>
+                                <option value="60">60</option>
+                            </select>
+                            <button class="button button-primary" type="submit">@L.T("support.imp_enter",_c)</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</section>

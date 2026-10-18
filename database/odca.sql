@@ -6644,3 +6644,220 @@ VALUES(60,'Sessao de suporte: extensao auditada (extend_support_session)','1562c
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 060
+
+
+-- ODCA-MIGRATION 061 CHECKSUM 5e1e107223fcd55afb01025d214ffef61d154b1309685604e93c983ef3c0808e
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
+
+DO $odca$
+DECLARE
+    expected_checksum constant char(64) := '5e1e107223fcd55afb01025d214ffef61d154b1309685604e93c983ef3c0808e';
+    recorded_checksum char(64);
+BEGIN
+    SELECT checksum INTO recorded_checksum FROM odca.schema_migrations WHERE version = 61;
+    IF recorded_checksum IS NOT NULL AND recorded_checksum <> expected_checksum THEN
+        RAISE EXCEPTION 'ODCA migration 061 checksum mismatch: stored %, expected %', recorded_checksum, expected_checksum;
+    END IF;
+END
+$odca$;
+
+-- D-OC43 (Sprint 9/F-1): impersonacao profunda na janela de suporte.
+-- O superadministrador entra no portal COMO um usuario ativo da organizacao do
+-- cliente dentro de uma sessao de suporte ativa: duracao curta (5..60 minutos,
+-- nunca alem da janela), revogacao instantanea (revoga a linha de sessao
+-- dedicada do alvo), no maximo uma impersonacao ativa por sessao, sem nesting,
+-- e tudo auditado com o operador real (eventos impersonation_started/ended/
+-- revoked + audit_events platform). Mesma governanca do open/close/extend v020/v060.
+CREATE TABLE IF NOT EXISTS odca.support_impersonations(
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid NOT NULL REFERENCES odca.support_sessions(id),
+  operator_user_id uuid NOT NULL REFERENCES odca.users(id),
+  target_user_id uuid NOT NULL REFERENCES odca.users(id),
+  target_session_id uuid NOT NULL REFERENCES odca.sessions(id),
+  started_at timestamptz NOT NULL DEFAULT now(),
+  expires_at timestamptz NOT NULL,
+  ended_at timestamptz,
+  ended_by uuid REFERENCES odca.users(id),
+  end_type text CHECK(end_type IN ('ended','revoked')),
+  CHECK(expires_at > started_at),
+  CHECK(ended_at IS NULL OR ended_at >= started_at),
+  CHECK((ended_at IS NULL) = (ended_by IS NULL AND end_type IS NULL))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS support_impersonations_active_uq ON odca.support_impersonations(session_id) WHERE ended_at IS NULL;
+CREATE INDEX IF NOT EXISTS support_impersonations_session_ix ON odca.support_impersonations(session_id, started_at DESC);
+
+-- Suporte: plataforma-scope, acessada somente pelas funcoes SECURITY DEFINER abaixo
+-- (mesmo padrao de REVOKE dos eventos da sessao de suporte).
+REVOKE ALL ON odca.support_impersonations FROM odca_app;
+
+-- Novos tipos de evento no historico da sessao (o CHECK da fundacao v020 ja previa
+-- a expansao; o padrao seguido em v060 foi o evento 'extended').
+ALTER TABLE odca.support_session_events DROP CONSTRAINT IF EXISTS support_session_events_event_type_check;
+ALTER TABLE odca.support_session_events ADD CONSTRAINT support_session_events_event_type_check
+  CHECK(event_type IN ('started','action_performed','ended','revoked','extended','impersonation_started','impersonation_ended','impersonation_revoked'));
+
+CREATE OR REPLACE FUNCTION odca.start_support_impersonation(
+    p_actor_id uuid, p_session_id uuid, p_target_user_id uuid, p_minutes integer DEFAULT 15)
+RETURNS TABLE(imp_grant uuid, imp_target_session uuid, imp_expires timestamptz)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, odca
+AS $$
+DECLARE
+    v_is_admin boolean;
+    v_session odca.support_sessions;
+    v_grant_id uuid;
+    v_target_session_id uuid;
+    v_expires timestamptz;
+BEGIN
+    SELECT is_platform_administrator INTO v_is_admin FROM odca.users WHERE id = p_actor_id AND NOT is_deleted;
+    IF NOT COALESCE(v_is_admin, false) THEN
+        RAISE EXCEPTION 'not a platform administrator' USING ERRCODE = '42501';
+    END IF;
+    IF p_minutes NOT BETWEEN 5 AND 60 THEN
+        RAISE EXCEPTION 'duration must be between 5 and 60 minutes' USING ERRCODE = '22023';
+    END IF;
+
+    SELECT * INTO v_session FROM odca.support_sessions WHERE id = p_session_id FOR UPDATE;
+    IF NOT FOUND OR v_session.status <> 'active' THEN
+        RAISE EXCEPTION 'session not found or not active' USING ERRCODE = '02000';
+    END IF;
+
+    IF EXISTS(SELECT 1 FROM odca.support_impersonations WHERE session_id = p_session_id AND ended_at IS NULL) THEN
+        IF EXISTS(SELECT 1 FROM odca.support_impersonations WHERE session_id = p_session_id AND ended_at IS NULL AND expires_at > now()) THEN
+            RAISE EXCEPTION 'session already has an active impersonation' USING ERRCODE = '23505';
+        END IF;
+        -- Expiracao natural da impersonacao anterior: registrar antes de abrir outra.
+        UPDATE odca.sessions SET revoked_at = now()
+         WHERE id IN (SELECT target_session_id FROM odca.support_impersonations WHERE session_id = p_session_id AND ended_at IS NULL);
+        INSERT INTO odca.support_session_events(session_id, actor_user_id, event_type, details)
+        SELECT p_session_id, p_actor_id, 'impersonation_ended', jsonb_build_object('target_user_id', gi.target_user_id, 'expired', true)
+          FROM odca.support_impersonations gi WHERE gi.session_id = p_session_id AND gi.ended_at IS NULL;
+        UPDATE odca.support_impersonations SET ended_at = now(), ended_by = p_actor_id, end_type = 'ended'
+         WHERE session_id = p_session_id AND ended_at IS NULL;
+    END IF;
+
+    IF NOT EXISTS(
+        SELECT 1 FROM odca.memberships m JOIN odca.users u ON u.id = m.user_id
+         WHERE m.tenant_id = v_session.tenant_id AND m.user_id = p_target_user_id AND m.status = 'active'
+           AND NOT u.is_deleted AND NOT u.must_change_password) THEN
+        RAISE EXCEPTION 'target user is not an active member of the session tenant' USING ERRCODE = '02000';
+    END IF;
+
+    -- A impersonacao nunca vive mais que a janela de suporte.
+    v_expires := LEAST(now() + make_interval(mins => p_minutes), v_session.expires_at);
+    IF v_expires <= now() + interval '60 seconds' THEN
+        RAISE EXCEPTION 'support window too short for impersonation' USING ERRCODE = '22023';
+    END IF;
+
+    -- Linha de sessao dedicada ao alvo: revoga-la invalida tokens em voo pelo mesmo
+    -- mecanismo sid/revoked_at do login (revogacao instantanea, sem novo estado).
+    v_target_session_id := gen_random_uuid();
+    INSERT INTO odca.sessions(id, user_id, security_version, expires_at, authentication_level, mfa_completed_at)
+    VALUES(v_target_session_id, p_target_user_id, 1, v_expires, 'mfa', now());
+
+    INSERT INTO odca.support_impersonations(id, session_id, operator_user_id, target_user_id, target_session_id, expires_at)
+    VALUES(gen_random_uuid(), p_session_id, p_actor_id, p_target_user_id, v_target_session_id, v_expires)
+    RETURNING id INTO v_grant_id;
+
+    INSERT INTO odca.support_session_events(session_id, actor_user_id, event_type, details)
+    VALUES(p_session_id, p_actor_id, 'impersonation_started', jsonb_build_object('target_user_id', p_target_user_id, 'minutes', p_minutes, 'expires_at', to_char(v_expires, 'YYYY-MM-DD HH24:MI:SS TZ')));
+
+    INSERT INTO odca.audit_events(scope_type, actor_user_id, action, entity_type, entity_id, result, metadata)
+    VALUES('platform', p_actor_id, 'superadmin.support_impersonation.started', 'support_impersonation', v_grant_id, 'success',
+           jsonb_build_object('tenant_id', v_session.tenant_id, 'target_user_id', p_target_user_id));
+
+    RETURN QUERY SELECT v_grant_id, v_target_session_id, v_expires;
+END
+$$;
+
+REVOKE ALL ON FUNCTION odca.start_support_impersonation(uuid,uuid,uuid,integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.start_support_impersonation(uuid,uuid,uuid,integer) TO odca_app;
+
+CREATE OR REPLACE FUNCTION odca.end_support_impersonation(p_actor_id uuid, p_grant_id uuid, p_revoked boolean)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, odca
+AS $$
+DECLARE
+    v_is_admin boolean;
+    v_grant odca.support_impersonations;
+BEGIN
+    SELECT is_platform_administrator INTO v_is_admin FROM odca.users WHERE id = p_actor_id AND NOT is_deleted;
+    IF NOT COALESCE(v_is_admin, false) THEN
+        RAISE EXCEPTION 'not a platform administrator' USING ERRCODE = '42501';
+    END IF;
+
+    SELECT * INTO v_grant FROM odca.support_impersonations WHERE id = p_grant_id FOR UPDATE;
+    IF NOT FOUND OR v_grant.ended_at IS NOT NULL THEN
+        RETURN false;
+    END IF;
+
+    UPDATE odca.support_impersonations
+       SET ended_at = now(), ended_by = p_actor_id, end_type = CASE WHEN p_revoked THEN 'revoked' ELSE 'ended' END
+     WHERE id = p_grant_id;
+
+    UPDATE odca.sessions SET revoked_at = now() WHERE id = v_grant.target_session_id;
+
+    INSERT INTO odca.support_session_events(session_id, actor_user_id, event_type, details)
+    VALUES(v_grant.session_id, p_actor_id, CASE WHEN p_revoked THEN 'impersonation_revoked' ELSE 'impersonation_ended' END,
+           jsonb_build_object('target_user_id', v_grant.target_user_id));
+
+    INSERT INTO odca.audit_events(scope_type, actor_user_id, action, entity_type, entity_id, result, metadata)
+    VALUES('platform', p_actor_id, CASE WHEN p_revoked THEN 'superadmin.support_impersonation.revoked' ELSE 'superadmin.support_impersonation.ended' END,
+           'support_impersonation', p_grant_id, 'success', jsonb_build_object('target_user_id', v_grant.target_user_id));
+
+    RETURN true;
+END
+$$;
+
+REVOKE ALL ON FUNCTION odca.end_support_impersonation(uuid,uuid,boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.end_support_impersonation(uuid,uuid,boolean) TO odca_app;
+
+-- Validacao por request (middleware do API): a concessao esta ativa e a janela viva.
+CREATE OR REPLACE FUNCTION odca.support_impersonation_is_valid(p_grant_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, odca
+AS $$
+    SELECT EXISTS(
+        SELECT 1 FROM odca.support_impersonations gi
+                 JOIN odca.support_sessions s ON s.id = gi.session_id
+         WHERE gi.id = p_grant_id AND gi.ended_at IS NULL AND gi.expires_at > now()
+           AND s.status = 'active' AND s.expires_at > now());
+$$;
+
+REVOKE ALL ON FUNCTION odca.support_impersonation_is_valid(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.support_impersonation_is_valid(uuid) TO odca_app;
+
+-- Membros ativos do tenant da janela, para o operador escolher o alvo da
+-- impersonacao (mesma governanca de open/close/extend).
+CREATE OR REPLACE FUNCTION odca.support_session_members(p_actor_id uuid, p_tenant_id uuid)
+RETURNS TABLE(user_id uuid, display_name text, email text)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, odca
+AS $$
+    SELECT u.id, u.display_name, u.email
+      FROM odca.memberships m
+      JOIN odca.users u ON u.id = m.user_id
+     WHERE m.tenant_id = p_tenant_id AND m.status = 'active'
+       AND NOT u.is_deleted AND NOT u.must_change_password
+       AND EXISTS(SELECT 1 FROM odca.users a WHERE a.id = p_actor_id AND a.is_platform_administrator AND NOT a.is_deleted)
+     GROUP BY u.id, u.display_name, u.email
+     ORDER BY u.display_name;
+$$;
+
+REVOKE ALL ON FUNCTION odca.support_session_members(uuid,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.support_session_members(uuid,uuid) TO odca_app;
+
+INSERT INTO odca.schema_migrations(version,name,checksum)
+VALUES(61,'Suporte: impersonacao profunda auditada (support_impersonations)','5e1e107223fcd55afb01025d214ffef61d154b1309685604e93c983ef3c0808e')
+ON CONFLICT(version) DO NOTHING;
+COMMIT;
+-- ODCA-END 061

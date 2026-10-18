@@ -70,6 +70,9 @@ public sealed class AuthenticationServiceTests
     {
         public IssuedToken Issue(UserCredential user, SessionRecord session) =>
             new("token", session.ExpiresAt);
+
+        public IssuedToken IssueImpersonation(UserCredential target, SessionRecord session, Guid operatorUserId, Guid grantId) =>
+            new($"imp-{grantId}", session.ExpiresAt);
     }
 
     private sealed class FakeRepository(UserCredential user) : IIdentityRepository

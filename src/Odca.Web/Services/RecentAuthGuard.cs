@@ -28,7 +28,9 @@ public static class RecentAuthGuard
         return DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds(seconds) > window;
     }
 
-    private static Dictionary<string, string>? DecodeClaims(string? accessToken)
+    /// <summary>D-OC43 (Sprint 9): público para o fluxo de restauração do operador ao sair da
+    /// visão do cliente (o bearer continua sendo decodificado sem revalidar assinatura — a API é autoridade).</summary>
+    public static Dictionary<string, string>? DecodeClaims(string? accessToken)
     {
         if (string.IsNullOrWhiteSpace(accessToken)) return null;
         var parts = accessToken.Split('.');

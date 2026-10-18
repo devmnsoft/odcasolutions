@@ -1,3 +1,4 @@
+@using System.Security.Claims
 @using Microsoft.AspNetCore.Authentication
 @using Odca.Web.Navigation
 @using Odca.Web.Services
@@ -122,6 +123,8 @@
         return L.T("layout.org", culture);
     }
     var _culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    // D-OC43 (Sprint 9/F-1): banner global da visão do cliente (impersonação profunda ativa).
+    var impersonationActive = !string.IsNullOrWhiteSpace(User.FindFirstValue(Odca.Web.Services.ImpersonationAuth.GrantClaim));
     string MenuFeature(string code, string label)
     {
         if (situationUnconfirmed)
@@ -189,6 +192,18 @@
                         </div>
                     </details>
                 </header>
+                @if (impersonationActive)
+                {
+                    var impExpText = long.TryParse(User.FindFirstValue(Odca.Web.Services.ImpersonationAuth.ExpiresClaim), out var impExpSecs)
+                        ? DateTimeOffset.FromUnixTimeSeconds(impExpSecs).ToLocalTime().ToString("dd/MM/yyyy HH:mm", System.Globalization.CultureInfo.InvariantCulture)
+                        : string.Empty;
+                    <div class="banner-notice-warning" role="status">
+                        <span>@L.T("support.imp_banner", _culture, displayName ?? string.Empty, User.FindFirstValue(Odca.Web.Services.ImpersonationAuth.OperatorNameClaim) ?? string.Empty, impExpText)</span>
+                        <form asp-controller="Impersonation" asp-action="Sair" method="post">@Html.AntiForgeryToken()
+                            <button class="button button-primary" type="submit">@L.T("support.imp_exit", _culture)</button>
+                        </form>
+                    </div>
+                }
                 <main class="page-shell" id="main-content" tabindex="-1">
                     @if (organizationSuspended || featureErrorCode == "organization_suspended")
                     {

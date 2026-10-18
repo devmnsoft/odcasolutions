@@ -94,6 +94,7 @@
                     <td class="actions">
                         @if (session.Valid)
                         {
+                            <a class="button" asp-controller="Impersonation" asp-action="Cliente" asp-route-sessionId="@session.Id">@L.T("support.imp_view_btn",_c)</a>
                             <form method="post" asp-action="Extend" class="inline-form">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="SessionId" value="@session.Id"/>

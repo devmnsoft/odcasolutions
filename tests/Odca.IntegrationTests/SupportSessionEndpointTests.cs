@@ -247,8 +247,10 @@ public sealed class SupportSessionEndpointTests(DatabaseFixture database) : ICla
         Assert.Equal(HttpStatusCode.Forbidden, openResponse.StatusCode);
     }
 
+    // D-OC43 (Sprint 9/F-1): os caminhos cobertos aqui (open/extend/end/revoke) não emitem
+    // tokens; a impersonação tem fatos próprios na suíte da S9.
     private SupportSessionsController CreateController(Guid actor) =>
-        new(NpgsqlSupportSessionRepositoryFactory()) { ControllerContext = new ControllerContext { HttpContext = TestControllerContexts.Create(actor) } };
+        new(NpgsqlSupportSessionRepositoryFactory(), null!, null!) { ControllerContext = new ControllerContext { HttpContext = TestControllerContexts.Create(actor) } };
 
     private NpgsqlSupportSessionRepository NpgsqlSupportSessionRepositoryFactory() =>
         new(NpgsqlDataSource.Create(database.AppConnectionString));
