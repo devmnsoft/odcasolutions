@@ -520,3 +520,17 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [ ] Usuários convidados do piloto + aprovação da versão pelo responsável: pendente.
 - [ ] Impersonação profunda na janela de suporte; i18n das áreas pt-first; fila admin/privacidade/conteúdo de notificações/aria-labels da navegação global (carreados das S3–S5) — dívidas.
 - [x] Commit único "sem push" fechando a Sprint 6 — fim do plano de seis sprints.
+
+## Sprint 7 - jornada do cliente do piloto em 4 idiomas e acessibilidade de navegacao global (D-OC41) (18/10/2026)
+
+- [x] F-1: hub de documentos em 4 idiomas - Documents/Index e NewDocument + mensagens remanescentes do DocumentsController via catalogo documents.* (filtros, tabela, badges, proximas acoes, paginacao, empty state, jornada de criacao, busca/cadastro rapido de paciente); zero literal pt verificado por varredura.
+- [x] F-2: central de obrigacoes em 4 idiomas - namespace novo obl.* nas views Index/Nova/Acoes (recorrencia mensal, lembretes, seis acoes, conflito 409); ObligationsController com LocalizationService injetada (padrao da casa) - todos os TempData/notificacoes/erros de campo viram chaves.
+- [x] F-3: central de privacidade (canal publico anônimo) em 4 idiomas - priv.* no formulario, tipos de solicitacao, confirmacao com protocolo e falhas de rate-limit/timeout/indisponibilidade.
+- [x] F-4: acessibilidade/design global - NavItem.AriaKey + resolver por localizer (nav.aria_* nos 4 catalogos), aria-labels identicos ao rotulo removidos (WCAG 2.5.3), _Layout localizado (sufixos de funcionalidade, Administracao ODCA, Escolha uma organizacao), paginas compartilhadas (Error antes todo em ingles, AccessDenied, ServiceUnavailable, _ConfirmDialog, _Toasts) em 4 idiomas, navigation.js via bag window.odcaNav, dialogs.js herdando o texto renderizado.
+- [x] Catalogos: +391 chaves x 4 culturas (1770 -> 2161/cultura) via deltas versionados scripts/i18n/d-s7-*.json + mesclador deterministico scripts/i18n/merge-i18n-delta.mjs (valida unicidade e paridade 4/4 antes de gravar; BOM preservado).
+- [x] GATE final sobre a arvore: builds 0W/0E, Domain 389/389, suite -FreshDb 231/231 TEST-EXIT=0, assets exit=0, paridade 4/4 em 2161; auditoria de design estendida em 4 idiomas (audit-d41-design.ps1) 152/152 OK overflow=0 authfail=0 httpfail=0 exit=0, transcript evidence/d41-design-audit-rodada-final.txt.
+- [x] Doc D-OC41 consolidada e STATUS.md atualizado; .odca/progress.json inalterado (sem CI oficial verde nem aceite humano para creditar marco).
+- [ ] Ficha do contrato detalhada, fila administrativa de atendimento (AdminSolicitacoes), sessoes de suporte, agenda mensal habilitada e conteudo das notificacoes: i18n carreado para a Sprint 8 (D-OC42).
+- [ ] CI oficial deste SHA: pendente - branch sem push; nenhum ID de execucao inventado.
+- [ ] Aceite humano dos fluxos de documentos/obrigacoes/privacidade: pendente (auditoria de design disponivel para revisao).
+- [x] Commit unico "sem push" fechando a Sprint 7.

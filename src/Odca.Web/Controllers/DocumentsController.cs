@@ -31,7 +31,7 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
         [FromQuery] int page = 1,
         CancellationToken ct = default)
     {
-        ViewData["Title"] = "Central de Documentos";
+        ViewData["Title"] = L("documents.hub_title");
         ViewData["TenantId"] = tenantId;
 
         var token = await HttpContext.GetTokenAsync("access_token");
@@ -97,7 +97,7 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
         StudioDocumentPage documentsPage;
         if (!result.Succeeded)
         {
-            errorMessage = result.UserMessage("Não foi possível carregar a lista de documentos.");
+            errorMessage = result.UserMessage(L("documents.load_error"));
             documentsPage = new StudioDocumentPage([], Math.Max(1, page), 15, 0);
         }
         else
@@ -141,7 +141,7 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
         [FromQuery] int patientPage = 1,
         CancellationToken ct = default)
     {
-        ViewData["Title"] = "Novo documento";
+        ViewData["Title"] = L("documents.new_document");
         ViewData["TenantId"] = tenantId;
 
         var token = await HttpContext.GetTokenAsync("access_token");
@@ -152,7 +152,7 @@ public sealed class DocumentsController(OdcaApiClient api, IUserTenantContext te
 
         if (!access.HasPermission("tenant.contract_drafts.manage"))
         {
-            TempData["ErrorMessage"] = "Você não possui permissão para elaborar novos documentos.";
+            TempData["ErrorMessage"] = L("documents.no_permission_create");
             return RedirectToAction(nameof(Index), new { tenantId });
         }
 

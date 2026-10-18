@@ -1,113 +1,112 @@
 @model DocumentsIndexViewModel
 @{
-    ViewData["Title"] = "Central de Documentos";
+    var _culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("documents.hub_title", _culture);
     var tenantId = Model.TenantId;
     var docs = Model.Documents;
-    // D-OC37 (F-2): idioma para os rótulos de superfície de assinatura nesta view.
-    var _culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
 }
 
 <section class="page-heading">
     <div>
-        <p class="eyebrow">Gestão documental</p>
-        <h1>Central de Documentos</h1>
-        <p class="muted">Acompanhe minutas, versões, revisões e preparações para assinatura de forma centralizada e rastreável.</p>
+        <p class="eyebrow">@L.T("documents.hub_eyebrow", _culture)</p>
+        <h1>@L.T("documents.hub_title", _culture)</h1>
+        <p class="muted">@L.T("documents.hub_subtitle", _culture)</p>
     </div>
     <div class="button-row">
         @if (Model.CanCreateDocument)
         {
             <a class="button button-primary" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@tenantId" asp-route-patientId="@Model.PatientId">
-                <span aria-hidden="true">+</span> Novo documento
+                <span aria-hidden="true">+</span> @L.T("documents.new_document", _culture)
             </a>
         }
         @if (Model.CanManagePatients)
         {
             <a class="button" asp-controller="Patients" asp-action="Create" asp-route-tenantId="@tenantId">
-                <span aria-hidden="true">♙</span> Cadastrar paciente
+                <span aria-hidden="true">♙</span> @L.T("documents.register_patient", _culture)
             </a>
         }
     </div>
 </section>
 
 <details class="help">
-    <summary>Como usar a Central de Documentos</summary>
+    <summary>@L.T("documents.how_title", _culture)</summary>
     <p>
-        @L.T("documents.external_signing_note", _culture) Esta central reúne os documentos da organização. Cada documento evolui pelas seguintes etapas:
-        <strong>1. Minuta:</strong> escolha um modelo publicado e preencha os dados do paciente ou contrato;
-        <strong>2. Conferência:</strong> valide as pendências cadastrais e o checklist obrigatório;
-        <strong>3. Versão & PDF:</strong> gere uma versão imutável com identificador criptográfico SHA-256 e gere o PDF para download;
-        <strong>4. Revisão interna:</strong> solicite a conferência por outro profissional antes da formalização;
-        <strong>5. Preparação para assinatura:</strong> configure os signatários e confirme a composição documental.
+        @L.T("documents.external_signing_note", _culture) @L.T("documents.how_intro", _culture)
+        <strong>1. @L.T("documents.how_step1_label", _culture)</strong> @L.T("documents.how_step1_body", _culture)
+        <strong>2. @L.T("documents.how_step2_label", _culture)</strong> @L.T("documents.how_step2_body", _culture)
+        <strong>3. @L.T("documents.how_step3_label", _culture)</strong> @L.T("documents.how_step3_body", _culture)
+        <strong>4. @L.T("documents.how_step4_label", _culture)</strong> @L.T("documents.how_step4_body", _culture)
+        <strong>5. @L.T("documents.how_step5_label", _culture)</strong> @L.T("documents.how_step5_body", _culture)
     </p>
 </details>
 
 @if (TempData["ErrorMessage"] is string tempError)
 {
     <div class="error" role="alert" style="margin-bottom: 1rem;">
-        <strong>Aviso:</strong> @tempError
+        <strong>@L.T("common.notice", _culture)</strong> @tempError
     </div>
 }
 
 @if (Model.ErrorMessage is not null)
 {
     <div class="error" role="alert" style="margin-bottom: 1rem;">
-        <strong>Falha ao carregar documentos:</strong> @Model.ErrorMessage
+        <strong>@L.T("documents.load_fail_title", _culture)</strong> @Model.ErrorMessage
     </div>
 }
 
-<form method="get" class="studio-filter" role="search" aria-label="Filtro de documentos">
+<form method="get" class="studio-filter" role="search" aria-label="@L.T("documents.filter_aria", _culture)">
     <label>
-        Pesquisar
-        <input name="search" value="@Model.Search" placeholder="Título ou paciente" />
+        @L.T("documents.filter_search", _culture)
+        <input name="search" value="@Model.Search" placeholder="@L.T("documents.filter_search_ph", _culture)" />
     </label>
     <label>
-        Referência
-        <input name="reference" value="@Model.Reference" placeholder="Referência legível" />
+        @L.T("documents.filter_reference", _culture)
+        <input name="reference" value="@Model.Reference" placeholder="@L.T("documents.filter_reference_ph", _culture)" />
     </label>
     <label>
-        Responsável
-        <input name="responsible" value="@Model.Responsible" placeholder="Nome de quem atualizou" />
+        @L.T("documents.filter_responsible", _culture)
+        <input name="responsible" value="@Model.Responsible" placeholder="@L.T("documents.filter_responsible_ph", _culture)" />
     </label>
     <label>
-        De
+        @L.T("documents.filter_from", _culture)
         <input type="date" name="updatedFrom" value="@Model.UpdatedFrom?.ToString("yyyy-MM-dd")" />
     </label>
     <label>
-        Até
+        @L.T("documents.filter_to", _culture)
         <input type="date" name="updatedTo" value="@Model.UpdatedTo?.ToString("yyyy-MM-dd")" />
     </label>
     <label>
-        Tipo
+        @L.T("common.type", _culture)
         <select name="type">
-            <option value="">Todos os tipos</option>
-            <option value="service" selected="@(Model.Type == "service")">Prestação de serviços</option>
-            <option value="consent" selected="@(Model.Type == "consent")">Consentimento informado</option>
-            <option value="nda" selected="@(Model.Type == "nda")">Confidencialidade</option>
-            <option value="amendment" selected="@(Model.Type == "amendment")">Aditivo contratual</option>
-            <option value="supply" selected="@(Model.Type == "supply")">Fornecimento</option>
-            <option value="lease" selected="@(Model.Type == "lease")">Locação</option>
+            <option value="">@L.T("obl.category_all", _culture)</option>
+            <option value="service" selected="@(Model.Type == "service")">@L.T("documents.type_service", _culture)</option>
+            <option value="consent" selected="@(Model.Type == "consent")">@L.T("documents.type_consent", _culture)</option>
+            <option value="nda" selected="@(Model.Type == "nda")">@L.T("documents.type_nda", _culture)</option>
+            <option value="amendment" selected="@(Model.Type == "amendment")">@L.T("documents.type_amendment", _culture)</option>
+            <option value="supply" selected="@(Model.Type == "supply")">@L.T("documents.type_supply", _culture)</option>
+            <option value="lease" selected="@(Model.Type == "lease")">@L.T("documents.type_lease", _culture)</option>
         </select>
     </label>
     @if (Model.CanReadPatients)
     {
         <label>
-            Buscar paciente
-            <input name="patientSearch" value="@Model.PatientSearch" placeholder="Filtrar paciente por nome" />
+            @L.T("documents.patient_search_label", _culture)
+            <input name="patientSearch" value="@Model.PatientSearch" placeholder="@L.T("documents.patient_search_ph", _culture)" />
         </label>
         <label>
-            Paciente
+            @L.T("documents.patient_select_label", _culture)
             <select name="patientId">
-                <option value="">Todos os pacientes</option>
+                <option value="">@L.T("documents.patient_all", _culture)</option>
                 @if (Model.SelectedPatient is not null && !Model.PatientOptions.Any(p => p.Id == Model.SelectedPatient.Id))
                 {
                     <option value="@Model.SelectedPatient.Id" selected="selected">
-                        @Model.SelectedPatient.FullName (@(Model.SelectedPatient.MaskedIdentifier ?? "—"))@(Model.SelectedPatient.Active ? "" : " [Inativo]")
+                        @Model.SelectedPatient.FullName (@(Model.SelectedPatient.MaskedIdentifier ?? "—"))@(Model.SelectedPatient.Active ? "" : " " + L.T("documents.patient_inactive_tag", _culture))
                     </option>
                 }
                 @foreach (var p in Model.PatientOptions)
                 {
                     <option value="@p.Id" selected="@(Model.PatientId == p.Id)">
-                        @p.FullName (@(p.MaskedIdentifier ?? "—"))@(p.Active ? "" : " [Inativo]")
+                        @p.FullName (@(p.MaskedIdentifier ?? "—"))@(p.Active ? "" : " " + L.T("documents.patient_inactive_tag", _culture))
                     </option>
                 }
             </select>
@@ -115,33 +114,33 @@
         @if (Model.PatientTotal > Model.PatientPageSize)
         {
             <div style="font-size: 0.8rem; grid-column: 1 / -1; display:flex; gap: 0.5rem; align-items: center;" class="muted">
-                <span>Pacientes (pág. @Model.PatientPage de @Math.Ceiling((double)Model.PatientTotal / Model.PatientPageSize)):</span>
+                <span>@L.T("documents.patients_page_label", _culture, Model.PatientPage.ToString(System.Globalization.CultureInfo.InvariantCulture), ((int)Math.Ceiling((double)Model.PatientTotal / Model.PatientPageSize)).ToString(System.Globalization.CultureInfo.InvariantCulture))</span>
                 @if (Model.PatientPage > 1)
                 {
-                    <a class="button button-small button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-search="@Model.Search" asp-route-type="@Model.Type" asp-route-stage="@Model.Stage" asp-route-reference="@Model.Reference" asp-route-responsible="@Model.Responsible" asp-route-updatedFrom="@Model.UpdatedFrom?.ToString("yyyy-MM-dd")" asp-route-updatedTo="@Model.UpdatedTo?.ToString("yyyy-MM-dd")" asp-route-patientSearch="@Model.PatientSearch" asp-route-patientId="@Model.PatientId" asp-route-patientPage="@(Model.PatientPage - 1)">← Anteriores</a>
+                    <a class="button button-small button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-search="@Model.Search" asp-route-type="@Model.Type" asp-route-stage="@Model.Stage" asp-route-reference="@Model.Reference" asp-route-responsible="@Model.Responsible" asp-route-updatedFrom="@Model.UpdatedFrom?.ToString("yyyy-MM-dd")" asp-route-updatedTo="@Model.UpdatedTo?.ToString("yyyy-MM-dd")" asp-route-patientSearch="@Model.PatientSearch" asp-route-patientId="@Model.PatientId" asp-route-patientPage="@(Model.PatientPage - 1)">@L.T("documents.page_prev", _culture)</a>
                 }
                 @if (Model.PatientPage * Model.PatientPageSize < Model.PatientTotal)
                 {
-                    <a class="button button-small button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-search="@Model.Search" asp-route-type="@Model.Type" asp-route-stage="@Model.Stage" asp-route-reference="@Model.Reference" asp-route-responsible="@Model.Responsible" asp-route-updatedFrom="@Model.UpdatedFrom?.ToString("yyyy-MM-dd")" asp-route-updatedTo="@Model.UpdatedTo?.ToString("yyyy-MM-dd")" asp-route-patientSearch="@Model.PatientSearch" asp-route-patientId="@Model.PatientId" asp-route-patientPage="@(Model.PatientPage + 1)">Próximos →</a>
+                    <a class="button button-small button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-search="@Model.Search" asp-route-type="@Model.Type" asp-route-stage="@Model.Stage" asp-route-reference="@Model.Reference" asp-route-responsible="@Model.Responsible" asp-route-updatedFrom="@Model.UpdatedFrom?.ToString("yyyy-MM-dd")" asp-route-updatedTo="@Model.UpdatedTo?.ToString("yyyy-MM-dd")" asp-route-patientSearch="@Model.PatientSearch" asp-route-patientId="@Model.PatientId" asp-route-patientPage="@(Model.PatientPage + 1)">@L.T("documents.page_next", _culture)</a>
                 }
             </div>
         }
     }
     <label>
-        Etapa
+        @L.T("documents.stage_filter_label", _culture)
         <select name="stage">
-            <option value="">Todas as etapas</option>
-            <option value="draft" selected="@(Model.Stage == "draft")">Minutas em edição</option>
-            <option value="in_review" selected="@(Model.Stage == "in_review")">Em revisão interna</option>
-            <option value="changes_requested" selected="@(Model.Stage == "changes_requested")">Ajustes solicitados</option>
-            <option value="approved" selected="@(Model.Stage == "approved")">Aprovados internamente</option>
-            <option value="ready_for_signature" selected="@(Model.Stage == "ready_for_signature")">Prontos para assinatura</option>
-            <option value="completed" selected="@(Model.Stage == "completed")">Assinados / Concluídos</option>
+            <option value="">@L.T("documents.stage_all", _culture)</option>
+            <option value="draft" selected="@(Model.Stage == "draft")">@L.T("documents.stage_draft", _culture)</option>
+            <option value="in_review" selected="@(Model.Stage == "in_review")">@L.T("documents.stage_in_review", _culture)</option>
+            <option value="changes_requested" selected="@(Model.Stage == "changes_requested")">@L.T("documents.stage_changes_requested", _culture)</option>
+            <option value="approved" selected="@(Model.Stage == "approved")">@L.T("documents.stage_approved", _culture)</option>
+            <option value="ready_for_signature" selected="@(Model.Stage == "ready_for_signature")">@L.T("documents.stage_ready_for_signature", _culture)</option>
+            <option value="completed" selected="@(Model.Stage == "completed")">@L.T("documents.stage_completed", _culture)</option>
         </select>
     </label>
     <div style="display:flex; gap:0.5rem; align-items:flex-end;">
-        <button class="button button-primary" type="submit">Filtrar</button>
-        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">Limpar</a>
+        <button class="button button-primary" type="submit">@L.T("documents.apply_filters", _culture)</button>
+        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">@L.T("documents.clear_filters", _culture)</a>
     </div>
 </form>
 
@@ -149,7 +148,7 @@
 {
     <div class="card" style="padding: 0.75rem 1rem; margin-bottom: 1.5rem; background: var(--color-surface-subtle, #f8fafc); display: flex; justify-content: space-between; align-items: center;">
         <div>
-            <span class="muted">Filtrando por paciente:</span>
+            <span class="muted">@L.T("documents.patient_banner", _culture)</span>
             <strong>@Model.SelectedPatient.FullName</strong>
             @if (!string.IsNullOrWhiteSpace(Model.SelectedPatient.MaskedIdentifier))
             {
@@ -157,7 +156,7 @@
             }
             @if (!Model.SelectedPatient.Active)
             {
-                <span class="badge badge-muted" style="margin-left: 0.5rem;">Inativo no cadastro</span>
+                <span class="badge badge-muted" style="margin-left: 0.5rem;">@L.T("documents.patient_inactive_badge", _culture)</span>
             }
         </div>
         <a class="button button-small button-quiet"
@@ -166,7 +165,7 @@
            asp-route-search="@Model.Search"
            asp-route-type="@Model.Type"
            asp-route-stage="@Model.Stage" asp-route-reference="@Model.Reference" asp-route-responsible="@Model.Responsible" asp-route-updatedFrom="@Model.UpdatedFrom?.ToString("yyyy-MM-dd")" asp-route-updatedTo="@Model.UpdatedTo?.ToString("yyyy-MM-dd")">
-            Remover filtro de paciente ✕
+             @L.T("documents.patient_clear_filter", _culture)
         </a>
     </div>
 }
@@ -174,24 +173,24 @@
 @if (Model.PatientErrorMessage is not null)
 {
     <div class="error" role="alert" style="margin-bottom: 1rem;">
-        <strong>Aviso da lista de pacientes:</strong> @Model.PatientErrorMessage
+        <strong>@L.T("documents.patient_list_notice", _culture)</strong> @Model.PatientErrorMessage
     </div>
 }
 
 @if (docs.Items.Count > 0)
 {
     <div class="table-scroll">
-        <table class="table" aria-label="Lista de documentos">
+        <table class="table" aria-label="@L.T("documents.table_aria", _culture)">
             <thead>
                 <tr>
-                    <th>Documento</th>
-                    <th>Tipo</th>
-                    <th>Paciente</th>
-                    <th>Responsável</th>
-                    <th>Situação do fluxo</th>
-                    <th>Próxima ação</th>
-                    <th>Atualização</th>
-                    <th>Ações</th>
+                    <th>@L.T("documents.th_document", _culture)</th>
+                    <th>@L.T("common.type", _culture)</th>
+                    <th>@L.T("documents.patient_select_label", _culture)</th>
+                    <th>@L.T("common.responsible", _culture)</th>
+                    <th>@L.T("documents.th_flow", _culture)</th>
+                    <th>@L.T("documents.th_next_action", _culture)</th>
+                    <th>@L.T("documents.th_updated", _culture)</th>
+                    <th>@L.T("documents.th_actions", _culture)</th>
                 </tr>
             </thead>
             <tbody>
@@ -204,15 +203,15 @@
                             {
                                 <br /><small class="muted">Ref: @doc.Reference</small>
                             }
-                            <br /><small class="muted">Modelo: @doc.TemplateName@(doc.TemplateVersion is int templateVersion ? $" · revisão {templateVersion}" : "")</small>
+                            <br /><small class="muted">@L.T("documents.template_ref", _culture) @doc.TemplateName@(doc.TemplateVersion is int templateVersion ? " · " + L.T("documents.revision_n", _culture, templateVersion.ToString(System.Globalization.CultureInfo.InvariantCulture)) : "")</small>
                         </td>
                         <td>
                             <span class="badge badge-muted">
                                 @(doc.DocumentType switch {
-                                    "service" => "Serviços",
-                                    "consent" => "Consentimento",
-                                    "nda" => "Confidencialidade",
-                                    "amendment" => "Aditivo",
+                                    "service" => L.T("documents.badge_service", _culture),
+                                    "consent" => L.T("documents.badge_consent", _culture),
+                                    "nda" => L.T("documents.badge_nda", _culture),
+                                    "amendment" => L.T("documents.badge_amendment", _culture),
                                     _ => doc.DocumentType
                                 })
                             </span>
@@ -221,41 +220,41 @@
                             @if (doc.PatientId.HasValue)
                             {
                                 <a asp-controller="Patients" asp-action="Details" asp-route-tenantId="@tenantId" asp-route-patientId="@doc.PatientId.Value">
-                                    @(doc.PatientName ?? "Paciente")
+                                    @(doc.PatientName ?? L.T("documents.patient_name_fallback", _culture))
                                 </a>
                             }
                             else
                             {
-                                <span class="muted">Não vinculado</span>
+                                <span class="muted">@L.T("documents.patient_unlinked", _culture)</span>
                             }
                         </td>
-                        <td>@(string.IsNullOrWhiteSpace(doc.ResponsibleName) ? "Não identificado" : doc.ResponsibleName)</td>
+                        <td>@(string.IsNullOrWhiteSpace(doc.ResponsibleName) ? L.T("documents.responsible_unknown", _culture) : doc.ResponsibleName)</td>
                         <td>
                             <div style="display:flex; flex-direction:column; gap:4px;">
                                 <small>
-                                    <strong>Minuta:</strong>
+                                    <strong>@L.T("documents.how_step1_label", _culture)</strong>
                                     @(doc.DraftStatus switch {
-                                        "draft" => "Em edição",
-                                        _ => doc.LatestVersionNumber.HasValue ? $"Versão {doc.LatestVersionNumber}" : "Sem minuta"
+                                        "draft" => L.T("documents.draft_editing", _culture),
+                                        _ => doc.LatestVersionNumber.HasValue ? L.T("documents.draft_version", _culture, doc.LatestVersionNumber.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)) : L.T("documents.draft_no", _culture)
                                     })
                                 </small>
                                 <small>
-                                    <strong>Revisão:</strong>
+                                    <strong>@L.T("documents.review_label", _culture)</strong>
                                     @(doc.ReviewStatus switch {
-                                        "none" => "Não solicitada",
-                                        "draft" => "Em preparação",
-                                        "submitted" or "in_review" => "Em análise",
-                                        "changes_requested" => "Ajustes solicitados",
-                                        "internally_approved" => "Aprovada internamente",
+                                        "none" => L.T("documents.review_none", _culture),
+                                        "draft" => L.T("documents.review_draft", _culture),
+                                        "submitted" or "in_review" => L.T("documents.review_in_review", _culture),
+                                        "changes_requested" => L.T("documents.stage_changes_requested", _culture),
+                                        "internally_approved" => L.T("documents.review_internally_approved", _culture),
                                         _ => doc.ReviewStatus
                                     })
                                 </small>
                                 <small>
                                     <strong>PDF:</strong>
                                     @(doc.PdfStatus switch {
-                                        "completed" => "Gerado",
-                                        "failed" => "Falha na geração",
-                                        "not_generated" => "Pendente",
+                                        "completed" => L.T("documents.pdf_completed", _culture),
+                                        "failed" => L.T("documents.pdf_failed", _culture),
+                                        "not_generated" => L.T("documents.pdf_pending", _culture),
                                         _ => doc.PdfStatus
                                     })
                                 </small>
@@ -281,17 +280,17 @@
                                 _ => "badge-muted"
                             })">
                                 @(doc.NextAction switch {
-                                    "edit_draft" => "Continuar minuta",
-                                    "correct_draft" => "Corrigir e gerar nova versão",
-                                    "generate_pdf" => "Gerar PDF",
-                                    "request_review" => "Solicitar revisão",
-                                    "open_review" => "Abrir revisão",
-                                    "view_version" => "Consultar versão",
-                                    "view_sheet" => "Abrir ficha",
-                                    "download_pdf" => "Baixar PDF",
-                                    "prepare_signature" => "Preparar assinatura",
-                                    "completed" => "Concluído — disponível para download",
-                                    _ => "Consultar"
+                                    "edit_draft" => L.T("documents.next_edit_draft", _culture),
+                                    "correct_draft" => L.T("documents.next_correct_draft", _culture),
+                                    "generate_pdf" => L.T("documents.next_generate_pdf", _culture),
+                                    "request_review" => L.T("documents.next_request_review", _culture),
+                                    "open_review" => L.T("documents.next_open_review", _culture),
+                                    "view_version" => L.T("documents.next_view_version", _culture),
+                                    "view_sheet" => L.T("documents.next_view_sheet", _culture),
+                                    "download_pdf" => L.T("documents.next_download_pdf", _culture),
+                                    "prepare_signature" => L.T("documents.next_prepare_signature", _culture),
+                                    "completed" => L.T("documents.next_completed", _culture),
+                                    _ => L.T("documents.next_default", _culture)
                                 })
                             </span>
                         </td>
@@ -309,7 +308,7 @@
                                        asp-action="Edit"
                                        asp-route-tenantId="@tenantId"
                                        asp-route-draftId="@doc.DraftId.Value">
-                                        @(doc.NextAction == "correct_draft" ? "Corrigir" : "Continuar")
+                                        @(doc.NextAction == "correct_draft" ? L.T("documents.btn_correct", _culture) : L.T("documents.btn_continue", _culture))
                                     </a>
                                 }
                                 @if (doc.LatestVersionId.HasValue && doc.CanDownloadPdf)
@@ -327,7 +326,7 @@
                                        asp-action="Version"
                                        asp-route-tenantId="@tenantId"
                                        asp-route-versionId="@doc.LatestVersionId.Value">
-                                        Versão
+                                        @L.T("documents.btn_version", _culture)
                                     </a>
                                 }
                                 <a class="button button-small"
@@ -335,7 +334,7 @@
                                    asp-action="Sheet"
                                    asp-route-tenantId="@tenantId"
                                    asp-route-contractId="@doc.ContractId">
-                                    Ficha
+                                    @L.T("documents.btn_sheet", _culture)
                                 </a>
                             </div>
                         </td>
@@ -347,7 +346,7 @@
 
     @if (docs.Total > docs.PageSize)
     {
-        <nav class="pagination" aria-label="Paginação de documentos">
+        <nav class="pagination" aria-label="@L.T("documents.pagination_aria", _culture)">
             @if (docs.Page > 1)
             {
                 <a class="button button-quiet"
@@ -357,9 +356,9 @@
                    asp-route-stage="@Model.Stage" asp-route-reference="@Model.Reference" asp-route-responsible="@Model.Responsible" asp-route-updatedFrom="@Model.UpdatedFrom?.ToString("yyyy-MM-dd")" asp-route-updatedTo="@Model.UpdatedTo?.ToString("yyyy-MM-dd")"
                    asp-route-patientId="@Model.PatientId"
                    asp-route-patientSearch="@Model.PatientSearch"
-                   asp-route-page="@(docs.Page - 1)">Anterior</a>
+                   asp-route-page="@(docs.Page - 1)">@L.T("common.prev", _culture)</a>
             }
-            <span>Página @docs.Page de @(Math.Ceiling((double)docs.Total / docs.PageSize)) (@docs.Total documento(s))</span>
+            <span>@L.T("documents.pagination_info", _culture, docs.Page.ToString(System.Globalization.CultureInfo.InvariantCulture), ((int)Math.Ceiling((double)docs.Total / docs.PageSize)).ToString(System.Globalization.CultureInfo.InvariantCulture), docs.Total.ToString(System.Globalization.CultureInfo.InvariantCulture))</span>
             @if (docs.Page * docs.PageSize < docs.Total)
             {
                 <a class="button button-quiet"
@@ -369,7 +368,7 @@
                    asp-route-stage="@Model.Stage" asp-route-reference="@Model.Reference" asp-route-responsible="@Model.Responsible" asp-route-updatedFrom="@Model.UpdatedFrom?.ToString("yyyy-MM-dd")" asp-route-updatedTo="@Model.UpdatedTo?.ToString("yyyy-MM-dd")"
                    asp-route-patientId="@Model.PatientId"
                    asp-route-patientSearch="@Model.PatientSearch"
-                   asp-route-page="@(docs.Page + 1)">Próxima</a>
+                   asp-route-page="@(docs.Page + 1)">@L.T("common.next", _culture)</a>
             }
         </nav>
     }
@@ -377,19 +376,19 @@
 else if (Model.ErrorMessage is null)
 {
     <div class="card empty-state">
-        <h2>Nenhum documento encontrado</h2>
-        <p>Não há documentos para os filtros aplicados. Clique no botão abaixo para iniciar uma nova minuta a partir de um modelo publicado.</p>
+        <h2>@L.T("documents.empty_title", _culture)</h2>
+        <p>@L.T("documents.empty_body", _culture)</p>
         <div class="button-row" style="margin-top: 1rem;">
             @if (Model.CanCreateDocument)
             {
                 <a class="button button-primary" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@tenantId" asp-route-patientId="@Model.PatientId">
-                    Criar primeiro documento
+                    @L.T("documents.empty_create_first", _culture)
                 </a>
             }
             @if (Model.CanManagePatients)
             {
                 <a class="button" asp-controller="Patients" asp-action="Create" asp-route-tenantId="@tenantId">
-                    Cadastrar paciente
+                    @L.T("documents.register_patient", _culture)
                 </a>
             }
         </div>

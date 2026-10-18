@@ -62,7 +62,7 @@
             featureErrorCode = featureCatalog.ErrorCode;
             if (!featureCatalog.Succeeded || featureCatalog.Value is null || featureCatalog.Value.Features.Count == 0)
             {
-                featureLoadError = featureCatalog.UserMessage("Não foi possível consultar as funcionalidades da organização.");
+                featureLoadError = featureCatalog.UserMessage(L.T("layout.features_load_fail", (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey]));
             }
             else
             {
@@ -76,7 +76,7 @@
         }
         else
         {
-            featureLoadError = "A sessão local não possui credencial para consultar a organização.";
+            featureLoadError = L.T("layout.session_no_credential", (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey]);
             featureCallStatus = ApiCallStatus.Unauthorized;
         }
     }
@@ -125,12 +125,12 @@
     string MenuFeature(string code, string label)
     {
         if (situationUnconfirmed)
-            return $"{label} (situação não confirmada)";
+            return $"{label} {L.T("layout.feature_unconfirmed", _culture)}";
         if (!featureStates.TryGetValue(code, out var state) || state == "allowed")
             return label;
-        if (state == "plan_restricted") return $"{label} (fora do plano)";
-        if (state == "administratively_blocked") return $"{label} (bloqueada)";
-        if (state == "quota_exhausted") return $"{label} (limite atingido)";
+        if (state == "plan_restricted") return $"{label} {L.T("layout.feature_off_plan", _culture)}";
+        if (state == "administratively_blocked") return $"{label} {L.T("layout.feature_blocked", _culture)}";
+        if (state == "quota_exhausted") return $"{label} {L.T("layout.feature_quota", _culture)}";
         return label;
     }
 }
@@ -148,14 +148,14 @@
         <a class="skip-link" href="#main-content">@L.T("layout.skip_content", _culture)</a>
         <div class="app-shell" data-app-shell>
             <div class="drawer-scrim" data-drawer-close></div>
-            <aside class="sidebar" id="application-navigation" aria-label="Navegação principal">
+            <aside class="sidebar" id="application-navigation" aria-label="@L.T("layout.main_nav", _culture)">
                 <div class="sidebar-brand">
                     <a class="brand" asp-controller="Home" asp-action="Index"><span class="brand-mark" aria-hidden="true">O</span><span class="brand-name">ODCA Solutions</span></a>
                     <button class="icon-button sidebar-collapse" type="button" data-sidebar-collapse aria-label="@L.T("layout.collapse_menu", _culture)" aria-expanded="true"><span aria-hidden="true">‹</span></button>
                 </div>
                 <div class="context-card">
                     <span class="context-label">@ContextLabel()</span>
-                    <strong>@(isPlatform && string.IsNullOrWhiteSpace(activeTenantId) ? "Administração ODCA" : organizationName ?? "Escolha uma organização")</strong>
+                    <strong>@(isPlatform && string.IsNullOrWhiteSpace(activeTenantId) ? L.T("layout.odca_administration", _culture) : organizationName ?? L.T("layout.choose_organization", _culture))</strong>
                 </div>
                 <nav class="side-nav">
                     @{
@@ -240,6 +240,12 @@
     }
     <partial name="_Toasts" />
     <partial name="_ConfirmDialog" />
+    @{
+        var _navBagJson = System.Text.Json.JsonSerializer.Serialize(
+            new { expand = L.T("nav.expand_menu", _culture), collapse = L.T("nav.collapse_menu", _culture) },
+            new System.Text.Json.JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+    }
+    <script>window.odcaNav=@Html.Raw(_navBagJson);</script>
     <script src="~/js/navigation.js" asp-append-version="true"></script>
     <script src="~/js/forms.js" asp-append-version="true"></script>
     <script src="~/js/dialogs.js" asp-append-version="true"></script>

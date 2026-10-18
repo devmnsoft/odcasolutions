@@ -1,55 +1,56 @@
 @model PrivacyRequestViewModel
 @{
-    ViewData["Title"] = "Central de privacidade";
+    var _culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("priv.title", _culture);
 }
 <section class="narrow">
     <div class="card">
-        <p class="eyebrow">Canal público</p>
-        <h1>Central de privacidade</h1>
-        <p class="muted">Este canal não depende de conta, plano ou situação financeira. A resposta inicial não confirma se existem dados ou contratos relacionados a você.</p>
+        <p class="eyebrow">@L.T("priv.public_channel", _culture)</p>
+        <h1>@L.T("priv.title", _culture)</h1>
+        <p class="muted">@L.T("priv.intro", _culture)</p>
 
         @if (Model.Protocol is not null)
         {
             <div class="success" role="status">
-                <strong>Solicitação recebida</strong>
+                <strong>@L.T("priv.received", _culture)</strong>
                 <p>@Model.ConfirmationMessage</p>
-                <p>Protocolo: <code>@Model.Protocol</code></p>
+                <p>@L.T("priv.protocol", _culture) <code>@Model.Protocol</code></p>
             </div>
-            <a class="button button-link" asp-action="Index">Abrir outra solicitação</a>
+            <a class="button button-link" asp-action="Index">@L.T("priv.open_another", _culture)</a>
         }
         else
         {
             <form method="post" novalidate>
                 @Html.AntiForgeryToken()
                 <div asp-validation-summary="ModelOnly" class="validation" role="alert"></div>
-                <label asp-for="Email"></label>
+                <label for="Email">@L.T("priv.email_label", _culture)</label>
                 <input asp-for="Email" autocomplete="email" />
                 <span asp-validation-for="Email" class="validation"></span>
 
-                <label asp-for="RequestType"></label>
+                <label for="RequestType">@L.T("priv.type_label", _culture)</label>
                 <select asp-for="RequestType">
-                    <option value="">Selecione</option>
-                    <option value="access">Confirmação ou acesso</option>
-                    <option value="correction">Correção</option>
-                    <option value="sharing">Informação sobre compartilhamento</option>
-                    <option value="portability">Portabilidade, quando aplicável</option>
-                    <option value="blocking">Bloqueio ou anonimização</option>
-                    <option value="deletion">Eliminação, quando aplicável</option>
-                    <option value="revocation">Revogação de consentimento</option>
-                    <option value="review">Contestação ou revisão</option>
+                    <option value="">@L.T("common.select", _culture)</option>
+                    <option value="access">@L.T("priv.type_access", _culture)</option>
+                    <option value="correction">@L.T("priv.type_correction", _culture)</option>
+                    <option value="sharing">@L.T("priv.type_sharing", _culture)</option>
+                    <option value="portability">@L.T("priv.type_portability", _culture)</option>
+                    <option value="blocking">@L.T("priv.type_blocking", _culture)</option>
+                    <option value="deletion">@L.T("priv.type_deletion", _culture)</option>
+                    <option value="revocation">@L.T("priv.type_revocation", _culture)</option>
+                    <option value="review">@L.T("priv.type_review", _culture)</option>
                 </select>
                 <span asp-validation-for="RequestType" class="validation"></span>
 
-                <label asp-for="Details"></label>
+                <label for="Details">@L.T("priv.details_label", _culture)</label>
                 <textarea asp-for="Details" rows="6"></textarea>
                 <span asp-validation-for="Details" class="validation"></span>
-                <p class="muted">Não envie senha, documento integral ou dados de terceiros neste campo.</p>
+                <p class="muted">@L.T("priv.details_hint", _culture)</p>
 
-                <button class="button button-primary" type="submit">Gerar protocolo</button>
+                <button class="button button-primary" type="submit">@L.T("priv.submit", _culture)</button>
             </form>
         }
 
-        <p class="muted privacy-note">O contato alternativo oficial será exibido somente após configuração e validação responsável.</p>
+        <p class="muted privacy-note">@L.T("priv.contact_note", _culture)</p>
     </div>
 </section>
 

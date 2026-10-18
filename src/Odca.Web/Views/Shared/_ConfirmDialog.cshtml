@@ -1,10 +1,13 @@
+@{
+    var _culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+}
 <dialog id="confirm-modal" class="confirm-dialog" data-confirm-dialog aria-modal="true" aria-labelledby="confirm-title">
     <form method="dialog" class="confirm-dialog-body">
-        <h2 id="confirm-title" data-confirm-title-target>Confirmar ação</h2>
+        <h2 id="confirm-title" data-confirm-title-target>@L.T("dialog.confirm_title", _culture)</h2>
         <p data-confirm-body-target></p>
         <div class="toolbar">
-            <button class="button" value="cancel" type="submit">Voltar</button>
-            <button class="button button-primary" value="confirm" type="submit" data-confirm-action-target>Confirmar</button>
+            <button class="button" value="cancel" type="submit">@L.T("dialog.cancel", _culture)</button>
+            <button class="button button-primary" value="confirm" type="submit" data-confirm-action-target>@L.T("dialog.confirm", _culture)</button>
         </div>
     </form>
 </dialog>

@@ -1,99 +1,99 @@
 @model Odca.Web.Models.ObligationCreateModel
-@{ViewData["Title"]="Nova obrigação";var tenantId=(Guid)ViewData["TenantId"]!;}
-<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-action="Index" asp-route-tenantId="@tenantId">Obrigações</a><span aria-hidden="true">/</span><span>Nova obrigação</span></nav>
-<header class="page-heading"><div><p class="eyebrow">Central operacional · Organização selecionada</p><h1>Nova obrigação</h1><p>Registre o que deve ser cumprido e para quando. Os lembretes seguem os prazos escolhidos (padrão: 7, 1 e 0 dias antes).</p></div></header>
-@if(Model.Contracts.Count==0){<p class="validation-summary" role="alert">Não foi possível carregar os contratos da organização. Verifique a assinatura ativa e tente novamente.</p>}
+@{ViewData["Title"]=L.T("obl.new",(string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey]);var tenantId=(Guid)ViewData["TenantId"]!;var _c=(string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];}
+<nav class="breadcrumb" aria-label="@L.T("common.breadcrumb_aria",_c)"><a asp-action="Index" asp-route-tenantId="@tenantId">@L.T("obrigacoes",_c)</a><span aria-hidden="true">/</span><span>@L.T("obl.new",_c)</span></nav>
+<header class="page-heading"><div><p class="eyebrow">@L.T("common.ops_center",_c) · @L.T("common.org_selected",_c)</p><h1>@L.T("obl.new",_c)</h1><p>@L.T("obl.new_subtitle",_c)</p></div></header>
+@if(Model.Contracts.Count==0){<p class="validation-summary" role="alert">@L.T("obl.contracts_load_error",_c)</p>}
 else
 {<form method="post" asp-action="Create" asp-route-tenantId="@tenantId" data-prevent-double-submit>
 @Html.AntiForgeryToken()
 <div class="obligation-create-grid">
- <label for="obl-contract">Contrato <span aria-hidden="true">*</span></label>
+ <label for="obl-contract">@L.T("common.contract",_c) <span aria-hidden="true">*</span></label>
  <select id="obl-contract" name="contractId" required>
-  <option value="">Selecione o contrato</option>
-  @foreach(var c in Model.Contracts){<option value="@c.Id" selected="@(Model.ContractId==c.Id)" data-end="@(c.EndDate)">@c.Title@(c.EndDate is not null?" — até "+c.EndDate:"")</option>}
+  <option value="">@L.T("obl.select_contract",_c)</option>
+  @foreach(var c in Model.Contracts){<option value="@c.Id" selected="@(Model.ContractId==c.Id)" data-end="@(c.EndDate)">@c.Title@(c.EndDate is not null?L.T("obl.until_suffix",_c,c.EndDate):"")</option>}
  </select>
 
- <label for="obl-title">Título <span aria-hidden="true">*</span></label>
- <input id="obl-title" name="title" maxlength="200" required value="@Model.Title" placeholder="Ex.: Enviar proposta revisada ao cliente"/>
+ <label for="obl-title">@L.T("common.title",_c) <span aria-hidden="true">*</span></label>
+ <input id="obl-title" name="title" maxlength="200" required value="@Model.Title" placeholder="@L.T("obl.title_ph",_c)"/>
 
- <label for="obl-description">Descrição</label>
+ <label for="obl-description">@L.T("common.description",_c)</label>
  <textarea id="obl-description" name="description" maxlength="4000" rows="3">@Model.Description</textarea>
 
- <label for="obl-party">Parte obrigada <span aria-hidden="true">*</span></label>
- <input id="obl-party" name="obligatedParty" maxlength="200" required value="@Model.ObligatedParty" placeholder="Quem deve cumprir: cliente, fornecedor, a própria organização…"/>
+ <label for="obl-party">@L.T("obl.party",_c) <span aria-hidden="true">*</span></label>
+ <input id="obl-party" name="obligatedParty" maxlength="200" required value="@Model.ObligatedParty" placeholder="@L.T("obl.party_ph",_c)"/>
 
- <label for="obl-owner">Responsável na organização <span aria-hidden="true">*</span></label>
+ <label for="obl-owner">@L.T("obl.owner",_c) <span aria-hidden="true">*</span></label>
  <select id="obl-owner" name="ownerId" required>
-  <option value="">Selecione o responsável</option>
+  <option value="">@L.T("obl.select_owner",_c)</option>
   @foreach(var m in Model.Members){<option value="@m.Id" selected="@(Model.OwnerId==m.Id)">@m.Name (@m.Email)</option>}
  </select>
 
- <label for="obl-due">Prazo <span aria-hidden="true">*</span></label>
+ <label for="obl-due">@L.T("common.due_date",_c) <span aria-hidden="true">*</span></label>
  <input id="obl-due" type="date" name="dueDate" required value="@(Model.DueDate?.ToString("yyyy-MM-dd"))"/>
 
- <label for="obl-category">Tipo</label>
+ <label for="obl-category">@L.T("common.type",_c)</label>
  <select id="obl-category" name="category">
-  <option value="delivery" selected="@(Model.Category=="delivery")">Entrega</option>
-  <option value="document" selected="@(Model.Category=="document")">Documento</option>
-  <option value="renewal" selected="@(Model.Category=="renewal")">Renovação</option>
-  <option value="communication" selected="@(Model.Category=="communication")">Comunicação</option>
-  <option value="financial" selected="@(Model.Category=="financial")">Financeiro</option>
-  <option value="other" selected="@(Model.Category=="other")">Outro</option>
+  <option value="delivery" selected="@(Model.Category=="delivery")">@L.T("obl.category_delivery",_c)</option>
+  <option value="document" selected="@(Model.Category=="document")">@L.T("obl.category_document",_c)</option>
+  <option value="renewal" selected="@(Model.Category=="renewal")">@L.T("obl.category_renewal",_c)</option>
+  <option value="communication" selected="@(Model.Category=="communication")">@L.T("obl.category_communication",_c)</option>
+  <option value="financial" selected="@(Model.Category=="financial")">@L.T("obl.category_financial_short",_c)</option>
+  <option value="other" selected="@(Model.Category=="other")">@L.T("obl.category_other_short",_c)</option>
  </select>
 
  <div id="obl-financial" hidden="@(Model.Category!="financial")">
-  <label for="obl-amount">Valor (obrigatório para financeiro)</label>
+  <label for="obl-amount">@L.T("obl.amount",_c)</label>
   <input id="obl-amount" type="number" name="amount" step="0.01" min="0.01" inputmode="decimal" value="@(Model.Amount?.ToString(System.Globalization.CultureInfo.InvariantCulture))"/>
-  <label for="obl-currency">Moeda (3 letras)</label>
+  <label for="obl-currency">@L.T("obl.currency",_c)</label>
   <input id="obl-currency" name="currency" maxlength="3" size="4" value="@(Model.Currency)" placeholder="BRL"/>
  </div>
 
- <label for="obl-priority">Prioridade</label>
+ <label for="obl-priority">@L.T("common.priority",_c)</label>
  <select id="obl-priority" name="priority">
-  <option value="low" selected="@(Model.Priority=="low")">Baixa</option>
-  <option value="normal" selected="@(string.IsNullOrEmpty(Model.Priority)||Model.Priority=="normal")">Normal</option>
-  <option value="high" selected="@(Model.Priority=="high")">Alta</option>
-  <option value="critical" selected="@(Model.Priority=="critical")">Crítica</option>
+  <option value="low" selected="@(Model.Priority=="low")">@L.T("obl.priority_low",_c)</option>
+  <option value="normal" selected="@(string.IsNullOrEmpty(Model.Priority)||Model.Priority=="normal")">@L.T("obl.priority_normal",_c)</option>
+  <option value="high" selected="@(Model.Priority=="high")">@L.T("obl.priority_high",_c)</option>
+  <option value="critical" selected="@(Model.Priority=="critical")">@L.T("obl.priority_critical",_c)</option>
  </select>
 
- <label for="obl-clause">Cláusula / documento de referência</label>
+ <label for="obl-clause">@L.T("obl.clause",_c)</label>
  <select id="obl-clause" name="clauseDocumentVersionId" data-preselect="@(Model.ClauseDocumentVersionId?.ToString())">
-  <option value="" selected="@(Model.ClauseDocumentVersionId is null)">Sem documento vinculado</option>
+  <option value="" selected="@(Model.ClauseDocumentVersionId is null)">@L.T("obl.no_linked_doc",_c)</option>
  </select>
 
- <label class="checkbox-line"><input type="checkbox" name="evidenceRequired" value="true" @(Model.EvidenceRequired?"checked":"")/> Exigir evidência documental no cumprimento</label>
+ <label class="checkbox-line"><input type="checkbox" name="evidenceRequired" value="true" @(Model.EvidenceRequired?"checked":"")/> @L.T("obl.evidence_required_cb",_c)</label>
 
- <label for="obl-postterm">Justificativa de prazo posterior ao contrato</label>
- <textarea id="obl-postterm" name="postTermReason" maxlength="500" rows="2" placeholder="Necessário apenas quando o prazo ultrapassa o término do contrato">@Model.PostTermReason</textarea>
+ <label for="obl-postterm">@L.T("obl.postterm",_c)</label>
+ <textarea id="obl-postterm" name="postTermReason" maxlength="500" rows="2" placeholder="@L.T("obl.postterm_ph",_c)">@Model.PostTermReason</textarea>
 
  <fieldset>
-  <legend>Recorrência mensal</legend>
-  <label class="checkbox-line"><input type="checkbox" id="obl-rec-on" name="recurrenceEnabled" value="true" @(Model.RecurrenceEnabled?"checked":"")/> Criar série mensal de prazos</label>
+  <legend>@L.T("obl.recurrence_title",_c)</legend>
+  <label class="checkbox-line"><input type="checkbox" id="obl-rec-on" name="recurrenceEnabled" value="true" @(Model.RecurrenceEnabled?"checked":"")/> @L.T("obl.recurrence_enable",_c)</label>
   <div id="obl-rec-fields" hidden="@(Model.RecurrenceEnabled)">
-   <label for="obl-rec-base">Data base <span aria-hidden="true">*</span></label>
+   <label for="obl-rec-base">@L.T("obl.base_date",_c) <span aria-hidden="true">*</span></label>
    <input id="obl-rec-base" type="date" name="recurrenceBaseDate" value="@(Model.RecurrenceBaseDate?.ToString("yyyy-MM-dd"))"/>
-   <label for="obl-rec-day">Dia do mês (1–31) <span aria-hidden="true">*</span></label>
+   <label for="obl-rec-day">@L.T("obl.day_month",_c) <span aria-hidden="true">*</span></label>
    <input id="obl-rec-day" type="number" name="recurrenceIntendedDay" min="1" max="31" value="@Model.RecurrenceIntendedDay"/>
-   <label for="obl-rec-end">Última ocorrência até</label>
+   <label for="obl-rec-end">@L.T("obl.last_occurrence",_c)</label>
    <input id="obl-rec-end" type="date" name="recurrenceEndsOn" value="@(Model.RecurrenceEndsOn?.ToString("yyyy-MM-dd"))"/>
-   <label for="obl-rec-count">ou quantidade de ocorrências (até 120)</label>
+   <label for="obl-rec-count">@L.T("obl.occurrence_count",_c)</label>
    <input id="obl-rec-count" type="number" name="recurrenceOccurrenceCount" min="1" max="120" value="@(Model.RecurrenceOccurrenceCount?.ToString())"/>
-   <label for="obl-rec-tz">Fuso horário</label>
+   <label for="obl-rec-tz">@L.T("common.timezone",_c)</label>
    <input id="obl-rec-tz" name="recurrenceTimeZone" value="@(string.IsNullOrWhiteSpace(Model.RecurrenceTimeZone)?"America/Sao_Paulo":Model.RecurrenceTimeZone)" placeholder="America/Sao_Paulo"/>
-   <small class="muted">Informe a data final ou a quantidade — uma das duas — para a API validar a série.</small>
+   <small class="muted">@L.T("obl.recurrence_hint",_c)</small>
   </div>
  </fieldset>
 
  <fieldset>
-  <legend>Lembretes antes do prazo</legend>
-  <label class="checkbox-line"><input type="checkbox" name="reminderDays" value="7" @(Model.ReminderDays.Contains("7")?"checked":"")/> 7 dias antes</label>
-  <label class="checkbox-line"><input type="checkbox" name="reminderDays" value="1" @(Model.ReminderDays.Contains("1")?"checked":"")/> 1 dia antes</label>
-  <label class="checkbox-line"><input type="checkbox" name="reminderDays" value="0" @(Model.ReminderDays.Contains("0")?"checked":"")/> No dia</label>
-  <small class="muted">Sem nenhum lembrete selecionado, a plataforma aplica o padrão 7, 1 e 0 dias.</small>
+  <legend>@L.T("obl.reminders_title",_c)</legend>
+  <label class="checkbox-line"><input type="checkbox" name="reminderDays" value="7" @(Model.ReminderDays.Contains("7")?"checked":"")/> @L.T("obl.reminder_7",_c)</label>
+  <label class="checkbox-line"><input type="checkbox" name="reminderDays" value="1" @(Model.ReminderDays.Contains("1")?"checked":"")/> @L.T("obl.reminder_1",_c)</label>
+  <label class="checkbox-line"><input type="checkbox" name="reminderDays" value="0" @(Model.ReminderDays.Contains("0")?"checked":"")/> @L.T("obl.reminder_0",_c)</label>
+  <small class="muted">@L.T("obl.reminders_default",_c)</small>
  </fieldset>
 </div>
 @if(Model.ErrorMessage is string errorMessage){<p class="validation-summary" role="alert">@errorMessage</p>}
-<div class="form-actions-row"><a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">Voltar</a><button class="button button-primary" type="submit">Registrar obrigação</button></div>
+<div class="form-actions-row"><a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">@L.T("common.back",_c)</a><button class="button button-primary" type="submit">@L.T("obl.register",_c)</button></div>
 </form>}
 @section Scripts{
 <script>
@@ -112,7 +112,7 @@ else
     items.forEach(item=>{
      var opt=document.createElement('option');
      opt.value=item.id;opt.textContent=item.label;opt.dataset.doc='1';
-     if(!item.safe)opt.title='Documento em análise de segurança; pode ser referência, mas não serve como evidência.';
+     if(!item.safe)opt.title=@(System.Text.Json.JsonSerializer.Serialize(L.T("obl.doc_under_analysis",_c)));
      clause.appendChild(opt);
     });
     if(clause.dataset.preselect){

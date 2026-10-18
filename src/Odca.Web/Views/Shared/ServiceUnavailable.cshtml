@@ -1,6 +1,7 @@
 @inject Odca.Web.Services.IUserTenantContext TenantContext
 @{
-    ViewData["Title"] = "Página indisponível";
+    var _culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("unavailable.title", _culture);
     var routeTenant = ViewContext.RouteData.Values["tenantId"]?.ToString();
     var viewDataTenant = ViewData["TenantId"]?.ToString();
     var queryTenant = Context.Request.Query["tenantId"].ToString();
@@ -22,15 +23,15 @@
 
 <dialog id="unavailable-dialog" class="unavailable-dialog" role="alertdialog" open aria-labelledby="dialog-title" aria-describedby="dialog-desc">
     <div class="dialog-content card">
-        <h2 id="dialog-title">Página indisponível</h2>
-        <p id="dialog-desc">Não foi possível abrir este recurso agora. O detalhe técnico foi registrado.</p>
+        <h2 id="dialog-title">@L.T("unavailable.title", _culture)</h2>
+        <p id="dialog-desc">@L.T("unavailable.desc", _culture)</p>
         <div class="dialog-actions">
             <form method="dialog" style="display:inline;">
-                <button type="submit" class="button button-quiet" id="btn-close-dialog">Fechar</button>
+                <button type="submit" class="button button-quiet" id="btn-close-dialog">@L.T("unavailable.close", _culture)</button>
             </form>
             @if (resolvedTenantId.HasValue)
             {
-                <a class="button button-primary" id="btn-back-to-inbox" href="/organizacoes/@resolvedTenantId.Value/caixa">Voltar à caixa</a>
+                <a class="button button-primary" id="btn-back-to-inbox" href="/organizacoes/@resolvedTenantId.Value/caixa">@L.T("unavailable.back_inbox", _culture)</a>
             }
         </div>
     </div>

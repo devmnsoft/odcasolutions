@@ -14,9 +14,9 @@
       const formId = button.getAttribute('data-confirm-form');
       pendingForm = formId ? document.getElementById(formId) : button.closest('form');
       returnFocus = button;
-      if (titleTarget) titleTarget.textContent = button.getAttribute('data-confirm-title') || 'Confirmar ação';
+      if (titleTarget) titleTarget.textContent = button.getAttribute('data-confirm-title') || titleTarget.textContent;
       if (bodyTarget) bodyTarget.textContent = button.getAttribute('data-confirm-body') || '';
-      if (actionTarget) actionTarget.textContent = button.getAttribute('data-confirm-action') || 'Confirmar';
+      if (actionTarget) actionTarget.textContent = button.getAttribute('data-confirm-action') || actionTarget.textContent;
       dialog.showModal();
       actionTarget?.focus();
     });

@@ -5,6 +5,11 @@
   const appContent = document.querySelector('.app-content');
   const desktopQuery = matchMedia('(min-width: 769px)');
   let returnFocus = null;
+  // D-OC41: rótulos de acessibilidade vêm do layout (bag window.odcaNav); o fallback
+  // pt-BR só ocorre se a bag não existir (páginas fora do _Layout).
+  const navBag = window.odcaNav || {};
+  const expandLabel = navBag.expand || 'Expandir menu';
+  const collapseLabel = navBag.collapse || 'Recolher menu';
 
   const closeDrawer = () => {
     if (!body.classList.contains('drawer-open')) return;
@@ -52,7 +57,7 @@
     if (!desktopQuery.matches) return;
     const collapsed = body.classList.toggle('sidebar-collapsed');
     event.currentTarget.setAttribute('aria-expanded', String(!collapsed));
-    event.currentTarget.setAttribute('aria-label', collapsed ? 'Expandir menu' : 'Recolher menu');
+    event.currentTarget.setAttribute('aria-label', collapsed ? expandLabel : collapseLabel);
     try {
       localStorage.setItem('odca-sidebar-collapsed', String(collapsed));
     } catch {
@@ -65,7 +70,7 @@
       body.classList.add('sidebar-collapsed');
       const button = document.querySelector('[data-sidebar-collapse]');
       button?.setAttribute('aria-expanded', 'false');
-      button?.setAttribute('aria-label', 'Expandir menu');
+      button?.setAttribute('aria-label', expandLabel);
     }
   } catch {
     /* Other controls must keep working without storage. */

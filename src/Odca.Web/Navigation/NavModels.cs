@@ -45,6 +45,8 @@ public sealed class NavContext
 /// Item de navegação orientado a dados: chave estável, grupo, rótulo (pt-BR por ora; D-OC5
 /// substituirá por chaves de catálogo i18n), ícone, rota, recurso de plano e disponibilidade.
 /// Rótulos que passam pelo estado de funcionalidade usam FeatureCode (MenuFeature).
+/// AriaKey (D-OC41) referencia um chave de catálogo quando o rótulo acessível difere do
+/// rótulo visível; sem ele, o aria-label é omitido (rótulo redundante, WCAG 2.5.3).
 /// </summary>
 public sealed record NavItem(
     string Key,
@@ -59,4 +61,5 @@ public sealed record NavItem(
     string? Fragment = null,
     Func<NavContext, IDictionary<string, string>?>? BuildRoute = null,
     Func<NavContext, bool>? Available = null,
-    Func<NavContext, bool>? IsActive = null);
+    Func<NavContext, bool>? IsActive = null,
+    string? AriaKey = null);

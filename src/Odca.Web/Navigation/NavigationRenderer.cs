@@ -62,9 +62,10 @@ public static class NavigationRenderer
                 href += "#" + item.Fragment;
             }
             link.Attributes["href"] = href;
-            if (!string.IsNullOrEmpty(item.AriaLabel))
+            var ariaLabel = item.AriaKey is null ? item.AriaLabel : (ctx.Localizer?.Invoke(item.AriaKey) ?? item.AriaLabel);
+            if (!string.IsNullOrEmpty(ariaLabel))
             {
-                link.Attributes["aria-label"] = item.AriaLabel;
+                link.Attributes["aria-label"] = ariaLabel;
             }
 
             var icon = new TagBuilder("span");

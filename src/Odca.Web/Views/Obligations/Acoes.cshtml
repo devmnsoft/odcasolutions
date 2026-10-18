@@ -1,9 +1,11 @@
 @model Odca.Web.Models.ObligationActionModel
 @{
-    ViewData["Title"]="Ações da obrigação";
+    var _c=(string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"]=L.T("obl.actions_title",_c);
     var tenantId=(Guid)ViewData["TenantId"]!;
     var item=Model.Item;
     var status=item.Status;
+    string OblStatus(string s)=>s switch{"open"=>L.T("obl.status_open",_c),"in_progress"=>L.T("obl.status_in_progress",_c),"fulfilled"=>L.T("obl.status_fulfilled",_c),"cancelled"=>L.T("obl.status_cancelled",_c),_=>s};
     var canStart=status=="open";
     var canFulfill=status is "open" or "in_progress";
     var canCancel=status is "open" or "in_progress";
@@ -11,8 +13,8 @@
     var canReschedule=status is "open" or "in_progress";
     var canReassign=status is "open" or "in_progress";
 }
-<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-action="Index" asp-route-tenantId="@tenantId">Obrigações</a><span aria-hidden="true">/</span><span>@item.Title</span></nav>
-<header class="page-heading"><div><p class="eyebrow">Central operacional · Organização selecionada</p><h1>Ações da obrigação</h1><p>@item.Title · @item.Contract — situação <strong>@status</strong> · responsável @item.Owner · prazo @item.DueDate.ToString("dd/MM/yyyy")</p><small class="muted">Cada ação registra auditoria e atualiza a versão. Se outra sessão alterar a obrigação antes, os valores digitados voltam preservados para você repetir a ação.</small></div></header>
+<nav class="breadcrumb" aria-label="@L.T("common.breadcrumb_aria",_c)"><a asp-action="Index" asp-route-tenantId="@tenantId">@L.T("obrigacoes",_c)</a><span aria-hidden="true">/</span><span>@item.Title</span></nav>
+<header class="page-heading"><div><p class="eyebrow">@L.T("common.ops_center",_c) · @L.T("common.org_selected",_c)</p><h1>@L.T("obl.actions_title",_c)</h1><p>@item.Title · @item.Contract — @L.T("common.situation",_c) <strong>@OblStatus(status)</strong> · @L.T("common.responsible",_c) @item.Owner · @L.T("common.due_date",_c) @item.DueDate.ToString("dd/MM/yyyy")</p><small class="muted">@L.T("obl.actions_note",_c)</small></div></header>
 @if(Model.ConflictMessage is string conflict){<p class="status-message" role="status">@conflict</p>}
 @if(Model.OperationError is string opError){<p class="validation-summary" role="alert">@opError</p>}
 <section class="obligation-actions" style="display:grid;gap:1rem;">
@@ -21,74 +23,74 @@
 @Html.AntiForgeryToken()
 <input type="hidden" name="operation" value="start"/>
 <input type="hidden" name="expectedVersion" value="@Model.ExpectedVersion"/>
-<p>Mova a obrigação para andamento iniciado. O prazo e os lembretes permanecem.</p>
-<button class="button button-primary" type="submit">Iniciar andamento</button>
+<p>@L.T("obl.start_desc",_c)</p>
+<button class="button button-primary" type="submit">@L.T("obl.start_btn",_c)</button>
 </form>}
 @if(canFulfill){
 <form method="post" asp-action="PerformAction" asp-route-tenantId="@tenantId" asp-route-id="@item.Id" data-prevent-double-submit>
 @Html.AntiForgeryToken()
 <input type="hidden" name="operation" value="fulfill"/>
 <input type="hidden" name="expectedVersion" value="@Model.ExpectedVersion"/>
-<p>Registre o cumprimento. Isso não significa pagamento nem assinatura — é o registro de que o prazo foi atendido.</p>
+<p>@L.T("obl.fulfill_desc",_c)</p>
 @if(item.EvidenceRequired){
-<label for="act-evidence">Evidência documental <span aria-hidden="true">*</span></label>
+<label for="act-evidence">@L.T("obl.evidence",_c) <span aria-hidden="true">*</span></label>
 <select id="act-evidence" name="evidenceDocumentVersionId" required>
- <option value="">Selecione a versão do documento</option>
+ <option value="">@L.T("obl.select_version",_c)</option>
  @foreach(var d in Model.Documents){<option value="@d.VersionId" selected="@(Model.EvidenceDocumentVersionId==d.VersionId)" disabled="@(d.Safe ? null : "disabled")">@d.Label</option>}
 </select>
-<small class="muted">Somente versões seguras servem como evidência; a vínculo não amplia a permissão de download.</small>
+<small class="muted">@L.T("obl.evidence_note",_c)</small>
 }
 else{
-<label for="act-note">Observação do cumprimento</label>
-<textarea id="act-note" name="note" maxlength="2000" rows="2" placeholder="Opcional — fica registrada na auditoria.">@Model.Note</textarea>
+<label for="act-note">@L.T("obl.fulfill_note",_c)</label>
+<textarea id="act-note" name="note" maxlength="2000" rows="2" placeholder="@L.T("obl.fulfill_note_ph",_c)">@Model.Note</textarea>
 }
-<button class="button button-primary" type="submit">Registrar cumprimento</button>
+<button class="button button-primary" type="submit">@L.T("obl.fulfill_btn",_c)</button>
 </form>}
 @if(canCancel){
 <form method="post" asp-action="PerformAction" asp-route-tenantId="@tenantId" asp-route-id="@item.Id" data-prevent-double-submit>
 @Html.AntiForgeryToken()
 <input type="hidden" name="operation" value="cancel"/>
 <input type="hidden" name="expectedVersion" value="@Model.ExpectedVersion"/>
-<label for="act-cancel-reason">Motivo do cancelamento <span aria-hidden="true">*</span></label>
+<label for="act-cancel-reason">@L.T("obl.cancel_reason",_c) <span aria-hidden="true">*</span></label>
 <textarea id="act-cancel-reason" name="reason" maxlength="500" rows="2" required minlength="5">@Model.Reason</textarea>
-<button class="button button-danger" type="submit">Cancelar obrigação</button>
+<button class="button button-danger" type="submit">@L.T("obl.cancel_btn",_c)</button>
 </form>}
 @if(canReopen){
 <form method="post" asp-action="PerformAction" asp-route-tenantId="@tenantId" asp-route-id="@item.Id" data-prevent-double-submit>
 @Html.AntiForgeryToken()
 <input type="hidden" name="operation" value="reopen"/>
 <input type="hidden" name="expectedVersion" value="@Model.ExpectedVersion"/>
-<p>Reabrir devolve a obrigação ao acompanhamento aberto e limpa o registro de cumprimento.</p>
-<label for="act-reopen-reason">Motivo da reabertura <span aria-hidden="true">*</span></label>
+<p>@L.T("obl.reopen_desc",_c)</p>
+<label for="act-reopen-reason">@L.T("obl.reopen_reason",_c) <span aria-hidden="true">*</span></label>
 <textarea id="act-reopen-reason" name="reason" maxlength="500" rows="2" required minlength="5">@Model.Reason</textarea>
-<button class="button button-primary" type="submit">Reabrir obrigação</button>
+<button class="button button-primary" type="submit">@L.T("obl.reopen_btn",_c)</button>
 </form>}
 @if(canReschedule){
 <form method="post" asp-action="PerformAction" asp-route-tenantId="@tenantId" asp-route-id="@item.Id" data-prevent-double-submit>
 @Html.AntiForgeryToken()
 <input type="hidden" name="operation" value="reschedule"/>
 <input type="hidden" name="expectedVersion" value="@Model.ExpectedVersion"/>
-<p>O novo prazo deve ser diferente do atual; os lembretes de 7, 1 e 0 dias são reagendados.</p>
-<label for="act-due">Novo prazo <span aria-hidden="true">*</span></label>
+<p>@L.T("obl.reschedule_desc",_c)</p>
+<label for="act-due">@L.T("obl.new_due",_c) <span aria-hidden="true">*</span></label>
 <input id="act-due" type="date" name="dueDate" required value="@(Model.DueDate?.ToString("yyyy-MM-dd") ?? item.DueDate.ToString("yyyy-MM-dd"))"/>
-<label for="act-reschedule-reason">Motivo da alteração <span aria-hidden="true">*</span></label>
+<label for="act-reschedule-reason">@L.T("obl.change_reason",_c) <span aria-hidden="true">*</span></label>
 <textarea id="act-reschedule-reason" name="reason" maxlength="500" rows="2" required minlength="5">@Model.Reason</textarea>
-<button class="button button-primary" type="submit">Alterar prazo</button>
+<button class="button button-primary" type="submit">@L.T("obl.reschedule_btn",_c)</button>
 </form>}
 @if(canReassign){
 <form method="post" asp-action="PerformAction" asp-route-tenantId="@tenantId" asp-route-id="@item.Id" data-prevent-double-submit>
 @Html.AntiForgeryToken()
 <input type="hidden" name="operation" value="reassign"/>
 <input type="hidden" name="expectedVersion" value="@Model.ExpectedVersion"/>
-<label for="act-owner">Novo responsável <span aria-hidden="true">*</span></label>
+<label for="act-owner">@L.T("obl.new_owner",_c) <span aria-hidden="true">*</span></label>
 <select id="act-owner" name="ownerId" required>
- <option value="">Selecione o novo responsável</option>
+ <option value="">@L.T("obl.select_new_owner",_c)</option>
  @foreach(var m in Model.Members.Where(m=>m.Id!=item.OwnerId)){<option value="@m.Id" selected="@(Model.OwnerId==m.Id)">@m.Name (@m.Email)</option>}
 </select>
-<label for="act-reassign-reason">Motivo da reatribuição <span aria-hidden="true">*</span></label>
+<label for="act-reassign-reason">@L.T("obl.reassign_reason",_c) <span aria-hidden="true">*</span></label>
 <textarea id="act-reassign-reason" name="reason" maxlength="500" rows="2" required minlength="5">@Model.Reason</textarea>
-<button class="button button-primary" type="submit">Reatribuir responsável</button>
+<button class="button button-primary" type="submit">@L.T("obl.reassign_btn",_c)</button>
 </form>}
-@if(!canStart&&!canFulfill&&!canCancel&&!canReopen&&!canReschedule&&!canReassign){<p class="muted">Esta obrigação não tem ações disponíveis na situação atual.</p>}
+@if(!canStart&&!canFulfill&&!canCancel&&!canReopen&&!canReschedule&&!canReassign){<p class="muted">@L.T("obl.no_actions",_c)</p>}
 </section>
-<div class="button-row"><a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">Voltar para Obrigações</a></div>
+<div class="button-row"><a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">@L.T("obl.back_index",_c)</a></div>

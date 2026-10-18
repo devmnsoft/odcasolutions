@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Odca.Contracts.Obligations;
+using Odca.Configuration.Localization;
 using Odca.Web.Services;
 using Odca.Contracts.SavedViews;
 using Odca.Web.Models;
@@ -11,8 +12,12 @@ namespace Odca.Web.Controllers;
 
 [Authorize]
 [Route("organizacoes/{tenantId:guid}/obrigacoes")]
-public sealed class ObligationsController(OdcaApiClient api) : Controller
+public sealed class ObligationsController(OdcaApiClient api, LocalizationService loc) : Controller
 {
+    // D-OC41 (S7): padrão canônico de cultura (CultureMiddleware) — Controller.Culture não é populado aqui.
+    private string? Culture => HttpContext.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] as string;
+
+    private string L(string key, params string[] args) => loc.T(key, Culture, args);
     [HttpPost("vistas")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveView(Guid tenantId, string name, string scope = "mine", Guid? contractId = null, Guid? ownerId = null, string? category = null, string? status = null, DateOnly? from = null, DateOnly? to = null, string? search = null, CancellationToken ct = default)
@@ -27,8 +32,8 @@ public sealed class ObligationsController(OdcaApiClient api) : Controller
         if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         TempData[result.Succeeded ? "SavedViewNotice" : "SavedViewError"] = result.Succeeded
-            ? "Vista pessoal salva. Os resultados serão sempre recalculados com suas permissões atuais."
-            : "Não foi possível salvar a vista. Confira o nome e os filtros.";
+            ? L("obl.view_saved")
+            : L("obl.view_save_fail");
         return RedirectToAction(nameof(Index), new { tenantId, scope, contractId, ownerId, category, status, from, to, search });
     }
 
@@ -42,7 +47,7 @@ public sealed class ObligationsController(OdcaApiClient api) : Controller
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         if (!result.Succeeded || result.Value is null)
         {
-            TempData["SavedViewError"] = "Esta vista não está disponível ou contém referências que precisam ser atualizadas.";
+            TempData["SavedViewError"] = L("obl.view_unavailable");
             return RedirectToAction(nameof(Index), new { tenantId });
         }
         var route = BuildSavedViewRoute(tenantId, result.Value);
@@ -63,7 +68,7 @@ public sealed class ObligationsController(OdcaApiClient api) : Controller
         var result = await api.UpdateSavedViewAsync(token, tenantId, viewId, new UpdateSavedViewRequest(name, isDefault, version, filters), ct);
         if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
-        TempData[result.Succeeded ? "SavedViewNotice" : "SavedViewError"] = result.Succeeded ? "Vista atualizada." : "A vista mudou em outra sessão. Atualize a página e tente novamente.";
+        TempData[result.Succeeded ? "SavedViewNotice" : "SavedViewError"] = result.Succeeded ? L("obl.view_updated") : L("obl.view_changed");
         return RedirectToAction(nameof(OpenView), new { tenantId, viewId });
     }
 
@@ -76,7 +81,7 @@ public sealed class ObligationsController(OdcaApiClient api) : Controller
         var result = await api.DeactivateSavedViewAsync(token, tenantId, viewId, ct);
         if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
-        TempData[result.Succeeded ? "SavedViewNotice" : "SavedViewError"] = result.Succeeded ? "Vista inativada." : "Não foi possível inativar a vista.";
+        TempData[result.Succeeded ? "SavedViewNotice" : "SavedViewError"] = result.Succeeded ? L("obl.view_deactivated") : L("obl.view_deactivate_fail");
         return RedirectToAction(nameof(Index), new { tenantId });
     }
 
@@ -92,13 +97,13 @@ public sealed class ObligationsController(OdcaApiClient api) : Controller
             ApiCallStatus.Forbidden => Forbid(),
             ApiCallStatus.NotFound => NotFound(),
             _ when result.Succeeded => Json(result.Value),
-            _ => StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "Não foi possível consultar o histórico agora." })
+            _ => StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = L("obl.history_load_fail") })
         };
     }
 
-    // D-OC38 (Sprint 4/A-1): cadastro e ações de obrigações na central do cliente (pt-first;
-    // localização das telas é dívida registrada). A API permanece autoridade de validação,
-    // permissão, versão e auditoria; o BFF preserva valores após rejeição e conflito 409.
+    // D-OC38 (Sprint 4/A-1): cadastro e ações de obrigações na central do cliente.
+    // D-OC41 (S7): telas localizadas em 4 idiomas via catálogos; a API permanece autoridade
+    // de validação, permissão, versão e auditoria; o BFF preserva valores após rejeição e conflito 409.
 
     [HttpGet("nova")]
     public async Task<IActionResult> Nova(Guid tenantId, CancellationToken ct)
@@ -121,7 +126,7 @@ public sealed class ObligationsController(OdcaApiClient api) : Controller
         model.ReminderDays ??= [];
         if (model.ContractId is null || string.IsNullOrWhiteSpace(model.Title) || string.IsNullOrWhiteSpace(model.ObligatedParty) || model.OwnerId is null || model.DueDate is null)
         {
-            model.ErrorMessage = "Preencha contrato, título, parte obrigada, responsável e prazo para registrar.";
+            model.ErrorMessage = L("obl.create_required");
             var (c1, m1, _) = await LoadObligationCatalogsAsync(token, tenantId, ct);
             model.Contracts = c1 ?? []; model.Members = m1 ?? [];
             return View("Nova", model);
@@ -144,11 +149,11 @@ public sealed class ObligationsController(OdcaApiClient api) : Controller
             int count = 1;
             if (result.Value is System.Text.Json.JsonElement el && el.ValueKind == System.Text.Json.JsonValueKind.Object && el.TryGetProperty("ids", out var ids) && ids.ValueKind == System.Text.Json.JsonValueKind.Array) count = ids.GetArrayLength();
             TempData["ObligationNotice"] = count > 1
-                ? $"Série mensal criada com {count} prazos. Lembretes e auditoria registrados."
-                : "Obrigação registrada com auditoria e lembretes.";
+                ? L("obl.created_series", count.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                : L("obl.created_single");
             return RedirectToAction(nameof(Index), new { tenantId });
         }
-        model.ErrorMessage = result.UserMessage("Não foi possível registrar a obrigação. Confira os campos e tente novamente.");
+        model.ErrorMessage = result.UserMessage(L("obl.create_fail"));
         var (c2, m2, _) = await LoadObligationCatalogsAsync(token, tenantId, ct);
         model.Contracts = c2 ?? []; model.Members = m2 ?? [];
         return View("Nova", model);
@@ -162,7 +167,7 @@ public sealed class ObligationsController(OdcaApiClient api) : Controller
         var token = await HttpContext.GetTokenAsync("access_token");
         if (token is null) return Unauthorized();
         var r = await api.GetContractDocumentVersionsAsync(token, tenantId, contractId, ct);
-        if (!r.Succeeded) return StatusCode(503, new { title = "Não foi possível carregar os documentos do contrato." });
+        if (!r.Succeeded) return StatusCode(503, new { title = L("obl.docs_load_fail") });
         return Json(ParseDocumentOptions(r.Value!));
     }
 
@@ -196,9 +201,9 @@ public sealed class ObligationsController(OdcaApiClient api) : Controller
         ViewData["TenantId"] = tenantId;
         var fieldError = (operation, string.IsNullOrWhiteSpace(reason), dueDate.HasValue, ownerId.HasValue) switch
         {
-            ("cancel", true, _, _) or ("reopen", true, _, _) => "Informe o motivo.",
-            ("reschedule", true, false, _) => "Informe um novo prazo diferente do atual e o motivo.",
-            ("reassign", true, _, false) => "Selecione o novo responsável e informe o motivo.",
+            ("cancel", true, _, _) or ("reopen", true, _, _) => L("obl.reason_required"),
+            ("reschedule", true, false, _) => L("obl.reschedule_required"),
+            ("reassign", true, _, false) => L("obl.reassign_required"),
             _ => null
         };
         var body = new ObligationActionRequest(expectedVersion, reason, note, null,
@@ -216,19 +221,19 @@ public sealed class ObligationsController(OdcaApiClient api) : Controller
             case ApiCallStatus.Forbidden:
                 return Forbid();
             case ApiCallStatus.NotFound:
-                TempData["ObligationError"] = "Esta obrigação não está mais disponível.";
+                TempData["ObligationError"] = L("obl.not_available");
                 return RedirectToAction(nameof(Index), new { tenantId });
             case ApiCallStatus.Conflict when currentVersion.HasValue:
                 return await RebuildActionsViewAsync(token, tenantId, id, new ObligationActionModel
                 {
-                    ConflictMessage = "A obrigação mudou em outra sessão. A versão esperada foi atualizada e os valores digitados foram preservados — revise e repita a ação.",
+                    ConflictMessage = L("obl.conflict_msg"),
                     OperationError = fieldError,
                     Reason = reason, Note = note, DueDate = dueDate, OwnerId = ownerId, EvidenceDocumentVersionId = evidenceDocumentVersionId
                 }, ct);
             case ApiCallStatus.InvalidRequest:
                 return await RebuildActionsViewAsync(token, tenantId, id, new ObligationActionModel
                 {
-                    OperationError = fieldError ?? errorTitle ?? "Os dados da ação estão inválidos. Confira os campos obrigatórios da operação.",
+                    OperationError = fieldError ?? errorTitle ?? L("obl.invalid_action"),
                     Reason = reason, Note = note, DueDate = dueDate, OwnerId = ownerId, EvidenceDocumentVersionId = evidenceDocumentVersionId
                 }, ct);
             default:
@@ -277,7 +282,7 @@ public sealed class ObligationsController(OdcaApiClient api) : Controller
         return View("Acoes", vm);
     }
 
-    private static List<ObligationDocumentOption> ParseDocumentOptions(System.Text.Json.JsonElement[] versions)
+    private List<ObligationDocumentOption> ParseDocumentOptions(System.Text.Json.JsonElement[] versions)
     {
         string Str(System.Text.Json.JsonElement e, string snake, string camel)
         {
@@ -299,19 +304,19 @@ public sealed class ObligationsController(OdcaApiClient api) : Controller
             var safe = Str(v, "security_status", "securityStatus") == "safe";
             var number = Num(v, "version_number", "versionNumber");
             var title = Str(v, "title", "title");
-            list.Add(new ObligationDocumentOption(versionId, $"{(string.IsNullOrWhiteSpace(title) ? "Documento" : title)} · v{number}{(safe ? "" : " (em análise)")}", safe));
+            list.Add(new ObligationDocumentOption(versionId, $"{(string.IsNullOrWhiteSpace(title) ? L("obl.doc_generic") : title)} · v{number}{(safe ? "" : L("obl.doc_under_review"))}", safe));
         }
         return list;
     }
 
-    private static string OperationNotice(string operation) => operation switch
+    private string OperationNotice(string operation) => operation switch
     {
-        "start" => "Andamento iniciado com auditoria.",
-        "fulfill" => "Cumprimento registrado. O prazo saiu do acompanhamento pendente.",
-        "cancel" => "Obrigação cancelada com motivo auditado.",
-        "reopen" => "Obrigação reaberta com motivo auditado.",
-        "reschedule" => "Prazo alterado; lembretes de 7, 1 e 0 dias reagendados.",
-        _ => "Responsável alterado com auditoria."
+        "start" => L("obl.notice_start"),
+        "fulfill" => L("obl.notice_fulfill"),
+        "cancel" => L("obl.notice_cancel"),
+        "reopen" => L("obl.notice_reopen"),
+        "reschedule" => L("obl.notice_reschedule"),
+        _ => L("obl.notice_reassign")
     };
 
     [HttpGet]
@@ -319,7 +324,7 @@ public sealed class ObligationsController(OdcaApiClient api) : Controller
     {
         if (from.HasValue && to.HasValue && from.Value > to.Value)
         {
-            ModelState.AddModelError(nameof(to), "A data final deve ser igual ou posterior à data inicial.");
+            ModelState.AddModelError(nameof(to), L("obl.date_range_invalid"));
             ViewData["TenantId"] = tenantId;
             ViewData["Scope"] = scope;
             Response.StatusCode = StatusCodes.Status400BadRequest;
