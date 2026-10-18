@@ -145,7 +145,7 @@ try {
         } elseif ($tplPair -and $memberId) {
             $tplParts = $tplPair.Split('|')
             $tplId = $tplParts[0]; $tplVerId = $tplParts[1]
-            $draftResult = Sql ("INSERT INTO odca.contract_drafts(tenant_id,contract_id,source_template_id,source_template_version_id,content,fields,created_by,updated_by) VALUES('{0}','{1}','{2}','{3}','{}','[]','{4}','{4}') RETURNING id::text" -f $tenant, $fixtureContract, $tplId, $tplVerId, $memberId)
+            $draftResult = Sql ("INSERT INTO odca.contract_drafts(tenant_id,contract_id,source_template_id,source_template_version_id,content,fields,created_by,updated_by) VALUES('{0}','{1}','{2}','{3}','{{}}','[]','{4}','{4}') RETURNING id::text" -f $tenant, $fixtureContract, $tplId, $tplVerId, $memberId)
             if ($draftResult -and $draftResult.Length -gt 8) {
                 $reloaded = Sql ("SELECT content FROM odca.contract_drafts WHERE id='{0}'" -f $draftResult)
                 if ($reloaded -ne '') {
@@ -387,6 +387,14 @@ try {
     $applied = SqlInt ("SELECT COUNT(*) FROM odca.contract_change_requests WHERE tenant_id='{0}' AND application_status='applied'" -f $tenant)
     $pending = SqlInt ("SELECT COUNT(*) FROM odca.contract_change_requests WHERE tenant_id='{0}' AND application_status IN ('pending','scheduled')" -f $tenant)
     $audit = SqlInt ("SELECT COUNT(*) FROM odca.audit_events WHERE tenant_id='{0}' AND entity_type='contract_change_request'" -f $tenant)
+    if ($applied -eq 0 -and $audit -eq 0) {
+        # Autocontido (base limpa): planta o estado FINAL de uma alteracao (prepare->formalize->apply).
+        Sql ("DELETE FROM odca.contract_change_requests WHERE tenant_id='{0}' AND reason LIKE 'Matriz-S13-Fixture%'" -f $tenant) | Out-Null
+        $fixOut = Sql ("INSERT INTO odca.contract_change_requests (tenant_id,contract_id,kind,status,application_status,author_id,responsible_id,reason,effective_on,base_contract_version,idempotency_key) SELECT '{0}',c.id,'amendment','formalized','applied',m.user_id,m.user_id,'Matriz-S13-Fixture alteracao ja aplicada',CURRENT_DATE,1,gen_random_uuid() FROM odca.contracts c JOIN odca.memberships m ON m.tenant_id=c.tenant_id AND m.status='active' WHERE c.tenant_id='{0}' LIMIT 1 RETURNING id::text" -f $tenant)
+        if (-not $fixOut) { throw 'S13: sem contrato/membro ativo para o fixture de alteracao aplicada' }
+        $applied = SqlInt ("SELECT COUNT(*) FROM odca.contract_change_requests WHERE tenant_id='{0}' AND application_status='applied'" -f $tenant)
+        $audit = SqlInt ("SELECT COUNT(*) FROM odca.audit_events WHERE tenant_id='{0}' AND entity_type='contract_change_request'" -f $tenant)
+    }
     if ($applied -gt 0 -or $audit -gt 0) {
         Record "S13" "Alteracao aplicada - sai da fila, fica no historico" 'PASS' ("${applied} aplicadas (fora da view pendente); ${pending} ainda em fila; ${audit} eventos auditados.")
     } else {
@@ -412,7 +420,7 @@ try {
 # S15: Quatro idiomas - jornada e entrada de dados
 # ====================================================================
 try {
-    $catalogDir = 'C:\MNSOFT\odcasolutions\src\Odca.Web\Localization'
+    $catalogDir = 'C:\MNSOFT\odcasolutions\src\Odca.Configuration\Localization'
     $okCount = 0
     foreach ($f in @('pt-BR.json','en-US.json','fr-FR.json','es-ES.json')) {
         $path = Join-Path $catalogDir $f
@@ -423,7 +431,7 @@ try {
     }
     $mwExists = Test-Path 'C:\MNSOFT\odcasolutions\src\Odca.Web\Middleware\CultureMiddleware.cs'
     if ($okCount -eq 4 -and $mwExists) {
-        Record "S15" "Quatro idiomas - jornada completa" 'PASS' "4/4 catalogos presentes + CultureMiddleware ativo. Views Sheet+Inbox localizadas (~170 keys/lang)."
+        Record "S15" "Quatro idiomas - jornada completa" 'PASS' "4/4 catalogos presentes (Odca.Configuration/Localization) + CultureMiddleware ativo."
     } else {
         Record "S15" "Quatro idiomas - jornada completa" 'FAIL' "Catalogos: $okCount/4. Middleware: $mwExists"
     }

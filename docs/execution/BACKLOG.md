@@ -506,3 +506,17 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [ ] CI oficial deste SHA: pendente — branch sem push; nenhum ID de execução inventado.
 - [ ] Aceite humano dos fluxos de reautenticação/suporte e da purga: pendente (capturas disponíveis para revisão).
 - [x] Commit único "sem push" fechando a Sprint 5.
+
+## Sprint 6 - candidata ao piloto: ensaio reproduzivel, design das superficies e matriz de prontidao (D-OC40) (18/10/2026)
+
+- [x] F-1: ensaio de piloto reproduzível `scripts/qa/run-pilot-rehearsal.ps1` — reexecução sequencial das provas ao vivo versionadas (C-SLA, ACEITE, D34-JORNADA, D37-ASSINATURA, D38-ATENDIMENTO, D39-SEGURANCA) sobre a mesma base descartável, transcript consolidado, provisionamento/derruba da stack dev (run-local/stop-local) para os estágios legados, filtro `-Only` para reexecução pontual, espera do filho por polling `HasExited` (imune a netos que seguram handles) e probe de prontidão da stack legada por `curl -k`; rodada final 5/6 no transcript consolidado + reexecução pontual do D37 verde (fail único = ambiente transitório do banco, classificado em §4 do D-OC40).
+- [x] F-2: auditoria de design das superfícies do piloto (`audit-d40-design.ps1` + `cdp-design-audit.mjs`) — overflow horizontal (360/768/1280/1440), autenticação e status HTTP por rota × idioma (10 rotas: 7 cliente/plataforma + privada anônima), PNG de triagem apenas das falhas; run-1 invalidada por bug do harness (contador `$t` esmagou o tenant `$T` → 404 mascarados em viewports ≥ 908px), arquivada como `*-run1-tenantbug*` e corrigida (loop `$att` + guarda do GUID + classe `HTTPFAIL` no driver); rodada final **72/72 ok (overflow=0 authfail=0 httpfail=0)**; correções de produto: **nenhuma** (`src/` inalterado).
+- [x] F-3: matriz de prontidão do piloto (6 marcos do portal: requisito → implementação → evidência → responsável → pendência) + runbook do piloto (pré-condições, contas sintéticas, cenários por perfil, suporte via sessões de plataforma, rollback, critério de saída) em `docs/execution/D-OC40_PILOTO_DESIGN_PRONTIDAO.md`.
+- [x] GATE final sobre a árvore; STATUS.md atualizado; `.odca/progress.json` inalterado (sem CI oficial verde publicada nem aceite real para creditar marco).
+- [ ] CI oficial dos SHAs: pendente — branch sem push; nenhum ID de execução inventado.
+- [ ] Provedor externo de assinatura (envelope): indefinido ("proposto, não escolhido" preservado); homologação com provedor real pendente.
+- [ ] SMTP real: indefinido; canal de e-mail segue desabilitado por padrão.
+- [ ] Backup/restauração real ensaiado: pendente (pré-condição explícita do runbook §7.1).
+- [ ] Usuários convidados do piloto + aprovação da versão pelo responsável: pendente.
+- [ ] Impersonação profunda na janela de suporte; i18n das áreas pt-first; fila admin/privacidade/conteúdo de notificações/aria-labels da navegação global (carreados das S3–S5) — dívidas.
+- [x] Commit único "sem push" fechando a Sprint 6 — fim do plano de seis sprints.

@@ -267,6 +267,17 @@ function Ensure-Web([string]$tag) {
   if (-not (Wait-Ready 'http://localhost:5144/entrar')) { LogEv ('WEB nao voltou apos restart em ' + $tag) }
 }
 function Ensure-Stack([string]$tag) { Ensure-Api $tag; Ensure-Web $tag }
+function ReLogin-Chain([string]$jar, [string]$pageUrl) {
+  # Sessao ODCA tem expiracao ABSOLUTA (Jwt:AccessTokenMinutes=15, sem sliding —
+  # AuthenticationService nao renova). Sob carga, a jornada D34 pode estourar esse
+  # limite entre o login do cliente e as fases OCR/T/N; entao as chamas passam a
+  # responder 302 vazio para a pagina de login e a cadeia nao le nada. Recuperacao
+  # de harness (nao muda as assercoes): nova sessao na mesma jar + novo token
+  # antiforgery da mesma pagina.
+  LogEv ('RELOGIN cadeia em ' + $pageUrl)
+  $null = Web-Login $jar 'cliente.teste@odca.local' 'K8@wR3!nF6#zP2$m' ''
+  return Get-Af (Web-Get $jar $pageUrl)
+}
 function Web-Post([string]$jar, [string]$url, [hashtable]$fields, [string]$af) {
   $sb = New-Object Text.StringBuilder
   foreach ($k in $fields.Keys) {
@@ -727,7 +738,13 @@ Check 'X0b fixture docx minimo gerada' ((Test-Path $docx) -and ((Get-Item $docx)
 
 function Invoke-Chain([string]$file, [string]$tag, [string]$jar, [string]$editUrl, [string]$afPage, [int]$pollLimit = 120) {
   $upFile = Join-Path $tmpDir ('up-' + $tag + '.json')
-  $code = Watch-Curl 120000 @('-k','--connect-timeout','5','--max-time','60','-s','-b',$jar,'-c',$jar,'-H',('RequestVerificationToken: ' + $afPage),'-F',('file=@' + $file),'-o',$upFile,'-w','%{http_code}',($editUrl + '/documentos'))
+  # Resiliencia a queda momentanea do ambiente compartilhado (outros checkouts da mesma
+  # maquina podem derrubar o dotnet local): se o upload nao conecta, garante a stack e
+  # tenta uma unica vez antes de desistir (mesmo padrao de Ensure-Stack ja usado na prova).
+  $mkUp = { param($tok) @('-k','--connect-timeout','5','--max-time','60','-s','-b',$jar,'-c',$jar,'-H',('RequestVerificationToken: ' + $tok),'-F',('file=@' + $file),'-o',$upFile,'-w','%{http_code}',($editUrl + '/documentos')) }
+  $code = Watch-Curl 120000 (& $mkUp $afPage)
+  if ([string]$code -eq '000') { Ensure-Stack ('upload-' + $tag); $code = Watch-Curl 120000 (& $mkUp $afPage) }
+  if ([string]$code -match '^3') { $afPage = ReLogin-Chain $jar $editUrl; $code = Watch-Curl 120000 (& $mkUp $afPage) }
   $upJson = $null; try { $upJson = (Get-Content $upFile -Raw) | ConvertFrom-Json } catch {}
   if ($code -ne '200' -or $null -eq $upJson) { return [PSCustomObject]@{ ok = $false; uploadCode = $code; raw = (Get-Content $upFile -Raw -EA SilentlyContinue); jobStatus = 'n/a'; Job = $null } }
   $status = ''
@@ -743,15 +760,35 @@ function Invoke-Chain([string]$file, [string]$tag, [string]$jar, [string]$editUr
   $bodyFile = Join-Path $tmpDir ('exb-' + $tag + '.json')
   [IO.File]::WriteAllText($bodyFile, $body, [Text.UTF8Encoding]::new($false))
   $exFile = Join-Path $tmpDir ('exr-' + $tag + '.json')
-  $exCode = Watch-Curl 120000 @('-k','--connect-timeout','5','--max-time','60','-s','-b',$jar,'-c',$jar,'-X','POST','-H','Content-Type: application/json','-H',('RequestVerificationToken: ' + $afPage),'-d',('@' + $bodyFile),'-o',$exFile,'-w','%{http_code}',($editUrl + '/extrair'))
+  $mkEx = { param($tok) @('-k','--connect-timeout','5','--max-time','60','-s','-b',$jar,'-c',$jar,'-X','POST','-H','Content-Type: application/json','-H',('RequestVerificationToken: ' + $tok),'-d',('@' + $bodyFile),'-o',$exFile,'-w','%{http_code}',($editUrl + '/extrair')) }
+  $exCode = Watch-Curl 120000 (& $mkEx $afPage)
+  if ([string]$exCode -match '^3') { $afPage = ReLogin-Chain $jar $editUrl; $exCode = Watch-Curl 120000 (& $mkEx $afPage) }
   $exJson = $null; try { $exJson = (Get-Content $exFile -Raw) | ConvertFrom-Json } catch {}
   if ($exCode -ne '202' -or -not $exJson.extractionId) { return [PSCustomObject]@{ ok = $false; uploadCode = '200'; raw = ('extrair ' + $exCode + ' ' + (Get-Content $exFile -Raw)); jobStatus = 'n/a'; documentId = $upJson.documentId; Job = $null } }
   $pollUrl = $editUrl + '/extracao/' + $exJson.extractionId
-  $job = $null; $jobStatus = 'unknown'
-  for ($i = 0; $i -lt $pollLimit; $i++) {
+  $job = $null; $jobStatus = 'unknown'; $downStreak = 0; $relogged = $false
+  # +30 de margem de tolerancia: sob carga, o status terminal pode chegar no limiar do
+  # pollLimit (no ensaio de 2026-10-18 a conclusao chegou no ultimo poll). As assercoes
+  # nao mudam — continua exigindo status terminal + codigo estavel quando houver falha.
+  for ($i = 0; $i -lt ($pollLimit + 30); $i++) {
     Start-Sleep -Seconds 3
     $jobFile = Join-Path $tmpDir ('job-' + $tag + '.json')
-    $null = Watch-Curl 90000 @('-k','--connect-timeout','5','--max-time','45','-s','-b',$jar,'-c',$jar,'-o',$jobFile,$pollUrl)
+    $pc = Watch-Curl 90000 @('-k','--connect-timeout','5','--max-time','45','-s','-b',$jar,'-c',$jar,'-o',$jobFile,'-w','%{http_code}',$pollUrl)
+    if ([string]$pc -eq '000') {
+      # Servico fora do ar durante o poll (instabilidade de ambiente compartilhado, nao
+      # defeito de produto): apos 3 falhas seguidas garante a stack e segue o poll — o
+      # resultado do job permanece no banco e o codigo estavel e o mesmo ao ser lido depois.
+      $downStreak++
+      if ($downStreak -ge 3) { Ensure-Stack ('poll-' + $tag); $downStreak = 0 }
+      continue
+    }
+    if ([string]$pc -match '^3' -and (-not $relogged)) {
+      # 3xx no GET do poll = sessao expirada (limite absoluto de 15 min, sem sliding,
+      # estourado sob carga): relogin unico da cadeia e segue o poll.
+      $null = ReLogin-Chain $jar $editUrl; $relogged = $true
+      continue
+    }
+    $downStreak = 0
     try { $job = (Get-Content $jobFile -Raw) | ConvertFrom-Json } catch { continue }
     $jobStatus = [string]$job.job.status
     if ($jobStatus -eq 'ready_for_review' -or $jobStatus -eq 'failed') { break }
@@ -776,6 +813,7 @@ if ($null -ne $cX3.Job) { $j3total = [string]$cX3.Job.job.pages_total; try { $j3
 Check 'X3 imagem unica reporta escopo 1 de 1 (sem truncacao)' (($cX3.ok -eq $true) -and ($j3total -eq '1') -and ($j3proc -eq 1) -and ($j3trunc -eq $false)) ('total=' + $j3total + ' proc=' + $j3proc + ' trunc=' + $j3trunc)
 
 # ---------- T. timeout de OCR (executavel pendurado) ----------
+Ensure-Stack 'inicio da fase T'
 $altTimeout = Join-Path $logDir 'd34-runtime-timeout.json'
 $cfgObj = Get-Content $mainCfg -Raw | ConvertFrom-Json
 $cfgObj.Documents.OcrExecutable = 'C:\Users\NCELL-DEV-020\AppData\Local\Temp\opencode\d34-bin\d34sleep.exe'
@@ -793,6 +831,7 @@ Check 'T1 OCR pendurado falha como extraction-timeout (distinto de extractor-fai
 Get-Process d34sleep -EA SilentlyContinue | Stop-Process -Force -EA SilentlyContinue
 
 # ---------- N. executaveis ausentes (config alternativa sem OCR/renderer) ----------
+Ensure-Stack 'inicio da fase N'
 $altNoOcr = Join-Path $logDir 'd34-runtime-no-ocr.json'
 $docsAlt = @{}
 foreach ($prop in $cfgObj.Documents.PSObject.Properties) { if ($prop.Name -ne 'OcrExecutable' -and $prop.Name -ne 'PdfRenderExecutable') { $docsAlt[$prop.Name] = $prop.Value } }
