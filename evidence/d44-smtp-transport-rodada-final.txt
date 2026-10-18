@@ -1,5 +1,5 @@
 ﻿=== D-OC44 F-2: ensaio do transporte SMTP real ===
-inicio=2026-10-18T13:45:41.1601596-03:00 banco=odca_smtp_rehearsal porta=2537 remetente=odca-rehearsal@rehearsal.local
+inicio=2026-10-18T14:13:20.2916273-03:00 banco=odca_smtp_rehearsal porta=2537 remetente=odca-rehearsal@rehearsal.local
 CHECK build do worker (Debug)                                  ok 
 CHECK banco de ensaio migrado                                  ok max_version=61
 CHECK sink SMTP local pronto                                   ok porta=2537
@@ -37,23 +37,23 @@ LOG[worker-b.out.log]       Hosting environment: Development
 LOG[worker-b.out.log] info: Microsoft.Hosting.Lifetime[0]
 LOG[worker-b.out.log]       Content root path: C:\MNSOFT\odcasolutions
 LOG[worker-b.out.log] warn: Odca.Worker.Worker[0]
-LOG[worker-b.out.log]       Falha controlada no envio 57329901-3244-4fdb-be5d-82daad253251 correlation=b1f00000-0000-4000-8000-000000000001: Failure sending mail.
+LOG[worker-b.out.log]       Falha controlada no envio ae22fd8d-0360-4230-b159-558a68b39787 correlation=b1f00000-0000-4000-8000-000000000001: Failure sending mail.
 --- worker-b.err.log (ultimas 30 linhas) ---
 --- sink.log (ultimas 30 linhas) ---
-LOG[sink.log] [2026-10-18T16:45:45.911Z] SINK-READY port=2537 inbox=C:\Users\NCELL-~1\AppData\Local\Temp\opencode\evidence\d44-smtp-rehearsal-20261018-134540\inbox
-LOG[sink.log] [2026-10-18T16:45:52.312Z] C nova conexÃ£o 127.0.0.1:52137
-LOG[sink.log] [2026-10-18T16:45:52.315Z] S: 220 odca-smtp-sink ESMTP ready
-LOG[sink.log] [2026-10-18T16:45:52.319Z] C: EHLO DESKTOP-CK86BSC
-LOG[sink.log] [2026-10-18T16:45:52.322Z] S: 250-odca-smtp-sink ESMTP | 250 8BITMIME
-LOG[sink.log] [2026-10-18T16:45:52.326Z] C: MAIL FROM:<odca-rehearsal@rehearsal.local>
-LOG[sink.log] [2026-10-18T16:45:52.328Z] S: 250 OK
-LOG[sink.log] [2026-10-18T16:45:52.331Z] C: RCPT TO:<ensaio-smtpp@rehearsal.test>
-LOG[sink.log] [2026-10-18T16:45:52.333Z] S: 250 OK
-LOG[sink.log] [2026-10-18T16:45:52.336Z] C: DATA
-LOG[sink.log] [2026-10-18T16:45:52.339Z] S: 354 End data with <CR><LF>.<CR><LF>
-LOG[sink.log] [2026-10-18T16:45:52.345Z] SINK-MSG seq=1 from=odca-rehearsal@rehearsal.local to=[ensaio-smtpp@rehearsal.test] bytes=442 file=01.eml
-LOG[sink.log] [2026-10-18T16:45:52.347Z] S: 250 OK: message queued
-LOG[sink.log] [2026-10-18T16:45:54.313Z] C erro 127.0.0.1:52137: read ECONNRESET
-LOG[sink.log] [2026-10-18T16:45:54.314Z] C fechou 127.0.0.1:52137
+LOG[sink.log] [2026-10-18T17:13:28.561Z] SINK-READY port=2537 inbox=C:\Users\NCELL-~1\AppData\Local\Temp\opencode\evidence\d44-smtp-rehearsal-20261018-141319\inbox
+LOG[sink.log] [2026-10-18T17:13:34.975Z] C nova conexÃ£o 127.0.0.1:51775
+LOG[sink.log] [2026-10-18T17:13:34.979Z] S: 220 odca-smtp-sink ESMTP ready
+LOG[sink.log] [2026-10-18T17:13:34.984Z] C: EHLO DESKTOP-CK86BSC
+LOG[sink.log] [2026-10-18T17:13:34.987Z] S: 250-odca-smtp-sink ESMTP | 250 8BITMIME
+LOG[sink.log] [2026-10-18T17:13:34.998Z] C: MAIL FROM:<odca-rehearsal@rehearsal.local>
+LOG[sink.log] [2026-10-18T17:13:35.003Z] S: 250 OK
+LOG[sink.log] [2026-10-18T17:13:35.006Z] C: RCPT TO:<ensaio-smtpp@rehearsal.test>
+LOG[sink.log] [2026-10-18T17:13:35.009Z] S: 250 OK
+LOG[sink.log] [2026-10-18T17:13:35.013Z] C: DATA
+LOG[sink.log] [2026-10-18T17:13:35.016Z] S: 354 End data with <CR><LF>.<CR><LF>
+LOG[sink.log] [2026-10-18T17:13:35.028Z] SINK-MSG seq=1 from=odca-rehearsal@rehearsal.local to=[ensaio-smtpp@rehearsal.test] bytes=442 file=01.eml
+LOG[sink.log] [2026-10-18T17:13:35.030Z] S: 250 OK: message queued
+LOG[sink.log] [2026-10-18T17:13:36.698Z] C erro 127.0.0.1:51775: read ECONNRESET
+LOG[sink.log] [2026-10-18T17:13:36.700Z] C fechou 127.0.0.1:51775
 SMTP-REHEARSAL-DONE checks=17 ok=17 fail=0
 

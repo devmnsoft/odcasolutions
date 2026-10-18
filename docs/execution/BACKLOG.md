@@ -573,3 +573,15 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [ ] CI oficial deste SHA: pendente - branch sem push; nenhum ID de execucao inventado.
 - [ ] Aceite humano da decisao de canal (SMTP vs sino in-app) e da infraestrutura de backup de producao: pendentes.
 - [x] Commit unico "sem push" fechando a Sprint 10.
+
+## Sprint 11 - dress rehearsal do piloto e veredito go/no-go (D-OC45) (18/10/2026)
+
+- [x] F-1: dress rehearsal consolidado - run-pilot-rehearsal.ps1 ganhou os estagios autocontidos S10-BACKUP (run-backup-restore.ps1, 26/26) e S10-SMTP (rehearse-smtp-transport.ps1, 17/17): um unico comando reproduz toda a cadeia atual C-SLA -> ACEITE -> D34-JORNADA -> D37-ASSINATURA -> D38-ATENDIMENTO -> D39-SEGURANCA -> S10-BACKUP -> S10-SMTP (~18 min em maquina compartilhada; falha de estagio nao interrompe; criterio = exit code proprio).
+- [x] Unica falha da rodada classificada (nao e do produto): D39-SEGURANCA saiu FAIL por assercao QA obsoleta no validate-d39-s5-web.ps1 (P0a "schema_migrations em v060", anterior a v061/S9; o checkpoint de seguranca apos W1b abortou a prova com exit 1 registrando a falha). Corrigida para v061 e reexecutada isolada (-Only D39-SEGURANCA) verde (exit=0, fails=0). Transcripts versionados: evidence/d45-dress-rehearsal-rodada-final.txt + evidence/d45-dress-rehearsal-d39-falha-classificada.txt + evidence/d45-dress-rehearsal-d39-rerun.txt.
+- [x] F-2: go/no-go formal item a item contra as pre-condicoes do runbook D-OC40 sec.7.1 e a matriz sec.6 - atendidas localmente: backup/restauracao ensaiada (26/26) e ensaio+auditoria de design verdes (d41 204/204 desde S9); pendentes externas: CI oficial do SHA, transporte de assinatura, canal de aviso, usuarios convidados + aprovacao da versao, decisao de politica de sessao de 15 min. Veredito: NO-GO formal com capacidade tecnica de GO, com checklist de 6 passos para virar GO (D-OC45 sec.4).
+- [x] GATE final sobre a arvore: builds Release+Debug estritos 0W/0E, Domain 389/389, suite -FreshDb 234/234 TEST-EXIT=0, assets exit=0 (10 assets, 19 chaves, 4 catalogos); d41 nao reexecutada de proposito (diff nao toca superficies auditadas).
+- [x] Doc D-OC45 consolidado e STATUS.md atualizado; .odca/progress.json inalterado (40% - sem CI oficial deste SHA nem aceite humano para creditar marco).
+- [ ] Limitacoes externas mantidas: CI oficial nunca verde publicada; provedor de assinatura "proposto, nao escolhido"; SMTP real ainda decisao (mecanismo comprovado em S10); deploy fisico multi-instancia e backup offsite de producao; janela legal de retencao "a definir"; divida i18n pt-first das areas operacionais.
+- [ ] CI oficial deste SHA: pendente - branch sem push; nenhum ID de execucao inventado.
+- [ ] Aceite humano (convite do piloto + aprovacao explicita da versao): pendente - decisao do responsavel.
+- [x] Commit unico "sem push" fechando a Sprint 11.

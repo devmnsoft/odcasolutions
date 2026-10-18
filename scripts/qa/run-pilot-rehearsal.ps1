@@ -6,6 +6,10 @@
 #   D37-ASSINATURA validate-d37-signature-web.ps1     (assinatura com envelope externo - S3)
 #   D38-ATENDIMENTO validate-d38-s4-web.ps1           (atendimento/avisos/prazos - S4)
 #   D39-SEGURANCA  validate-d39-s5-web.ps1            (reautenticacao MFA + suporte - S5)
+#   S10-BACKUP     run-backup-restore.ps1             (backup/restore real c/ paridade fonte x restaurado - S10/D-OC44; autocontido)
+#   S10-SMTP       rehearse-smtp-transport.ps1        (transporte SMTP por protocolo real, worker real - S10/D-OC44; autocontido)
+# S11/D-OC45 acrescentou os dois estagios S10: o ensaio consolidado passa a ser o DRESS REHEARSAL
+# da candidata final (todas as provas atuais numa unica execucao sequencial).
 # Cada estagio sobe/derra a propria stack e grava o proprio transcript em evidence/; uma falha de
 # estagio NAO interrompe o ensaio (objetivo: fotografia completa para classificacao). O critério
 # por estagio e o proprio exit code (aceite da matriz: linha de resumo PASS/FAIL/BLOCKED).
@@ -44,7 +48,9 @@ $stages = @(
   @{ Id = 'D34-JORNADA';   Script = 'validate-d34-an-web.ps1';        Mode = 'exit' },
   @{ Id = 'D37-ASSINATURA'; Script = 'validate-d37-signature-web.ps1'; Mode = 'exit' },
   @{ Id = 'D38-ATENDIMENTO'; Script = 'validate-d38-s4-web.ps1';      Mode = 'exit' },
-  @{ Id = 'D39-SEGURANCA'; Script = 'validate-d39-s5-web.ps1';        Mode = 'exit' }
+  @{ Id = 'D39-SEGURANCA'; Script = 'validate-d39-s5-web.ps1';        Mode = 'exit' },
+  @{ Id = 'S10-BACKUP';    Script = 'run-backup-restore.ps1';          Mode = 'exit' },
+  @{ Id = 'S10-SMTP';      Script = 'rehearse-smtp-transport.ps1';     Mode = 'exit' }
 )
 
 if ($Only) {

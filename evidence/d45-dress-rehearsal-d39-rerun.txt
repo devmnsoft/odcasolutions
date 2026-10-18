@@ -1,0 +1,26 @@
+﻿[PASS] P0 binarios Debug presentes (api/web) 
+[PASS] P0a schema_migrations em v061 max=61
+[PASS] P0b superadministrador sintetico da prova pronto DELETE 0 DELETE 0
+Nenhum processo ODCA comprovadamente pertencente a 'C:\MNSOFT\odcasolutions' foi encontrado.
+[PASS] S1 api pronta 
+[PASS] S2 web pronta 
+[PASS] A1 login API superadmin exige inscricao MFA requiresMfaEnrollment=True
+[PASS] A2 inscricao MFA devolveu chave manual manualKey len=32
+[PASS] A3 confirmacao MFA emitiu token verificado mfaVerified=True tok_len=877
+[PASS] W1a login web do superadmin redirecionou para o desafio MFA 302 /mfa/desafio
+[PASS] W1b desafio MFA resolvido e sessao web estabelecida challenge=True cookie=True
+[PASS] W2 pagina de sessoes de suporte carrega em pt-BR len=16314
+[PASS] W2b navegacao de plataforma linka a area de suporte 
+[PASS] W3 abrir sessao de suporte (fresca) confirma na pagina 302 /administracao/suporte-sessoes
+[PASS] W3b sessao ativa + evento started + audit com ator real active=1 started=1 audit=1
+[PASS] W4 estender +15 min (expiracao avanca, sem retroceder) code=302 delta_min=15
+[PASS] W4b evento extended + audit extended com ator real ev=1 audit=1
+[PASS] W5 encerrar (terminal, ator real) code=302 status=ended ev=1 audit=1
+[PASS] F1a escrita stale redireciona para o desafio MFA preservando o returnUrl 302 
+/mfa/desafio?returnUrl=%2Fadministracao%2Fsuporte-sessoes%2Fabrir
+[PASS] F1b desafio resolvido devolve ao ponto de origem returnUrl=/administracao/suporte-sessoes/abrir
+[PASS] F1c apos reautenticacao a mesma escrita tem sucesso code=302 active=1 opened_audit=2
+[PASS] F2 escrita stale na API responde 403 puro status=403 body={"type":"https://tools.ietf.org/html/rfc9110#section-1
+5.5.4","title":"Forbidden","status":403,"traceId":"0HNPD7DGS7FM8:0
+[PASS] F2b leitura nao exige MFA recente (lista segue 200) status=200
+=== D39 WEB PROOF: fails=0 (evidence: C:\Users\NCELL-DEV-020\AppData\Local\Temp\opencode\evidence\d39-proof.txt) ===

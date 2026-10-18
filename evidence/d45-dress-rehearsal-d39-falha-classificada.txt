@@ -1,0 +1,11 @@
+﻿[PASS] P0 binarios Debug presentes (api/web) 
+[FAIL] P0a schema_migrations em v060 max=61
+[PASS] P0b superadministrador sintetico da prova pronto DELETE 0 DELETE 0
+Nenhum processo ODCA comprovadamente pertencente a 'C:\MNSOFT\odcasolutions' foi encontrado.
+[PASS] S1 api pronta 
+[PASS] S2 web pronta 
+[PASS] A1 login API superadmin exige inscricao MFA requiresMfaEnrollment=True
+[PASS] A2 inscricao MFA devolveu chave manual manualKey len=32
+[PASS] A3 confirmacao MFA emitiu token verificado mfaVerified=True tok_len=877
+[PASS] W1a login web do superadmin redirecionou para o desafio MFA 302 /mfa/desafio
+[PASS] W1b desafio MFA resolvido e sessao web estabelecida challenge=True cookie=True
