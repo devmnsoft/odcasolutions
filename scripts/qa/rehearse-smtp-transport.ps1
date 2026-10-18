@@ -8,10 +8,15 @@
 #   fase negativa: com o sink parado, a tentativa falha de forma CONTROLADA (status nao
 #     'sent', attempt_count>=1, last_error_code populado) e o lembrete in-app continua criado.
 # Nenhum fornecedor externo e usado; o provedor real segue decisao externa registrada.
-# Uso: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/qa/rehearse-smtp-transport.ps1 [-SinkPort 2537] [-KeepDatabase]
+# S12 (D-OC46): com -RecipientLanguage (en-US|fr-FR|es-ES) a prova cobre tambem a cadeia
+# de idioma do destinatario — preferencia semeada -> outbox.language (v062) -> titulo
+# in-app da funcao SQL -> corpo/assunto SMTP no idioma. Sem o parametro o fluxo e
+# identico ao basico pt-BR do S10.
+# Uso: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/qa/rehearse-smtp-transport.ps1 [-SinkPort 2537] [-KeepDatabase] [-RecipientLanguage en-US|fr-FR|es-ES]
 param(
     [int]$SinkPort = 2537,
-    [switch]$KeepDatabase
+    [switch]$KeepDatabase,
+    [string]$RecipientLanguage = ''
 )
 
 $ErrorActionPreference = 'Continue'
@@ -24,6 +29,11 @@ if (-not $env:PGPASSWORD) { $env:PGPASSWORD = '123456' }
 $db = 'odca_smtp_rehearsal'
 $email = 'ensaio-smtpp@rehearsal.test'
 $sender = 'odca-rehearsal@rehearsal.local'
+if ($RecipientLanguage) { $RecipientLanguage = $RecipientLanguage.Trim() }
+if ($RecipientLanguage -ne '' -and $RecipientLanguage -notin @('en-US', 'fr-FR', 'es-ES')) {
+    throw "RecipientLanguage deve ser vazio (padrao pt-BR), en-US, fr-FR ou es-ES (recebido '$RecipientLanguage')."
+}
+$hasLang = $RecipientLanguage -ne ''
 
 function Resolve-PgBinary {
     param([Parameter(Mandatory)][string]$Name)
@@ -115,7 +125,7 @@ Start-Sleep -Milliseconds 500
 
 try {
     LogT "=== D-OC44 F-2: ensaio do transporte SMTP real ==="
-    LogT "inicio=$(Get-Date -Format o) banco=$db porta=$SinkPort remetente=$sender"
+    LogT ("inicio={0} banco={1} porta={2} remetente={3} idioma_destinatario={4}" -f (Get-Date -Format o), $db, $SinkPort, $sender, $(if ($hasLang) { $RecipientLanguage } else { 'default(pt-BR)' }))
 
     # 1) worker compilado (Debug, idempotente).
     & dotnet build (Join-Path $repoRoot 'src\Odca.Worker') -c Debug --nologo -v m 2>&1 | Out-Null
@@ -126,7 +136,9 @@ try {
     Invoke-Psql 'postgres' "create database $db;" | Out-Null
     & $psql '-h' $pgHost '-U' $pgUser '-d' $db '-q' '-v' 'ON_ERROR_STOP=1' '-f' (Join-Path $repoRoot 'database\odca.sql') 2>&1 | Out-Null
     $maxVersion = Invoke-Psql $db 'select max(version) from odca.schema_migrations;'
-    Check 'banco de ensaio migrado' ($maxVersion -ge '61') "max_version=$maxVersion"
+    # S12 (D-OC46): o worker so grava/le o body no idioma do destinatario a partir da v062
+    # (coluna notification_outbox.language), entao o banco de ensaio precisa dela.
+    Check 'banco de ensaio migrado' ($maxVersion -ge '62') "max_version=$maxVersion"
 
     # 3) sink SMTP local (MTA sintético).
     $sinkProc = Start-Process $node.Source `
@@ -166,6 +178,12 @@ COMMIT;
     Invoke-Psql $db $seed | Out-Null
     Check 'cenario sintetico semeado' ($true) 'tenant/usuario/contrato/obrigacao/lembrete/canal_email'
 
+    if ($hasLang) {
+        # S12 (D-OC46): preferencia de idioma do destinatario (v062) — ASCII seguro no banco.
+        Invoke-Psql $db "INSERT INTO odca.user_notification_settings(tenant_id,user_id,preferred_language) VALUES('b1f00000-0000-4000-8000-000000000001','b1f00000-0000-4000-8000-0000000000a1','$RecipientLanguage');" | Out-Null
+        Check 'preferencia de idioma semeada (S12)' ($true) "preferred_language=$RecipientLanguage"
+    }
+
     # 5) worker real em modo SMTP (fase positiva).
     $workerA = Start-Worker 'worker-a'
     Start-Sleep -Seconds 2
@@ -177,6 +195,19 @@ COMMIT;
 
     $inApp = Invoke-Psql $db "select count(*) from odca.user_notifications where kind='obligation_due';"
     Check 'notificacao in-app criada no mesmo fluxo' ([int]$inApp -ge 1) "count=$inApp"
+
+    if ($hasLang) {
+        # S12 (D-OC46): o idioma viajou do enfileiramento ate o corpo da mensagem.
+        $outLang = Invoke-Psql $db "select coalesce(max(language),'-') from odca.notification_outbox where kind='obligation_due' and status='sent';"
+        Check 'idioma do destinatario gravado na outbox (v062)' ($outLang -eq $RecipientLanguage) "language=$outLang esperado=$RecipientLanguage"
+        $titlePrefix = switch ($RecipientLanguage) {
+            'en-US' { 'Contract obligation due: ' }
+            'fr-FR' { 'Obligation contractuelle: ' }
+            default { 'Obligacion contractual: ' }
+        }
+        $localizedTitles = Invoke-Psql $db "select count(*) from odca.user_notifications where kind='obligation_due' and title like '$titlePrefix%';"
+        Check 'titulo in-app no idioma do destinatario (funcao SQL)' ([int]$localizedTitles -ge 1) "prefixo='$titlePrefix' count=$localizedTitles"
+    }
 
     Stop-ProcessTree $workerA
 
@@ -195,9 +226,21 @@ COMMIT;
         $decoded = ''
         try { $decoded = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($bodyB64)) } catch { }
         Check 'link da plataforma no corpo decodificado' ($decoded -match '/minha-conta/notificacoes')
-        Check 'texto esperado presente no corpo' ($decoded -match 'na plataforma')
+        # S12 (D-OC46): em modo de idioma, valida o texto exato do idioma do destinatario
+        # (trechos ASCII seguros); sem o parametro, o comportamento e o do basico pt-BR.
+        if ($hasLang) {
+            $expectedText = switch ($RecipientLanguage) {
+                'en-US' { 'Open the link to view the notification on the platform.' }
+                'fr-FR' { 'Ouvrez le lien pour consulter la notification sur la plate' }
+                default { 'Abra el enlace para consultar la notifi' }
+            }
+            Check 'corpo SMTP no idioma do destinatario (S12)' ($decoded -match [regex]::Escape($expectedText))
+        } else {
+            Check 'texto esperado presente no corpo' ($decoded -match 'na plataforma')
+        }
         $nonAscii = @($decoded.ToCharArray() | Where-Object { [int]$_ -gt 127 }).Count
-        Check 'acentos sobreviveram ao transporte (sem perda por US-ASCII)' ($nonAscii -gt 0) "chars-nao-ascii=$nonAscii"
+        # O idioma en-US e inteiramente ASCII: sem acentos esperados, o checar passa por isso.
+        Check 'acentos sobreviveram ao transporte (sem perda por US-ASCII)' (($nonAscii -gt 0) -or ($RecipientLanguage -eq 'en-US')) "chars-nao-ascii=$nonAscii"
     }
     Stop-ProcessTree $sinkProc
 

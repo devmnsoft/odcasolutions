@@ -1,12 +1,14 @@
 using Dapper;
 using Microsoft.AspNetCore.DataProtection;
 using Npgsql;
+using Odca.Configuration.Localization;
 
 namespace Odca.Worker;
 
 public sealed class ObligationReminderWorker(
     NpgsqlDataSource dataSource,
     IDataProtectionProvider protectionProvider,
+    LocalizationService localizer,
     ILogger<ObligationReminderWorker> logger) : BackgroundService
 {
     private readonly Guid owner = Guid.NewGuid();
@@ -66,12 +68,17 @@ public sealed class ObligationReminderWorker(
 
             // D-OC34 B.10: assunto genérico por tipo — o texto livre da notificação em app pode
             // citar o contrato e não vai no subject SMTP.
-            const string title = "Lembrete de obrigação do contrato";
+            // D-OC46 (Sprint 12/F-1): subject e idioma no idioma preferido do destinatário
+            // (fallback pt-BR); o idioma viaja na outbox (v062) para o corpo SMTP.
+            var language = LocalizationService.ResolveCultureCode(await connection.ExecuteScalarAsync<string?>(new CommandDefinition(
+                "SELECT preferred_language FROM odca.user_notification_settings WHERE tenant_id=@tenantId AND user_id=@userId",
+                new { tenantId, userId }, transaction: tx, cancellationToken: ct)));
+            var title = localizer.T("notif.title.obligation_due_email", language);
 
             var protectedPayload = _protector.Protect(title);
             await connection.ExecuteAsync(new CommandDefinition(
-                "INSERT INTO odca.notification_outbox(tenant_id,invitation_id,kind,destination,protected_payload,source_id) VALUES(@tenantId,NULL,'obligation_due',@email,@payload,@sourceId) ON CONFLICT(source_id) WHERE source_id IS NOT NULL DO NOTHING",
-                new { tenantId, email, payload = protectedPayload, sourceId }, transaction: tx, cancellationToken: ct));
+                "INSERT INTO odca.notification_outbox(tenant_id,invitation_id,kind,destination,protected_payload,language,source_id) VALUES(@tenantId,NULL,'obligation_due',@email,@payload,@language,@sourceId) ON CONFLICT(source_id) WHERE source_id IS NOT NULL DO NOTHING",
+                new { tenantId, email, payload = protectedPayload, language, sourceId }, transaction: tx, cancellationToken: ct));
         }
         catch (Exception ex)
         {

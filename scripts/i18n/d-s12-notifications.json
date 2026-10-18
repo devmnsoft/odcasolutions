@@ -1,0 +1,116 @@
+{
+  "notif.title.signature_envelope_sent": {
+    "pt-BR": "Envelope de assinatura enviado",
+    "en-US": "Signature envelope sent",
+    "es-ES": "Sobre de firma enviado",
+    "fr-FR": "Envelope de signature envoyé"
+  },
+  "notif.title.signature_pending": {
+    "pt-BR": "Assinatura pendente",
+    "en-US": "Signature pending",
+    "es-ES": "Firma pendiente",
+    "fr-FR": "Signature en attente"
+  },
+  "notif.title.signature_completed": {
+    "pt-BR": "Assinatura concluída",
+    "en-US": "Signature completed",
+    "es-ES": "Firma completada",
+    "fr-FR": "Signature terminée"
+  },
+  "notif.title.review_assigned": {
+    "pt-BR": "Você recebeu uma solicitação de revisão",
+    "en-US": "You received a review request",
+    "es-ES": "Has recibido una solicitud de revisión",
+    "fr-FR": "Vous avez reçu une demande de révision"
+  },
+  "notif.title.review_approved": {
+    "pt-BR": "Revisão aprovada internamente",
+    "en-US": "Review approved internally",
+    "es-ES": "Revisión aprobada internamente",
+    "fr-FR": "Révision approuvée en interne"
+  },
+  "notif.title.review_changes_requested": {
+    "pt-BR": "Alterações solicitadas na revisão",
+    "en-US": "Changes requested on the review",
+    "es-ES": "Cambios solicitados en la revisión",
+    "fr-FR": "Modifications demandées sur la révision"
+  },
+  "notif.title.solicitation_opened": {
+    "pt-BR": "Nova solicitação registrada à plataforma",
+    "en-US": "New request registered with the platform",
+    "es-ES": "Nueva solicitud registrada a la plataforma",
+    "fr-FR": "Nouvelle demande enregistrée auprès de la plateforme"
+  },
+  "notif.title.solicitation_updated": {
+    "pt-BR": "Atualização da sua solicitação à plataforma",
+    "en-US": "Update on your platform request",
+    "es-ES": "Actualización de su solicitud a la plataforma",
+    "fr-FR": "Mise à jour de votre demande à la plateforme"
+  },
+  "notif.title.obligation_due_email": {
+    "pt-BR": "Lembrete de obrigação do contrato",
+    "en-US": "Contract obligation reminder",
+    "es-ES": "Recordatorio de obligación del contrato",
+    "fr-FR": "Rappel d'obligation du contrat"
+  },
+  "notif.title.renewal_due_email": {
+    "pt-BR": "Lembrete de renovação de contrato",
+    "en-US": "Contract renewal reminder",
+    "es-ES": "Recordatorio de renovación del contrato",
+    "fr-FR": "Rappel de renouvellement du contrat"
+  },
+  "notif.body.signature_envelope_sent": {
+    "pt-BR": "Um envelope externo de assinatura foi enviado para uma sua participação.",
+    "en-US": "An external signature envelope was sent for your participation.",
+    "es-ES": "Se envió un sobre de firma externo para una de sus participaciones.",
+    "fr-FR": "Un envelope de signature externe a été envoyé pour votre participation."
+  },
+  "notif.body.signature_pending": {
+    "pt-BR": "Há assinatura pendente em uma versão confirmada do contrato.",
+    "en-US": "A signature is pending on a confirmed contract version.",
+    "es-ES": "Hay una firma pendiente en una versión confirmada del contrato.",
+    "fr-FR": "Une signature est en attente sur une version confirmée du contrat."
+  },
+  "notif.body.signature_completed": {
+    "pt-BR": "Todos os participantes assinaram a versão confirmada do contrato.",
+    "en-US": "All participants signed the confirmed contract version.",
+    "es-ES": "Todos los participantes firmaron la versión confirmada del contrato.",
+    "fr-FR": "Tous les participants ont signé la version confirmée du contrat."
+  },
+  "notif.body.review_assigned_reassigned": {
+    "pt-BR": "Uma solicitação de revisão foi reatribuída a você.",
+    "en-US": "A review request was reassigned to you.",
+    "es-ES": "Una solicitud de revisión fue reasignada a usted.",
+    "fr-FR": "Une demande de révision vous a été réattribuée."
+  },
+  "notif.body.review_assigned_submitted": {
+    "pt-BR": "Uma solicitação de revisão aguarda sua decisão.",
+    "en-US": "A review request is waiting for your decision.",
+    "es-ES": "Una solicitud de revisión espera su decisión.",
+    "fr-FR": "Une demande de révision attend votre décision."
+  },
+  "notif.body.review_decided": {
+    "pt-BR": "Sua solicitação de revisão recebeu uma decisão.",
+    "en-US": "Your review request has received a decision.",
+    "es-ES": "Su solicitud de revisión ha recibido una decisión.",
+    "fr-FR": "Votre demande de révision a reçu une décision."
+  },
+  "notif.body.solicitation_opened": {
+    "pt-BR": "Uma nova solicitação aguarda triagem pela plataforma.",
+    "en-US": "A new request awaits platform triage.",
+    "es-ES": "Una nueva solicitud espera el triaje de la plataforma.",
+    "fr-FR": "Une nouvelle demande attend le tri de la plateforme."
+  },
+  "notif.body.solicitation_updated": {
+    "pt-BR": "A plataforma registrou uma atualização em sua solicitação.",
+    "en-US": "The platform recorded an update on your request.",
+    "es-ES": "La plataforma registró una actualización en su solicitud.",
+    "fr-FR": "La plateforme a enregistré une mise à jour sur votre demande."
+  },
+  "notif.body.smtp_link_sentence": {
+    "pt-BR": "Abra o link para consultar a notificação na plataforma.",
+    "en-US": "Open the link to view the notification on the platform.",
+    "es-ES": "Abra el enlace para consultar la notificación en la plataforma.",
+    "fr-FR": "Ouvrez le lien pour consulter la notification sur la plateformé."
+  }
+}

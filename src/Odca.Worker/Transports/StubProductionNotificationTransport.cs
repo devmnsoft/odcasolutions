@@ -18,7 +18,7 @@ public sealed class StubProductionNotificationTransport : INotificationTransport
         throw new InvalidOperationException("notification_provider_missing");
     }
 
-    public Task SendUserNotificationAsync(string destination, string subject, Uri link, CancellationToken cancellationToken)
+    public Task SendUserNotificationAsync(string destination, string subject, Uri link, string language, CancellationToken cancellationToken)
     {
         _logger.LogWarning(
             "Provedor de notificação de produção não configurado; notificação '{Subject}' não despachada.", subject);

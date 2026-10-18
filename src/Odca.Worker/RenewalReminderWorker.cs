@@ -3,6 +3,7 @@ using System.Text;
 using Dapper;
 using Microsoft.AspNetCore.DataProtection;
 using Npgsql;
+using Odca.Configuration.Localization;
 
 namespace Odca.Worker;
 
@@ -16,6 +17,7 @@ namespace Odca.Worker;
 public sealed class RenewalReminderWorker(
     NpgsqlDataSource dataSource,
     IDataProtectionProvider protectionProvider,
+    LocalizationService localizer,
     ILogger<RenewalReminderWorker> logger) : BackgroundService
 {
     private readonly string workerName = $"renewal-reminders@{Environment.MachineName}";
@@ -79,14 +81,19 @@ public sealed class RenewalReminderWorker(
 
             // D-OC34 B.10: assunto genérico por tipo — o título do lembrete em app pode citar o
             // contrato e não vai no subject SMTP.
-            const string title = "Lembrete de renovação de contrato";
+            // D-OC46 (Sprint 12/F-1): subject e idioma no idioma preferido do destinatário
+            // (fallback pt-BR); o idioma viaja na outbox (v062) para o corpo SMTP.
+            var language = LocalizationService.ResolveCultureCode(await connection.ExecuteScalarAsync<string?>(new CommandDefinition(
+                "SELECT preferred_language FROM odca.user_notification_settings WHERE tenant_id=@tenantId AND user_id=@userId",
+                new { tenantId, userId }, transaction: tx, cancellationToken: ct)));
+            var title = localizer.T("notif.title.renewal_due_email", language);
             // Identidade determinística (lembrete × destinatário): reprocessamento após
             // expiração de lease nunca duplica uma mensagem já aceita pela outbox.
             var sourceId = SourceIdFor(reminderId, userId);
             var protectedPayload = _protector.Protect(title);
             await connection.ExecuteAsync(new CommandDefinition(
-                "INSERT INTO odca.notification_outbox(tenant_id,invitation_id,kind,destination,protected_payload,source_id) VALUES(@tenantId,NULL,'renewal_due',@email,@payload,@sourceId) ON CONFLICT(source_id) WHERE source_id IS NOT NULL DO NOTHING",
-                new { tenantId, email, payload = protectedPayload, sourceId }, transaction: tx, cancellationToken: ct));
+                "INSERT INTO odca.notification_outbox(tenant_id,invitation_id,kind,destination,protected_payload,language,source_id) VALUES(@tenantId,NULL,'renewal_due',@email,@payload,@language,@sourceId) ON CONFLICT(source_id) WHERE source_id IS NOT NULL DO NOTHING",
+                new { tenantId, email, payload = protectedPayload, language, sourceId }, transaction: tx, cancellationToken: ct));
         }
         catch (Exception ex)
         {

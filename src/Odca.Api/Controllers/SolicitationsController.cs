@@ -151,6 +151,7 @@ public sealed class SolicitationsController(NpgsqlDataSource dataSource) : Contr
     {
         if (!TryReadSolicitation(data, out var solId, out var protocol, out var subject)) return;
         var protector = context.RequestServices.GetRequiredService<IDataProtector>();
+        var localizer = context.RequestServices.GetRequiredService<LocalizationService>();
         var logger = context.RequestServices.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>().CreateLogger("solicitations");
         var admins = (await c.QueryAsync<Guid>(new CommandDefinition(
             "SELECT id FROM odca.users WHERE is_platform_administrator AND NOT is_deleted ORDER BY id",
@@ -161,11 +162,13 @@ public sealed class SolicitationsController(NpgsqlDataSource dataSource) : Contr
             // D-OC38 (Sprint 4/F-1): sino para admins que também são membros ativos do tenant
             // (o helper ignora destinatários sem membership).
             var openedSource = NotificationEnqueue.DeterministicSource("solicitation.opened", solId, admin);
+            // D-OC46 (Sprint 12/F-1): título/corpo no idioma preferido do destinatário (fallback pt-BR).
+            var lang = await NotificationEnqueue.RecipientLanguageAsync(c, tenantId, actor, admin, ct);
             await NotificationEnqueue.EnqueueEmailAsync(c, tenantId, actor, admin, "solicitation_opened",
-                "Nova solicitação registrada à plataforma", protector,
+                localizer.T("notif.title.solicitation_opened", lang), protector,
                 openedSource, logger, ct);
             await NotificationEnqueue.EnqueueInAppAsync(c, tenantId, actor, admin, "solicitation_opened",
-                "Nova solicitação registrada à plataforma", "Uma nova solicitação aguarda triagem pela plataforma.",
+                localizer.T("notif.title.solicitation_opened", lang), localizer.T("notif.body.solicitation_opened", lang),
                 openedSource, logger, ct);
         }
     }
@@ -177,15 +180,18 @@ public sealed class SolicitationsController(NpgsqlDataSource dataSource) : Contr
         if (!data.TryGetProperty("openedBy", out var byEl) || byEl.ValueKind != JsonValueKind.String || !Guid.TryParse(byEl.GetString(), out var openedBy)) return;
         long version = data.TryGetProperty("rowVersion", out var rvEl) && rvEl.ValueKind == JsonValueKind.Number ? rvEl.GetInt64() : 0;
         var protector = context.RequestServices.GetRequiredService<IDataProtector>();
+        var localizer = context.RequestServices.GetRequiredService<LocalizationService>();
         var logger = context.RequestServices.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>().CreateLogger("solicitations");
         // D-OC34 B.10: assunto genérico por tipo (protocolo/assunto livres não vão no subject).
         // D-OC38 (Sprint 4/F-1): sino ao autor da solicitação com a mesma identidade deduplicada.
         var updatedSource = NotificationEnqueue.DeterministicSource("solicitation.updated", solId, version);
+        // D-OC46 (Sprint 12/F-1): título/corpo no idioma preferido do destinatário (fallback pt-BR).
+        var lang = await NotificationEnqueue.RecipientLanguageAsync(c, tenantId, actor, openedBy, ct);
         await NotificationEnqueue.EnqueueEmailAsync(c, tenantId, actor, openedBy, "solicitation_updated",
-            "Atualização da sua solicitação à plataforma", protector,
+            localizer.T("notif.title.solicitation_updated", lang), protector,
             updatedSource, logger, ct);
         await NotificationEnqueue.EnqueueInAppAsync(c, tenantId, actor, openedBy, "solicitation_updated",
-            "Atualização da sua solicitação à plataforma", "A plataforma registrou uma atualização em sua solicitação.",
+            localizer.T("notif.title.solicitation_updated", lang), localizer.T("notif.body.solicitation_updated", lang),
             updatedSource, logger, ct);
     }
 

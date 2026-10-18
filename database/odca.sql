@@ -6861,3 +6861,125 @@ VALUES(61,'Suporte: impersonacao profunda auditada (support_impersonations)','5e
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 061
+-- ODCA-MIGRATION 062 CHECKSUM 11168e2afba1b6d9449696aa52e88f294c1556372631bceefa19277528465380
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
+
+DO $odca$
+DECLARE
+    expected_checksum constant char(64) := '11168e2afba1b6d9449696aa52e88f294c1556372631bceefa19277528465380';
+    recorded_checksum char(64);
+BEGIN
+    SELECT checksum INTO recorded_checksum FROM odca.schema_migrations WHERE version = 62;
+    IF recorded_checksum IS NOT NULL AND recorded_checksum <> expected_checksum THEN
+        RAISE EXCEPTION 'ODCA migration 062 checksum mismatch: stored %, expected %', recorded_checksum, expected_checksum;
+    END IF;
+END
+$odca$;
+
+-- D-OC46 (Sprint 12/F-1): idioma do conteudo das notificacoes por preferencia do
+-- destinatario (odca.user_notification_settings, fallback pt-BR). A coluna language
+-- registra no enfileiramento o idioma normalizado: o subject ja chega localizado no
+-- payload protegido e o transporte compo o corpo SMTP nesse idioma. As funcoes que
+-- materializam lembretes em app (obrigacao/renovacao) passam a escrever titulo/corpo,
+-- incluindo o formato da data, no idioma do destinatario (camada canonica pt-BR como padrao).
+
+ALTER TABLE odca.notification_outbox
+  ADD COLUMN IF NOT EXISTS language varchar(16) NOT NULL DEFAULT 'pt-BR';
+ALTER TABLE odca.notification_outbox
+  ADD CONSTRAINT notification_outbox_language_check CHECK (language IN ('pt-BR','en-US','fr-FR','es-ES'));
+
+-- claim_notification volta o idioma gravado no enfileiramento para o transporte.
+DROP FUNCTION IF EXISTS odca.claim_notification(text,integer);
+CREATE OR REPLACE FUNCTION odca.claim_notification(worker_id text, max_attempts integer DEFAULT 5)
+RETURNS TABLE(id uuid, tenant_id uuid, invitation_id uuid, destination text, protected_payload text, lease_token uuid, language varchar)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, odca
+AS $$
+DECLARE
+  new_lease_token uuid := gen_random_uuid();
+BEGIN
+  RETURN QUERY
+  UPDATE odca.notification_outbox o
+     SET status = 'leased',
+         lease_until = now() + interval '2 minutes',
+         attempt_count = attempt_count + 1,
+         lease_token = new_lease_token,
+         lease_owner = worker_id
+    WHERE o.id = (
+      SELECT q.id
+        FROM odca.notification_outbox q
+       WHERE (q.status = 'pending' OR (q.status = 'leased' AND q.lease_until < now()))
+         AND q.available_at <= now()
+         AND q.attempt_count < GREATEST(1, coalesce(max_attempts, 5))
+       ORDER BY q.created_at
+       FOR UPDATE SKIP LOCKED
+       LIMIT 1)
+   RETURNING o.id, o.tenant_id, o.invitation_id, o.destination, o.protected_payload, o.lease_token, o.language;
+END;
+$$;
+REVOKE ALL ON FUNCTION odca.claim_notification(text,integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.claim_notification(text,integer) TO odca_app;
+
+-- complete_obligation_reminder: titulo/corpo no idioma preferido do destinatario, com o
+-- formato da data por idioma (en-US MM/dd/yyyy; demais dd/MM/yyyy).
+CREATE OR REPLACE FUNCTION odca.complete_obligation_reminder(p_id uuid,p_token uuid) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,odca AS $$ DECLARE changed integer;BEGIN INSERT INTO odca.user_notifications(tenant_id,user_id,kind,title,body,obligation_id) SELECT r.tenant_id,r.recipient_id,'obligation_due',CASE coalesce(s.preferred_language,'pt-BR') WHEN 'en-US' THEN 'Contract obligation due: '||o.title WHEN 'fr-FR' THEN 'Obligation contractuelle: '||o.title WHEN 'es-ES' THEN 'Obligacion contractual: '||o.title ELSE 'Prazo contratual: '||o.title END,CASE coalesce(s.preferred_language,'pt-BR') WHEN 'en-US' THEN 'Due on '||to_char(o.due_date,'MM/DD/YYYY')||'.' WHEN 'fr-FR' THEN 'Echeance le '||to_char(o.due_date,'DD/MM/YYYY')||'.' WHEN 'es-ES' THEN 'Vence el '||to_char(o.due_date,'DD/MM/YYYY')||'.' ELSE 'Vencimento em '||to_char(o.due_date,'DD/MM/YYYY')||'.' END,o.id FROM odca.obligation_reminders r JOIN odca.contract_obligations o ON o.id=r.obligation_id AND o.tenant_id=r.tenant_id LEFT JOIN odca.user_notification_settings s ON s.tenant_id=r.tenant_id AND s.user_id=r.recipient_id WHERE r.id=p_id AND r.lease_token=p_token AND r.status='leased' ON CONFLICT DO NOTHING;UPDATE odca.obligation_reminders SET status='delivered',delivered_at=now(),lease_until=NULL WHERE id=p_id AND lease_token=p_token AND status='leased';GET DIAGNOSTICS changed=ROW_COUNT;RETURN changed=1;END;$$;
+REVOKE ALL ON FUNCTION odca.complete_obligation_reminder(uuid,uuid) FROM PUBLIC;GRANT EXECUTE ON FUNCTION odca.complete_obligation_reminder(uuid,uuid) TO odca_app;
+
+-- complete_renewal_reminder: mesmo padrao, resolvido por destinatario (um contrato pode
+-- notificar varios membros com preferencias diferentes).
+CREATE OR REPLACE FUNCTION odca.complete_renewal_reminder(p_id uuid, p_token uuid)
+RETURNS TABLE(recipient_id uuid, title text)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, odca
+AS $$
+BEGIN
+  UPDATE odca.renewal_reminders
+     SET status = 'delivered',
+         delivered_at = now(),
+         lease_token = NULL,
+         lease_until = NULL
+    WHERE id = p_id
+      AND lease_token = p_token
+      AND status = 'pending';
+   IF NOT FOUND THEN
+     RETURN;
+   END IF;
+
+   RETURN QUERY
+   INSERT INTO odca.user_notifications(tenant_id, user_id, kind, title, body)
+   SELECT r.tenant_id, u.user_id, 'renewal_due',
+          CASE coalesce(s.preferred_language,'pt-BR')
+             WHEN 'en-US' THEN 'Contract renewal: ' || c.title
+             WHEN 'fr-FR' THEN 'Renouvellement du contrat : ' || c.title
+             WHEN 'es-ES' THEN 'Renovacion contractual: ' || c.title
+             ELSE 'Renovacao contratual: ' || c.title END,
+          CASE coalesce(s.preferred_language,'pt-BR')
+             WHEN 'en-US' THEN 'The term ends on ' || to_char(c.end_date, 'MM/DD/YYYY') || '.'
+             WHEN 'fr-FR' THEN 'La validite se termine le ' || to_char(c.end_date, 'DD/MM/YYYY') || '.'
+             WHEN 'es-ES' THEN 'La vigencia termina el ' || to_char(c.end_date, 'DD/MM/YYYY') || '.'
+             ELSE 'A vigencia termina em ' || to_char(c.end_date, 'DD/MM/YYYY') || '.' END
+     FROM odca.renewal_reminders r
+     JOIN odca.contracts c ON c.tenant_id = r.tenant_id AND c.id = r.contract_id
+     CROSS JOIN LATERAL (
+       SELECT m.user_id
+         FROM odca.memberships m
+        WHERE m.tenant_id = r.tenant_id
+          AND m.status = 'active'
+          AND odca.tenant_actor_has_permission(m.user_id, r.tenant_id, 'tenant.renewals.read')
+     ) AS u
+     LEFT JOIN odca.user_notification_settings s ON s.tenant_id = r.tenant_id AND s.user_id = u.user_id
+    WHERE r.id = p_id
+    RETURNING user_notifications.user_id AS recipient_id, user_notifications.title::text;
+END;
+$$;
+REVOKE ALL ON FUNCTION odca.complete_renewal_reminder(uuid,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.complete_renewal_reminder(uuid,uuid) TO odca_app;
+
+INSERT INTO odca.schema_migrations(version,name,checksum)
+VALUES(62,'Notificacoes: idioma do conteudo por preferencia do destinatario (outbox.language)','11168e2afba1b6d9449696aa52e88f294c1556372631bceefa19277528465380')
+ON CONFLICT(version) DO NOTHING;
+COMMIT;
+-- ODCA-END 062

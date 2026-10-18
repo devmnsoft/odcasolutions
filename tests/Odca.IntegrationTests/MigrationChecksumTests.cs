@@ -631,7 +631,7 @@ public sealed class MigrationChecksumTests
         // D-OC43 (Sprint 9/F-1): impersonacao profunda na janela de suporte — sessao
         // dedicada por concessao (revogacao instantanea via sid), no maximo uma ativa
         // por janela, expiracao nunca alem da janela, eventos/auditoria com o operador real.
-        Assert.True(string.Equals(snapshot, canonical, StringComparison.Ordinal), "o release v061 precisa ser byte-idêntico ao canônico");
+        Assert.DoesNotContain("ODCA-MIGRATION 062", snapshot, StringComparison.Ordinal);
         var block = MigrationBlock(canonical, 61);
         Assert.Contains("CREATE TABLE IF NOT EXISTS odca.support_impersonations(", block, StringComparison.Ordinal);
         Assert.Contains("support_impersonations_active_uq ON odca.support_impersonations(session_id) WHERE ended_at IS NULL", block, StringComparison.Ordinal);
@@ -641,5 +641,31 @@ public sealed class MigrationChecksumTests
         Assert.Contains("GRANT EXECUTE ON FUNCTION odca.end_support_impersonation(uuid,uuid,boolean) TO odca_app", block, StringComparison.Ordinal);
         Assert.Contains("GRANT EXECUTE ON FUNCTION odca.support_impersonation_is_valid(uuid) TO odca_app", block, StringComparison.Ordinal);
         Assert.Contains("REVOKE ALL ON odca.support_impersonations FROM odca_app", block, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReleaseV062AddsRecipientLanguageNotificationContentWithoutRewritingEarlierMigrations()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var previous = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v061.sql")).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v062.sql")).Replace("\r\n", "\n");
+        DatabaseMigrator.ValidateChecksums(previous);
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        DatabaseMigrator.ValidateChecksums(canonical);
+        for (var version = 1; version <= 61; version++)
+            Assert.Equal(MigrationBlock(previous, version), MigrationBlock(canonical, version));
+        // D-OC46 (Sprint 12/F-1): idioma do conteudo das notificacoes por preferencia do
+        // destinatario — a outbox preserva o idioma normalizado no enfileiramento (subject
+        // ja chega localizado no payload; o transporte compo o corpo nesse idioma) e as
+        // funcoes de lembrete escrevem titulo/corpo+formato de data no idioma do alvo.
+        Assert.True(string.Equals(snapshot, canonical, StringComparison.Ordinal), "o release v062 precisa ser byte-idêntico ao canônico");
+        var block = MigrationBlock(canonical, 62);
+        Assert.Contains("ADD COLUMN IF NOT EXISTS language varchar(16) NOT NULL DEFAULT 'pt-BR'", block, StringComparison.Ordinal);
+        Assert.Contains("CHECK (language IN ('pt-BR','en-US','fr-FR','es-ES'))", block, StringComparison.Ordinal);
+        Assert.Contains("lease_token uuid, language varchar)", block, StringComparison.Ordinal);
+        Assert.Contains("o.lease_token, o.language;", block, StringComparison.Ordinal);
+        Assert.Contains("odca.user_notification_settings s ON s.tenant_id=r.tenant_id AND s.user_id=r.recipient_id", block, StringComparison.Ordinal);
+        Assert.Contains("'Due on '||to_char(o.due_date,'MM/DD/YYYY')", block, StringComparison.Ordinal);
+        Assert.Contains("VALUES(62,'Notificacoes: idioma do conteudo por preferencia do destinatario (outbox.language)','11168e2afba1b6d9449696aa52e88f294c1556372631bceefa19277528465380')", block, StringComparison.Ordinal);
     }
 }

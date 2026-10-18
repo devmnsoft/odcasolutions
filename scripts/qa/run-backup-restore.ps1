@@ -2,13 +2,16 @@
 # Executa pg_dump (formato custom/comprimido) do banco de prova, restaura para um banco
 # novo e compara métricas de integridade entre os dois (versão de migração, contagens de
 # tabelas-chave, fingerprints md5 por id ordenado e visibilidade RLS como odca_app sem
-# contexto de tenant). O dump em si fica apenas em TEMP (binário); o transcript versionado
-# fica em evidence/d44-backup-restore-rodada-final.txt.
-# Uso: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/qa/run-backup-restore.ps1 [-SourceDatabase <db>] [-RestoreDatabase <db>] [-KeepRestore]
+# contexto de tenant). O dump em si fica apenas em TEMP (binário) — salvo com
+# -KeepDumpDir, que preserva uma cópia com carimbo de data/hora fora do repositório
+# (procedimento de backup pré-piloto do D-OC46/F-2). O transcript versionado fica em
+# evidence/d44-backup-restore-rodada-final.txt.
+# Uso: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/qa/run-backup-restore.ps1 [-SourceDatabase <db>] [-RestoreDatabase <db>] [-KeepRestore] [-KeepDumpDir <dir>]
 param(
     [string]$SourceDatabase = 'odca_test_disposable',
     [string]$RestoreDatabase = 'odca_restore_check_s10',
-    [switch]$KeepRestore
+    [switch]$KeepRestore,
+    [string]$KeepDumpDir = ''
 )
 
 $ErrorActionPreference = 'Continue'
@@ -126,6 +129,15 @@ try {
     # o que prova que a função roda sem erro de permissão/esquema apos o restore).
     $fnOk = Invoke-Psql $RestoreDatabase 'select odca.support_impersonation_is_valid(gen_random_uuid())::text;'
     Check 'funcao security definer executavel apos restore' ($fnOk -match '^(f|false)$') "resultado=$fnOk"
+
+    # D-OC46 (Sprint 12/F-2): backup pré-piloto — preserva o dump validado fora do
+    # repositório, com carimbo de data/hora, somente apos TODOS os checks de paridade.
+    if (-not [string]::IsNullOrWhiteSpace($KeepDumpDir)) {
+        New-Item -ItemType Directory -Force -Path $KeepDumpDir | Out-Null
+        $keepName = "$SourceDatabase-pre-pilot-$(Get-Date -Format 'yyyy-MM-dd_HHmmss').dump"
+        Copy-Item -LiteralPath $dumpFile -Destination (Join-Path $KeepDumpDir $keepName)
+        Check 'dump preservado em KeepDumpDir' ($true) "$KeepDumpDir\$keepName bytes=$dumpBytes sha256=$dumpSha"
+    }
 
     if ($KeepRestore) {
         LogT "banco de restauracao preservado: $RestoreDatabase"

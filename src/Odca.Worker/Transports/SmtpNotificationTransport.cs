@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Mail;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Odca.Configuration.Localization;
 
 namespace Odca.Worker.Transports;
 
@@ -19,9 +20,10 @@ public sealed class SmtpNotificationTransport : INotificationTransport, IDisposa
     private readonly SmtpClient _client;
     private readonly string _senderAddress;
     private readonly string? _senderName;
+    private readonly LocalizationService _localizer;
     private readonly ILogger<SmtpNotificationTransport> _logger;
 
-    public SmtpNotificationTransport(IConfiguration configuration, ILogger<SmtpNotificationTransport> logger)
+    public SmtpNotificationTransport(IConfiguration configuration, LocalizationService localizer, ILogger<SmtpNotificationTransport> logger)
     {
         var section = configuration.GetSection("Notifications:Smtp");
         var host = section["Host"] ?? string.Empty;
@@ -48,6 +50,7 @@ public sealed class SmtpNotificationTransport : INotificationTransport, IDisposa
 
         _senderAddress = senderAddress;
         _senderName = string.IsNullOrWhiteSpace(section["SenderName"]) ? null : section["SenderName"];
+        _localizer = localizer;
         _logger = logger;
     }
 
@@ -57,9 +60,12 @@ public sealed class SmtpNotificationTransport : INotificationTransport, IDisposa
         return SendAsync(destination, "Convite de acesso — ODCA Solutions", body, cancellationToken);
     }
 
-    public Task SendUserNotificationAsync(string destination, string subject, Uri link, CancellationToken cancellationToken)
+    public Task SendUserNotificationAsync(string destination, string subject, Uri link, string language, CancellationToken cancellationToken)
     {
-        var body = $"{link}\n\nAbra o link para consultar a notificação na plataforma.";
+        // D-OC46 (Sprint 12/F-1): sentença de apoio no idioma do destinatário (fallback pt-BR);
+        // o subject já foi composto localizado no enfileiramento.
+        var sentence = _localizer.T("notif.body.smtp_link_sentence", language);
+        var body = $"{link}\n\n{sentence}";
         return SendAsync(destination, subject, body, cancellationToken);
     }
 

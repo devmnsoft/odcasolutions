@@ -60,7 +60,8 @@ public sealed class Worker(
                    invitation_id AS "InvitationId",
                    destination AS "Destination",
                    protected_payload AS "ProtectedPayload",
-                   lease_token AS "LeaseToken"
+                   lease_token AS "LeaseToken",
+                   language AS "Language"
                FROM odca.claim_notification(@worker, @maxAttempts);
             """,
             new { worker = Environment.MachineName, maxAttempts = _maxAttempts },
@@ -122,7 +123,10 @@ public sealed class Worker(
     {
         var subject = _notifProtector.Unprotect(item.ProtectedPayload);
         var link = new Uri(baseUri, "/minha-conta/notificacoes");
-        await transport.SendUserNotificationAsync(item.Destination, subject, link, ct);
+        // D-OC46 (Sprint 12/F-1): idioma gravado no enfileiramento (v062); linhas antigas
+        // ou de convite sem o valor caem no canônico pt-BR.
+        var language = string.IsNullOrWhiteSpace(item.Language) ? "pt-BR" : item.Language;
+        await transport.SendUserNotificationAsync(item.Destination, subject, link, language, ct);
     }
 
     private static string NormalizeErrorCode(Exception ex)
@@ -146,5 +150,6 @@ public sealed class Worker(
         Guid? InvitationId,
         string Destination,
         string ProtectedPayload,
-        Guid LeaseToken);
+        Guid LeaseToken,
+        string? Language = null);
 }

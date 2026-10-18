@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Npgsql;
+using Odca.Configuration.Localization;
 
 namespace Odca.Api;
 
@@ -21,6 +22,52 @@ namespace Odca.Api;
 /// </summary>
 public static partial class NotificationEnqueue
 {
+    /// <summary>
+    /// D-OC46 (Sprint 12/F-1): idioma preferido do destinatário nas notificações
+    /// (odca.user_notification_settings), normalizado com fallback pt-BR. Na variante
+    /// com transação o chamador já definiu o GUC do tenant; sem transação abre uma
+    /// transação curta com o GUC (mesmo padrão dos enqueues sem NpgsqlTransaction).
+    /// Nunca lança: resolução indisponível cai em pt-BR, que é a camada canônica.
+    /// </summary>
+    public static async Task<string> RecipientLanguageAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction? tx,
+        Guid tenantId,
+        Guid userId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var raw = await connection.ExecuteScalarAsync<string?>(new CommandDefinition(
+                "SELECT preferred_language FROM odca.user_notification_settings WHERE tenant_id=@tenantId AND user_id=@userId",
+                new { tenantId, userId }, transaction: tx, cancellationToken: ct));
+            return LocalizationService.ResolveCultureCode(raw) ?? "pt-BR";
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch { return "pt-BR"; }
+    }
+
+    public static async Task<string> RecipientLanguageAsync(
+        NpgsqlConnection connection,
+        Guid tenantId,
+        Guid actorId,
+        Guid userId,
+        CancellationToken ct)
+    {
+        try
+        {
+            await using var tx = await connection.BeginTransactionAsync(ct);
+            await connection.ExecuteAsync(new CommandDefinition(
+                "SELECT set_config('odca.tenant_id',@tenant::text,true),set_config('odca.user_id',@actor::text,true)",
+                new { tenant = tenantId, actor = actorId }, transaction: tx, cancellationToken: ct));
+            var language = await RecipientLanguageAsync(connection, tx, tenantId, userId, ct);
+            await tx.CommitAsync(ct);
+            return language;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch { return "pt-BR"; }
+    }
+
     public static async Task<bool> EnqueueEmailAsync(
         NpgsqlConnection connection,
         NpgsqlTransaction tx,
@@ -45,14 +92,19 @@ public static partial class NotificationEnqueue
                 new { userId = recipientId }, transaction: tx, cancellationToken: ct));
             if (string.IsNullOrWhiteSpace(email)) return false;
 
+            // D-OC46 (Sprint 12/F-1): o idioma do destinatário viaja com a mensagem (v062) para
+            // o transporte compor o corpo SMTP no idioma certo; o subject já chega localizado
+            // no payload protegido quando o chamador usa as chaves do catálogo.
+            var language = await RecipientLanguageAsync(connection, tx, tenantId, recipientId, ct);
+
             var payload = protector.Protect(title);
             if (sourceId is null)
             {
                 await connection.ExecuteAsync(new CommandDefinition(
                     """
-                    INSERT INTO odca.notification_outbox(tenant_id,invitation_id,kind,destination,protected_payload)
-                    VALUES(@tenantId,NULL,@kind,@email,@payload)
-                    """, new { tenantId, kind, email, payload }, transaction: tx, cancellationToken: ct));
+                    INSERT INTO odca.notification_outbox(tenant_id,invitation_id,kind,destination,protected_payload,language)
+                    VALUES(@tenantId,NULL,@kind,@email,@payload,@language)
+                    """, new { tenantId, kind, email, payload, language }, transaction: tx, cancellationToken: ct));
             }
             else
             {
@@ -60,10 +112,10 @@ public static partial class NotificationEnqueue
                 // nunca duplica a mensagem (ex.: replay idempotente do endpoint).
                 await connection.ExecuteAsync(new CommandDefinition(
                     """
-                    INSERT INTO odca.notification_outbox(tenant_id,invitation_id,kind,destination,protected_payload,source_id)
-                    VALUES(@tenantId,NULL,@kind,@email,@payload,@sourceId)
+                    INSERT INTO odca.notification_outbox(tenant_id,invitation_id,kind,destination,protected_payload,language,source_id)
+                    VALUES(@tenantId,NULL,@kind,@email,@payload,@language,@sourceId)
                     ON CONFLICT(source_id) WHERE source_id IS NOT NULL DO NOTHING
-                    """, new { tenantId, kind, email, payload, sourceId }, transaction: tx, cancellationToken: ct));
+                    """, new { tenantId, kind, email, payload, language, sourceId }, transaction: tx, cancellationToken: ct));
             }
             return true;
         }

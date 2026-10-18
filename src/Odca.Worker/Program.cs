@@ -1,6 +1,7 @@
 using Odca.Worker;
 using Npgsql;
 using Odca.Configuration;
+using Odca.Configuration.Localization;
 using Odca.Infrastructure.Distributed;
 using Odca.Infrastructure.Signatures;
 
@@ -10,6 +11,9 @@ var localConfiguration = LocalRuntimeConfiguration.Add(builder.Configuration, bu
 Console.WriteLine($"Configuração: ambiente={localConfiguration.Environment}; caminho={localConfiguration.Path ?? "não utilizado"}.");
 // D-OC31 A.4: seleção condicional das chaves (dev: filesystem; produção: postgres v054).
 builder.Services.AddOdcaDataProtection(builder.Configuration);
+// D-OC46 (Sprint 12/F-1): catálogos embarcados para o idioma preferido dos lembretes
+// e do corpo SMTP (fallback pt-BR, camada canônica).
+builder.Services.AddSingleton<LocalizationService>();
 builder.Services.AddHostedService<Worker>();
 builder.Services.AddHostedService<DocumentWorker>();
 builder.Services.AddHostedService<ObligationReminderWorker>();

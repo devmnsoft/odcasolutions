@@ -23,10 +23,12 @@ public sealed class FilePickupNotificationTransport : INotificationTransport
         await File.WriteAllTextAsync(path, content, cancellationToken);
     }
 
-    public async Task SendUserNotificationAsync(string destination, string subject, Uri link, CancellationToken cancellationToken)
+    public async Task SendUserNotificationAsync(string destination, string subject, Uri link, string language, CancellationToken cancellationToken)
     {
+        // D-OC46 (Sprint 12/F-1): o idioma viaja registrado no artefato local (fallback pt-BR);
+        // o conteúdo permanece no mesmo formato de sempre.
         var id = Guid.NewGuid();
-        var content = $"Notificação local — Assunto: {subject}\nDestinatário: {destination}\n{link}\n";
+        var content = $"Notificação local — Assunto: {subject}\nDestinatário: {destination}\nIdioma: {language}\n{link}\n";
         var path = Path.Combine(_pickupDirectory, $"notif-{id:N}.txt");
         await File.WriteAllTextAsync(path, content, cancellationToken);
     }

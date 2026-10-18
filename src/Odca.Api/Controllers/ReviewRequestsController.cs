@@ -2,8 +2,10 @@ using System.Security.Claims;
 using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Odca.Api.Localization;
+using Odca.Configuration.Localization;
 using Odca.Contracts.Reviews;
 
 namespace Odca.Api.Controllers;
@@ -144,13 +146,17 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
         // deduplicação por source_id determinístico (evento + chave de idempotência).
         // D-OC34 B.10: assunto genérico por tipo (o título livre do contrato não vai no subject).
         var (protector, notifLogger) = NotificationEnqueue.Resolve(HttpContext.RequestServices);
+        var localizer = HttpContext.RequestServices.GetRequiredService<LocalizationService>();
         var assignedSource = NotificationEnqueue.DeterministicSource("review.assigned", reviewId, request.IdempotencyKey);
+        // D-OC46 (Sprint 12/F-1): título/corpo no idioma preferido do destinatário (fallback pt-BR).
+        var lang = await NotificationEnqueue.RecipientLanguageAsync(connection, tx, tenantId, request.AssigneeId, ct);
+        var assignedTitle = localizer.T("notif.title.review_assigned", lang);
         await NotificationEnqueue.EnqueueEmailAsync(connection, tx, tenantId, request.AssigneeId, "review_assigned",
-            "Você recebeu uma solicitação de revisão", protector,
+            assignedTitle, protector,
             assignedSource, notifLogger, ct);
         // D-OC38 (Sprint 4/F-1): sino ao novo revisor com a mesma identidade deduplicada do e-mail.
         await NotificationEnqueue.EnqueueInAppAsync(connection, tx, tenantId, request.AssigneeId, "review_assigned",
-            "Você recebeu uma solicitação de revisão", "Uma solicitação de revisão foi reatribuída a você.", assignedSource, notifLogger, ct);
+            assignedTitle, localizer.T("notif.body.review_assigned_reassigned", lang), assignedSource, notifLogger, ct);
         await tx.CommitAsync(ct); return Ok(new { version=request.ExpectedVersion+1, replayed=false });
     }
 
@@ -304,16 +310,19 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
         if (requester is not null)
         {
             var (protector, notifLogger) = NotificationEnqueue.Resolve(HttpContext.RequestServices);
+            var localizer = HttpContext.RequestServices.GetRequiredService<LocalizationService>();
+            // D-OC46 (Sprint 12/F-1): título/corpo no idioma preferido do destinatário (fallback pt-BR).
+            var lang = await NotificationEnqueue.RecipientLanguageAsync(connection, tx, tenantId, requester.Value, ct);
             var decisionTitle = request.Action == "approve"
-                ? "Revisão aprovada internamente"
-                : "Alterações solicitadas na revisão";
+                ? localizer.T("notif.title.review_approved", lang)
+                : localizer.T("notif.title.review_changes_requested", lang);
             var decidedSource = NotificationEnqueue.DeterministicSource("review.decided", reviewId, request.IdempotencyKey);
             await NotificationEnqueue.EnqueueEmailAsync(connection, tx, tenantId, requester.Value, "review_decided",
                 decisionTitle, protector,
                 decidedSource, notifLogger, ct);
             // D-OC38 (Sprint 4/F-1): sino ao solicitante com a mesma identidade deduplicada do e-mail.
             await NotificationEnqueue.EnqueueInAppAsync(connection, tx, tenantId, requester.Value, "review_decided",
-                decisionTitle, "Sua solicitação de revisão recebeu uma decisão.", decidedSource, notifLogger, ct);
+                decisionTitle, localizer.T("notif.body.review_decided", lang), decidedSource, notifLogger, ct);
         }
         await tx.CommitAsync(ct); return Ok(new { status, version=request.ExpectedVersion+1, replayed=false });
     }

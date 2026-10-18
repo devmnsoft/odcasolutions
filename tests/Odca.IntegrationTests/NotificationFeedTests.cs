@@ -160,6 +160,42 @@ public sealed class NotificationFeedTests(DatabaseFixture database) : IClassFixt
             new { tenant = seed.Tenant, user = seed.Actor }));
     }
 
+    [Fact]
+    public async Task NotificationContentFollowsRecipientPreferredLanguage()
+    {
+        var seed = await SeedAsync();
+        await using var admin = new NpgsqlConnection(database.AdminConnectionString);
+        await admin.OpenAsync();
+        // D-OC46 (Sprint 12/F-1): preferência de idioma do destinatário + canal de e-mail
+        // habilitado para o tipo — sem a segunda linha não haveria mensagem na outbox.
+        await admin.ExecuteAsync("""
+            INSERT INTO odca.user_notification_settings(tenant_id,user_id,preferred_language)
+            VALUES(@tenant,@user,'en-US');
+            INSERT INTO odca.user_notification_preferences(tenant_id,user_id,kind,channel_email)
+            VALUES(@tenant,@user,'review_assigned',true);
+            """, new { seed.Tenant, user = seed.Reviewer });
+
+        await using var ds = NpgsqlDataSource.Create(database.AppConnectionString);
+        var controller = CreateController(ds, seed.Actor);
+        var idempotencyKey = Guid.NewGuid();
+
+        var result = await controller.Submit(seed.Tenant, new SubmitReviewRequest(seed.Version, seed.Reviewer, null, null, idempotencyKey), CancellationToken.None);
+        Assert.IsType<OkObjectResult>(result);
+
+        // O conteúdo armazenado segue o idioma do DESTINATÁRIO (en-US), não do ator.
+        var title = await admin.ExecuteScalarAsync<string>(
+            """
+            SELECT title FROM odca.user_notifications
+            WHERE tenant_id=@tenant AND user_id=@user AND kind='review_assigned' AND channel='in_app'
+            """, new { seed.Tenant, user = seed.Reviewer });
+        Assert.Equal("You received a review request", title);
+        // Canal e-mail ativo: a outbox preserva o idioma do destinatário (v062) para o transporte.
+        var language = await admin.ExecuteScalarAsync<string>(
+            "SELECT language FROM odca.notification_outbox WHERE tenant_id=@tenant AND kind='review_assigned'",
+            new { seed.Tenant });
+        Assert.Equal("en-US", language);
+    }
+
     private sealed record Seed(Guid Tenant, Guid Actor, Guid Reviewer, Guid Client, Guid NonMember, Guid Version, Guid Preparation, Guid ClientMembership);
 
     private async Task<Seed> SeedAsync()
