@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Odca.Configuration.Localization;
 using Odca.Contracts.Identity;
 using Odca.Web.Models;
 using Odca.Web.Services;
@@ -11,8 +12,10 @@ using QRCoder;
 
 namespace Odca.Web.Controllers;
 
-public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContext tenantContext) : Controller
+public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContext tenantContext, LocalizationService loc) : Controller
 {
+    private string? Culture => HttpContext.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] as string;
+    private string L(string key, params string[] args) => loc.T(key, Culture, args);
     [AllowAnonymous]
     [HttpGet("entrar")]
     public IActionResult Login(string? returnUrl = null) =>
@@ -30,7 +33,7 @@ public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContex
     [HttpGet("minha-conta/notificacoes")]
     public async Task<IActionResult> Notifications(int page = 1, int pageSize = 25, CancellationToken ct = default)
     {
-        ViewData["Title"] = "Notificações";
+        ViewData["Title"] = L("notificacoes");
         var access = await tenantContext.GetCurrentOrFirstActiveAsync(null, ct);
         if (access is null) return View(new Odca.Contracts.Account.NotificationPage(Array.Empty<Odca.Contracts.Account.NotificationItem>(), 0, 1, 25, 0, false));
         var token = await HttpContext.GetTokenAsync("access_token");
@@ -53,7 +56,7 @@ public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContex
         var token = await HttpContext.GetTokenAsync("access_token");
         if (token is null) return Challenge();
         await apiClient.MarkMyNotificationsReadAsync(token, access.TenantId, ct);
-        TempData["Success"] = "Notificações marcadas como lidas.";
+        TempData["Success"] = L("notif.msg.marked_all_read");
         return RedirectToAction(nameof(Notifications));
     }
 
@@ -67,7 +70,7 @@ public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContex
         var token = await HttpContext.GetTokenAsync("access_token");
         if (token is null) return Challenge();
         await apiClient.MarkOneNotificationReadAsync(token, access.TenantId, id, ct);
-        TempData["Success"] = "Notificação marcada como lida.";
+        TempData["Success"] = L("notif.msg.marked_read");
         return RedirectToAction(nameof(Notifications));
     }
 
@@ -75,7 +78,7 @@ public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContex
     [HttpGet("minha-conta/notificacoes/preferencias")]
     public async Task<IActionResult> NotificationPreferences(CancellationToken ct)
     {
-        ViewData["Title"] = "Preferências de notificação";
+        ViewData["Title"] = L("notif.prefs_card_title");
         var access = await tenantContext.GetCurrentOrFirstActiveAsync(null, ct);
         if (access is null) return RedirectToAction(nameof(Notifications));
         var token = await HttpContext.GetTokenAsync("access_token");
@@ -102,13 +105,13 @@ public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContex
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         if (!result.Succeeded)
         {
-            ModelState.AddModelError("", "Não foi possível salvar as preferências.");
+            ModelState.AddModelError("", L("notif.msg.save_fail"));
             var current = await apiClient.GetMyNotificationPreferencesAsync(token, access.TenantId, ct);
             if (current.Succeeded && current.Value is not null)
                 return View("NotificationPreferences", ToUpdateRequest(current.Value));
             return RedirectToAction(nameof(NotificationPreferences));
         }
-        TempData["Success"] = "Preferências de notificação salvas.";
+        TempData["Success"] = L("notif.msg.saved");
         return RedirectToAction(nameof(NotificationPreferences));
     }
 

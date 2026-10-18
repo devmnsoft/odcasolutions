@@ -6522,3 +6522,33 @@ VALUES(58,'Contrato de provedor de envelope externo de assinatura: persistencia 
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 058
+-- ODCA-MIGRATION 059 CHECKSUM d742ce207f2618466726eeca7cefc7a5124d75069200a34fd9289462be1ca45e
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
+
+DO $odca$
+DECLARE
+    expected_checksum constant char(64) := 'd742ce207f2618466726eeca7cefc7a5124d75069200a34fd9289462be1ca45e';
+    recorded_checksum char(64);
+BEGIN
+    SELECT checksum INTO recorded_checksum FROM odca.schema_migrations WHERE version = 59;
+    IF recorded_checksum IS NOT NULL AND recorded_checksum <> expected_checksum THEN
+        RAISE EXCEPTION 'ODCA migration 059 checksum mismatch: stored %, expected %', recorded_checksum, expected_checksum;
+    END IF;
+END
+$odca$;
+
+-- D-OC38 (Sprint 4/F-1): notificacoes in-app com deduplicacao deterministica por origem.
+-- O mesmo evento de negocio (revisao, solicitacao, assinatura) emite no maximo uma linha
+-- no sino por destinatario: replays/concorrencia do ponto de chamada nao duplicam, no
+-- mesmo padrao do notification_outbox.source_id (v050). Linhas historicas (worker de
+-- lembretes) permanecem com source_id NULL e continuam protegidas pela maquina de leases.
+ALTER TABLE odca.user_notifications ADD COLUMN IF NOT EXISTS source_id uuid;
+CREATE UNIQUE INDEX IF NOT EXISTS user_notifications_source_uq
+  ON odca.user_notifications(tenant_id,source_id) WHERE source_id IS NOT NULL;
+
+INSERT INTO odca.schema_migrations(version,name,checksum)
+VALUES(59,'Notificacoes in-app: deduplicacao deterministica por origem (source_id)','d742ce207f2618466726eeca7cefc7a5124d75069200a34fd9289462be1ca45e')
+ON CONFLICT(version) DO NOTHING;
+COMMIT;
+-- ODCA-END 059

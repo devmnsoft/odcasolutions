@@ -1,31 +1,32 @@
 @{
+    var _culture=(string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
     var tenantId=(Guid)ViewData["TenantId"]!;
 }
-<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-action="Index" asp-route-tenantId="@tenantId">Central de solicitações</a><span>/</span><span aria-current="page">Nova</span></nav>
-<header class="page-heading"><div><p class="eyebrow">Atendimento ODCA</p><h1>Nova solicitação</h1><p>Descreva a demanda com detalhes suficientes para a equipe iniciar o atendimento. Os prazos de SLA começam na abertura. Revisão, adaptação e esclarecimento exigem o plano Enterprise; suporte técnico e recuperação de acesso estão abertos a qualquer assinatura ativa.</p></div></header>
+<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-action="Index" asp-route-tenantId="@tenantId">@L.T("sol.center",_culture)</a><span>/</span><span aria-current="page">@L.T("sol.new_breadcrumb",_culture)</span></nav>
+<header class="page-heading"><div><p class="eyebrow">@L.T("sol.eyebrow",_culture)</p><h1>@L.T("sol.new",_culture)</h1><p>@L.T("sol.new_subtitle",_culture)</p></div></header>
 @if(TempData["SolError"] is string error){<div class="alert alert-error" role="alert">@error</div>}
 <form method="post" asp-action="Create" asp-route-tenantId="@tenantId" data-prevent-double-submit>
  @Html.AntiForgeryToken()
- <label for="service">Serviço <span aria-hidden="true">*</span></label>
+ <label for="service">@L.T("sol.label_service",_culture)</label>
  <select id="service" name="service" required>
-  <option value="esclarecimento" selected="@(TempData["SolService"] as string=="esclarecimento")">Esclarecimento — dúvidas sobre contratos e uso da plataforma</option>
-  <option value="revisao" selected="@(TempData["SolService"] as string=="revisao")">Revisão — análise de um documento ou cláusula</option>
-  <option value="adaptacao" selected="@(TempData["SolService"] as string=="adaptacao")">Adaptação — ajuste de modelo ou minuta pela ODCA (plano Enterprise)</option>
-  <option value="suporte_tecnico" selected="@(TempData["SolService"] as string=="suporte_tecnico")">Suporte técnico e recuperação de acesso — todos os planos</option>
+  <option value="esclarecimento" selected="@(TempData["SolService"] as string=="esclarecimento")">@L.T("sol.opt_esclarecimento",_culture)</option>
+  <option value="revisao" selected="@(TempData["SolService"] as string=="revisao")">@L.T("sol.opt_revisao",_culture)</option>
+  <option value="adaptacao" selected="@(TempData["SolService"] as string=="adaptacao")">@L.T("sol.opt_adaptacao",_culture)</option>
+  <option value="suporte_tecnico" selected="@(TempData["SolService"] as string=="suporte_tecnico")">@L.T("sol.opt_suporte_tecnico",_culture)</option>
  </select>
- <label for="priority">Prioridade</label>
+ <label for="priority">@L.T("sol.label_priority",_culture)</label>
  <select id="priority" name="priority">
-  <option value="normal" selected="@(string.IsNullOrEmpty(TempData["SolPriority"] as string)||TempData["SolPriority"] as string=="normal")">Normal</option>
-  <option value="baixa" selected="@(TempData["SolPriority"] as string=="baixa")">Baixa</option>
-  <option value="alta" selected="@(TempData["SolPriority"] as string=="alta")">Alta</option>
-  <option value="critica" selected="@(TempData["SolPriority"] as string=="critica")">Crítica</option>
+  <option value="normal" selected="@(string.IsNullOrEmpty(TempData["SolPriority"] as string)||TempData["SolPriority"] as string=="normal")">@L.T("sol.priority.normal",_culture)</option>
+  <option value="baixa" selected="@(TempData["SolPriority"] as string=="baixa")">@L.T("sol.priority.baixa",_culture)</option>
+  <option value="alta" selected="@(TempData["SolPriority"] as string=="alta")">@L.T("sol.priority.alta",_culture)</option>
+  <option value="critica" selected="@(TempData["SolPriority"] as string=="critica")">@L.T("sol.priority.critica",_culture)</option>
  </select>
- <label for="subject">Assunto <span aria-hidden="true">*</span></label>
+ <label for="subject">@L.T("sol.label_subject",_culture)</label>
  <input id="subject" name="subject" maxlength="200" required value="@TempData["SolSubject"]" />
- <label for="body">Descrição <span aria-hidden="true">*</span></label>
+ <label for="body">@L.T("sol.label_description",_culture)</label>
  <textarea id="body" name="body" minlength="10" maxlength="8000" required>@TempData["SolBody"]</textarea>
  <div class="form-actions-row">
-  <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">Voltar</a>
-  <button class="button button-primary" type="submit">Abrir solicitação</button>
+  <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">@L.T("action.back",_culture)</a>
+  <button class="button button-primary" type="submit">@L.T("sol.open_btn",_culture)</button>
  </div>
 </form>

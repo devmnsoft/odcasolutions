@@ -158,9 +158,15 @@ public sealed class SolicitationsController(NpgsqlDataSource dataSource) : Contr
         foreach (var admin in admins)
         {
             // D-OC34 B.10: assunto genérico por tipo (protocolo/assunto livres não vão no subject).
+            // D-OC38 (Sprint 4/F-1): sino para admins que também são membros ativos do tenant
+            // (o helper ignora destinatários sem membership).
+            var openedSource = NotificationEnqueue.DeterministicSource("solicitation.opened", solId, admin);
             await NotificationEnqueue.EnqueueEmailAsync(c, tenantId, actor, admin, "solicitation_opened",
                 "Nova solicitação registrada à plataforma", protector,
-                NotificationEnqueue.DeterministicSource("solicitation.opened", solId, admin), logger, ct);
+                openedSource, logger, ct);
+            await NotificationEnqueue.EnqueueInAppAsync(c, tenantId, actor, admin, "solicitation_opened",
+                "Nova solicitação registrada à plataforma", "Uma nova solicitação aguarda triagem pela plataforma.",
+                openedSource, logger, ct);
         }
     }
 
@@ -173,9 +179,14 @@ public sealed class SolicitationsController(NpgsqlDataSource dataSource) : Contr
         var protector = context.RequestServices.GetRequiredService<IDataProtector>();
         var logger = context.RequestServices.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>().CreateLogger("solicitations");
         // D-OC34 B.10: assunto genérico por tipo (protocolo/assunto livres não vão no subject).
+        // D-OC38 (Sprint 4/F-1): sino ao autor da solicitação com a mesma identidade deduplicada.
+        var updatedSource = NotificationEnqueue.DeterministicSource("solicitation.updated", solId, version);
         await NotificationEnqueue.EnqueueEmailAsync(c, tenantId, actor, openedBy, "solicitation_updated",
             "Atualização da sua solicitação à plataforma", protector,
-            NotificationEnqueue.DeterministicSource("solicitation.updated", solId, version), logger, ct);
+            updatedSource, logger, ct);
+        await NotificationEnqueue.EnqueueInAppAsync(c, tenantId, actor, openedBy, "solicitation_updated",
+            "Atualização da sua solicitação à plataforma", "A plataforma registrou uma atualização em sua solicitação.",
+            updatedSource, logger, ct);
     }
 
     private static bool TryReadSolicitation(JsonElement data, out Guid solId, out string protocol, out string subject)

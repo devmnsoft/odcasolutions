@@ -145,6 +145,65 @@ public sealed class OdcaApiClientTests
         Assert.Equal("/api/v1/organizations/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/obligations/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb/history", handler.RequestUri!.AbsolutePath);
     }
 
+    /// <summary>D-OC38 (Sprint 4/A-1): o formulário de ações relê a obrigação individual para obter
+    /// a versão fresca; a rota mantém o escopo do tenant.</summary>
+    [Fact]
+    public async Task ObligationSingleGetUsesTenantScopedRouteAndParsesEvidenceFlag()
+    {
+        var handler = new CapturingHandler("""
+            {"id":"bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb","contractId":"cccccccc-cccc-cccc-cccc-cccccccccccc","contract":"Contrato","title":"Prazo","category":"other","obligatedParty":"Contratada","ownerId":"dddddddd-dddd-dddd-dddd-dddddddddddd","owner":"Dona","dueDate":"2026-12-01","priority":"normal","status":"open","overdue":false,"ownerBlocked":false,"version":1,"amount":null,"currency":null,"nextAction":"Andamento","evidenceRequired":true}
+            """);
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
+        var client = new OdcaApiClient(http, NoHttpContextAccessor.Instance);
+
+        var result = await client.GetObligationAsync("token",
+            Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.True(result.Value!.EvidenceRequired);
+        Assert.Equal(1, result.Value.Version);
+        Assert.Equal("/api/v1/organizations/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/obligations/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", handler.RequestUri!.AbsolutePath);
+    }
+
+    /// <summary>D-OC38 (Sprint 4/A-1): o 409 da ação deve carregar <c>currentVersion</c> para o BFF
+    /// atualizar a versão esperada e o usuário repetir sem perder os valores digitados.</summary>
+    [Fact]
+    public async Task ObligationActionConflictExposesCurrentVersion()
+    {
+        var handler = new CapturingHandler(
+            "{\"title\":\"Conflito de versão da obrigação.\",\"code\":\"obligation.version.conflict\",\"currentVersion\":7}",
+            HttpStatusCode.Conflict);
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
+        var client = new OdcaApiClient(http, NoHttpContextAccessor.Instance);
+
+        var (status, title, code, currentVersion) = await client.PerformObligationActionDetailedAsync("token",
+            Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+            "start", new Odca.Contracts.Obligations.ObligationActionRequest(6, null, null, null, null, null, null), CancellationToken.None);
+
+        Assert.Equal(ApiCallStatus.Conflict, status);
+        Assert.Equal("obligation.version.conflict", code);
+        Assert.Equal(7, currentVersion);
+        Assert.Contains("Conflito", title, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ObligationActionSuccessDoesNotRequireConflictPayload()
+    {
+        var handler = new CapturingHandler("{\"status\":\"in_progress\",\"version\":2}");
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://odca.test/") };
+        var client = new OdcaApiClient(http, NoHttpContextAccessor.Instance);
+
+        var (status, _, _, currentVersion) = await client.PerformObligationActionDetailedAsync("token",
+            Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+            "start", new Odca.Contracts.Obligations.ObligationActionRequest(1, null, null, null, null, null, null), CancellationToken.None);
+
+        Assert.Equal(ApiCallStatus.Success, status);
+        Assert.Null(currentVersion);
+    }
+
     [Fact]
     public async Task ReviewFiltersAreEncodedAndUseInvariantDates()
     {

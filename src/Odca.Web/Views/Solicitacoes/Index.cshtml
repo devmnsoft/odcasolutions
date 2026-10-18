@@ -1,29 +1,30 @@
 @using Odca.Contracts.Solicitations
 @model SolicitationListItem[]
 @{
+    var _culture=(string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
     var tenantId=(Guid)ViewData["TenantId"]!; var service=ViewData["Service"] as string; var status=ViewData["Status"] as string;
     var search=ViewData["Search"] as string; var canManage=ViewData["CanManage"] as bool?==true;
-    string ServiceLabel(string value)=>value switch { "revisao"=>"Revisão","adaptacao"=>"Adaptação","esclarecimento"=>"Esclarecimento","suporte_tecnico"=>"Suporte técnico",_=>value };
-    string StatusLabel(string value)=>value switch { "aberta"=>"Aberta","triagem"=>"Em triagem","em_atendimento"=>"Em atendimento","aguardando_cliente"=>"Aguardando você","resolvida"=>"Resolvida","encerrada"=>"Encerrada","cancelada"=>"Cancelada",_=>value };
-    string PriorityLabel(string value)=>value switch { "baixa"=>"Baixa","normal"=>"Normal","alta"=>"Alta","critica"=>"Crítica",_=>value };
-    string Fmt(DateTime? value)=>value?.ToString("dd/MM/yyyy HH:mm")??"—";
+    string ServiceLabel(string value)=>value is "revisao" or "adaptacao" or "esclarecimento" or "suporte_tecnico"?L.T($"sol.service.{value}",_culture):value;
+    string StatusLabel(string value)=>value is "aberta" or "triagem" or "em_atendimento" or "aguardando_cliente" or "resolvida" or "encerrada" or "cancelada"?L.T($"sol.status.{value}",_culture):value;
+    string PriorityLabel(string value)=>value is "baixa" or "normal" or "alta" or "critica"?L.T($"sol.priority.{value}",_culture):value;
+    string Fmt(DateTime? value)=>value is null?"—":Odca.Web.Common.CulturedTime.DateTime(value.Value,_culture);
 }
-<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-controller="Onboarding" asp-action="CustomerHome">Visão geral</a><span>/</span><span aria-current="page">Central de solicitações</span></nav>
-<header class="page-heading"><div><p class="eyebrow">Atendimento ODCA</p><h1>Central de solicitações</h1><p>Fale com a equipe ODCA para revisar, adaptar ou esclarecer documentos. Prazos de resposta são monitorados por SLA.</p></div>@if(canManage){@if(string.IsNullOrEmpty(service)){<a class="button button-primary" asp-action="Nova" asp-route-tenantId="@tenantId">Nova solicitação</a>}else{<a class="button button-primary" asp-action="Nova" asp-route-tenantId="@tenantId" asp-route-service="@service">Nova solicitação (@ServiceLabel(service))</a>}}</header>
+<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-controller="Onboarding" asp-action="CustomerHome">@L.T("sol.breadcrumb_home",_culture)</a><span>/</span><span aria-current="page">@L.T("sol.center",_culture)</span></nav>
+<header class="page-heading"><div><p class="eyebrow">@L.T("sol.eyebrow",_culture)</p><h1>@L.T("sol.center",_culture)</h1><p>@L.T("sol.center_subtitle",_culture)</p></div>@if(canManage){@if(string.IsNullOrEmpty(service)){<a class="button button-primary" asp-action="Nova" asp-route-tenantId="@tenantId">@L.T("sol.new",_culture)</a>}else{<a class="button button-primary" asp-action="Nova" asp-route-tenantId="@tenantId" asp-route-service="@service">@L.T("sol.new_with_service",_culture,ServiceLabel(service))</a>}}</header>
 @if(ViewData["LoadError"] is string loadError){<div class="alert alert-error" role="alert">@loadError</div>}
 @if(TempData["SolNotice"] is string notice){<div class="alert alert-success" role="status">@notice</div>}
-<section class="help-card" aria-labelledby="sol-help"><h2 id="sol-help">Como funciona</h2><p>Descreva a demanda e acompanhe as respostas em uma única conversa. A ODCA responde dentro dos prazos do seu plano; quando a solicitação fica <strong>aguardando você</strong>, o relógio do SLA é pausado até a sua resposta.</p></section>
+<section class="help-card" aria-labelledby="sol-help"><h2 id="sol-help">@L.T("sol.how_title",_culture)</h2><p>@L.T("sol.how_body_a",_culture) <strong>@L.T("sol.how_paused",_culture)</strong>@L.T("sol.how_body_b",_culture)</p></section>
 <form method="get" class="review-filters" aria-label="Filtros da central">
- <label>Serviço<select name="service"><option value="">Todos</option>@foreach(var option in new[]{("revisao","Revisão"),("adaptacao","Adaptação"),("esclarecimento","Esclarecimento"),("suporte_tecnico","Suporte técnico")}){<option value="@option.Item1" selected="@(service==option.Item1)">@option.Item2</option>}</select></label>
- <label>Situação<select name="status"><option value="">Todas</option>@foreach(var option in new[]{("aberta","Aberta"),("triagem","Em triagem"),("em_atendimento","Em atendimento"),("aguardando_cliente","Aguardando você"),("resolvida","Resolvida"),("encerrada","Encerrada"),("cancelada","Cancelada")}){<option value="@option.Item1" selected="@(status==option.Item1)">@option.Item2</option>}</select></label>
- <label>Buscar<input type="search" name="search" value="@search" placeholder="Protocolo ou assunto" /></label>
- <button class="button button-quiet" type="submit">Aplicar filtros</button>
+ <label>@L.T("sol.filter_service",_culture)<select name="service"><option value="">@L.T("sol.all_services",_culture)</option>@foreach(var option in new[]{"revisao","adaptacao","esclarecimento","suporte_tecnico"}){<option value="@option" selected="@(service==option)">@L.T($"sol.service.{option}",_culture)</option>}</select></label>
+ <label>@L.T("sol.filter_status",_culture)<select name="status"><option value="">@L.T("sol.all_statuses",_culture)</option>@foreach(var option in new[]{"aberta","triagem","em_atendimento","aguardando_cliente","resolvida","encerrada","cancelada"}){<option value="@option" selected="@(status==option)">@L.T($"sol.status.{option}",_culture)</option>}</select></label>
+ <label>@L.T("sol.filter_search",_culture)<input type="search" name="search" value="@search" placeholder="@L.T("sol.search_placeholder",_culture)" /></label>
+ <button class="button button-quiet" type="submit">@L.T("sol.apply_filters",_culture)</button>
 </form>
 <section aria-label="Lista de solicitações">
- @if(Model.Length==0){<div class="empty-state"><p>Nenhuma solicitação encontrada. Abra a primeira com o botão acima.</p></div>}
+ @if(Model.Length==0){<div class="empty-state"><p>@L.T("sol.empty",_culture)</p></div>}
  else
  {
-  <div class="table-scroll"><table><thead><tr><th>Protocolo</th><th>Assunto</th><th>Serviço</th><th>Prioridade</th><th>Situação</th><th>Resposta até</th><th>Resolução até</th><th>Atualizada</th></tr></thead><tbody>
+  <div class="table-scroll"><table><thead><tr><th>@L.T("sol.col_protocol",_culture)</th><th>@L.T("sol.col_subject",_culture)</th><th>@L.T("sol.col_service",_culture)</th><th>@L.T("sol.col_priority",_culture)</th><th>@L.T("sol.col_status",_culture)</th><th>@L.T("sol.col_first_response_due",_culture)</th><th>@L.T("sol.col_resolution_due",_culture)</th><th>@L.T("sol.col_updated",_culture)</th></tr></thead><tbody>
   @foreach(var item in Model)
   {
    <tr>
@@ -31,9 +32,9 @@
     <td>@item.Subject</td>
     <td>@ServiceLabel(item.Service)</td>
     <td>@PriorityLabel(item.Priority)</td>
-    <td><span class="status-badge status-@item.Status">@StatusLabel(item.Status)</span>@if(item.Paused){<span class="status-badge">SLA pausado</span>}@if(item.FirstResponseBreachAt is not null || item.ResolutionBreachAt is not null){<span class="status-badge status-cancelled">Violação de SLA</span>}</td>
-    <td>@if(item.FirstResponseBreachAt is not null){<strong>Violado em @Fmt(item.FirstResponseBreachAt)</strong>}else{@Fmt(item.FirstResponseDueAt)}</td>
-    <td>@if(item.ResolutionBreachAt is not null){<strong>Violado em @Fmt(item.ResolutionBreachAt)</strong>}else{@Fmt(item.ResolutionDueAt)}</td>
+    <td><span class="status-badge status-@item.Status">@StatusLabel(item.Status)</span>@if(item.Paused){<span class="status-badge">@L.T("sol.sla_paused",_culture)</span>}@if(item.FirstResponseBreachAt is not null || item.ResolutionBreachAt is not null){<span class="status-badge status-cancelled">@L.T("sol.sla_breach_badge",_culture)</span>}</td>
+    <td>@if(item.FirstResponseBreachAt is not null){<strong>@L.T("sol.breached_on",_culture,Fmt(item.FirstResponseBreachAt))</strong>}else{@Fmt(item.FirstResponseDueAt)}</td>
+    <td>@if(item.ResolutionBreachAt is not null){<strong>@L.T("sol.breached_on",_culture,Fmt(item.ResolutionBreachAt))</strong>}else{@Fmt(item.ResolutionDueAt)}</td>
     <td>@Fmt(item.UpdatedAt)</td>
    </tr>
   }

@@ -144,9 +144,13 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
         // deduplicação por source_id determinístico (evento + chave de idempotência).
         // D-OC34 B.10: assunto genérico por tipo (o título livre do contrato não vai no subject).
         var (protector, notifLogger) = NotificationEnqueue.Resolve(HttpContext.RequestServices);
+        var assignedSource = NotificationEnqueue.DeterministicSource("review.assigned", reviewId, request.IdempotencyKey);
         await NotificationEnqueue.EnqueueEmailAsync(connection, tx, tenantId, request.AssigneeId, "review_assigned",
             "Você recebeu uma solicitação de revisão", protector,
-            NotificationEnqueue.DeterministicSource("review.assigned", reviewId, request.IdempotencyKey), notifLogger, ct);
+            assignedSource, notifLogger, ct);
+        // D-OC38 (Sprint 4/F-1): sino ao novo revisor com a mesma identidade deduplicada do e-mail.
+        await NotificationEnqueue.EnqueueInAppAsync(connection, tx, tenantId, request.AssigneeId, "review_assigned",
+            "Você recebeu uma solicitação de revisão", "Uma solicitação de revisão foi reatribuída a você.", assignedSource, notifLogger, ct);
         await tx.CommitAsync(ct); return Ok(new { version=request.ExpectedVersion+1, replayed=false });
     }
 
@@ -303,9 +307,13 @@ public sealed class ReviewRequestsController(NpgsqlDataSource dataSource) : Cont
             var decisionTitle = request.Action == "approve"
                 ? "Revisão aprovada internamente"
                 : "Alterações solicitadas na revisão";
+            var decidedSource = NotificationEnqueue.DeterministicSource("review.decided", reviewId, request.IdempotencyKey);
             await NotificationEnqueue.EnqueueEmailAsync(connection, tx, tenantId, requester.Value, "review_decided",
                 decisionTitle, protector,
-                NotificationEnqueue.DeterministicSource("review.decided", reviewId, request.IdempotencyKey), notifLogger, ct);
+                decidedSource, notifLogger, ct);
+            // D-OC38 (Sprint 4/F-1): sino ao solicitante com a mesma identidade deduplicada do e-mail.
+            await NotificationEnqueue.EnqueueInAppAsync(connection, tx, tenantId, requester.Value, "review_decided",
+                decisionTitle, "Sua solicitação de revisão recebeu uma decisão.", decidedSource, notifLogger, ct);
         }
         await tx.CommitAsync(ct); return Ok(new { status, version=request.ExpectedVersion+1, replayed=false });
     }

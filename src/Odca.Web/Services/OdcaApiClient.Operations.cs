@@ -96,6 +96,52 @@ public sealed partial class OdcaApiClient
         return await SendAsync<object>(message, false, ct);
     }
 
+    /// <summary>D-OC38 (Sprint 4/A-1): lê uma obrigação individual com versão atual — base do
+    /// formulário de ações, que re-carrega o estado após conflito 409 para preservar valores.</summary>
+    public Task<ApiCallResult<Odca.Contracts.Obligations.ObligationItem>> GetObligationAsync(
+        string token, Guid tenantId, Guid obligationId, CancellationToken ct) =>
+        SendAsync<Odca.Contracts.Obligations.ObligationItem>(
+            CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/obligations/{obligationId}", token),
+            false,
+            ct);
+
+    /// <summary>D-OC38 (Sprint 4/A-1): executa ação preservando o <c>currentVersion</c> do 409,
+    /// para que o formulário atualize a versão esperada e repita sem perder os valores digitados.</summary>
+    public async Task<(ApiCallStatus Status, string? Title, string? Code, long? CurrentVersion)> PerformObligationActionDetailedAsync(
+        string token,
+        Guid tenantId,
+        Guid obligationId,
+        string operation,
+        Odca.Contracts.Obligations.ObligationActionRequest body,
+        CancellationToken ct)
+    {
+        using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/obligations/{obligationId}/{operation}", token);
+        message.Content = System.Net.Http.Json.JsonContent.Create(body);
+        try
+        {
+            using var response = await client.SendAsync(message, ct);
+            if (response.IsSuccessStatusCode) return (ApiCallStatus.Success, null, null, null);
+            string? title = null, code = null; long? currentVersion = null;
+            var json = await response.Content.ReadAsStringAsync(ct);
+            if (!string.IsNullOrWhiteSpace(json))
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("title", out var t) && t.ValueKind == System.Text.Json.JsonValueKind.String) title = t.GetString();
+                if (doc.RootElement.TryGetProperty("code", out var c) && c.ValueKind == System.Text.Json.JsonValueKind.String) code = c.GetString();
+                if (doc.RootElement.TryGetProperty("currentVersion", out var v) && v.ValueKind == System.Text.Json.JsonValueKind.Number) currentVersion = v.GetInt64();
+            }
+            return (MapStatus(response.StatusCode, false), title, code, currentVersion);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return (ApiCallStatus.Timeout, null, null, null);
+        }
+        catch (System.IO.IOException)
+        {
+            return (ApiCallStatus.Unavailable, null, null, null);
+        }
+    }
+
     public async Task<ApiCallResult<object>> CreateRenewalProposalAsync(
         string token,
         Guid tenantId,

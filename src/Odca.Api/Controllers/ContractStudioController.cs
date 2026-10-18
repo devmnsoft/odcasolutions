@@ -1208,6 +1208,17 @@ public sealed partial class ContractStudioController(NpgsqlDataSource dataSource
         if(existing is null)await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.signature_envelopes(id,tenant_id,generated_version_id,preparation_id,provider_code,envelope_ref,status,sent_at,created_by) VALUES(@envelopeId,@tenantId,@versionId,@preparationId,@providerCode,@refValue,'sent',now(),@actor)",new{envelopeId,tenantId,versionId,preparationId=preparation.Id,providerCode=envelopeProvider.Code,refValue=envelopeRef,actor},tx,cancellationToken:ct));
         else await c.ExecuteAsync(new CommandDefinition("UPDATE odca.signature_envelopes SET status='sent',state_at=NULL,sent_at=now(),row_version=row_version+1 WHERE tenant_id=@tenantId AND id=@envelopeId",new{tenantId,envelopeId},tx,cancellationToken:ct));
         await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.signature_envelope_events(tenant_id,envelope_id,source_event_id,event_type,payload,occurred_at) VALUES(@tenantId,@envelopeId,@source,'sent','{}'::jsonb,now()) ON CONFLICT(envelope_id,source_event_id) DO NOTHING",new{tenantId,envelopeId,source=$"{envelopeId:N}:v{nextVersion}"},tx,cancellationToken:ct));
+        // D-OC38 (Sprint 4/F-1): sino aos participantes vinculado e ainda pendentes no envio do
+        // envelope externo — uma linha por tentativa (nextVersion entra na identidade); o replay
+        // em "sent" retorna antes deste ponto, sem duplicar.
+        var (protector,notifLogger)=NotificationEnqueue.Resolve(HttpContext.RequestServices);
+        var envelopeRecipients=(await c.QueryAsync<Guid>(new CommandDefinition("""
+            SELECT DISTINCT m.user_id FROM odca.signature_participants sp
+            JOIN odca.memberships m ON m.id=sp.identity_membership_id
+            WHERE sp.tenant_id=@tenantId AND sp.preparation_id=@preparationId AND sp.composition_revision=@revision AND sp.signed_at IS NULL
+            """,new{tenantId,preparationId=preparation.Id,revision=preparation.ConfirmedRevision},tx,cancellationToken:ct))).ToList();
+        foreach(var recipient in envelopeRecipients)
+            await NotificationEnqueue.EnqueueInAppAsync(c,tx,tenantId,recipient,"signature_pending","Envelope de assinatura enviado","Um envelope externo de assinatura foi enviado para uma sua participação.",NotificationEnqueue.DeterministicSource("signature.envelope_sent",versionId,nextVersion,recipient),notifLogger,ct);
         await tx.CommitAsync(ct);return Ok(new{providerCode=envelopeProvider.Code,envelopeRef,status="sent",replayed=false});
     }
 
@@ -1388,8 +1399,11 @@ public sealed partial class ContractStudioController(NpgsqlDataSource dataSource
             await c.ExecuteAsync(new CommandDefinition("INSERT INTO odca.audit_events(scope_type,tenant_id,actor_user_id,action,entity_type,entity_id,result,metadata) VALUES('tenant',@tenantId,@actor,'signature.completed','generated_contract_version',@versionId,'success',jsonb_build_object('preparationId',@preparationId,'mode',@mode,'confirmedPdfSha256',@pdfSha))",new{tenantId,actor,versionId,preparationId,mode,pdfSha=preparation.ConfirmedPdfSha256},tx,cancellationToken:ct));
             // D-OC34 B.10: evento assinatura concluida - assunto generico por tipo enviado a quem
             // preparou a assinatura (created_by); dedup deterministico por preparation+version.
+            // D-OC38 (Sprint 4/F-1): sino materializa a mesma identidade deduplicada.
             var (protector,notifLogger)=NotificationEnqueue.Resolve(HttpContext.RequestServices);
-            await NotificationEnqueue.EnqueueEmailAsync(c,tx,tenantId,preparation.CreatedBy,"signature_completed","Assinatura concluída",protector,NotificationEnqueue.DeterministicSource("signature.completed",preparationId,version.Id),notifLogger,ct);
+            var completedSource=NotificationEnqueue.DeterministicSource("signature.completed",preparationId,version.Id);
+            await NotificationEnqueue.EnqueueEmailAsync(c,tx,tenantId,preparation.CreatedBy,"signature_completed","Assinatura concluída",protector,completedSource,notifLogger,ct);
+            await NotificationEnqueue.EnqueueInAppAsync(c,tx,tenantId,preparation.CreatedBy,"signature_completed","Assinatura concluída","Todos os participantes assinaram a versão confirmada do contrato.",completedSource,notifLogger,ct);
         }
         else
         {
@@ -1451,7 +1465,8 @@ public sealed partial class ContractStudioController(NpgsqlDataSource dataSource
         int queuedCount=0;
         // D-OC34 B.10: assunto generico por tipo — dados livres do contrato nao entram no subject
         // SMTP; os detalhes ficam na notificacao em app / corpo da mensagem.
-        if(unsignedUsers.Count>0){var (protector,notifLogger)=NotificationEnqueue.Resolve(HttpContext.RequestServices);foreach(var recipient in unsignedUsers)if(await NotificationEnqueue.EnqueueEmailAsync(c,tx,tenantId,recipient,"signature_pending","Assinatura pendente",protector,NotificationEnqueue.DeterministicSource("signature.reminded",preparationId,preparation.Version,recipient),notifLogger,ct))queuedCount++;}
+        // D-OC38 (Sprint 4/F-1): sino para cada participante vinculado com a mesma identidade deduplicada.
+        if(unsignedUsers.Count>0){var (protector,notifLogger)=NotificationEnqueue.Resolve(HttpContext.RequestServices);foreach(var recipient in unsignedUsers){var reminderSource=NotificationEnqueue.DeterministicSource("signature.reminded",preparationId,preparation.Version,recipient);if(await NotificationEnqueue.EnqueueEmailAsync(c,tx,tenantId,recipient,"signature_pending","Assinatura pendente",protector,reminderSource,notifLogger,ct))queuedCount++;await NotificationEnqueue.EnqueueInAppAsync(c,tx,tenantId,recipient,"signature_pending","Assinatura pendente","Há assinatura pendente em uma versão confirmada do contrato.",reminderSource,notifLogger,ct);}}
         string deliveryChannel=queuedCount>0?"outbox":"not_configured";
         await c.ExecuteAsync(new CommandDefinition("UPDATE odca.signature_preparations SET last_reminded_at=now(),last_reminded_by=@actor,row_version=row_version+1,updated_by=@actor,updated_at=now() WHERE tenant_id=@tenantId AND id=@preparationId",new{tenantId,preparationId,actor},tx,cancellationToken:ct));
         await AddPreparationEvent(c,tenantId,preparationId,preparation.ConfirmedRevision!.Value,actor,"reminded",new{unsignedCount,queuedCount,delivery=new{channel=deliveryChannel,sent=false}},tx,ct);
@@ -1504,9 +1519,13 @@ public sealed partial class ContractStudioController(NpgsqlDataSource dataSource
         // source_id determinístico (evento + chave de idempotência).
         // D-OC34 B.10: assunto genérico por tipo (o título livre do contrato não vai no subject).
         var (protector,notifLogger)=NotificationEnqueue.Resolve(HttpContext.RequestServices);
+        var assignedSource=NotificationEnqueue.DeterministicSource("review.assigned",reviewId,request.IdempotencyKey);
         await NotificationEnqueue.EnqueueEmailAsync(c,tx,tenantId,request.ReviewerId,"review_assigned",
             "Você recebeu uma solicitação de revisão",protector,
-            NotificationEnqueue.DeterministicSource("review.assigned",reviewId,request.IdempotencyKey),notifLogger,ct);
+            assignedSource,notifLogger,ct);
+        // D-OC38 (Sprint 4/F-1): sino ao revisor com a mesma identidade deduplicada do e-mail.
+        await NotificationEnqueue.EnqueueInAppAsync(c,tx,tenantId,request.ReviewerId,"review_assigned",
+            "Você recebeu uma solicitação de revisão","Uma solicitação de revisão aguarda sua decisão.",assignedSource,notifLogger,ct);
         await tx.CommitAsync(ct);return Ok(new ReviewSubmittedResponse(reviewId,v.Id,"in_review"));
     }
 

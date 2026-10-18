@@ -1,31 +1,32 @@
 @model Odca.Contracts.Account.NotificationPreferences
 @{
-    ViewData["Title"] = "Preferências de notificação";
+    var _culture=(string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("notif.prefs_card_title",_culture);
     var idx = 0;
 }
 <section class="narrow">
-    <header class="page-heading"><div><p class="eyebrow">Minha conta</p><h1>Preferências de notificação</h1><p>Escolha quais avisos você recebe e por qual canal.</p></div></header>
+    <header class="page-heading"><div><p class="eyebrow">@L.T("minha-conta",_culture)</p><h1>@L.T("notif.prefs_card_title",_culture)</h1><p>@L.T("notif.prefs_subtitle",_culture)</p></div></header>
 
     <div class="card">
         <form method="post" action="/minha-conta/notificacoes/preferencias" data-prevent-double-submit>
             @Html.AntiForgeryToken()
 
             <fieldset style="margin-bottom:1.5rem;">
-                <legend>Idioma</legend>
-                <p>O idioma afeta o formato de datas e números exibidos nas notificações.</p>
+                <legend>@L.T("notif.lang_legend",_culture)</legend>
+                <p>@L.T("notif.lang_help",_culture)</p>
                 <select name="PreferredLanguage" style="max-width:220px;">
-                    <option value="pt-BR" selected="@(Model.PreferredLanguage == "pt-BR" ? "selected" : null)">Português (Brasil)</option>
-                    <option value="en-US" selected="@(Model.PreferredLanguage == "en-US" ? "selected" : null)">English (US)</option>
-                    <option value="fr-FR" selected="@(Model.PreferredLanguage == "fr-FR" ? "selected" : null)">Français</option>
-                    <option value="es-ES" selected="@(Model.PreferredLanguage == "es-ES" ? "selected" : null)">Español</option>
+                    <option value="pt-BR" selected="@(Model.PreferredLanguage == "pt-BR" ? "selected" : null)">@L.T("notif.lang.pt-BR",_culture)</option>
+                    <option value="en-US" selected="@(Model.PreferredLanguage == "en-US" ? "selected" : null)">@L.T("notif.lang.en-US",_culture)</option>
+                    <option value="fr-FR" selected="@(Model.PreferredLanguage == "fr-FR" ? "selected" : null)">@L.T("notif.lang.fr-FR",_culture)</option>
+                    <option value="es-ES" selected="@(Model.PreferredLanguage == "es-ES" ? "selected" : null)">@L.T("notif.lang.es-ES",_culture)</option>
                 </select>
             </fieldset>
 
             <fieldset>
-                <legend>Tipo de aviso</legend>
+                <legend>@L.T("notif.kind_legend",_culture)</legend>
                 <table class="data-table" style="width:100%;">
                     <thead>
-                        <tr><th>Tipo</th><th>Ativo</th><th>Aplicativo</th><th>E-mail</th></tr>
+                        <tr><th>@L.T("notif.th_type",_culture)</th><th>@L.T("notif.th_active",_culture)</th><th>@L.T("notif.th_in_app",_culture)</th><th>@L.T("notif.th_email",_culture)</th></tr>
                     </thead>
                     <tbody>
                         @foreach (var k in Model.Kinds)
@@ -35,14 +36,14 @@
                                     <input type="hidden" name="Kinds[@idx].Kind" value="@k.Kind" />
                                     @(k.Kind switch
                                     {
-                                        "obligation_due" => "Lembrete de obrigação",
-                                        "renewal_due" => "Lembrete de renovação",
-                                        "review_assigned" => "Revisão atribuída",
-                                        "review_decided" => "Decisão de revisão",
-                                        "solicitation_opened" => "Nova solicitação (plataforma)",
-                                        "solicitation_updated" => "Atualização de solicitação",
-                                        "signature_pending" => "Assinatura pendente",
-                                        "signature_completed" => "Assinatura concluída",
+                                        "obligation_due" => L.T("notif.kind.obligation_due",_culture),
+                                        "renewal_due" => L.T("notif.kind.renewal_due",_culture),
+                                        "review_assigned" => L.T("notif.kind.review_assigned",_culture),
+                                        "review_decided" => L.T("notif.kind.review_decided",_culture),
+                                        "solicitation_opened" => L.T("notif.kind.solicitation_opened",_culture),
+                                        "solicitation_updated" => L.T("notif.kind.solicitation_updated",_culture),
+                                        "signature_pending" => L.T("notif.kind.signature_pending",_culture),
+                                        "signature_completed" => L.T("notif.kind.signature_completed",_culture),
                                         _ => k.Kind
                                     })
                                 </td>
@@ -57,11 +58,11 @@
             </fieldset>
 
             <div class="form-actions-row" style="margin-top:1rem;">
-                <button type="submit" class="button">Salvar preferências</button>
-                <a class="button button-quiet" asp-controller="Account" asp-action="Notifications">Cancelar</a>
+                <button type="submit" class="button">@L.T("notif.save_btn",_culture)</button>
+                <a class="button button-quiet" asp-controller="Account" asp-action="Notifications">@L.T("action.cancel",_culture)</a>
             </div>
         </form>
     </div>
 
-    <div class="button-row"><a class="button button-quiet" asp-controller="Account" asp-action="Notifications">Voltar para Notificações</a></div>
+    <div class="button-row"><a class="button button-quiet" asp-controller="Account" asp-action="Notifications">@L.T("notif.back_notifications",_culture)</a></div>
 </section>

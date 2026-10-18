@@ -456,3 +456,39 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [ ] CI oficial deste SHA: pendente — branch sem push; nenhum ID de execução inventado.
 - [ ] Aceite humano dos fluxos de assinatura: pendente (capturas disponíveis para revisão).
 - [x] Commit único "sem push" fechando a Sprint 3.
+
+## Sprint 4 — atendimento, avisos e prazos: sino in-app com deduplicação, i18n do atendimento e dos avisos, centro de obrigações (D-OC38) (18/10/2026)
+
+- [x] GATE sobre a árvore final (após o defeito de view descoberto na prova): builds estritos 0W/0E (Release+Debug),
+  Domain 367/367, assets exit=0 e suíte de integração `-FreshDb` **222/222** TEST-EXIT=0 (baseline S3 211 + 5 fatos do
+  sino + 3 fatos dos endpoints de obrigação + 2 fatos do lease da outbox + 1 fato de checksum da v059), catálogos
+  1765 chaves/cultura com paridade exata 4/4.
+- [x] F-1: notificação in-app por evento de negócio (sino) que **nunca lança** (falha vira log 2403/2404), com dedup
+  determinística por `source_id` (migração **v059**: coluna + índice único parcial `(tenant_id,source_id)`),
+  `DeterministicSource` compartilhado com o e-mail e guard de membership ativo; 8 pontos de chamada (solicitações,
+  revisões, assinatura); canais por tipo: in-app habilitado por padrão, e-mail desabilitado. 5 fatos de integração.
+- [x] F-2: atendimento (central/nova/detalhe de solicitações) e avisos (notificações + preferências) em 4 idiomas;
+  +143 chaves por cultura (total 1765); cinco views reescritas no padrão canônico. Dívida registrada: o *conteúdo*
+  das notificações (título/corpo armazenados) segue pt-BR.
+- [x] F-3: triagem encerrada como **NÃO-defeito** com evidência executável nova (2 fatos verdes): `claim_notification`
+  é atômica (`FOR UPDATE SKIP LOCKED LIMIT 1`) e só re-pendencia pending/leased expirado; conclusão exige o token exato
+  do lease (worker antigo = no-op). Nenhuma mudança de produto atribuída ao item.
+- [x] A-1: centro de obrigações no Web BFF — cadastro (única ou série mensal 1–120, evidência, financeiro, pós-vigência),
+  leitura individual via API (nova rota GET expondo `evidenceRequired`), ações por status com versão otimista; conflito
+  409 rele a versão fresca **preservando os valores digitados**. Validação leve no BFF espelha a API; a API continua
+  autoridade (permissão/validação/versão/auditoria). Defeito de produto descoberto e corrigido pela prova: `View(vm)`
+  por convenção de action vs. arquivo `Acoes.cshtml` → `View("Acoes", vm)` explícito.
+- [x] A-2: prova ao vivo `scripts/qa/validate-d38-s4-web.ps1` **fails=0** (rodada final 30/30 executados; 31 definidos —
+  P0a só em base sem v059; convergência 10→2→0 registrada; única falha de produto entre rodadas = defeito de view acima,
+  corrigido; demais de harness classificadas na doc) e
+  capturas CDP `scripts/qa/capture-d38-screens.ps1`: 6 telas × 4 idiomas × 360/768/1280/1440 + zoom 200% =
+  **ok=120 fail=0** (PNGs fora do repo por tamanho).
+- [x] Doc D-OC38 consolidada e STATUS.md atualizado; `.odca/progress.json` inalterado (sem CI oficial verde nem aceite
+  humano para creditar marco).
+- [ ] Fila administrativa de atendimento da plataforma e i18n do centro de obrigações (pt-first nesta sprint) — dívidas.
+- [ ] Localização do *conteúdo* das notificações (título/corpo armazenados seguem pt-BR).
+- [ ] SMTP real: canal de e-mail segue desabilitado por padrão (fornecedor externo indefinido — decisão preservada).
+- [ ] Botão "Agenda mensal" permanece disabled (fora do escopo desta sprint).
+- [ ] CI oficial deste SHA: pendente — branch sem push; nenhum ID de execução inventado.
+- [ ] Aceite humano dos fluxos de atendimento/sino/obrigações: pendente (capturas disponíveis para revisão).
+- [x] Commit único "sem push" fechando a Sprint 4.

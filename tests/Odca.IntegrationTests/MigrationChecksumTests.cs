@@ -574,4 +574,23 @@ public sealed class MigrationChecksumTests
         Assert.Contains("GRANT EXECUTE ON FUNCTION odca.signature_envelope_pending_list(integer),odca.signature_envelope_apply_state(uuid,uuid,text,text,timestamptz) TO odca_app", canonical, StringComparison.Ordinal);
         Assert.DoesNotContain("ODCA-MIGRATION 059", snapshot, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ReleaseV059AddsDeterministicInAppNotificationSourceDedupWithoutRewritingEarlierMigrations()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var previous = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v058.sql")).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v059.sql")).Replace("\r\n", "\n");
+        DatabaseMigrator.ValidateChecksums(previous);
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        DatabaseMigrator.ValidateChecksums(canonical);
+        for (var version = 1; version <= 58; version++)
+            Assert.Equal(MigrationBlock(previous, version), MigrationBlock(canonical, version));
+        // D-OC38 (Sprint 4/F-1): deduplicacao deterministica por origem nas notificacoes in-app —
+        // o mesmo evento de negocio emite no maximo uma linha no sino por destinatario; linhas
+        // historicas do worker de lembretes permanecem com source_id NULL.
+        Assert.Contains("ALTER TABLE odca.user_notifications ADD COLUMN IF NOT EXISTS source_id uuid", canonical, StringComparison.Ordinal);
+        Assert.Contains("CREATE UNIQUE INDEX IF NOT EXISTS user_notifications_source_uq", canonical, StringComparison.Ordinal);
+        Assert.Contains("ON odca.user_notifications(tenant_id,source_id) WHERE source_id IS NOT NULL", canonical, StringComparison.Ordinal);
+    }
 }

@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Odca.Configuration.Localization;
 using Odca.Contracts.Solicitations;
 using Odca.Web.Services;
 
@@ -14,19 +15,22 @@ namespace Odca.Web.Controllers;
 /// </summary>
 [Authorize]
 [Route("organizacoes/{tenantId:guid}/central-solicitacoes")]
-public sealed class SolicitacoesController(OdcaApiClient api, IUserTenantContext tenants) : Controller
+public sealed class SolicitacoesController(OdcaApiClient api, IUserTenantContext tenants, LocalizationService loc) : Controller
 {
+    private string? Culture => HttpContext.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] as string;
+    private string L(string key, params string[] args) => loc.T(key, Culture, args);
+
     [HttpGet]
     public async Task<IActionResult> Index(Guid tenantId, string? service, string? status, string? search, CancellationToken ct)
     {
-        ViewData["Title"] = "Central de solicitações"; ViewData["TenantId"] = tenantId;
+        ViewData["Title"] = L("sol.center"); ViewData["TenantId"] = tenantId;
         var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
         var result = await api.GetSolicitationsAsync(token, tenantId, service, status, search, ct);
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         var access = await tenants.GetAccessAsync(tenantId, ct);
         ViewData["Service"] = service; ViewData["Status"] = status; ViewData["Search"] = search;
         ViewData["CanManage"] = access?.HasPermission("tenant.solicitations.manage") == true;
-        ViewData["LoadError"] = result.Succeeded ? null : result.UserMessage("Não foi possível carregar as solicitações.");
+        ViewData["LoadError"] = result.Succeeded ? null : result.UserMessage(L("sol.msg.load_error"));
         return View(result.Value ?? []);
     }
 
@@ -35,7 +39,7 @@ public sealed class SolicitacoesController(OdcaApiClient api, IUserTenantContext
     {
         var access = await tenants.GetAccessAsync(tenantId, ct);
         if (access?.HasPermission("tenant.solicitations.manage") != true) return Forbid();
-        ViewData["Title"] = "Nova solicitação"; ViewData["TenantId"] = tenantId;
+        ViewData["Title"] = L("sol.new"); ViewData["TenantId"] = tenantId;
         var normalized = service?.Trim().ToLowerInvariant();
         if (normalized is "revisao" or "adaptacao" or "esclarecimento" or "suporte_tecnico")
         {
@@ -55,18 +59,18 @@ public sealed class SolicitacoesController(OdcaApiClient api, IUserTenantContext
         if (!result.Succeeded)
         {
             TempData["SolService"] = service; TempData["SolPriority"] = priority; TempData["SolSubject"] = subject; TempData["SolBody"] = body;
-            TempData["SolError"] = result.UserMessage(service == "suporte_tecnico" ? "Não foi possível abrir a solicitação. Verifique se a organização tem uma assinatura ativa." : "Não foi possível abrir a solicitação. Os serviços documentais exigem o plano Enterprise ativo.");
+            TempData["SolError"] = result.UserMessage(service == "suporte_tecnico" ? L("sol.msg.create_error_support") : L("sol.msg.create_error_enterprise"));
             return RedirectToAction(nameof(Nova), new { tenantId });
         }
         var protocol = TryProtocol(result.Value);
-        TempData["SolNotice"] = $"Solicitação {protocol} aberta. Prazos de resposta registrados.";
+        TempData["SolNotice"] = L("sol.msg.created", protocol);
         return RedirectToAction(nameof(Detalhes), new { tenantId, solicitationId = TryId(result.Value) });
     }
 
     [HttpGet("{solicitationId:guid}")]
     public async Task<IActionResult> Detalhes(Guid tenantId, Guid solicitationId, CancellationToken ct)
     {
-        ViewData["Title"] = "Solicitação"; ViewData["TenantId"] = tenantId;
+        ViewData["Title"] = L("sol.detail_title"); ViewData["TenantId"] = tenantId;
         var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
         var result = await api.GetSolicitationAsync(token, tenantId, solicitationId, ct);
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
@@ -84,8 +88,8 @@ public sealed class SolicitacoesController(OdcaApiClient api, IUserTenantContext
         var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
         var result = await api.SolicitationMessageAsync(token, tenantId, solicitationId, new SolicitationMessageRequest(body, expectedVersion), ct);
         TempData[result.Succeeded ? "SolNotice" : "SolError"] = result.Succeeded
-            ? "Mensagem registrada."
-            : result.UserMessage("Não foi possível registrar a mensagem. Atualize a página e tente novamente.");
+            ? L("sol.msg.message_registered")
+            : result.UserMessage(L("sol.msg.message_fail"));
         return RedirectToAction(nameof(Detalhes), new { tenantId, solicitationId });
     }
 
@@ -96,8 +100,8 @@ public sealed class SolicitacoesController(OdcaApiClient api, IUserTenantContext
         var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
         var result = await api.SolicitationActionAsync(token, tenantId, solicitationId, new SolicitationActionRequest(action, text, null, null, expectedVersion), ct);
         TempData[result.Succeeded ? "SolNotice" : "SolError"] = result.Succeeded
-            ? action == "encerrar" ? "Solicitação encerrada." : "Solicitação cancelada."
-            : result.UserMessage("Não foi possível registrar a ação. Atualize a página e tente novamente.");
+            ? action == "encerrar" ? L("sol.msg.closed") : L("sol.msg.cancelled")
+            : result.UserMessage(L("sol.msg.action_fail"));
         return RedirectToAction(nameof(Detalhes), new { tenantId, solicitationId });
     }
 

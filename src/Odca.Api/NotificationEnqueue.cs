@@ -108,6 +108,86 @@ public static partial class NotificationEnqueue
     }
 
     /// <summary>
+    /// D-OC38 (Sprint 4/F-1): materializa a linha do sino (odca.user_notifications) para um
+    /// membro da organização dentro da transação do chamador, respeitando as preferências por
+    /// canal (enabled/channel_in_app, por tipo). Deduplicação determinística por source_id
+    /// (v059): replay ou concorrência do mesmo evento nunca duplica a linha. Nunca lança:
+    /// falha é registrada como log e preserva a operação de negócio. Destinatários sem
+    /// membership ativo não têm linha de sino para materializar (eventos de plataforma).
+    /// </summary>
+    public static async Task<bool> EnqueueInAppAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction tx,
+        Guid tenantId,
+        Guid recipientId,
+        string kind,
+        string title,
+        string body,
+        Guid? sourceId,
+        ILogger logger,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var isMember = await connection.ExecuteScalarAsync<bool>(new CommandDefinition(
+                "SELECT EXISTS(SELECT 1 FROM odca.memberships WHERE tenant_id=@tenantId AND user_id=@userId AND status='active')",
+                new { tenantId, userId = recipientId }, transaction: tx, cancellationToken: ct));
+            if (!isMember) return false;
+
+            var state = await connection.QuerySingleOrDefaultAsync<ChannelState>(new CommandDefinition(
+                "SELECT enabled AS Enabled, channel_in_app AS InApp, channel_email AS Email FROM odca.notification_channel_state(@tenantId,@userId,@kind)",
+                new { tenantId, userId = recipientId, kind }, transaction: tx, cancellationToken: ct));
+            if (state is null || !state.Enabled || !state.InApp) return false;
+
+            await connection.ExecuteAsync(new CommandDefinition(
+                """
+                INSERT INTO odca.user_notifications(tenant_id,user_id,kind,title,body,channel,source_id)
+                VALUES(@tenantId,@userId,@kind,@title,@body,'in_app',@sourceId)
+                ON CONFLICT(tenant_id,source_id) WHERE source_id IS NOT NULL DO NOTHING
+                """, new { tenantId, userId = recipientId, kind, title, body, sourceId }, transaction: tx, cancellationToken: ct));
+            return true;
+        }
+        catch (Exception ex)
+        {
+            InAppEnqueueFailure(logger, kind, recipientId, tenantId, ex.Message);
+            return false;
+        }
+    }
+
+    public static async Task<bool> EnqueueInAppAsync(
+        NpgsqlConnection connection,
+        Guid tenantId,
+        Guid actorId,
+        Guid recipientId,
+        string kind,
+        string title,
+        string body,
+        Guid? sourceId,
+        ILogger logger,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            await using var tx = await connection.BeginTransactionAsync(ct);
+            await connection.ExecuteAsync(new CommandDefinition(
+                "SELECT set_config('odca.tenant_id',@tenant::text,true),set_config('odca.user_id',@actor::text,true)",
+                new { tenant = tenantId, actor = actorId }, transaction: tx, cancellationToken: ct));
+            var queued = await EnqueueInAppAsync(connection, tx, tenantId, recipientId, kind, title, body, sourceId, logger, ct);
+            await tx.CommitAsync(ct);
+            return queued;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            InAppTransactionFailure(logger, kind, recipientId, ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Resolve o protetor de dados (compartilhado com o Worker pelo mesmo repositório de
     /// chaves) e um logger a partir do provedor de serviços do request. Centraliza a
     /// resolução para os controladores, que constroem o helper por chamada.
@@ -132,6 +212,12 @@ public static partial class NotificationEnqueue
 
     [LoggerMessage(EventId = 2402, Level = LogLevel.Warning, Message = "Falha na transação de enfileiramento do e-mail do tipo {Kind} para o usuário {UserId}: {Reason}.", SkipEnabledCheck = true)]
     private static partial void TransactionFailure(ILogger logger, string kind, Guid userId, string reason);
+
+    [LoggerMessage(EventId = 2403, Level = LogLevel.Warning, Message = "Falha ao materializar a notificação in-app do tipo {Kind} para o usuário {UserId} na organização {TenantId}: {Reason}.", SkipEnabledCheck = true)]
+    private static partial void InAppEnqueueFailure(ILogger logger, string kind, Guid userId, Guid tenantId, string reason);
+
+    [LoggerMessage(EventId = 2404, Level = LogLevel.Warning, Message = "Falha na transação da notificação in-app do tipo {Kind} para o usuário {UserId}: {Reason}.", SkipEnabledCheck = true)]
+    private static partial void InAppTransactionFailure(ILogger logger, string kind, Guid userId, string reason);
 
     private sealed record ChannelState(bool Enabled, bool InApp, bool Email);
 }

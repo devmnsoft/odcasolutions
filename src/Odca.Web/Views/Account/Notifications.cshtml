@@ -1,17 +1,18 @@
 @model Odca.Contracts.Account.NotificationPage
 @{
-    ViewData["Title"] = "Notificações";
+    var _culture=(string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("notificacoes",_culture);
     var hasTenant = ViewData["TenantId"] is not null;
     var tenantId = ViewData["TenantId"] as string;
 }
 <section class="narrow">
-    <header class="page-heading"><div><p class="eyebrow">Minha conta</p><h1>Notificações</h1><p>Avisos direcionados a você nesta organização.</p></div></header>
+    <header class="page-heading"><div><p class="eyebrow">@L.T("minha-conta",_culture)</p><h1>@L.T("notificacoes",_culture)</h1><p>@L.T("notif.subtitle",_culture)</p></div></header>
 
     <div class="card">
-        @if (Model.UnreadCount > 0) { <p><span class="status-badge">@Model.UnreadCount não lida(s)</span></p> }
+        @if (Model.UnreadCount > 0) { <p><span class="status-badge">@L.T("notif.unread_count",_culture,Model.UnreadCount.ToString(System.Globalization.CultureInfo.InvariantCulture))</span></p> }
         @if (Model.Items.Count == 0)
         {
-            <div class="empty-state"><strong>Nenhuma notificação</strong><p>Você ainda não recebeu avisos nesta organização.</p></div>
+            <div class="empty-state"><strong>@L.T("notif.empty_title",_culture)</strong><p>@L.T("notif.empty_body",_culture)</p></div>
         }
         else
         {
@@ -19,7 +20,7 @@
             {
                 <form method="post" action="/minha-conta/notificacoes/marcar-lidas" class="form-actions-row" style="margin-bottom:.75rem;" data-prevent-double-submit>
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="button button-secondary">Marcar todas como lidas</button>
+                    <button type="submit" class="button button-secondary">@L.T("notif.mark_all_read",_culture)</button>
                 </form>
             }
             <ul class="check-list">
@@ -29,16 +30,16 @@
                         <strong>@n.Title</strong>
                         <br /><span>@n.Body</span>
                         <br />
-                        <small>@n.CreatedAtFormatted@(n.ReadAt is null ? "" : " · lida")</small>
+                        <small>@n.CreatedAtFormatted@(n.ReadAt is null ? "" : " · " + L.T("notif.read_marker",_culture))</small>
                         @if (n.CanOpen && n.TargetType == "obligation" && n.TargetId.HasValue && hasTenant)
                         {
-                            <br /><a href="/organizacoes/@tenantId/obrigacoes/@n.TargetId/historico" class="notification-link">Ver obrigação →</a>
+                            <br /><a href="/organizacoes/@tenantId/obrigacoes/@n.TargetId/historico" class="notification-link">@L.T("notif.view_obligation",_culture)</a>
                         }
                         @if (n.ReadAt is null && hasTenant)
                         {
                             <form method="post" action="/minha-conta/notificacoes/@n.Id/ler" style="display:inline;margin-left:.5rem;" data-prevent-double-submit>
                                 @Html.AntiForgeryToken()
-                                <button type="submit" class="button button-quiet" style="font-size:.8rem;padding:.2rem .5rem;">Marcar lida</button>
+                                <button type="submit" class="button button-quiet" style="font-size:.8rem;padding:.2rem .5rem;">@L.T("notif.mark_read",_culture)</button>
                             </form>
                         }
                     </li>
@@ -50,9 +51,9 @@
     @if (hasTenant)
     {
         <div class="card" style="margin-top:1rem;">
-            <h3>Preferências de notificação</h3>
-            <p>Configure quais tipos de aviso você recebe e por qual canal.</p>
-            <a class="button button-secondary" asp-controller="Account" asp-action="NotificationPreferences">Gerenciar preferências</a>
+            <h3>@L.T("notif.prefs_card_title",_culture)</h3>
+            <p>@L.T("notif.prefs_card_body",_culture)</p>
+            <a class="button button-secondary" asp-controller="Account" asp-action="NotificationPreferences">@L.T("notif.manage_prefs",_culture)</a>
         </div>
     }
 
@@ -61,15 +62,15 @@
         <div class="pagination" style="margin-top:1rem;display:flex;gap:.5rem;align-items:center;">
             @if (Model.Page > 1)
             {
-                <a class="button button-quiet" asp-controller="Account" asp-action="Notifications" asp-route-page="(Model.Page - 1)" asp-route-pageSize="@Model.PageSize">← Anterior</a>
+                <a class="button button-quiet" asp-controller="Account" asp-action="Notifications" asp-route-page="(Model.Page - 1)" asp-route-pageSize="@Model.PageSize">← @L.T("inbox.prev",_culture)</a>
             }
-            <span>Página @Model.Page de @((int)Math.Ceiling((double)Model.Total / Model.PageSize)) (@Model.Total avisos)</span>
+            <span>@L.T("notif.page_info",_culture,Model.Page.ToString(System.Globalization.CultureInfo.InvariantCulture),((int)Math.Ceiling((double)Model.Total / Model.PageSize)).ToString(System.Globalization.CultureInfo.InvariantCulture),Model.Total.ToString(System.Globalization.CultureInfo.InvariantCulture))</span>
             @if (Model.HasMore)
             {
-                <a class="button button-quiet" asp-controller="Account" asp-action="Notifications" asp-route-page="(Model.Page + 1)" asp-route-pageSize="@Model.PageSize">Próxima →</a>
+                <a class="button button-quiet" asp-controller="Account" asp-action="Notifications" asp-route-page="(Model.Page + 1)" asp-route-pageSize="@Model.PageSize">@L.T("inbox.next",_culture) →</a>
             }
         </div>
     }
 
-    <div class="button-row"><a class="button button-quiet" asp-controller="Account" asp-action="Conta">Voltar para Minha conta</a></div>
+    <div class="button-row"><a class="button button-quiet" asp-controller="Account" asp-action="Conta">@L.T("notif.back_account",_culture)</a></div>
 </section>

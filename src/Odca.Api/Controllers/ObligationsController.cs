@@ -74,13 +74,36 @@ public sealed class ObligationsController(NpgsqlDataSource dataSource) : Control
           SELECT o.id AS Id,o.contract_id AS ContractId,c.title AS Contract,o.title AS Title,o.category AS Category,
                  o.obligated_party AS ObligatedParty,o.owner_id AS OwnerId,u.display_name AS Owner,o.due_date AS DueDate,
                  o.priority AS Priority,o.status AS Status,(o.status IN('open','in_progress') AND o.due_date < (now() AT TIME ZONE t.timezone)::date) AS Overdue,
-                 (m.status='blocked') AS OwnerBlocked,o.row_version AS Version,o.amount AS Amount,o.currency AS Currency
+                 (m.status='blocked') AS OwnerBlocked,o.row_version AS Version,o.amount AS Amount,o.currency AS Currency,o.evidence_required AS EvidenceRequired
           FROM odca.contract_obligations o JOIN odca.contracts c ON c.id=o.contract_id AND c.tenant_id=o.tenant_id
           JOIN odca.users u ON u.id=o.owner_id JOIN odca.memberships m ON m.tenant_id=o.tenant_id AND m.user_id=o.owner_id JOIN odca.tenants t ON t.id=o.tenant_id
           WHERE {where} ORDER BY (o.status IN('open','in_progress') AND o.due_date < (now() AT TIME ZONE t.timezone)::date) DESC,o.due_date,o.id LIMIT @pageSize OFFSET @offset
           """,args,tx,cancellationToken:ct));
         await tx.CommitAsync(ct);
-        return Ok(new ObligationPage(rows.Select(x=>new ObligationItem(x.Id,x.ContractId,x.Contract,x.Title,x.Category,x.ObligatedParty,x.OwnerId,x.Owner,x.DueDate,x.Priority,x.Status,x.Overdue,x.OwnerBlocked,x.Version,x.Amount,x.Currency,x.OwnerBlocked?this.T("api.obligations.next_reassign"):x.Status=="fulfilled"?this.T("api.obligations.next_history"):this.T("api.obligations.next_progress"))).ToArray(),page,pageSize,total));
+        return Ok(new ObligationPage(rows.Select(x=>new ObligationItem(x.Id,x.ContractId,x.Contract,x.Title,x.Category,x.ObligatedParty,x.OwnerId,x.Owner,x.DueDate,x.Priority,x.Status,x.Overdue,x.OwnerBlocked,x.Version,x.Amount,x.Currency,x.OwnerBlocked?this.T("api.obligations.next_reassign"):x.Status=="fulfilled"?this.T("api.obligations.next_history"):this.T("api.obligations.next_progress"),x.EvidenceRequired)).ToArray(),page,pageSize,total));
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> Get(Guid tenantId,Guid id,CancellationToken ct)
+    {
+        var actor=Actor(); if(actor is null)return Unauthorized();
+        await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.obligations.read",ct))return Forbid();
+        await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,tx,ct);
+        var row=await c.QuerySingleOrDefaultAsync<ObligationRow>(new CommandDefinition("""
+          SELECT o.id AS Id,o.contract_id AS ContractId,c.title AS Contract,o.title AS Title,o.category AS Category,
+                 o.obligated_party AS ObligatedParty,o.owner_id AS OwnerId,u.display_name AS Owner,o.due_date AS DueDate,
+                 o.priority AS Priority,o.status AS Status,(o.status IN('open','in_progress') AND o.due_date < (now() AT TIME ZONE t.timezone)::date) AS Overdue,
+                 (m.status='blocked') AS OwnerBlocked,o.row_version AS Version,o.amount AS Amount,o.currency AS Currency,
+                 o.evidence_required AS EvidenceRequired
+          FROM odca.contract_obligations o JOIN odca.contracts c ON c.id=o.contract_id AND c.tenant_id=o.tenant_id
+          JOIN odca.users u ON u.id=o.owner_id JOIN odca.memberships m ON m.tenant_id=o.tenant_id AND m.user_id=o.owner_id JOIN odca.tenants t ON t.id=o.tenant_id
+          WHERE o.tenant_id=@tenantId AND o.id=@id AND o.deleted_at IS NULL
+          """,new{tenantId,id},tx,cancellationToken:ct));
+        if(row is null)return NotFound();
+        var all=await Allowed(c,actor.Value,tenantId,"tenant.obligations.read_all",ct,tx);
+        if(row.OwnerId!=actor.Value&&!all)return Forbid();
+        await tx.CommitAsync(ct);
+        return Ok(new ObligationItem(row.Id,row.ContractId,row.Contract,row.Title,row.Category,row.ObligatedParty,row.OwnerId,row.Owner,row.DueDate,row.Priority,row.Status,row.Overdue,row.OwnerBlocked,row.Version,row.Amount,row.Currency,row.OwnerBlocked?this.T("api.obligations.next_reassign"):row.Status=="fulfilled"?this.T("api.obligations.next_history"):this.T("api.obligations.next_progress"),row.EvidenceRequired));
     }
 
     [HttpPost("contracts/{contractId:guid}")]
@@ -138,7 +161,7 @@ public sealed class ObligationsController(NpgsqlDataSource dataSource) : Control
     private static Task<int> SetTenant(NpgsqlConnection c,Guid tenant,NpgsqlTransaction tx,CancellationToken ct)=>c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@value,true)",new{value=tenant.ToString()},tx,cancellationToken:ct));
     private static List<DateOnly> Materialize(MonthlyRecurrenceRequest recurrence){var availableMonths=((DateOnly.MaxValue.Year-recurrence.BaseDate.Year)*12)+(DateOnly.MaxValue.Month-recurrence.BaseDate.Month);var count=Math.Min(Math.Min(recurrence.OccurrenceCount??24,24),availableMonths+1);var result=new List<DateOnly>();for(var i=0;i<count;i++){var month=recurrence.BaseDate.AddMonths(i);var date=new DateOnly(month.Year,month.Month,Math.Min(recurrence.IntendedDay,DateTime.DaysInMonth(month.Year,month.Month)));if(recurrence.EndsOn is not null&&date>recurrence.EndsOn)break;result.Add(date);}return result;}
     private static readonly HashSet<string> Categories=["delivery","document","renewal","communication","financial","other"]; private static readonly HashSet<string> Priorities=["low","normal","high","critical"];private static readonly HashSet<string> Origins=["manual","reviewed_suggestion"];
-    private sealed record ContractTerm(DateOnly? EndDate);private sealed record ActionRow(string Status,long Version,DateOnly DueDate,bool EvidenceRequired,Guid OwnerId);private sealed record ObligationRow(Guid Id,Guid ContractId,string Contract,string Title,string Category,string ObligatedParty,Guid OwnerId,string Owner,DateOnly DueDate,string Priority,string Status,bool Overdue,bool OwnerBlocked,long Version,decimal? Amount,string? Currency);private sealed record HistoryHeader(Guid Id,string Title,Guid OwnerId);
+    private sealed record ContractTerm(DateOnly? EndDate);private sealed record ActionRow(string Status,long Version,DateOnly DueDate,bool EvidenceRequired,Guid OwnerId);private sealed record ObligationRow(Guid Id,Guid ContractId,string Contract,string Title,string Category,string ObligatedParty,Guid OwnerId,string Owner,DateOnly DueDate,string Priority,string Status,bool Overdue,bool OwnerBlocked,long Version,decimal? Amount,string? Currency,bool EvidenceRequired);private sealed record HistoryHeader(Guid Id,string Title,Guid OwnerId);
 
     private static DateTimeOffset ToUtcOffset(DateTime dt) =>
         dt.Kind == DateTimeKind.Utc

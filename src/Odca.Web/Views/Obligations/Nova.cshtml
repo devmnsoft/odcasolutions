@@ -1,0 +1,134 @@
+@model Odca.Web.Models.ObligationCreateModel
+@{ViewData["Title"]="Nova obrigação";var tenantId=(Guid)ViewData["TenantId"]!;}
+<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-action="Index" asp-route-tenantId="@tenantId">Obrigações</a><span aria-hidden="true">/</span><span>Nova obrigação</span></nav>
+<header class="page-heading"><div><p class="eyebrow">Central operacional · Organização selecionada</p><h1>Nova obrigação</h1><p>Registre o que deve ser cumprido e para quando. Os lembretes seguem os prazos escolhidos (padrão: 7, 1 e 0 dias antes).</p></div></header>
+@if(Model.Contracts.Count==0){<p class="validation-summary" role="alert">Não foi possível carregar os contratos da organização. Verifique a assinatura ativa e tente novamente.</p>}
+else
+{<form method="post" asp-action="Create" asp-route-tenantId="@tenantId" data-prevent-double-submit>
+@Html.AntiForgeryToken()
+<div class="obligation-create-grid">
+ <label for="obl-contract">Contrato <span aria-hidden="true">*</span></label>
+ <select id="obl-contract" name="contractId" required>
+  <option value="">Selecione o contrato</option>
+  @foreach(var c in Model.Contracts){<option value="@c.Id" selected="@(Model.ContractId==c.Id)" data-end="@(c.EndDate)">@c.Title@(c.EndDate is not null?" — até "+c.EndDate:"")</option>}
+ </select>
+
+ <label for="obl-title">Título <span aria-hidden="true">*</span></label>
+ <input id="obl-title" name="title" maxlength="200" required value="@Model.Title" placeholder="Ex.: Enviar proposta revisada ao cliente"/>
+
+ <label for="obl-description">Descrição</label>
+ <textarea id="obl-description" name="description" maxlength="4000" rows="3">@Model.Description</textarea>
+
+ <label for="obl-party">Parte obrigada <span aria-hidden="true">*</span></label>
+ <input id="obl-party" name="obligatedParty" maxlength="200" required value="@Model.ObligatedParty" placeholder="Quem deve cumprir: cliente, fornecedor, a própria organização…"/>
+
+ <label for="obl-owner">Responsável na organização <span aria-hidden="true">*</span></label>
+ <select id="obl-owner" name="ownerId" required>
+  <option value="">Selecione o responsável</option>
+  @foreach(var m in Model.Members){<option value="@m.Id" selected="@(Model.OwnerId==m.Id)">@m.Name (@m.Email)</option>}
+ </select>
+
+ <label for="obl-due">Prazo <span aria-hidden="true">*</span></label>
+ <input id="obl-due" type="date" name="dueDate" required value="@(Model.DueDate?.ToString("yyyy-MM-dd"))"/>
+
+ <label for="obl-category">Tipo</label>
+ <select id="obl-category" name="category">
+  <option value="delivery" selected="@(Model.Category=="delivery")">Entrega</option>
+  <option value="document" selected="@(Model.Category=="document")">Documento</option>
+  <option value="renewal" selected="@(Model.Category=="renewal")">Renovação</option>
+  <option value="communication" selected="@(Model.Category=="communication")">Comunicação</option>
+  <option value="financial" selected="@(Model.Category=="financial")">Financeiro</option>
+  <option value="other" selected="@(Model.Category=="other")">Outro</option>
+ </select>
+
+ <div id="obl-financial" hidden="@(Model.Category!="financial")">
+  <label for="obl-amount">Valor (obrigatório para financeiro)</label>
+  <input id="obl-amount" type="number" name="amount" step="0.01" min="0.01" inputmode="decimal" value="@(Model.Amount?.ToString(System.Globalization.CultureInfo.InvariantCulture))"/>
+  <label for="obl-currency">Moeda (3 letras)</label>
+  <input id="obl-currency" name="currency" maxlength="3" size="4" value="@(Model.Currency)" placeholder="BRL"/>
+ </div>
+
+ <label for="obl-priority">Prioridade</label>
+ <select id="obl-priority" name="priority">
+  <option value="low" selected="@(Model.Priority=="low")">Baixa</option>
+  <option value="normal" selected="@(string.IsNullOrEmpty(Model.Priority)||Model.Priority=="normal")">Normal</option>
+  <option value="high" selected="@(Model.Priority=="high")">Alta</option>
+  <option value="critical" selected="@(Model.Priority=="critical")">Crítica</option>
+ </select>
+
+ <label for="obl-clause">Cláusula / documento de referência</label>
+ <select id="obl-clause" name="clauseDocumentVersionId" data-preselect="@(Model.ClauseDocumentVersionId?.ToString())">
+  <option value="" selected="@(Model.ClauseDocumentVersionId is null)">Sem documento vinculado</option>
+ </select>
+
+ <label class="checkbox-line"><input type="checkbox" name="evidenceRequired" value="true" @(Model.EvidenceRequired?"checked":"")/> Exigir evidência documental no cumprimento</label>
+
+ <label for="obl-postterm">Justificativa de prazo posterior ao contrato</label>
+ <textarea id="obl-postterm" name="postTermReason" maxlength="500" rows="2" placeholder="Necessário apenas quando o prazo ultrapassa o término do contrato">@Model.PostTermReason</textarea>
+
+ <fieldset>
+  <legend>Recorrência mensal</legend>
+  <label class="checkbox-line"><input type="checkbox" id="obl-rec-on" name="recurrenceEnabled" value="true" @(Model.RecurrenceEnabled?"checked":"")/> Criar série mensal de prazos</label>
+  <div id="obl-rec-fields" hidden="@(Model.RecurrenceEnabled)">
+   <label for="obl-rec-base">Data base <span aria-hidden="true">*</span></label>
+   <input id="obl-rec-base" type="date" name="recurrenceBaseDate" value="@(Model.RecurrenceBaseDate?.ToString("yyyy-MM-dd"))"/>
+   <label for="obl-rec-day">Dia do mês (1–31) <span aria-hidden="true">*</span></label>
+   <input id="obl-rec-day" type="number" name="recurrenceIntendedDay" min="1" max="31" value="@Model.RecurrenceIntendedDay"/>
+   <label for="obl-rec-end">Última ocorrência até</label>
+   <input id="obl-rec-end" type="date" name="recurrenceEndsOn" value="@(Model.RecurrenceEndsOn?.ToString("yyyy-MM-dd"))"/>
+   <label for="obl-rec-count">ou quantidade de ocorrências (até 120)</label>
+   <input id="obl-rec-count" type="number" name="recurrenceOccurrenceCount" min="1" max="120" value="@(Model.RecurrenceOccurrenceCount?.ToString())"/>
+   <label for="obl-rec-tz">Fuso horário</label>
+   <input id="obl-rec-tz" name="recurrenceTimeZone" value="@(string.IsNullOrWhiteSpace(Model.RecurrenceTimeZone)?"America/Sao_Paulo":Model.RecurrenceTimeZone)" placeholder="America/Sao_Paulo"/>
+   <small class="muted">Informe a data final ou a quantidade — uma das duas — para a API validar a série.</small>
+  </div>
+ </fieldset>
+
+ <fieldset>
+  <legend>Lembretes antes do prazo</legend>
+  <label class="checkbox-line"><input type="checkbox" name="reminderDays" value="7" @(Model.ReminderDays.Contains("7")?"checked":"")/> 7 dias antes</label>
+  <label class="checkbox-line"><input type="checkbox" name="reminderDays" value="1" @(Model.ReminderDays.Contains("1")?"checked":"")/> 1 dia antes</label>
+  <label class="checkbox-line"><input type="checkbox" name="reminderDays" value="0" @(Model.ReminderDays.Contains("0")?"checked":"")/> No dia</label>
+  <small class="muted">Sem nenhum lembrete selecionado, a plataforma aplica o padrão 7, 1 e 0 dias.</small>
+ </fieldset>
+</div>
+@if(Model.ErrorMessage is string errorMessage){<p class="validation-summary" role="alert">@errorMessage</p>}
+<div class="form-actions-row"><a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">Voltar</a><button class="button button-primary" type="submit">Registrar obrigação</button></div>
+</form>}
+@section Scripts{
+<script>
+(function(){
+ var contract=document.getElementById('obl-contract');
+ if(!contract)return;
+ var clause=document.getElementById('obl-clause');
+ var docsUrl='@Url.Action("DocumentOptions",new{tenantId})';
+ function fillDocs(){
+  if(!contract.value){clause.querySelectorAll('option[data-doc]').forEach(o=>o.remove());return;}
+  fetch(docsUrl+'?contractId='+encodeURIComponent(contract.value),{headers:{'Accept':'application/json'}})
+   .then(r=>r.ok?r.json():[])
+   .then(items=>{
+    items=Array.isArray(items)?items:[];
+    clause.querySelectorAll('option[data-doc]').forEach(o=>o.remove());
+    items.forEach(item=>{
+     var opt=document.createElement('option');
+     opt.value=item.id;opt.textContent=item.label;opt.dataset.doc='1';
+     if(!item.safe)opt.title='Documento em análise de segurança; pode ser referência, mas não serve como evidência.';
+     clause.appendChild(opt);
+    });
+    if(clause.dataset.preselect){
+     for(var i=0;i<clause.options.length;i++){if(clause.options[i].value===clause.dataset.preselect){clause.selectedIndex=i;break;}}
+    }
+   })
+   .catch(()=>{});
+ }
+ contract.addEventListener('change',fillDocs);
+ if(contract.value)fillDocs();
+ var category=document.getElementById('obl-category');
+ var financial=document.getElementById('obl-financial');
+ if(category&&financial){category.addEventListener('change',()=>{financial.hidden=category.value!=='financial';});}
+ var recOn=document.getElementById('obl-rec-on');
+ var recFields=document.getElementById('obl-rec-fields');
+ if(recOn&&recFields){recOn.addEventListener('change',()=>{recFields.hidden=!recOn.checked;});}
+})();
+</script>
+}
