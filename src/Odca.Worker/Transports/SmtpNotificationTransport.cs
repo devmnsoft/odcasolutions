@@ -70,6 +70,10 @@ public sealed class SmtpNotificationTransport : INotificationTransport, IDisposa
             Subject = subject,
             Body = body,
         };
+        // D-OC44 (Sprint 10): o pipeline de texto do System.Net.Mail codifica o corpo em
+        // US-ASCII por padrão e substituiria acentos por '?'; UTF-8 explícito garante o
+        // charset declarado no cabeçalho Content-Type do corpo.
+        message.BodyEncoding = System.Text.Encoding.UTF8;
         if (!string.IsNullOrWhiteSpace(_senderName))
         {
             message.From = new MailAddress(_senderAddress, _senderName);

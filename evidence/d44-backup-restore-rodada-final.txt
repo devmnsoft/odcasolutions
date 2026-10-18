@@ -1,0 +1,63 @@
+﻿=== D-OC44 F-1: ensaio de backup/restore ===
+inicio=2026-10-18T13:46:25.0430251-03:00 fonte=odca_test_disposable destino=odca_restore_check_s10 pg=C:\Program Files\PostgreSQL\18\bin
+CHECK servidor postgres responsivo                         ok PostgreSQL 18.0 on x86_64-windows, compiled by msvc-19.44.35217, 64-bit
+CHECK banco de fonte 'odca_test_disposable' existe         ok 
+CHECK banco de restauracao 'odca_restore_check_s10' ainda nao existe ok 
+SRC   max_version = 61
+SRC   count.tenants = 109
+SRC   count.users = 79
+SRC   count.memberships = 92
+SRC   count.contracts = 49
+SRC   count.contract_obligations = 5
+SRC   count.obligation_reminders = 18
+SRC   count.user_notifications = 1
+SRC   count.audit_events = 2859
+SRC   count.support_sessions = 0
+SRC   count.sessions = 926
+SRC   count.notification_outbox = 30
+SRC   md5.users = 55c5f9ec0d501f758d8d3a15b87514e8
+SRC   md5.contracts = d93f2294d05020a3b655b29eba01a316
+SRC   md5.audit_events = 5cc0677338cf8fb37606f2f102045504
+SRC   rls.tenants_as_app_no_context = 109
+CHECK pg_dump custom format concluido                      ok 
+DUMP  bytes=985729 sha256=2b39fbdcc443b0368b9757ad5f40cc50d9f402e21ded8a4a5c80a5b3c114b2bc
+CHECK dump tem tamanho minimo                              ok bytes=985729
+CHECK pg_restore -l lista objetos                          ok 
+CHECK banco de restauracao criado                          ok odca_restore_check_s10
+CHECK pg_restore aplicado sem erros                        ok 
+RST   max_version = 61
+RST   count.tenants = 109
+RST   count.users = 79
+RST   count.memberships = 92
+RST   count.contracts = 49
+RST   count.contract_obligations = 5
+RST   count.obligation_reminders = 18
+RST   count.user_notifications = 1
+RST   count.audit_events = 2859
+RST   count.support_sessions = 0
+RST   count.sessions = 926
+RST   count.notification_outbox = 30
+RST   md5.users = 55c5f9ec0d501f758d8d3a15b87514e8
+RST   md5.contracts = d93f2294d05020a3b655b29eba01a316
+RST   md5.audit_events = 5cc0677338cf8fb37606f2f102045504
+RST   rls.tenants_as_app_no_context = 109
+CHECK paridade max_version                                 ok src=61 rst=61
+CHECK paridade count.tenants                               ok src=109 rst=109
+CHECK paridade count.users                                 ok src=79 rst=79
+CHECK paridade count.memberships                           ok src=92 rst=92
+CHECK paridade count.contracts                             ok src=49 rst=49
+CHECK paridade count.contract_obligations                  ok src=5 rst=5
+CHECK paridade count.obligation_reminders                  ok src=18 rst=18
+CHECK paridade count.user_notifications                    ok src=1 rst=1
+CHECK paridade count.audit_events                          ok src=2859 rst=2859
+CHECK paridade count.support_sessions                      ok src=0 rst=0
+CHECK paridade count.sessions                              ok src=926 rst=926
+CHECK paridade count.notification_outbox                   ok src=30 rst=30
+CHECK paridade md5.users                                   ok src=55c5f9ec0d501f758d8d3a15b87514e8 rst=55c5f9ec0d501f758d8d3a15b87514e8
+CHECK paridade md5.contracts                               ok src=d93f2294d05020a3b655b29eba01a316 rst=d93f2294d05020a3b655b29eba01a316
+CHECK paridade md5.audit_events                            ok src=5cc0677338cf8fb37606f2f102045504 rst=5cc0677338cf8fb37606f2f102045504
+CHECK paridade rls.tenants_as_app_no_context               ok src=109 rst=109
+CHECK funcao security definer executavel apos restore      ok resultado=false
+CHECK banco de restauracao removido                        ok 
+BACKUP-RESTORE-DONE checks=26 ok=26 fail=0
+
