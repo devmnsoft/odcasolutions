@@ -1,35 +1,37 @@
 @using Odca.Contracts.Solicitations
 @model ApprovalQueueRow[]
 @{
-    string ModelLabel(string key)=>key switch { "surgical-consent"=>"Termo de consentimento — cirurgia plástica",_=>key };
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("admin.approvals_title", _c);
+    string ModelLabel(string key)=>key switch { "surgical-consent"=>L.T("admin.model_surgical_consent",_c),_=>key };
     string Fmt(DateTime? value)=>value?.ToString("dd/MM/yyyy HH:mm")??"—";
 }
-<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-action="Index">Atendimento ODCA</a><span>/</span><span aria-current="page">Aprovação de modelos</span></nav>
-<header class="page-heading"><div><p class="eyebrow">Plataforma MNSOFT</p><h1>Aprovação de modelos oficiais</h1><p>Modelos cirúrgicos instalados em organizações clínicas precisam de decisão da ODCA antes que o cliente confirme a assinatura.</p></div></header>
+<nav class="breadcrumb" aria-label="@L.T("common.breadcrumb_aria",_c)"><a asp-action="Index">@L.T("admin.queue_crumb",_c)</a><span>/</span><span aria-current="page">@L.T("admin.approvals_link",_c)</span></nav>
+<header class="page-heading"><div><p class="eyebrow">@L.T("common.platform_mns",_c)</p><h1>@L.T("admin.approvals_title",_c)</h1><p>@L.T("admin.approvals_subtitle",_c)</p></div></header>
 @if(ViewData["LoadError"] is string loadError){<div class="alert alert-error" role="alert">@loadError</div>}
 @if(TempData["SolNotice"] is string notice){<div class="alert alert-success" role="status">@notice</div>}@if(TempData["SolError"] is string error){<div class="alert alert-error" role="alert">@error</div>}
-<section class="help-card" aria-labelledby="approval-help"><h2 id="approval-help">Como funciona</h2><p>A fila lista instalações ativas de modelos oficiais que exigem aprovação. <strong>Aprovar</strong> libera o preparativo de assinatura para a organização; <strong>reprovar</strong> exige nota mínima de 5 caracteres e bloqueia novas confirmações até uma nova decisão.</p></section>
-<section aria-label="Fila de aprovações">
- @if(Model.Length==0){<div class="empty-state"><p>Nenhuma instalação de modelo oficial aguardando aprovação.</p></div>}
+<section class="help-card" aria-labelledby="approval-help"><h2 id="approval-help">@L.T("common.how_it_works",_c)</h2><p>@L.T("admin.how_body_a",_c)<strong>@L.T("admin.word_approve",_c)</strong>@L.T("admin.how_body_b",_c)<strong>@L.T("admin.word_reject",_c)</strong>@L.T("admin.how_body_c",_c)</p></section>
+<section aria-label="@L.T("admin.approvals_section_aria",_c)">
+ @if(Model.Length==0){<div class="empty-state"><p>@L.T("admin.approvals_empty",_c)</p></div>}
  else
  {
-  <div class="table-scroll"><table><thead><tr><th>Organização</th><th>Perfil</th><th>Modelo</th><th>Contratos gerados</th><th>Decisão</th><th>Ações</th></tr></thead><tbody>
+  <div class="table-scroll"><table><thead><tr><th>@L.T("common.org",_c)</th><th>@L.T("admin.profile",_c)</th><th>@L.T("admin.model",_c)</th><th>@L.T("admin.generated_contracts",_c)</th><th>@L.T("admin.decision",_c)</th><th>@L.T("common.actions",_c)</th></tr></thead><tbody>
   @foreach(var row in Model)
   {
    <tr>
     <td><strong>@row.OrganizationName</strong></td>
     <td>@(row.ActivityProfile??"—")</td>
     <td>@ModelLabel(row.OfficialKey)<small>@row.OfficialKey</small></td>
-    <td>@row.GeneratedCount contratos<small>@(row.LastGeneratedAt is null?"sem geração registrada":$"última em {Fmt(row.LastGeneratedAt)}")</small></td>
-    <td>@if(row.Decision=="aprovado"){<span class="status-badge status-approved">Aprovado</span><small>@row.DecidedByName em @Fmt(row.DecidedAt)</small>@if(!string.IsNullOrWhiteSpace(row.DecisionNote)){<small>@row.DecisionNote</small>}}else if(row.Decision=="reprovado"){<span class="status-badge status-rejected">Reprovado</span><small>@row.DecidedByName em @Fmt(row.DecidedAt) — @row.DecisionNote</small>}else{<span class="status-badge">Pendente</span>}</td>
+    <td>@L.T("admin.generated_count",_c,row.GeneratedCount.ToString(System.Globalization.CultureInfo.InvariantCulture))<small>@(row.LastGeneratedAt is null?L.T("admin.no_generation",_c):L.T("admin.last_generated_at",_c,Fmt(row.LastGeneratedAt)))</small></td>
+    <td>@if(row.Decision=="aprovado"){<span class="status-badge status-approved">@L.T("admin.decision_approved",_c)</span><small>@L.T("admin.decided_at",_c,row.DecidedByName??"",Fmt(row.DecidedAt))</small>@if(!string.IsNullOrWhiteSpace(row.DecisionNote)){<small>@row.DecisionNote</small>}}else if(row.Decision=="reprovado"){<span class="status-badge status-rejected">@L.T("admin.decision_rejected",_c)</span><small>@L.T("admin.decided_at",_c,row.DecidedByName??"",Fmt(row.DecidedAt)) — @row.DecisionNote</small>}else{<span class="status-badge">@L.T("admin.decision_pending",_c)</span>}</td>
     <td>
      <form method="post" asp-action="DecideApproval" asp-route-tenantId="@row.TenantId" asp-route-key="@row.OfficialKey" data-prevent-double-submit>
       @Html.AntiForgeryToken()
-      <label for="note-@row.TenantId-@row.OfficialKey">Nota da decisão (obrigatória na reprovação)</label>
+      <label for="note-@row.TenantId-@row.OfficialKey">@L.T("admin.note_label",_c)</label>
       <textarea id="note-@row.TenantId-@row.OfficialKey" name="note" maxlength="2000"></textarea>
       <div class="form-actions-row">
-       <button class="button button-primary" type="submit" name="decision" value="aprovado">Aprovar</button>
-       <button class="button button-danger" type="submit" name="decision" value="reprovado">Reprovar</button>
+       <button class="button button-primary" type="submit" name="decision" value="aprovado">@L.T("admin.approve_btn",_c)</button>
+       <button class="button button-danger" type="submit" name="decision" value="reprovado">@L.T("admin.reject_btn",_c)</button>
       </div>
      </form>
     </td>

@@ -2,19 +2,20 @@
 @using Odca.Contracts.Support
 @using System.Globalization
 @{
-    ViewData["Title"] = "Sessões de suporte";
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("support.title", _c);
     var ptBr = CultureInfo.GetCultureInfo("pt-BR");
 }
-<nav class="breadcrumb" aria-label="Navegação estrutural">
-    <a asp-controller="Home" asp-action="Index">Visão global</a><span aria-hidden="true">/</span><span>Sessões de suporte</span>
+<nav class="breadcrumb" aria-label="@L.T("common.breadcrumb_aria",_c)">
+    <a asp-controller="Home" asp-action="Index">@L.T("visao-global",_c)</a><span aria-hidden="true">/</span><span>@L.T("support.title",_c)</span>
 </nav>
 <header class="page-heading">
     <div>
-        <p class="eyebrow">Administração global</p>
-        <h1>Sessões de suporte</h1>
-        <p>Janelas temporárias em que um superadministrador atua junto a uma organização, com duração limitada e motivo obrigatório. Cada abertura, extensão, encerramento ou revogação registra auditoria com o ator real.</p>
+        <p class="eyebrow">@L.T("support.eyebrow",_c)</p>
+        <h1>@L.T("support.title",_c)</h1>
+        <p>@L.T("support.subtitle",_c)</p>
     </div>
-    <a class="button button-primary" asp-controller="Home" asp-action="Index">Voltar ao painel</a>
+    <a class="button button-primary" asp-controller="Home" asp-action="Index">@L.T("support.back_panel",_c)</a>
 </header>
 
 @if (TempData["Success"] is string supportFeedback)
@@ -27,58 +28,58 @@
 }
 
 <section class="panel">
-    <h2>Abrir nova sessão</h2>
+    <h2>@L.T("support.open_title",_c)</h2>
     @if (Model.CustomersLoadFailed)
     {
-        <div class="alert alert-error" role="alert">Não foi possível carregar as organizações agora. A lista abaixo pode estar incompleta; a abertura continuará disponível.</div>
+        <div class="alert alert-error" role="alert">@L.T("support.customers_load_fail",_c)</div>
     }
     <form method="post" asp-action="Open" class="form-stack">
         @Html.AntiForgeryToken()
         <div class="form-grid">
-            <label>Organização<select name="TenantId" required>
-                <option value="">Selecione a organização</option>
+            <label>@L.T("common.org",_c)<select name="TenantId" required>
+                <option value="">@L.T("support.select_org",_c)</option>
                 @foreach (var customer in Model.Customers)
                 {
                     <option value="@customer.TenantId">@customer.Name</option>
                 }
             </select></label>
-            <label>Duração (minutos)<input type="number" name="DurationMinutes" min="1" max="480" value="60" required/>
-                <small>Entre 1 e 480 minutos. A expiração nunca retrocede ao estender.</small></label>
+            <label>@L.T("support.duration_label",_c)<input type="number" name="DurationMinutes" min="1" max="480" value="60" required/>
+                <small>@L.T("support.duration_hint",_c)</small></label>
         </div>
-        <label>Motivo<textarea name="Reason" rows="2" minlength="5" maxlength="1000" required placeholder="Descreva o atendimento (entre 5 e 1000 caracteres)"></textarea></label>
-        <div class="form-actions"><button class="button button-primary" type="submit">Abrir sessão</button></div>
+        <label>@L.T("common.reason",_c)<textarea name="Reason" rows="2" minlength="5" maxlength="1000" required placeholder="@L.T("support.reason_ph",_c)"></textarea></label>
+        <div class="form-actions"><button class="button button-primary" type="submit">@L.T("support.open_btn",_c)</button></div>
     </form>
     <details class="help-card">
-        <summary>O que é uma sessão de suporte?</summary>
-        <p>É a janela registrada e auditada em que o superadministrador acompanha uma organização específica. Exige verificação MFA recente para abrir, estender, encerrar ou revogar. Quando expira ou é revogada, passa a ser exibida como inativa — a sessão expirada não é prorrogada sozinha, apenas estendida enquanto estiver ativa.</p>
-        <p>Limites: uma sessão ativa por superadministrador por organização; duração entre 1 e 480 minutos; motivo com pelo menos 5 caracteres.</p>
+        <summary>@L.T("support.help_title",_c)</summary>
+        <p>@L.T("support.help_body_1",_c)</p>
+        <p>@L.T("support.help_body_2",_c)</p>
     </details>
 </section>
 
 <section class="panel">
-    <h2>Sessões recentes</h2>
+    <h2>@L.T("support.recent_title",_c)</h2>
     @if (Model.SessionsLoadFailed)
     {
-        <div class="alert alert-error" role="alert">Não foi possível carregar as sessões agora. Nenhuma sessão foi ocultada; recarregue a página.</div>
+        <div class="alert alert-error" role="alert">@L.T("support.sessions_load_fail",_c)</div>
     }
     @if (Model.Sessions.Length == 0 && !Model.SessionsLoadFailed)
     {
-        <p class="muted">Nenhuma sessão registrada ainda.</p>
+        <p class="muted">@L.T("support.empty",_c)</p>
     }
     @if (Model.Sessions.Length > 0)
     {
         <table class="data-table">
             <thead>
-                <tr><th>Organização</th><th>Motivo</th><th>Situação</th><th>Início</th><th>Expira / expirou</th><th>Aberta por</th><th class="actions">Ações</th></tr>
+                <tr><th>@L.T("common.org",_c)</th><th>@L.T("common.reason",_c)</th><th>@L.T("common.situation",_c)</th><th>@L.T("support.col_start",_c)</th><th>@L.T("support.col_expires",_c)</th><th>@L.T("support.col_opened_by",_c)</th><th class="actions">@L.T("common.actions",_c)</th></tr>
             </thead>
             <tbody>
             @foreach (var session in Model.Sessions)
             {
                 var isActive = session.Status == "active";
-                var statusText = isActive ? (session.Valid ? "Ativa" : "Expirada") : session.Status switch
+                var statusText = isActive ? (session.Valid ? L.T("support.st_active",_c) : L.T("support.st_expired",_c)) : session.Status switch
                 {
-                    "ended" => "Encerrada",
-                    "revoked" => "Revogada",
+                    "ended" => L.T("support.st_ended",_c),
+                    "revoked" => L.T("support.st_revoked",_c),
                     _ => session.Status
                 };
                 var statusClass = isActive ? (session.Valid ? "status-badge status-approved" : "status-badge status-pending")
@@ -96,18 +97,18 @@
                             <form method="post" asp-action="Extend" class="inline-form">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="SessionId" value="@session.Id"/>
-                                <input type="number" name="Minutes" min="1" max="480" value="30" aria-label="Minutos para estender"/>
-                                <button class="button" type="submit">Estender</button>
+                                <input type="number" name="Minutes" min="1" max="480" value="30" aria-label="@L.T("support.extend_minutes_aria",_c)"/>
+                                <button class="button" type="submit">@L.T("support.extend_btn",_c)</button>
                             </form>
                             <form method="post" asp-action="End" class="inline-form">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="SessionId" value="@session.Id"/>
-                                <button class="button" type="submit">Encerrar</button>
+                                <button class="button" type="submit">@L.T("support.end_btn",_c)</button>
                             </form>
                             <form method="post" asp-action="Revoke" class="inline-form">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="SessionId" value="@session.Id"/>
-                                <button class="button button-danger" type="submit">Revogar</button>
+                                <button class="button button-danger" type="submit">@L.T("support.revoke_btn",_c)</button>
                             </form>
                         }
                     </td>

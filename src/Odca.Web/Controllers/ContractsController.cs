@@ -29,7 +29,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         [FromQuery] int page = 1,
         CancellationToken ct = default)
     {
-        ViewData["Title"] = "Meus contratos";
+        ViewData["Title"] = L("meus-contratos");
         ViewData["TenantId"] = tenantId;
 
         var token = await HttpContext.GetTokenAsync("access_token");
@@ -63,7 +63,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
             CanCreateDocument = access.HasAnyPermission("tenant.contract_drafts.manage", "tenant.documents.manage"),
             CanManageContracts = access.HasPermission("tenant.contracts.manage"),
             CanReadHistory = access.HasAnyPermission("tenant.contracts.history", "tenant.contracts.read"),
-            Error = result.Succeeded ? null : result.UserMessage("Não foi possível carregar os contratos.")
+            Error = result.Succeeded ? null : result.UserMessage(L("sheet.ct_load_list_fail"))
         });
     }
     [HttpGet("")]
@@ -81,7 +81,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         [FromQuery] int eventsPage = 1,
         CancellationToken ct = default)
     {
-        ViewData["Title"] = "Ficha do contrato";
+        ViewData["Title"] = L("ficha-contrato");
         ViewData["TenantId"] = tenantId;
         var token = await HttpContext.GetTokenAsync("access_token");
         if (token is null) return Challenge();
@@ -91,7 +91,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         if (result.Status == ApiCallStatus.NotFound)
         {
-            TempData["ContractSheetError"] = "Este contrato não está disponível no contexto atual.";
+            TempData["ContractSheetError"] = L("sheet.ct_sheet_unavailable");
             return RedirectToAction("Index", "Inbox", new { tenantId });
         }
 
@@ -158,7 +158,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
             CanReadHistory = canReadHistory,
             CanSignDocuments = canSignDocuments,
             CanReadDocuments = canReadDocuments,
-            Error = result.Succeeded ? null : result.UserMessage("Não foi possível abrir a ficha do contrato.")
+            Error = result.Succeeded ? null : result.UserMessage(L("sheet.ct_sheet_load_fail"))
         });
     }
 
@@ -252,8 +252,8 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
 
         TempData[result.Succeeded ? "ContractSheetNotice" : "ContractSheetError"] = result.Succeeded
-            ? "Obrigação criada com sucesso na ficha do contrato."
-            : result.UserMessage("Não foi possível criar a obrigação.");
+            ? L("sheet.ct_oblig_created_ok")
+            : result.UserMessage(L("sheet.ct_oblig_create_fail"));
 
         return Redirect(BuildReturnUrl(tenantId, contractId, "#obrigacoes", from, year, month, scope, kind, urgency, viewId, obrigacao));
     }
@@ -300,14 +300,14 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         if (result.Status == ApiCallStatus.Conflict)
         {
             TempData["ContractSheetError"] = result.ErrorCode == "obligation.version.conflict"
-                ? "A obrigação foi alterada em outra sessão. Recarregue a página e reaplique a ação."
-                : result.UserMessage("Não foi possível atualizar a obrigação.");
+                ? L("sheet.ct_oblig_conflict")
+                : result.UserMessage(L("sheet.ct_oblig_update_fail"));
             return Redirect(BuildReturnUrl(tenantId, contractId, "#obrigacoes", from, year, month, scope, kind, urgency, viewId, obrigacao));
         }
 
         TempData[result.Succeeded ? "ContractSheetNotice" : "ContractSheetError"] = result.Succeeded
-            ? $"Ação '{operation}' executada com sucesso na obrigação."
-            : result.UserMessage("Não foi possível atualizar a obrigação.");
+            ? L("sheet.ct_action_ok", operation)
+            : result.UserMessage(L("sheet.ct_oblig_update_fail"));
 
         return Redirect(BuildReturnUrl(tenantId, contractId, "#obrigacoes", from, year, month, scope, kind, urgency, viewId, obrigacao));
     }
@@ -333,19 +333,20 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         if (result.Status == ApiCallStatus.Unauthorized) return Challenge();
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         TempData[result.Succeeded ? "ContractSheetNotice" : "ContractSheetError"] = result.Succeeded
-            ? (result.Value!.Installed == 0 ? $"Os {result.Value.AlreadyPresent} modelos oficiais já estavam disponíveis." : $"{result.Value.Installed} modelo(s) oficial(is) publicado(s).")
-            : result.UserMessage("Não foi possível instalar a biblioteca oficial.");
+            ? (result.Value!.Installed == 0 ? L("sheet.ct_templates_already_installed", result.Value.AlreadyPresent.ToString(System.Globalization.CultureInfo.InvariantCulture)) : L("sheet.ct_templates_installed", result.Value.Installed.ToString(System.Globalization.CultureInfo.InvariantCulture)))
+            : result.UserMessage(L("sheet.ct_library_install_fail"));
         return Redirect(BuildReturnUrl(tenantId, contractId, "#minutas", from, year, month, scope, kind, urgency, viewId, obrigacao));
     }
 
-    private static readonly Dictionary<string, string> OfficialTemplateNames = new(StringComparer.OrdinalIgnoreCase)
+    // D-OC42 (S8): chaves oficiais de minuta — resolução sempre por KEY; os títulos vêm do catálogo do tenant.
+    private static readonly HashSet<string> OfficialTemplateKeys = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["nda-unilateral"] = "Acordo de Confidencialidade (NDA) — Unilateral",
-        ["nda-mutual"] = "Acordo de Confidencialidade (NDA) — Mútuo",
-        ["services-agreement"] = "Contrato de Prestação de Serviços Técnicos",
-        ["contract-amendment"] = "Termo Aditivo Contratual",
-        ["supply-agreement"] = "Contrato de Fornecimento de Bens",
-        ["lease-agreement"] = "Contrato de Locação de Imóvel Comercial"
+        "nda-unilateral",
+        "nda-mutual",
+        "services-agreement",
+        "contract-amendment",
+        "supply-agreement",
+        "lease-agreement"
     };
 
     [HttpPost("rascunho-oficial")]
@@ -373,7 +374,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         if (sheetResult.Status == ApiCallStatus.Forbidden) return Forbid();
         if (!sheetResult.Succeeded || sheetResult.Value is null)
         {
-            TempData["ContractSheetError"] = "Ficha indisponível.";
+            TempData["ContractSheetError"] = L("sheet.ct_unavailable_short");
             return Redirect(BuildReturnUrl(tenantId, contractId, "#minutas", from, year, month, scope, kind, urgency, viewId, obrigacao));
         }
 
@@ -381,7 +382,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
 
         if (sheet.Version != sheetVersion)
         {
-            TempData["ContractSheetError"] = "A ficha do contrato foi alterada em outra sessão (versão divergente). Recarregue a página.";
+            TempData["ContractSheetError"] = L("sheet.ct_version_conflict");;
             return Redirect(BuildReturnUrl(tenantId, contractId, "#minutas", from, year, month, scope, kind, urgency, viewId, obrigacao));
         }
 
@@ -392,17 +393,17 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
 
         if (hasOpenReview && !isAmendment)
         {
-            return BadRequest("Não é permitido iniciar nova minuta (como NDA, serviços, fornecimento ou locação) enquanto houver revisão aberta no contrato.");
+            return BadRequest(L("sheet.ct_draft_locked_review"));
         }
 
         if (isAmendment && !inWindow)
         {
-            return BadRequest("Termo aditivo só é permitido quando a vigência estiver na janela de renovação ou houver proposta de alteração de prazo.");
+            return BadRequest(L("sheet.ct_amendment_outside_window"));
         }
 
-        if (!OfficialTemplateNames.ContainsKey(officialKey))
+        if (!OfficialTemplateKeys.Contains(officialKey))
         {
-            return BadRequest("Chave oficial de minuta desconhecida.");
+            return BadRequest(L("sheet.ct_template_unknown"));
         }
 
         // Resolução por KEY: Proibido FirstOrDefault(x => x.Name == título)
@@ -415,7 +416,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
 
         if (!templateResult.Succeeded || templateResult.Value is null)
         {
-            TempData["ContractSheetError"] = "O modelo oficial solicitado não foi encontrado no catálogo do tenant.";
+            TempData["ContractSheetError"] = L("sheet.ct_template_not_found");
             return Redirect(BuildReturnUrl(tenantId, contractId, "#minutas", from, year, month, scope, kind, urgency, viewId, obrigacao));
         }
 
@@ -426,7 +427,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         var draftResult = await api.CreateStudioDraftAsync(token, tenantId, new Odca.Contracts.Studio.CreateDraftRequest(templateResult.Value.Id, draftTitle, null, null, contractId), ct);
         if (!draftResult.Succeeded)
         {
-            TempData["ContractSheetError"] = draftResult.UserMessage("Não foi possível criar o rascunho da minuta oficial.");
+            TempData["ContractSheetError"] = draftResult.UserMessage(L("sheet.ct_draft_create_fail"));
             return Redirect(BuildReturnUrl(tenantId, contractId, "#minutas", from, year, month, scope, kind, urgency, viewId, obrigacao));
         }
 
@@ -469,7 +470,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
 
         if (responsibleId is null || responsibleId.Value == Guid.Empty)
         {
-            TempData["ContractSheetError"] = "Selecione um responsável pela proposta de renovação/aditivo.";
+            TempData["ContractSheetError"] = L("sheet.ct_propose_responsible_required");;
             return Redirect(BuildReturnUrl(tenantId, contractId, "#renovacao", from, year, month, scope, kindFilter, urgency, viewId, obrigacao));
         }
 
@@ -502,14 +503,14 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         if (result.Status == ApiCallStatus.Conflict)
         {
             TempData["ContractSheetError"] = result.ErrorCode == "contract.version.conflict"
-                ? "O contrato foi alterado em outra sessão. Recarregue a página e reaplique a alteração."
-                : result.UserMessage("Não foi possível registrar a proposta.");
+                ? L("sheet.ct_contract_conflict")
+                : result.UserMessage(L("sheet.ct_propose_fail"));
             return Redirect(BuildReturnUrl(tenantId, contractId, "#renovacao", from, year, month, scope, kindFilter, urgency, viewId, obrigacao));
         }
 
         TempData[result.Succeeded ? "ContractSheetNotice" : "ContractSheetError"] = result.Succeeded
-            ? "Proposta de alteração/renovação registrada com sucesso na ficha."
-            : result.UserMessage("Não foi possível registrar a proposta.");
+            ? L("sheet.ct_propose_ok")
+            : result.UserMessage(L("sheet.ct_propose_fail"));
 
         return Redirect(BuildReturnUrl(tenantId, contractId, "#renovacao", from, year, month, scope, kindFilter, urgency, viewId, obrigacao));
     }
@@ -543,13 +544,13 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
 
         if (result.Status == ApiCallStatus.Conflict)
         {
-            TempData["ContractSheetError"] = "A versão já foi encaminhada para revisão ou houve conflito. A página foi recarregada.";
+            TempData["ContractSheetError"] = L("sheet.ct_review_conflict");;
             return Redirect(BuildReturnUrl(tenantId, contractId, "#revisao", from, year, month, scope, kind, urgency, viewId, obrigacao));
         }
 
         TempData[result.Succeeded ? "ContractSheetNotice" : "ContractSheetError"] = result.Succeeded
-            ? "Revisão encaminhada com sucesso para o revisor."
-            : result.UserMessage("Não foi possível encaminhar a revisão.");
+            ? L("sheet.ct_review_submitted_ok")
+            : result.UserMessage(L("sheet.ct_review_submit_fail"));
 
         return Redirect(BuildReturnUrl(tenantId, contractId, "#revisao", from, year, month, scope, kind, urgency, viewId, obrigacao));
     }
@@ -590,8 +591,8 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
 
         TempData[result.Succeeded ? "ContractSheetNotice" : "ContractSheetError"] = result.Succeeded
-            ? "Comentário registrado no rascunho (comentário não equivale à aprovação formal)."
-            : result.UserMessage("Não foi possível adicionar o comentário.");
+            ? L("sheet.ct_comment_added_ok")
+            : result.UserMessage(L("sheet.ct_comment_add_fail"));
 
         return Redirect(BuildReturnUrl(tenantId, contractId, "#revisao", from, year, month, scope, kind, urgency, viewId, obrigacao));
     }
@@ -629,13 +630,13 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
 
         if (result.Status == ApiCallStatus.Conflict)
         {
-            TempData["ContractSheetError"] = "A pendência foi atualizada por outra pessoa. A página foi recarregada.";
+            TempData["ContractSheetError"] = L("sheet.ct_comment_conflict");;
             return Redirect(BuildReturnUrl(tenantId, contractId, "#revisao", from, year, month, scope, kind, urgency, viewId, obrigacao));
         }
 
         TempData[result.Succeeded ? "ContractSheetNotice" : "ContractSheetError"] = result.Succeeded
-            ? $"Comentário {(operation == "resolve" ? "resolvido" : "reaberto")} com sucesso."
-            : result.UserMessage("Não foi possível atualizar o comentário.");
+            ? L("sheet.ct_comment_state_ok", operation == "resolve" ? L("sheet.ct_word_resolved") : L("sheet.ct_word_reopened"))
+            : result.UserMessage(L("sheet.ct_comment_update_fail"));
 
         return Redirect(BuildReturnUrl(tenantId, contractId, "#revisao", from, year, month, scope, kind, urgency, viewId, obrigacao));
     }
@@ -667,7 +668,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
 
         if (!string.Equals(doc.SafetyState, "safe", StringComparison.OrdinalIgnoreCase))
         {
-            TempData["ContractSheetError"] = "Documento em análise de segurança. Download indisponível.";
+            TempData["ContractSheetError"] = L("sheet.quarantine_tip");;
             return Redirect(BuildReturnUrl(tenantId, contractId, "#documentos", from, year, month, scope, kind, urgency, viewId, null));
         }
 
@@ -675,7 +676,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         if (preview.Content is null)
         {
             if (preview.Status == System.Net.HttpStatusCode.Forbidden) return Forbid();
-            TempData["ContractSheetError"] = "Não foi possível baixar o documento no momento.";
+            TempData["ContractSheetError"] = L("sheet.ct_doc_download_fail");;
             return Redirect(BuildReturnUrl(tenantId, contractId, "#documentos", from, year, month, scope, kind, urgency, viewId, null));
         }
 
@@ -711,7 +712,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         if (result.Status == ApiCallStatus.NotFound)
         {
-            TempData["ContractSheetError"] = "Este contrato não está disponível no contexto atual.";
+            TempData["ContractSheetError"] = L("sheet.ct_sheet_unavailable");
             return Redirect(returnUrl);
         }
 
@@ -719,20 +720,20 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         {
             TempData["ContractSheetError"] = result.ErrorCode switch
             {
-                "contract.closed" => "Um contrato encerrado não pode ser duplicado.",
-                "contract.no_draft" => "Este contrato não possui minuta vinculada; crie uma minuta antes de duplicar.",
-                _ => result.UserMessage("Não foi possível duplicar o contrato.")
+                "contract.closed" => L("sheet.ct_duplicate_closed"),
+                "contract.no_draft" => L("sheet.ct_duplicate_no_draft"),
+                _ => result.UserMessage(L("sheet.ct_duplicate_fail"))
             };
             return Redirect(returnUrl);
         }
 
         if (!result.Succeeded || result.Value is null)
         {
-            TempData["ContractSheetError"] = result.UserMessage("Não foi possível duplicar o contrato.");
+            TempData["ContractSheetError"] = result.UserMessage(L("sheet.ct_duplicate_fail"));
             return Redirect(returnUrl);
         }
 
-        TempData["ContractSheetNotice"] = "Contrato duplicado com a minuta original. Assinaturas e versões geradas não são copiadas.";
+        TempData["ContractSheetNotice"] = L("sheet.ct_duplicated_ok");;
         return Redirect($"/organizacoes/{tenantId}/contratos/{result.Value.ContractId}");
     }
 
@@ -766,7 +767,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
 
         if (trimmedTitle.Length == 0 && trimmedReference.Length == 0 && !hasOwnerChange)
         {
-            TempData["ContractSheetError"] = "Informe ao menos um campo para atualizar (título, referência ou responsável).";
+            TempData["ContractSheetError"] = L("sheet.ct_details_empty");;
             return Redirect(returnUrl);
         }
 
@@ -782,25 +783,25 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         if (result.Status == ApiCallStatus.NotFound)
         {
-            TempData["ContractSheetError"] = "Este contrato não está disponível no contexto atual.";
+            TempData["ContractSheetError"] = L("sheet.ct_sheet_unavailable");
             return Redirect(returnUrl);
         }
 
         if (result.Status == ApiCallStatus.Conflict)
         {
             TempData["ContractSheetError"] = result.ErrorCode == "contract.version.conflict"
-                ? "O contrato foi alterado em outra sessão. Recarregue a página e reaplique as alterações."
-                : result.UserMessage("Não foi possível atualizar os detalhes do contrato.");
+                ? L("sheet.ct_contract_conflict_changes")
+                : result.UserMessage(L("sheet.ct_details_update_fail"));
             return Redirect(returnUrl);
         }
 
         if (!result.Succeeded)
         {
-            TempData["ContractSheetError"] = result.UserMessage("Não foi possível atualizar os detalhes do contrato.");
+            TempData["ContractSheetError"] = result.UserMessage(L("sheet.ct_details_update_fail"));
             return Redirect(returnUrl);
         }
 
-        TempData["ContractSheetNotice"] = "Detalhes do contrato atualizados.";
+        TempData["ContractSheetNotice"] = L("sheet.ct_details_updated_ok");;
         return Redirect(returnUrl);
     }
 
@@ -829,7 +830,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
 
         if (trimmedReason.Length > 500)
         {
-            TempData["ContractSheetError"] = "O motivo do arquivamento deve ter no máximo 500 caracteres.";
+            TempData["ContractSheetError"] = L("sheet.ct_archive_reason_long");;
             return Redirect(returnUrl);
         }
 
@@ -838,27 +839,27 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         if (result.Status == ApiCallStatus.NotFound)
         {
-            TempData["ContractSheetError"] = "Este contrato não está disponível no contexto atual.";
+            TempData["ContractSheetError"] = L("sheet.ct_sheet_unavailable");
             return Redirect(returnUrl);
         }
 
         if (result.Status == ApiCallStatus.Conflict)
         {
             TempData["ContractSheetError"] = result.ErrorCode == "contract.version.conflict"
-                ? "O contrato foi alterado em outra sessão. Recarregue a página e reaplique a ação."
-                : result.UserMessage("Não foi possível arquivar o contrato.");
+                ? L("sheet.ct_contract_conflict_action")
+                : result.UserMessage(L("sheet.ct_archive_fail"));
             return Redirect(returnUrl);
         }
 
         if (!result.Succeeded || result.Value is null)
         {
-            TempData["ContractSheetError"] = result.UserMessage("Não foi possível arquivar o contrato.");
+            TempData["ContractSheetError"] = result.UserMessage(L("sheet.ct_archive_fail"));
             return Redirect(returnUrl);
         }
 
         TempData["ContractSheetNotice"] = result.Value.Replayed
-            ? "O contrato já estava arquivado."
-            : "Contrato arquivado. Ele não aparece na lista ativa e pode ser restaurado a qualquer momento.";
+            ? L("sheet.ct_archive_replayed_ok")
+            : L("sheet.ct_archive_ok");
         return Redirect(returnUrl);
     }
 
@@ -887,27 +888,27 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         if (result.Status == ApiCallStatus.NotFound)
         {
-            TempData["ContractSheetError"] = "Este contrato não está disponível no contexto atual.";
+            TempData["ContractSheetError"] = L("sheet.ct_sheet_unavailable");
             return Redirect(returnUrl);
         }
 
         if (result.Status == ApiCallStatus.Conflict)
         {
             TempData["ContractSheetError"] = result.ErrorCode == "contract.version.conflict"
-                ? "O contrato foi alterado em outra sessão. Recarregue a página e reaplique a ação."
-                : result.UserMessage("Não foi possível restaurar o contrato.");
+                ? L("sheet.ct_contract_conflict_action")
+                : result.UserMessage(L("sheet.ct_restore_fail"));
             return Redirect(returnUrl);
         }
 
         if (!result.Succeeded || result.Value is null)
         {
-            TempData["ContractSheetError"] = result.UserMessage("Não foi possível restaurar o contrato.");
+            TempData["ContractSheetError"] = result.UserMessage(L("sheet.ct_restore_fail"));
             return Redirect(returnUrl);
         }
 
         TempData["ContractSheetNotice"] = result.Value.Replayed
-            ? "O contrato já estava ativo."
-            : "Contrato restaurado. O encerramento anterior, se houver, permanece registrado no histórico.";
+            ? L("sheet.ct_restore_replayed_ok")
+            : L("sheet.ct_restore_ok");
         return Redirect(returnUrl);
     }
 
@@ -937,7 +938,7 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
 
         if (trimmedReason.Length < 5 || trimmedReason.Length > 2000)
         {
-            TempData["ContractSheetError"] = "Informe o motivo do encerramento (de 5 a 2000 caracteres).";
+            TempData["ContractSheetError"] = L("sheet.ct_close_reason_invalid");;
             return Redirect(returnUrl);
         }
 
@@ -946,27 +947,27 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         if (result.Status == ApiCallStatus.NotFound)
         {
-            TempData["ContractSheetError"] = "Este contrato não está disponível no contexto atual.";
+            TempData["ContractSheetError"] = L("sheet.ct_sheet_unavailable");
             return Redirect(returnUrl);
         }
 
         if (result.Status == ApiCallStatus.Conflict)
         {
             TempData["ContractSheetError"] = result.ErrorCode == "contract.version.conflict"
-                ? "O contrato foi alterado em outra sessão. Recarregue a página e reaplique a ação."
-                : result.UserMessage("Não foi possível encerrar o contrato.");
+                ? L("sheet.ct_contract_conflict_action")
+                : result.UserMessage(L("sheet.ct_close_fail"));
             return Redirect(returnUrl);
         }
 
         if (!result.Succeeded || result.Value is null)
         {
-            TempData["ContractSheetError"] = result.UserMessage("Não foi possível encerrar o contrato.");
+            TempData["ContractSheetError"] = result.UserMessage(L("sheet.ct_close_fail"));
             return Redirect(returnUrl);
         }
 
         TempData["ContractSheetNotice"] = result.Value.Replayed
-            ? "O contrato já estava encerrado."
-            : "Contrato encerrado com registro da data e do motivo. Ele também foi arquivado e não pode mais gerar assinaturas.";
+            ? L("sheet.ct_close_replayed_ok")
+            : L("sheet.ct_close_ok");
         return Redirect(returnUrl);
     }
 
@@ -1181,23 +1182,23 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         if (result.Status == ApiCallStatus.NotFound)
         {
-            TempData["ContractSheetError"] = "A versão solicitada não está mais disponível.";
+            TempData["ContractSheetError"] = L("sheet.ct_pdf_version_gone");;
             return Redirect(returnUrl);
         }
 
         if (result.Status == ApiCallStatus.Conflict)
         {
-            TempData["ContractSheetError"] = result.UserMessage("O PDF já está em processamento ou a versão não aceita nova geração agora.");
+            TempData["ContractSheetError"] = result.UserMessage(L("sheet.ct_pdf_busy"));
             return Redirect(returnUrl);
         }
 
         if (!result.Succeeded)
         {
-            TempData["ContractSheetError"] = result.UserMessage("Não foi possível gerar o PDF da versão.");
+            TempData["ContractSheetError"] = result.UserMessage(L("sheet.ct_pdf_generate_fail"));
             return Redirect(returnUrl);
         }
 
-        TempData["ContractSheetNotice"] = "PDF final da versão gerado e protegido no armazenamento privado.";
+        TempData["ContractSheetNotice"] = L("sheet.ct_pdf_generated_ok");;
         return Redirect(returnUrl);
     }
 
@@ -1225,8 +1226,8 @@ public sealed class ContractsController(OdcaApiClient api, IUserTenantContext te
         if (!response.IsSuccessStatusCode)
         {
             TempData["ContractSheetError"] = response.StatusCode == System.Net.HttpStatusCode.NotFound
-                ? "O PDF desta versão ainda não foi gerado."
-                : "Não foi possível baixar o PDF da versão.";
+                ? L("sheet.ct_pdf_not_generated")
+                : L("sheet.ct_pdf_download_fail");
             return Redirect(BuildReturnUrl(tenantId, contractId, "#assinatura", from, year, month, scope, kind, urgency, viewId, obrigacao));
         }
 

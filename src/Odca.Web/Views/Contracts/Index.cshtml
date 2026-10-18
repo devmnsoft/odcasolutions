@@ -1,21 +1,23 @@
 @model ContractListViewModel
 @{
-    ViewData["Title"] = "Meus contratos";
+    // D-OC42 (S8): padrão canônico de cultura (mesma fonte do middleware).
+    var _culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("meus-contratos", _culture);
     var tenantId = Model.TenantId;
     var contracts = Model.Contracts;
 }
 
 <section class="page-heading">
     <div>
-        <p class="eyebrow">Contratos</p>
-        <h1>Meus contratos</h1>
-        <p class="muted">Todas as vigências da organização em uma única lista: ativas, arquivadas e encerradas, com estado sempre visível.</p>
+        <p class="eyebrow">@L.T("group_contratos", _culture)</p>
+        <h1>@L.T("meus-contratos", _culture)</h1>
+        <p class="muted">@L.T("sheet.idx_intro", _culture)</p>
     </div>
     @if (Model.CanCreateDocument)
     {
         <div class="button-row">
             <a class="button button-primary" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@tenantId">
-                <span aria-hidden="true">+</span> Novo contrato
+                <span aria-hidden="true">+</span> @L.T("novo-contrato", _culture)
             </a>
         </div>
     }
@@ -24,72 +26,70 @@
 @if (Model.Error is not null)
 {
     <div class="error" role="alert" style="margin-bottom: 1rem;">
-        <strong>Falha ao carregar contratos:</strong> @Model.Error
+        <strong>@L.T("sheet.idx_load_error", _culture)</strong> @Model.Error
     </div>
 }
 
-<form method="get" class="studio-filter" role="search" aria-label="Filtro de contratos">
+<form method="get" class="studio-filter" role="search" aria-label="@L.T("sheet.idx_filter_aria", _culture)">
     <label>
-        Pesquisar
-        <input name="q" value="@Model.Search" placeholder="Título, referência ou contraparte" />
+        @L.T("documents.filter_search", _culture)
+        <input name="q" value="@Model.Search" placeholder="@L.T("sheet.idx_search_ph", _culture)" />
     </label>
     <label>
-        Estado
+        @L.T("common.state", _culture)
         <select name="status">
-            <option value="active" selected="@(Model.Status == "active")">Ativos</option>
-            <option value="archived" selected="@(Model.Status == "archived")">Arquivados</option>
-            <option value="closed" selected="@(Model.Status == "closed")">Encerrados</option>
-            <option value="all" selected="@(Model.Status == "all")">Todos</option>
+            <option value="active" selected="@(Model.Status == "active")">@L.T("sheet.idx_st_active", _culture)</option>
+            <option value="archived" selected="@(Model.Status == "archived")">@L.T("sheet.idx_st_archived", _culture)</option>
+            <option value="closed" selected="@(Model.Status == "closed")">@L.T("sheet.idx_st_closed", _culture)</option>
+            <option value="all" selected="@(Model.Status == "all")">@L.T("inbox.type_all", _culture)</option>
         </select>
     </label>
     <div style="display:flex; gap:.5rem; align-items:flex-end;">
-        <button class="button button-primary" type="submit">Filtrar</button>
-        <a class="button button-quiet" asp-action="List" asp-route-tenantId="@tenantId">Limpar</a>
+        <button class="button button-primary" type="submit">@L.T("action.filter", _culture)</button>
+        <a class="button button-quiet" asp-action="List" asp-route-tenantId="@tenantId">@L.T("documents.clear_filters", _culture)</a>
     </div>
 </form>
 
 @if (contracts.Count > 0)
 {
     <div class="responsive-table">
-        <table aria-label="Lista de contratos">
+        <table aria-label="@L.T("meus-contratos", _culture)">
             <thead>
                 <tr>
-                    <th>Contrato</th>
-                    <th>Tipo</th>
-                    <th>Vigência</th>
-                    <th>Valor</th>
-                    <th>Responsável</th>
-                    <th>Documento</th>
-                    <th>Estado</th>
-                    <th>Atualização</th>
-                    <th>Ações</th>
+                    <th>@L.T("common.contract", _culture)</th>
+                    <th>@L.T("common.type", _culture)</th>
+                    <th>@L.T("sheet.vigencia", _culture)</th>
+                    <th>@L.T("studio.x_value", _culture)</th>
+                    <th>@L.T("common.responsible", _culture)</th>
+                    <th>@L.T("documents.th_document", _culture)</th>
+                    <th>@L.T("common.state", _culture)</th>
+                    <th>@L.T("documents.th_updated", _culture)</th>
+                    <th>@L.T("common.actions", _culture)</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var item in contracts)
                 {
-                    var stateLabel = item.ClosedAt.HasValue ? "Encerrado" : item.ArchivedAt.HasValue ? "Arquivado" : "Ativo";
-                    if (item.ClosedAt.HasValue && item.ClosedOn.HasValue)
-                    {
-                        stateLabel += $" em {item.ClosedOn.Value:dd/MM/yyyy}";
-                    }
+                    var stateLabel = item.ClosedAt.HasValue
+                        ? (item.ClosedOn.HasValue ? L.T("sheet.idx_state_closed_on", _culture, item.ClosedOn.Value.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture)) : L.T("sheet.status_closed", _culture))
+                        : item.ArchivedAt.HasValue ? L.T("sheet.status_archived", _culture) : L.T("sheet.status_active", _culture);
                     var stateBadgeClass = item.ClosedAt.HasValue ? "badge-muted" : item.ArchivedAt.HasValue ? "badge-warning" : "badge-success";
 
                     <tr>
-                        <td data-label="Contrato">
+                        <td data-label="@L.T("common.contract", _culture)">
                             <a asp-controller="Contracts" asp-action="Sheet" asp-route-tenantId="@tenantId" asp-route-contractId="@item.Id">
                                 <strong>@item.Title</strong>
                             </a>
                             @if (!string.IsNullOrWhiteSpace(item.Reference))
                             {
-                                <br /><small class="muted">Ref: @item.Reference</small>
+                                <br /><small class="muted">@L.T("sheet.comment_ref_prefix", _culture) @item.Reference</small>
                             }
                             @if (!string.IsNullOrWhiteSpace(item.Counterparty))
                             {
-                                <br /><small class="muted">Contraparte: @item.Counterparty</small>
+                                <br /><small class="muted">@L.T("sheet.idx_counterparty", _culture, item.Counterparty)</small>
                             }
                         </td>
-                        <td data-label="Tipo">
+                        <td data-label="@L.T("common.type", _culture)">
                             @if (string.IsNullOrWhiteSpace(item.ContractType))
                             {
                                 <span class="muted">—</span>
@@ -99,51 +99,51 @@
                                 <span class="badge badge-muted">@item.ContractType</span>
                             }
                         </td>
-                        <td data-label="Vigência">
+                        <td data-label="@L.T("sheet.vigencia", _culture)">
                             <small>
                                 @if (item.StartDate.HasValue)
                                 {
-                                    <span>Início: @item.StartDate.Value.ToString("dd/MM/yyyy")</span>
+                                    <span>@L.T("sheet.idx_start", _culture, item.StartDate.Value.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture))</span>
                                 }
                                 else
                                 {
-                                    <span class="muted">Início: não definido</span>
+                                    <span class="muted">@L.T("sheet.idx_start_undefined", _culture)</span>
                                 }
                             </small>
                             <br />
                             <small>
                                 @if (item.EndDate.HasValue)
                                 {
-                                    <span>Término: @item.EndDate.Value.ToString("dd/MM/yyyy")</span>
+                                    <span>@L.T("sheet.idx_end", _culture, item.EndDate.Value.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture))</span>
                                 }
                                 else
                                 {
-                                    <span class="muted">Prazo indeterminado</span>
+                                    <span class="muted">@L.T("sheet.idx_indefinite_term", _culture)</span>
                                 }
                             </small>
                         </td>
-                        <td data-label="Valor">@(item.Value.HasValue ? item.Value.Value.ToString("N2") + (string.IsNullOrWhiteSpace(item.Currency) ? "" : $" {item.Currency}") : "—")</td>
-                        <td data-label="Responsável">@(string.IsNullOrWhiteSpace(item.Owner) ? "Não atribuído" : item.Owner)</td>
-                        <td data-label="Documento">
+                        <td data-label="@L.T("studio.x_value", _culture)">@(item.Value.HasValue ? item.Value.Value.ToString("N2") + (string.IsNullOrWhiteSpace(item.Currency) ? "" : " " + item.Currency) : "—")</td>
+                        <td data-label="@L.T("common.responsible", _culture)">@(string.IsNullOrWhiteSpace(item.Owner) ? L.T("sheet.owner_unassigned", _culture) : item.Owner)</td>
+                        <td data-label="@L.T("documents.th_document", _culture)">
                             <small>
-                                <strong>Versão:</strong> @(item.LatestVersionNumber.HasValue ? item.LatestVersionNumber.ToString() : "—")
+                                <strong>@L.T("sheet.idx_version", _culture)</strong> @(item.LatestVersionNumber.HasValue ? item.LatestVersionNumber.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "—")
                             </small>
                             <br />
                             <small>
-                                <strong>Situação:</strong>
+                                <strong>@L.T("common.situation", _culture):</strong>
                                 @(item.LatestReviewStatus switch
                                 {
-                                    "none" => "Não solicitada",
-                                    "draft" => "Em preparação",
-                                    "submitted" or "in_review" => "Em análise",
-                                    "changes_requested" => "Ajustes solicitados",
-                                    "internally_approved" => "Aprovada internamente",
-                                    "externally_signed" => "Assinada pelos participantes na plataforma",
+                                    "none" => L.T("documents.review_none", _culture),
+                                    "draft" => L.T("documents.review_draft", _culture),
+                                    "submitted" or "in_review" => L.T("documents.review_in_review", _culture),
+                                    "changes_requested" => L.T("documents.stage_changes_requested", _culture),
+                                    "internally_approved" => L.T("documents.review_internally_approved", _culture),
+                                    "externally_signed" => L.T("sheet.chg_externally_signed", _culture),
                                     _ => item.LatestReviewStatus ?? "—"
                                 })
                             </small>
                         </td>
-                        <td data-label="Estado">
+                        <td data-label="@L.T("common.state", _culture)">
                             <span class="badge @stateBadgeClass">@stateLabel</span>
                             @if (item.ClosedAt.HasValue && !string.IsNullOrWhiteSpace(item.ClosureReason))
                             {
@@ -154,12 +154,12 @@
                                 <br /><small class="muted">@item.ArchiveReason</small>
                             }
                         </td>
-                        <td data-label="Atualização">
+                        <td data-label="@L.T("documents.th_updated", _culture)">
                             <time datetime="@item.UpdatedAt.ToString("o")">@item.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</time>
                         </td>
-                        <td data-label="Ações">
+                        <td data-label="@L.T("common.actions", _culture)">
                             <div class="button-row">
-                                <a class="button button-small button-primary" asp-controller="Contracts" asp-action="Sheet" asp-route-tenantId="@tenantId" asp-route-contractId="@item.Id">Ficha</a>
+                                <a class="button button-small button-primary" asp-controller="Contracts" asp-action="Sheet" asp-route-tenantId="@tenantId" asp-route-contractId="@item.Id">@L.T("documents.btn_sheet", _culture)</a>
                             </div>
                         </td>
                     </tr>
@@ -170,15 +170,15 @@
 
     @if (Model.Total > Model.PageSize)
     {
-        <nav class="pagination" aria-label="Paginação de contratos">
+        <nav class="pagination" aria-label="@L.T("sheet.idx_pagination_aria", _culture)">
             @if (Model.Page > 1)
             {
-                <a class="button button-quiet" asp-action="List" asp-route-tenantId="@tenantId" asp-route-q="@Model.Search" asp-route-status="@Model.Status" asp-route-page="@(Model.Page - 1)">Anterior</a>
+                <a class="button button-quiet" asp-action="List" asp-route-tenantId="@tenantId" asp-route-q="@Model.Search" asp-route-status="@Model.Status" asp-route-page="@(Model.Page - 1)">@L.T("common.prev", _culture)</a>
             }
-            <span>Página @Model.Page de @Math.Ceiling((double)Model.Total / Math.Max(1, Model.PageSize)) (@Model.Total contrato(s))</span>
+            <span>@L.T("sheet.idx_page_of", _culture, Model.Page.ToString(System.Globalization.CultureInfo.InvariantCulture), Math.Ceiling((double)Model.Total / Math.Max(1, Model.PageSize)).ToString(System.Globalization.CultureInfo.InvariantCulture), Model.Total.ToString(System.Globalization.CultureInfo.InvariantCulture))</span>
             @if (Model.Page * Math.Max(1, Model.PageSize) < Model.Total)
             {
-                <a class="button button-quiet" asp-action="List" asp-route-tenantId="@tenantId" asp-route-q="@Model.Search" asp-route-status="@Model.Status" asp-route-page="@(Model.Page + 1)">Próxima</a>
+                <a class="button button-quiet" asp-action="List" asp-route-tenantId="@tenantId" asp-route-q="@Model.Search" asp-route-status="@Model.Status" asp-route-page="@(Model.Page + 1)">@L.T("common.next", _culture)</a>
             }
         </nav>
     }
@@ -186,12 +186,12 @@
 else if (Model.Error is null)
 {
     <div class="card empty-state">
-        <h2>Nenhum contrato encontrado</h2>
-        <p>Não há contratos para os filtros aplicados. Inicie um novo contrato a partir de um modelo publicado.</p>
+        <h2>@L.T("sheet.idx_empty_title", _culture)</h2>
+        <p>@L.T("sheet.idx_empty_body", _culture)</p>
         @if (Model.CanCreateDocument)
         {
             <div class="button-row" style="margin-top: 1rem;">
-                <a class="button button-primary" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@tenantId">Novo contrato</a>
+                <a class="button button-primary" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@tenantId">@L.T("novo-contrato", _culture)</a>
             </div>
         }
     </div>

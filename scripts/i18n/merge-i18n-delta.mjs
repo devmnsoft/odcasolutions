@@ -1,6 +1,7 @@
 // S7 (D-OC41): mesclador determinístico de deltas de i18n nos catálogos flat.
 // Uso (raiz do repositório): node scripts/i18n/merge-i18n-delta.mjs
-// Lê todos os scripts/i18n/d-s7-*.json (ordem alfabética), valida unicidade e
+// Lê todos os scripts/i18n/d-s*.json (ordem alfabética; idempotente — chaves já
+// presentes nos catálogos são puladas), valida unicidade e
 // paridade 4/4, insere as chaves novas no final de cada catálogo preservando BOM,
 // indentação de 2 espaços e ausência de nova linha final, e revalida o resultado.
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -17,9 +18,9 @@ function fail(message) {
 }
 
 const deltaFiles = readdirSync(scriptsDir)
-  .filter((f) => f.startsWith('d-s7') && f.endsWith('.json'))
+  .filter((f) => /^d-s\d+-.+\.json$/.test(f))
   .sort();
-if (deltaFiles.length === 0) fail('nenhum delta d-s7-*.json encontrado em ' + scriptsDir);
+if (deltaFiles.length === 0) fail('nenhum delta d-sN-*.json encontrado em ' + scriptsDir);
 
 const merged = new Map(); // chave -> {pt-BR,en-US,es-ES,fr-FR}
 for (const file of deltaFiles) {

@@ -1,5 +1,10 @@
 @model Odca.Web.Models.AgendaWorkspaceViewModel
+@using System.Globalization
 @{
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("agenda.title", _c);
+    var ci = CultureInfo.GetCultureInfo(_c ?? "pt-BR");
+    string KindLabel(string value) => value switch { "Obligation" => L.T("agenda.kind_obligation",_c),"Review" => L.T("agenda.kind_review",_c),"Renewal" => L.T("agenda.kind_renewal",_c),_ => value };
     var tenantId = ViewData["TenantId"];
     var previous = Model.Page.From.AddDays(-1);
     var next = Model.Page.To.AddDays(1);
@@ -7,38 +12,38 @@
 }
 <header class="renewal-heading">
     <div>
-        <p class="eyebrow">Agenda mensal</p>
-        <h1>@Model.Page.From.ToString("MMMM yyyy")</h1>
-        <p class="muted">Somente a janela @Model.Page.From.ToString("dd/MM") – @Model.Page.To.ToString("dd/MM"). O navegador não recebe o catálogo inteiro.</p>
+        <p class="eyebrow">@L.T("agenda.title",_c)</p>
+        <h1>@Model.Page.From.ToString("MMMM yyyy", ci)</h1>
+        <p class="muted">@L.T("agenda.window_note",_c,Model.Page.From.ToString("dd/MM"),Model.Page.To.ToString("dd/MM"))</p>
     </div>
     <nav>
-        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@previous.Year" asp-route-month="@previous.Month" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind">Mês anterior</a>
-        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@Model.Page.Today.Year" asp-route-month="@Model.Page.Today.Month" asp-route-day="@Model.Page.Today.Day" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind">Hoje</a>
-        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@next.Year" asp-route-month="@next.Month" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind">Próximo mês</a>
+        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@previous.Year" asp-route-month="@previous.Month" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind">@L.T("agenda.prev_month",_c)</a>
+        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@Model.Page.Today.Year" asp-route-month="@Model.Page.Today.Month" asp-route-day="@Model.Page.Today.Day" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind">@L.T("agenda.today",_c)</a>
+        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@next.Year" asp-route-month="@next.Month" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind">@L.T("agenda.next_month",_c)</a>
     </nav>
 </header>
-<form method="get" class="filter-bar" aria-label="Filtros da agenda">
+<form method="get" class="filter-bar" aria-label="@L.T("agenda.filters_aria",_c)">
     <input type="hidden" name="year" value="@Model.Page.Year" />
     <input type="hidden" name="month" value="@Model.Page.Month" />
-    <label for="agenda-kind">Tipo</label>
+    <label for="agenda-kind">@L.T("common.type",_c)</label>
     <select id="agenda-kind" name="kind">
-        <option value="">Todos os tipos autorizados</option>
-        <option value="Obligation" selected="@(Model.Kind == "Obligation")">Obrigações</option>
-        <option value="Review" selected="@(Model.Kind == "Review")">Revisões</option>
-        <option value="Renewal" selected="@(Model.Kind == "Renewal")">Renovações</option>
+        <option value="">@L.T("agenda.kind_all",_c)</option>
+        <option value="Obligation" selected="@(Model.Kind == "Obligation")">@L.T("agenda.kind_obligation",_c)</option>
+        <option value="Review" selected="@(Model.Kind == "Review")">@L.T("agenda.kind_review",_c)</option>
+        <option value="Renewal" selected="@(Model.Kind == "Renewal")">@L.T("agenda.kind_renewal",_c)</option>
     </select>
-    <label for="agenda-scope">Escopo</label>
+    <label for="agenda-scope">@L.T("agenda.scope_label",_c)</label>
     <select id="agenda-scope" name="scope">
-        <option value="mine" selected="@(Model.Scope == "mine")">Minhas pendências</option>
-        <option value="organization" selected="@(Model.Scope == "organization")">Organização</option>
+        <option value="mine" selected="@(Model.Scope == "mine")">@L.T("agenda.scope_mine",_c)</option>
+        <option value="organization" selected="@(Model.Scope == "organization")">@L.T("common.org",_c)</option>
     </select>
-    <button class="button button-primary" type="submit">Aplicar filtros</button>
-    <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@Model.Page.Year" asp-route-month="@Model.Page.Month">Limpar filtros</a>
+    <button class="button button-primary" type="submit">@L.T("common.apply_filters",_c)</button>
+    <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@Model.Page.Year" asp-route-month="@Model.Page.Month">@L.T("common.clear_filters",_c)</a>
 </form>
 @if (!string.IsNullOrWhiteSpace(emptyNotice))
 {
     <div class="banner-notice-warning" role="status">@emptyNotice
-        <a class="button button-quiet" asp-controller="Inbox" asp-action="Index" asp-route-tenantId="@tenantId">Abrir caixa operacional</a>
+        <a class="button button-quiet" asp-controller="Inbox" asp-action="Index" asp-route-tenantId="@tenantId">@L.T("agenda.open_inbox",_c)</a>
     </div>
 }
 @if (!string.IsNullOrWhiteSpace(Model.Error))
@@ -47,12 +52,12 @@
 }
 @if (Model.Day.HasValue)
 {
-    <div class="active-filters" aria-label="Filtro de dia ativo">
-        <span>Filtrando: <strong>dia @Model.Day.Value</strong></span>
-        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@Model.Page.Year" asp-route-month="@Model.Page.Month" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind">Remover filtro</a>
+    <div class="active-filters" aria-label="@L.T("agenda.day_filter_aria",_c)">
+        <span>@L.T("agenda.day_filtering",_c,Model.Day.Value.ToString(ci))</span>
+        <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@Model.Page.Year" asp-route-month="@Model.Page.Month" asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind">@L.T("agenda.remove_filter",_c)</a>
     </div>
 }
-<p>@Model.Page.Total ocorrência(s) no mês.</p>
+<p>@L.T("agenda.total_month",_c,Model.Page.Total.ToString(CultureInfo.InvariantCulture))</p>
 @foreach (var day in Model.Page.Days)
 {
     <section class="renewal-list">
@@ -61,11 +66,11 @@
         {
             <article class="renewal-row">
                 <div>
-                    <span class="status-label">@item.Kind</span>
+                    <span class="status-label">@KindLabel(item.Kind)</span>
                     <h3>@item.Title</h3>
                     <p>@item.ContractTitle</p>
                 </div>
-                <div class="next-action"><a class="button button-quiet" href="@item.OpenUrl">Abrir</a></div>
+                <div class="next-action"><a class="button button-quiet" href="@item.OpenUrl">@L.T("common.open",_c)</a></div>
             </article>
         }
     </section>
@@ -73,8 +78,8 @@
 @if (Model.Page.Days.Count == 0)
 {
     <div class="empty-state">
-        <strong>Nenhum vencimento neste mês</strong>
-        <p>@(Model.Day.HasValue ? $"Nenhum item no dia {Model.Day.Value} do mês selecionado." : "Avance o mês ou abra a caixa operacional.")</p>
-        <a class="button button-quiet" asp-controller="Inbox" asp-action="Index" asp-route-tenantId="@tenantId">Abrir caixa operacional</a>
+        <strong>@L.T("agenda.empty_title",_c)</strong>
+        <p>@(Model.Day.HasValue ? L.T("agenda.empty_day",_c,Model.Day.Value.ToString(ci)) : L.T("agenda.empty_other",_c))</p>
+        <a class="button button-quiet" asp-controller="Inbox" asp-action="Index" asp-route-tenantId="@tenantId">@L.T("agenda.open_inbox",_c)</a>
     </div>
 }

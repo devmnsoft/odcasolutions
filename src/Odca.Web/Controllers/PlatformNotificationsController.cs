@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Odca.Configuration.Localization;
 using Odca.Web.Services;
 
 namespace Odca.Web.Controllers;
@@ -14,12 +15,16 @@ namespace Odca.Web.Controllers;
 /// </summary>
 [Authorize(Roles = "SuperAdministrator")]
 [Route("administracao/notificacoes")]
-public sealed class PlatformNotificationsController(OdcaApiClient api) : Controller
+public sealed class PlatformNotificationsController(OdcaApiClient api, LocalizationService loc) : Controller
 {
+    // D-OC42 (S8): padrão canônico de cultura (CultureMiddleware) e localização das mensagens BFF.
+    private string? Culture => HttpContext.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] as string;
+    private string L(string key, params string[] args) => loc.T(key, Culture, args);
+
     [HttpGet]
     public async Task<IActionResult> Index(string? status, string? kind, string? search, int page = 1, CancellationToken ct = default)
     {
-        ViewData["Title"] = "Central de notificações";
+        ViewData["Title"] = L("platform.notif_title");
         var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
         page = Math.Max(1, page);
         const int pageSize = 25;
@@ -27,7 +32,7 @@ public sealed class PlatformNotificationsController(OdcaApiClient api) : Control
         ViewData["Status"] = status; ViewData["Kind"] = kind; ViewData["Search"] = search; ViewData["Page"] = page;
         if (!result.Succeeded || result.Value is not { ValueKind: JsonValueKind.Object } body)
         {
-            ViewData["LoadError"] = result.Succeeded ? null : result.UserMessage("Não foi possível carregar a central de notificações.");
+            ViewData["LoadError"] = result.Succeeded ? null : result.UserMessage(L("platform.notif_load_error"));
             return View(new PageViewModel([], page, pageSize, 0));
         }
         var items = new List<ItemViewModel>();
@@ -61,10 +66,10 @@ public sealed class PlatformNotificationsController(OdcaApiClient api) : Control
         var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
         var result = await api.RetryPlatformNotificationAsync(token, messageId, ct);
         TempData["NotificationsNotice"] = result.Succeeded
-            ? "Mensagem devolvida à fila de entrega com tentativas reiniciadas; a operação foi registrada na auditoria."
+            ? L("platform.notif_retry_ok")
             : result.ErrorCode == "notification_retry_unavailable"
-                ? "Apenas mensagens com falha definitiva podem ser reprocessadas."
-                : result.UserMessage("Não foi possível reprocessar a mensagem.");
+                ? L("platform.notif_retry_unavailable")
+                : result.UserMessage(L("platform.notif_retry_fail"));
         return RedirectToAction(nameof(Index), new { status, kind, search, page = Math.Max(1, page) });
     }
 

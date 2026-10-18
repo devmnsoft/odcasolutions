@@ -4,6 +4,8 @@
 # (cdp-design-audit.mjs). Diferenca vs audit-d40: as superficies documentos/obrigacoes/privacidade
 # passam a ser cobertas em pt-BR/en-US/es-ES/fr-FR (antes pt-first). Superficies de plataforma
 # (atendimento ODCA, suporte, auditoria) permanecem em pt-BR — divida registrada para a S8.
+# S8 (D-OC42): as superficies da plataforma ficaram em 4 idiomas no codigo; a auditoria segue
+# medindo-as em pt-BR (regressao) e adiciona contratos/ficha/agenda do cliente em 4 idiomas.
 # Sessoes: cliente.teste@odca.local (sem MFA) e o superadmin sintetico da prova (MFA reinscrita
 # com chave conhecida para o login do driver). PNGs somente das falhas (triagem visual).
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -118,7 +120,9 @@ if ([string]$T -ne '20000000-0000-4000-8000-000000000001') { Write-Host ('TENANT
 
 # ---------- cfg do driver de auditoria ----------
 # S7: documentos/obrigacoes/privacidade em 4 idiomas (nova cobr.) + regressao das rotas do piloto.
-# 38 par (rota x idioma) x 4 viewports = 152 medidas previstas.
+# S8 (D-OC42): + contratos (lista), ficha do contrato (contrato fixo da prova ...201) e agenda
+# (cliente, 4 idiomas) + notificacoes da plataforma (superadmin, pt-BR).
+# 51 par (rota x idioma) x 4 viewports = 204 medidas previstas.
 $cfgObj = [ordered]@{
   base = 'http://localhost:5144'
   outDir = $outDir
@@ -141,12 +145,16 @@ $cfgObj = [ordered]@{
     [ordered]@{ id = 'privacidade';        path = '/privacidade';                        session = 'anon';       langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
     [ordered]@{ id = 'atendimento-odca';   path = '/administracao/atendimento-odca';     session = 'superadmin'; langs = @('pt-BR') },
     [ordered]@{ id = 'suporte-sessoes';    path = '/administracao/suporte-sessoes';      session = 'superadmin'; langs = @('pt-BR') },
-    [ordered]@{ id = 'auditoria';          path = '/administracao/auditoria';            session = 'superadmin'; langs = @('pt-BR') }
+    [ordered]@{ id = 'plataforma-notificacoes'; path = '/administracao/notificacoes';    session = 'superadmin'; langs = @('pt-BR') },
+    [ordered]@{ id = 'auditoria';          path = '/administracao/auditoria';            session = 'superadmin'; langs = @('pt-BR') },
+    [ordered]@{ id = 'contratos';          path = '/organizacoes/' + $T + '/contratos';  session = 'cliente';    langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'ficha-contrato';     path = '/organizacoes/' + $T + '/contratos/76000000-0000-0000-0000-000000000201'; session = 'cliente'; langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'agenda';             path = '/organizacoes/' + $T + '/agenda';     session = 'cliente';    langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') }
   )
 }
 $cfgFile = Join-Path $logDir 'd41-audit-cfg.json'
 Set-Content -Path $cfgFile -Value ($cfgObj | ConvertTo-Json -Depth 10) -Encoding utf8
-LogEv 'AUDIT: 13 rotas x idiomas x 4 viewports (152 medidas previstas); PNG apenas de falhas em ' + $outDir
+LogEv 'AUDIT: 17 rotas x idiomas x 4 viewports (204 medidas previstas); PNG apenas de falhas em ' + $outDir
 
 # ---------- execucao ----------
 $driver = Join-Path $root 'scripts\qa\cdp-design-audit.mjs'

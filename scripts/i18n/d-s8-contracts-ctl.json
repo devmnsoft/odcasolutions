@@ -1,0 +1,356 @@
+{
+  "sheet.ct_load_list_fail": {
+    "pt-BR": "Não foi possível carregar os contratos.",
+    "en-US": "Could not load the contracts.",
+    "es-ES": "No fue posible cargar los contratos.",
+    "fr-FR": "Impossible de charger les contrats."
+  },
+  "sheet.ct_sheet_unavailable": {
+    "pt-BR": "Este contrato não está disponível no contexto atual.",
+    "en-US": "This contract is not available in the current context.",
+    "es-ES": "Este contrato no está disponible en el contexto actual.",
+    "fr-FR": "Ce contrat n'est pas disponible dans le contexte actuel."
+  },
+  "sheet.ct_sheet_load_fail": {
+    "pt-BR": "Não foi possível abrir a ficha do contrato.",
+    "en-US": "Could not open the contract sheet.",
+    "es-ES": "No fue posible abrir la ficha del contrato.",
+    "fr-FR": "Impossible d'ouvrir la fiche du contrat."
+  },
+  "sheet.ct_unavailable_short": {
+    "pt-BR": "Ficha indisponível.",
+    "en-US": "Sheet unavailable.",
+    "es-ES": "Ficha no disponible.",
+    "fr-FR": "Fiche indisponible."
+  },
+  "sheet.ct_version_conflict": {
+    "pt-BR": "A ficha do contrato foi alterada em outra sessão (versão divergente). Recarregue a página.",
+    "en-US": "The contract sheet was changed in another session (version mismatch). Reload the page.",
+    "es-ES": "La ficha del contrato fue alterada en otra sesión (versión divergente). Recargue la página.",
+    "fr-FR": "La fiche du contrat a été modifiée dans une autre session (version divergente). Rechargez la page."
+  },
+  "sheet.ct_draft_locked_review": {
+    "pt-BR": "Não é permitido iniciar nova minuta (como NDA, serviços, fornecimento ou locação) enquanto houver revisão aberta no contrato.",
+    "en-US": "You cannot start a new draft (such as NDA, services, supply or lease) while a review is open on the contract.",
+    "es-ES": "No es permitido iniciar una nueva minuta (como NDA, servicios, suministro o arrendamiento) mientras haya una revisión abierta en el contrato.",
+    "fr-FR": "Il n'est pas permis de démarrer une nouvelle minute (NDA, services, fourniture ou location) tant qu'une révision est ouverte sur le contrat."
+  },
+  "sheet.ct_amendment_outside_window": {
+    "pt-BR": "Termo aditivo só é permitido quando a vigência estiver na janela de renovação ou houver proposta de alteração de prazo.",
+    "en-US": "An amendment is only allowed when the term is within the renewal window or there is a term-change proposal.",
+    "es-ES": "El aditivo solo está permitido cuando la vigencia esté en la ventana de renovación o haya una propuesta de cambio de plazo.",
+    "fr-FR": "L'avenant n'est autorisé que lorsque la validité est dans la fenêtre de renouvellement ou qu'il existe une proposition de changement de délai."
+  },
+  "sheet.ct_template_unknown": {
+    "pt-BR": "Chave oficial de minuta desconhecida.",
+    "en-US": "Unknown official draft key.",
+    "es-ES": "Clave oficial de minuta desconocida.",
+    "fr-FR": "Clé officielle de minute inconnue."
+  },
+  "sheet.ct_template_not_found": {
+    "pt-BR": "O modelo oficial solicitado não foi encontrado no catálogo do tenant.",
+    "en-US": "The requested official template was not found in the tenant catalog.",
+    "es-ES": "El modelo oficial solicitado no se encontró en el catálogo del tenant.",
+    "fr-FR": "Le modèle officiel demandé n'a pas été trouvé dans le catalogue du tenant."
+  },
+  "sheet.ct_draft_create_fail": {
+    "pt-BR": "Não foi possível criar o rascunho da minuta oficial.",
+    "en-US": "Could not create the official draft.",
+    "es-ES": "No fue posible crear el borrador de la minuta oficial.",
+    "fr-FR": "Impossible de créer le brouillon de la minute officielle."
+  },
+  "sheet.ct_propose_responsible_required": {
+    "pt-BR": "Selecione um responsável pela proposta de renovação/aditivo.",
+    "en-US": "Select a responsible person for the renewal/amendment proposal.",
+    "es-ES": "Seleccione un responsable para la propuesta de renovación/aditivo.",
+    "fr-FR": "Sélectionnez un responsable pour la proposition de renouvellement/avenant."
+  },
+  "sheet.ct_contract_conflict": {
+    "pt-BR": "O contrato foi alterado em outra sessão. Recarregue a página e reaplique a alteração.",
+    "es-ES": "El contrato fue alterado en otra sesión. Recargue la página y reaplique el cambio.",
+    "fr-FR": "Le contrat a été modifié dans une autre session. Rechargez la page et réappliquez la modification.",
+    "en-US": "The contract was changed in another session. Reload the page and reapply the change."
+  },
+  "sheet.ct_propose_fail": {
+    "pt-BR": "Não foi possível registrar a proposta.",
+    "en-US": "Could not register the proposal.",
+    "es-ES": "No fue posible registrar la propuesta.",
+    "fr-FR": "Impossible d'enregistrer la proposition."
+  },
+  "sheet.ct_propose_ok": {
+    "pt-BR": "Proposta de alteração/renovação registrada com sucesso na ficha.",
+    "en-US": "Amendment/renewal proposal registered successfully on the sheet.",
+    "es-ES": "Propuesta de alteración/renovación registrada con éxito en la ficha.",
+    "fr-FR": "Proposition de modification/renouvellement enregistrée avec succès sur la fiche."
+  },
+  "sheet.ct_review_conflict": {
+    "pt-BR": "A versão já foi encaminhada para revisão ou houve conflito. A página foi recarregada.",
+    "en-US": "The version was already submitted for review or a conflict occurred. The page was reloaded.",
+    "es-ES": "La versión ya fue enviada a revisión o hubo un conflicto. La página fue recargada.",
+    "fr-FR": "La version a déjà été envoyée en révision ou un conflit s'est produit. La page a été rechargée."
+  },
+  "sheet.ct_review_submitted_ok": {
+    "pt-BR": "Revisão encaminhada com sucesso para o revisor.",
+    "en-US": "Review successfully sent to the reviewer.",
+    "es-ES": "Revisión enviada con éxito al revisor.",
+    "fr-FR": "Révision envoyée avec succès au réviseur."
+  },
+  "sheet.ct_review_submit_fail": {
+    "pt-BR": "Não foi possível encaminhar a revisão.",
+    "en-US": "Could not submit the review.",
+    "es-ES": "No fue posible enviar la revisión.",
+    "fr-FR": "Impossible d'envoyer la révision."
+  },
+  "sheet.ct_comment_added_ok": {
+    "pt-BR": "Comentário registrado no rascunho (comentário não equivale à aprovação formal).",
+    "en-US": "Comment recorded on the draft (a comment is not a formal approval).",
+    "es-ES": "Comentario registrado en el borrador (el comentario no equivale a la aprobación formal).",
+    "fr-FR": "Commentaire enregistré sur le brouillon (un commentaire n'est pas une approbation formelle)."
+  },
+  "sheet.ct_comment_add_fail": {
+    "pt-BR": "Não foi possível adicionar o comentário.",
+    "en-US": "Could not add the comment.",
+    "es-ES": "No fue posible añadir el comentario.",
+    "fr-FR": "Impossible d'ajouter le commentaire."
+  },
+  "sheet.ct_comment_conflict": {
+    "pt-BR": "A pendência foi atualizada por outra pessoa. A página foi recarregada.",
+    "en-US": "The pending item was updated by someone else. The page was reloaded.",
+    "es-ES": "La pendencia fue actualizada por otra persona. La página fue recargada.",
+    "fr-FR": "La tâche a été mise à jour par une autre personne. La page a été rechargée."
+  },
+  "sheet.ct_comment_state_ok": {
+    "pt-BR": "Comentário {0} com sucesso.",
+    "en-US": "Comment {0} successfully.",
+    "es-ES": "Comentario {0} con éxito.",
+    "fr-FR": "Commentaire {0} avec succès."
+  },
+  "sheet.ct_word_resolved": {
+    "pt-BR": "resolvido",
+    "en-US": "resolved",
+    "es-ES": "resuelto",
+    "fr-FR": "résolu"
+  },
+  "sheet.ct_word_reopened": {
+    "pt-BR": "reaberto",
+    "en-US": "reopened",
+    "es-ES": "reabierto",
+    "fr-FR": "rouvert"
+  },
+  "sheet.ct_comment_update_fail": {
+    "pt-BR": "Não foi possível atualizar o comentário.",
+    "en-US": "Could not update the comment.",
+    "es-ES": "No fue posible actualizar el comentario.",
+    "fr-FR": "Impossible de mettre à jour le commentaire."
+  },
+  "sheet.ct_doc_download_fail": {
+    "pt-BR": "Não foi possível baixar o documento no momento.",
+    "en-US": "Could not download the document right now.",
+    "es-ES": "No fue posible descargar el documento en este momento.",
+    "fr-FR": "Impossible de télécharger le document pour le moment."
+  },
+  "sheet.ct_oblig_created_ok": {
+    "pt-BR": "Obrigação criada com sucesso na ficha do contrato.",
+    "en-US": "Obligation created successfully on the contract sheet.",
+    "es-ES": "Obligación creada con éxito en la ficha del contrato.",
+    "fr-FR": "Obligation créée avec succès sur la fiche du contrat."
+  },
+  "sheet.ct_oblig_create_fail": {
+    "pt-BR": "Não foi possível criar a obrigação.",
+    "en-US": "Could not create the obligation.",
+    "es-ES": "No fue posible crear la obligación.",
+    "fr-FR": "Impossible de créer l'obligation."
+  },
+  "sheet.ct_oblig_conflict": {
+    "pt-BR": "A obrigação foi alterada em outra sessão. Recarregue a página e reaplique a ação.",
+    "en-US": "The obligation was changed in another session. Reload the page and reapply the action.",
+    "es-ES": "La obligación fue alterada en otra sesión. Recargue la página y reaplique la acción.",
+    "fr-FR": "L'obligation a été modifiée dans une autre session. Rechargez la page et réappliquez l'action."
+  },
+  "sheet.ct_action_ok": {
+    "pt-BR": "Ação '{0}' executada com sucesso na obrigação.",
+    "en-US": "Action '{0}' executed successfully on the obligation.",
+    "es-ES": "Acción '{0}' ejecutada con éxito en la obligación.",
+    "fr-FR": "Action « {0} » exécutée avec succès sur l'obligation."
+  },
+  "sheet.ct_oblig_update_fail": {
+    "pt-BR": "Não foi possível atualizar a obrigação.",
+    "en-US": "Could not update the obligation.",
+    "es-ES": "No fue posible actualizar la obligación.",
+    "fr-FR": "Impossible de mettre à jour l'obligation."
+  },
+  "sheet.ct_library_install_fail": {
+    "pt-BR": "Não foi possível instalar a biblioteca oficial.",
+    "en-US": "Could not install the official library.",
+    "es-ES": "No fue posible instalar la biblioteca oficial.",
+    "fr-FR": "Impossible d'installer la bibliothèque officielle."
+  },
+  "sheet.ct_templates_already_installed": {
+    "pt-BR": "Os {0} modelos oficiais já estavam disponíveis.",
+    "en-US": "The {0} official templates were already available.",
+    "es-ES": "Los {0} modelos oficiales ya estaban disponibles.",
+    "fr-FR": "Les {0} modèles officiels étaient déjà disponibles."
+  },
+  "sheet.ct_templates_installed": {
+    "pt-BR": "{0} modelo(s) oficial(is) publicado(s).",
+    "en-US": "{0} official template(s) published.",
+    "es-ES": "{0} modelo(s) oficial(es) publicado(s).",
+    "fr-FR": "{0} modèle(s) officiel(s) publié(s)."
+  },
+  "sheet.ct_duplicate_closed": {
+    "pt-BR": "Um contrato encerrado não pode ser duplicado.",
+    "en-US": "A closed contract cannot be duplicated.",
+    "es-ES": "Un contrato cerrado no puede ser duplicado.",
+    "fr-FR": "Un contrat clôturé ne peut pas être dupliqué."
+  },
+  "sheet.ct_duplicate_no_draft": {
+    "pt-BR": "Este contrato não possui minuta vinculada; crie uma minuta antes de duplicar.",
+    "en-US": "This contract has no linked draft; create a draft before duplicating.",
+    "es-ES": "Este contrato no tiene minuta vinculada; cree una minuta antes de duplicar.",
+    "fr-FR": "Ce contrat n'a pas de minute liée ; créez une minute avant de dupliquer."
+  },
+  "sheet.ct_duplicate_fail": {
+    "pt-BR": "Não foi possível duplicar o contrato.",
+    "en-US": "Could not duplicate the contract.",
+    "es-ES": "No fue posible duplicar el contrato.",
+    "fr-FR": "Impossible de dupliquer le contrat."
+  },
+  "sheet.ct_duplicated_ok": {
+    "pt-BR": "Contrato duplicado com a minuta original. Assinaturas e versões geradas não são copiadas.",
+    "en-US": "Contract duplicated with the original draft. Signatures and generated versions are not copied.",
+    "es-ES": "Contrato duplicado con la minuta original. Firmas y versiones generadas no son copiadas.",
+    "fr-FR": "Contrat dupliqué avec la minute originale. Signatures et versions générées ne sont pas copiées."
+  },
+  "sheet.ct_details_empty": {
+    "pt-BR": "Informe ao menos um campo para atualizar (título, referência ou responsável).",
+    "en-US": "Provide at least one field to update (title, reference or responsible person).",
+    "es-ES": "Indique al menos un campo para actualizar (título, referencia o responsable).",
+    "fr-FR": "Indiquez au moins un champ à mettre à jour (titre, référence ou responsable)."
+  },
+  "sheet.ct_details_update_fail": {
+    "pt-BR": "Não foi possível atualizar os detalhes do contrato.",
+    "en-US": "Could not update the contract details.",
+    "es-ES": "No fue posible actualizar los detalles del contrato.",
+    "fr-FR": "Impossible de mettre à jour les détails du contrat."
+  },
+  "sheet.ct_details_updated_ok": {
+    "pt-BR": "Detalhes do contrato atualizados.",
+    "en-US": "Contract details updated.",
+    "es-ES": "Detalles del contrato actualizados.",
+    "fr-FR": "Détails du contrat mis à jour."
+  },
+  "sheet.ct_archive_reason_long": {
+    "pt-BR": "O motivo do arquivamento deve ter no máximo 500 caracteres.",
+    "en-US": "The archive reason must have at most 500 characters.",
+    "es-ES": "El motivo del archivado debe tener como máximo 500 caracteres.",
+    "fr-FR": "Le motif d'archivage doit comporter au maximum 500 caractères."
+  },
+  "sheet.ct_archive_fail": {
+    "pt-BR": "Não foi possível arquivar o contrato.",
+    "en-US": "Could not archive the contract.",
+    "es-ES": "No fue posible archivar el contrato.",
+    "fr-FR": "Impossible d'archiver le contrat."
+  },
+  "sheet.ct_archive_replayed_ok": {
+    "pt-BR": "O contrato já estava arquivado.",
+    "en-US": "The contract was already archived.",
+    "es-ES": "El contrato ya estaba archivado.",
+    "fr-FR": "Le contrat était déjà archivé."
+  },
+  "sheet.ct_archive_ok": {
+    "pt-BR": "Contrato arquivado. Ele não aparece na lista ativa e pode ser restaurado a qualquer momento.",
+    "en-US": "Contract archived. It no longer appears in the active list and can be restored at any time.",
+    "es-ES": "Contrato archivado. No aparece en la lista activa y puede ser restaurado en cualquier momento.",
+    "fr-FR": "Contrat archivé. Il n'apparaît plus dans la liste active et peut être restauré à tout moment."
+  },
+  "sheet.ct_restore_replayed_ok": {
+    "pt-BR": "O contrato já estava ativo.",
+    "en-US": "The contract was already active.",
+    "es-ES": "El contrato ya estaba activo.",
+    "fr-FR": "Le contrat était déjà actif."
+  },
+  "sheet.ct_restore_ok": {
+    "pt-BR": "Contrato restaurado. O encerramento anterior, se houver, permanece registrado no histórico.",
+    "en-US": "Contract restored. A previous closure, if any, remains recorded in the history.",
+    "es-ES": "Contrato restaurado. El cierre anterior, si lo hay, permanece registrado en el historial.",
+    "fr-FR": "Contrat restauré. Une clôture antérieure, s'il y en a une, demeure enregistrée dans l'historique."
+  },
+  "sheet.ct_restore_fail": {
+    "pt-BR": "Não foi possível restaurar o contrato.",
+    "en-US": "Could not restore the contract.",
+    "es-ES": "No fue posible restaurar el contrato.",
+    "fr-FR": "Impossible de restaurer le contrat."
+  },
+  "sheet.ct_close_reason_invalid": {
+    "pt-BR": "Informe o motivo do encerramento (de 5 a 2000 caracteres).",
+    "en-US": "Provide the closure reason (5 to 2000 characters).",
+    "es-ES": "Indique el motivo del cierre (de 5 a 2000 caracteres).",
+    "fr-FR": "Indiquez le motif de clôture (de 5 à 2000 caractères)."
+  },
+  "sheet.ct_close_fail": {
+    "pt-BR": "Não foi possível encerrar o contrato.",
+    "en-US": "Could not close the contract.",
+    "es-ES": "No fue posible cerrar el contrato.",
+    "fr-FR": "Impossible de clôturer le contrat."
+  },
+  "sheet.ct_close_replayed_ok": {
+    "pt-BR": "O contrato já estava encerrado.",
+    "en-US": "The contract was already closed.",
+    "es-ES": "El contrato ya estaba cerrado.",
+    "fr-FR": "Le contrat était déjà clôturé."
+  },
+  "sheet.ct_close_ok": {
+    "pt-BR": "Contrato encerrado com registro da data e do motivo. Ele também foi arquivado e não pode mais gerar assinaturas.",
+    "en-US": "Contract closed with the date and reason recorded. It was also archived and can no longer generate signatures.",
+    "es-ES": "Contrato cerrado con registro de la fecha y del motivo. También fue archivado y ya no puede generar firmas.",
+    "fr-FR": "Contrat clôturé avec enregistrement de la date et du motif. Il a également été archivé et ne peut plus générer de signatures."
+  },
+  "sheet.ct_pdf_version_gone": {
+    "pt-BR": "A versão solicitada não está mais disponível.",
+    "en-US": "The requested version is no longer available.",
+    "es-ES": "La versión solicitada ya no está disponible.",
+    "fr-FR": "La version demandée n'est plus disponible."
+  },
+  "sheet.ct_pdf_busy": {
+    "pt-BR": "O PDF já está em processamento ou a versão não aceita nova geração agora.",
+    "en-US": "The PDF is already being processed or the version does not accept a new generation now.",
+    "es-ES": "El PDF ya está en proceso o la versión no acepta una nueva generación ahora.",
+    "fr-FR": "Le PDF est déjà en traitement ou la version n'accepte pas une nouvelle génération maintenant."
+  },
+  "sheet.ct_pdf_generate_fail": {
+    "pt-BR": "Não foi possível gerar o PDF da versão.",
+    "en-US": "Could not generate the PDF for the version.",
+    "es-ES": "No fue posible generar el PDF de la versión.",
+    "fr-FR": "Impossible de générer le PDF de la version."
+  },
+  "sheet.ct_pdf_generated_ok": {
+    "pt-BR": "PDF final da versão gerado e protegido no armazenamento privado.",
+    "en-US": "Final PDF for the version generated and protected in private storage.",
+    "es-ES": "PDF final de la versión generado y protegido en el almacenamiento privado.",
+    "fr-FR": "PDF final de la version généré et protégé dans le stockage privé."
+  },
+  "sheet.ct_pdf_not_generated": {
+    "pt-BR": "O PDF desta versão ainda não foi gerado.",
+    "en-US": "The PDF for this version has not been generated yet.",
+    "es-ES": "El PDF de esta versión aún no fue generado.",
+    "fr-FR": "Le PDF de cette version n'a pas encore été généré."
+  },
+  "sheet.ct_pdf_download_fail": {
+    "pt-BR": "Não foi possível baixar o PDF da versão.",
+    "en-US": "Could not download the PDF for the version.",
+    "es-ES": "No fue posible descargar el PDF de la versión.",
+    "fr-FR": "Impossible de télécharger le PDF de la version."
+  },
+  "sheet.ct_contract_conflict_changes": {
+    "pt-BR": "O contrato foi alterado em outra sessão. Recarregue a página e reaplique as alterações.",
+    "en-US": "The contract was changed in another session. Reload the page and reapply the changes.",
+    "es-ES": "El contrato fue alterado en otra sesión. Recargue la página y reaplique los cambios.",
+    "fr-FR": "Le contrat a été modifié dans une autre session. Rechargez la page et réappliquez les modifications."
+  },
+  "sheet.ct_contract_conflict_action": {
+    "pt-BR": "O contrato foi alterado em outra sessão. Recarregue a página e reaplique a ação.",
+    "en-US": "The contract was changed in another session. Reload the page and reapply the action.",
+    "es-ES": "El contrato fue alterado en otra sesión. Recargue la página y reaplique la acción.",
+    "fr-FR": "Le contrat a été modifié dans une autre session. Rechargez la page et réappliquez l'action."
+  }
+}

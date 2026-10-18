@@ -1,15 +1,17 @@
 @model Odca.Contracts.Studio.GeneratedVersionDetail
 @{
     Layout = null;
+    var _culture = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
     var signed = Model.ReviewStatus == "externally_signed";
-    var watermark = signed ? "ASSINADO" : "RASCUNHO";
+    // D-OC42 (S8): marca d'água e textos da impressão pela cultura atual.
+    var watermark = signed ? L.T("sheet.print_watermark_signed", _culture) : L.T("sheet.print_watermark_draft", _culture);
 }
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="@(_culture ?? "pt-BR")">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>@Model.Title — Versão @Model.Number — @watermark</title>
+    <title>@Model.Title — @L.T("sheet.print_version_label", _culture, Model.Number.ToString()) — @watermark</title>
     <style>
         html, body { margin: 0; padding: 0; background: #fff; color: #18243b; }
         body { font-family: Georgia, 'Times New Roman', serif; font-size: 14px; line-height: 1.65; padding: 2rem 1rem; }
@@ -64,9 +66,9 @@
 <body>
     <div class="print-bar no-print">
         <div>
-            <strong>@Model.Title</strong> — Versão @Model.Number · <span class="state">@watermark</span>
+            <strong>@Model.Title</strong> — @L.T("sheet.print_version_label", _culture, Model.Number.ToString()) · <span class="state">@watermark</span>
         </div>
-        <button type="button" onclick="window.print()">Imprimir</button>
+        <button type="button" onclick="window.print()">@L.T("sheet.print_button", _culture)</button>
     </div>
     <div class="watermark" aria-hidden="true"><span>@watermark</span></div>
     @Html.Raw(Model.RenderedHtml)

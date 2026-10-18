@@ -1,49 +1,65 @@
 @model Odca.Web.Controllers.PlatformNotificationsController.PageViewModel
 @{
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("platform.notif_title", _c);
     var status = ViewData["Status"] as string; var kind = ViewData["Kind"] as string; var search = ViewData["Search"] as string;
     var pagina = Math.Max(1, Convert.ToInt32(ViewData["Page"] ?? 1));
     // D-OC31 B.1: tipos de mensagem da outbox (convite legado + 7 tipos de evento B.1
     // + categoria 'user_notification' de linhas anteriores ao refinamento).
+    // D-OC42 (S8): rótulos por chaves platform.notif_kind_* nos 4 catálogos.
     var kinds = new (string Value, string Label)[]
     {
-        ("invitation", "Convite"),
-        ("obligation_due", "Obrigação a vencer"),
-        ("renewal_due", "Renovação próxima"),
-        ("review_assigned", "Revisão atribuída"),
-        ("review_decided", "Revisão decidida"),
-        ("solicitation_opened", "Solicitação aberta"),
-        ("solicitation_updated", "Solicitação atualizada"),
-        ("signature_pending", "Assinatura pendente"),
-        ("signature_completed", "Assinatura concluída"),
-        ("user_notification", "Notificação (legado)")
+        ("invitation", "platform.notif_kind_invitation"),
+        ("obligation_due", "platform.notif_kind_obligation_due"),
+        ("renewal_due", "platform.notif_kind_renewal_due"),
+        ("review_assigned", "platform.notif_kind_review_assigned"),
+        ("review_decided", "platform.notif_kind_review_decided"),
+        ("solicitation_opened", "platform.notif_kind_solicitation_opened"),
+        ("solicitation_updated", "platform.notif_kind_solicitation_updated"),
+        ("signature_pending", "platform.notif_kind_signature_pending"),
+        ("signature_completed", "platform.notif_kind_signature_completed"),
+        ("user_notification", "platform.notif_kind_user_notification")
     };
-    string KindLabel(string value) => kinds.FirstOrDefault(k => k.Value == value).Label ?? value;
+    string KindLabel(string value) => value switch
+    {
+        "invitation" => L.T("platform.notif_kind_invitation",_c),
+        "obligation_due" => L.T("platform.notif_kind_obligation_due",_c),
+        "renewal_due" => L.T("platform.notif_kind_renewal_due",_c),
+        "review_assigned" => L.T("platform.notif_kind_review_assigned",_c),
+        "review_decided" => L.T("platform.notif_kind_review_decided",_c),
+        "solicitation_opened" => L.T("platform.notif_kind_solicitation_opened",_c),
+        "solicitation_updated" => L.T("platform.notif_kind_solicitation_updated",_c),
+        "signature_pending" => L.T("platform.notif_kind_signature_pending",_c),
+        "signature_completed" => L.T("platform.notif_kind_signature_completed",_c),
+        "user_notification" => L.T("platform.notif_kind_user_notification",_c),
+        _ => value
+    };
     string StatusLabel(string value) => value switch
     {
-        "pending" => "Enfileirado",
-        "leased" => "Em entrega",
-        "sent" => "Aceito pelo provedor",
-        "failed" => "Falha definitiva",
+        "pending" => L.T("platform.notif_st_pending",_c),
+        "leased" => L.T("platform.notif_st_leased",_c),
+        "sent" => L.T("platform.notif_st_sent",_c),
+        "failed" => L.T("platform.notif_st_failed",_c),
         _ => value
     };
     string Fmt(DateTimeOffset? value) => value?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "—";
 }
-<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-controller="Home" asp-action="Index">Visão global</a><span>/</span><span aria-current="page">Central de notificações</span></nav>
-<header class="page-heading"><div><p class="eyebrow">Plataforma MNSOFT</p><h1>Central de notificações</h1><p>Acompanhe a fila de entrega de e-mails da plataforma e reprocesse falhas definitivas.</p></div></header>
+<nav class="breadcrumb" aria-label="@L.T("common.breadcrumb_aria",_c)"><a asp-controller="Home" asp-action="Index">@L.T("visao-global",_c)</a><span>/</span><span aria-current="page">@L.T("platform.notif_title",_c)</span></nav>
+<header class="page-heading"><div><p class="eyebrow">@L.T("common.platform_mns",_c)</p><h1>@L.T("platform.notif_title",_c)</h1><p>@L.T("platform.notif_subtitle",_c)</p></div></header>
 @if(ViewData["LoadError"] is string loadError){<div class="alert alert-error" role="alert">@loadError</div>}
 @if(TempData["NotificationsNotice"] is string notice){<div class="alert alert-success" role="status">@notice</div>}
-<section class="help-card" aria-labelledby="notif-help"><h2 id="notif-help">O que cada situação significa</h2><p><strong>Enfileirado</strong>: aguardando o worker. <strong>Em entrega</strong>: reservado por um worker com lease de 2 minutos. <strong>Aceito pelo provedor</strong>: o provedor de correio aceitou a mensagem (no SMTP, o aceite é pelo servidor receptor); a chegada à caixa de entrada não é comprovável sem recibo. <strong>Falha definitiva</strong>: tentativas esgotadas — pode ser reprocessada aqui e a ação fica registrada na auditoria.</p><p>O detalhe exibe apenas campos seguros: organização, tipo, destino, situação e código de erro estável. O conteúdo protegido e os links com token nunca aparecem nesta tela.</p></section>
-<form method="get" class="review-filters" aria-label="Filtros da central de notificações">
- <label>Situação<select name="status"><option value="">Todas</option>@foreach(var option in new[]{("pending","Enfileirado"),("leased","Em entrega"),("sent","Aceito pelo provedor"),("failed","Falha definitiva")}){<option value="@option.Item1" selected="@(status==option.Item1)">@option.Item2</option>}</select></label>
- <label>Tipo<select name="kind"><option value="">Todos</option>@foreach(var option in kinds){<option value="@option.Value" selected="@(kind==option.Value)">@option.Label</option>}</select></label>
- <label>Destino<input type="search" name="search" value="@search" placeholder="endereço de e-mail" /></label>
- <button class="button button-quiet" type="submit">Aplicar filtros</button>
+<section class="help-card" aria-labelledby="notif-help"><h2 id="notif-help">@L.T("platform.notif_help_title",_c)</h2><p><strong>@L.T("platform.notif_st_pending",_c)</strong>@L.T("platform.notif_help_b1",_c)<strong>@L.T("platform.notif_st_leased",_c)</strong>@L.T("platform.notif_help_b2",_c)<strong>@L.T("platform.notif_st_sent",_c)</strong>@L.T("platform.notif_help_b3",_c)<strong>@L.T("platform.notif_st_failed",_c)</strong>@L.T("platform.notif_help_b4",_c)</p><p>@L.T("platform.notif_help_p2",_c)</p></section>
+<form method="get" class="review-filters" aria-label="@L.T("platform.notif_filters_aria",_c)">
+ <label>@L.T("common.situation",_c)<select name="status"><option value="">@L.T("platform.notif_all_statuses",_c)</option>@foreach(var option in new[]{("pending","platform.notif_st_pending"),("leased","platform.notif_st_leased"),("sent","platform.notif_st_sent"),("failed","platform.notif_st_failed")}){<option value="@option.Item1" selected="@(status==option.Item1)">@L.T(option.Item2,_c)</option>}</select></label>
+ <label>@L.T("common.type",_c)<select name="kind"><option value="">@L.T("platform.notif_all_kinds",_c)</option>@foreach(var option in kinds){<option value="@option.Value" selected="@(kind==option.Value)">@L.T(option.Label,_c)</option>}</select></label>
+ <label>@L.T("platform.notif_dest",_c)<input type="search" name="search" value="@search" placeholder="@L.T("platform.notif_dest_ph",_c)" /></label>
+ <button class="button button-quiet" type="submit">@L.T("common.apply_filters",_c)</button>
 </form>
-<section aria-label="Fila de notificações">
- @if(Model.Items.Count==0){<div class="empty-state"><p>Nenhuma mensagem na fila com estes filtros.</p></div>}
+<section aria-label="@L.T("platform.notif_section_aria",_c)">
+ @if(Model.Items.Count==0){<div class="empty-state"><p>@L.T("platform.notif_empty",_c)</p></div>}
  else
  {
-  <div class="table-scroll"><table><thead><tr><th>Organização</th><th>Tipo</th><th>Destino</th><th>Situação</th><th>Tentativas</th><th>Código de erro</th><th>Criado</th><th>Entrega aceita</th><th>Ação</th></tr></thead><tbody>
+  <div class="table-scroll"><table><thead><tr><th>@L.T("common.org",_c)</th><th>@L.T("common.type",_c)</th><th>@L.T("platform.notif_dest",_c)</th><th>@L.T("common.situation",_c)</th><th>@L.T("platform.notif_col_attempts",_c)</th><th>@L.T("platform.notif_col_error_code",_c)</th><th>@L.T("platform.notif_col_created",_c)</th><th>@L.T("platform.notif_col_accepted",_c)</th><th>@L.T("common.actions",_c)</th></tr></thead><tbody>
   @foreach(var item in Model.Items)
   {
    <tr>
@@ -59,7 +75,7 @@
      @if(item.Status=="failed"){
       <form method="post" asp-action="Retry" asp-route-messageId="@item.MessageId" asp-route-status="@status" asp-route-kind="@kind" asp-route-search="@search" asp-route-page="@pagina" data-prevent-double-submit style="display:inline">
        @Html.AntiForgeryToken()
-       <button type="submit" class="button button-quiet">Reprocessar</button>
+       <button type="submit" class="button button-quiet">@L.T("platform.notif_retry",_c)</button>
       </form>
      }else{<span aria-hidden="true">—</span>}
     </td>
@@ -69,9 +85,9 @@
   @if(Model.Pages>1)
   {
    <div class="button-row">
-    @if(pagina>1){<a class="button button-quiet" asp-action="Index" asp-route-status="@status" asp-route-kind="@kind" asp-route-search="@search" asp-route-page="@(pagina-1)">← Anterior</a>}
-    <span>Página @pagina de @Model.Pages (@Model.Total mensagens)</span>
-    @if(pagina<Model.Pages){<a class="button button-quiet" asp-action="Index" asp-route-status="@status" asp-route-kind="@kind" asp-route-search="@search" asp-route-page="@(pagina+1)">Próxima →</a>}
+   @if(pagina>1){<a class="button button-quiet" asp-action="Index" asp-route-status="@status" asp-route-kind="@kind" asp-route-search="@search" asp-route-page="@(pagina-1)">@L.T("common.prev",_c)</a>}
+   <span>@L.T("platform.notif_page_info",_c,pagina.ToString(System.Globalization.CultureInfo.InvariantCulture),Model.Pages.ToString(System.Globalization.CultureInfo.InvariantCulture),Model.Total.ToString(System.Globalization.CultureInfo.InvariantCulture))</span>
+   @if(pagina<Model.Pages){<a class="button button-quiet" asp-action="Index" asp-route-status="@status" asp-route-kind="@kind" asp-route-search="@search" asp-route-page="@(pagina+1)">@L.T("common.next",_c)</a>}
    </div>
   }
  }

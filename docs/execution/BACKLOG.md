@@ -534,3 +534,17 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [ ] CI oficial deste SHA: pendente - branch sem push; nenhum ID de execucao inventado.
 - [ ] Aceite humano dos fluxos de documentos/obrigacoes/privacidade: pendente (auditoria de design disponivel para revisao).
 - [x] Commit unico "sem push" fechando a Sprint 7.
+
+## Sprint 8 - superficies de plataforma/operacional em 4 idiomas (D-OC42) (18/10/2026)
+
+- [x] F-1: ficha do contrato em 4 idiomas - Sheet.cshtml integral (jornada, proxima acao, propostas/aditivos, revisao, comentarios, obrigatoriedades, minutas, documentos/quarentena, solicitacoes, historico com drawer JS via bag drawerI18n), Print.cshtml (lang/watermarks/barra) e Contracts/Index.cshtml (lista "Meus contratos"); ContractsController: ~60 mensagens BFF para sheet.ct_* e OfficialTemplateNames substituido por HashSet de chaves (resolucao por KEY, titulos do catalogo do tenant).
+- [x] F-2: fila administrativa de atendimento em 4 idiomas - AdminSolicitacoes Index/Aprovacoes/Detalhes + controller; namespace novo admin.*.
+- [x] F-3: sessoes de suporte da plataforma em 4 idiomas - SupportSessions/Index + controller; namespace novo support.*.
+- [x] F-4: central de notificacoes da plataforma + agenda mensal em 4 idiomas - PlatformNotifications/Index + controller (namespace novo platform.*) e Agenda/Index + controller com reuso de common.*; padrao canonico (CultureMiddleware + L()) injetado nos controllers faltantes.
+- [x] Catalogos: +547 chaves x 4 culturas (2161 -> 2708/cultura, paridade 4/4) via deltas versionados scripts/i18n/d-s8-*.json (admin 131, support 38, platform 61, contracts 239, contracts-ctl 59, contracts-index 18) + correcao direta da chave ausente "obligacoes" (bug S7/S8 em Obligations/Acoes.cshtml); mesclador generalizado para d-sN-*.json e documentado como idempotente.
+- [x] GATE final sobre a arvore: builds Release+Debug estritos 0W/0E, Domain 389/389, suite -FreshDb 231/231 TEST-EXIT=0, assets exit=0; auditoria de design estendida (audit-d41-design.ps1) ampliada 13 -> 17 rotas (+contratos, +ficha com contrato fixo da prova, +agenda em 4 idiomas; +notificacoes plataforma pt-BR) = AUDIT-DONE checks=204 ok=204 overflow=0 authfail=0 httpfail=0 exit=0 (transcript evidence/d41-design-audit-s8-rodada-final.txt).
+- [x] Doc D-OC42 consolidada e STATUS.md atualizado; .odca/progress.json inalterado (sem CI oficial verde nem aceite humano para creditar marco).
+- [ ] Limitacoes registradas: conteudo (titulo/corpo) das notificacoes permanece em pt-BR no armazenamento (devida); botao "Agenda mensal" na central de obrigacoes segue disabled; ModulesController fica para a proxima sprint; labels pt hardcoded em ContractSheetRepository (Infrastructure) mantidos por decisao (view mapeia pelos helpers localizados).
+- [ ] CI oficial deste SHA: pendente - branch sem push; nenhum ID de execucao inventado.
+- [ ] Aceite humano dos 4 idiomas nas superficies da ficha/plataforma: pendente.
+- [x] Commit unico "sem push" fechando a Sprint 8.

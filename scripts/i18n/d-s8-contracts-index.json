@@ -1,0 +1,20 @@
+{
+  "sheet.idx_intro": {"pt-BR": "Todas as vigências da organização em uma única lista: ativas, arquivadas e encerradas, com estado sempre visível.", "en-US": "All organization terms in a single list: active, archived and closed, with the state always visible.", "es-ES": "Todas las vigencias de la organización en una única lista: activas, archivadas y cerradas, con el estado siempre visible.", "fr-FR": "Toutes les validités de l'organisation dans une seule liste : actives, archivées et clôturées, avec l'état toujours visible."},
+  "sheet.idx_load_error": {"pt-BR": "Falha ao carregar contratos:", "en-US": "Failed to load contracts:", "es-ES": "Error al cargar contratos:", "fr-FR": "Échec du chargement des contrats :"},
+  "sheet.idx_filter_aria": {"pt-BR": "Filtro de contratos", "en-US": "Contract filter", "es-ES": "Filtro de contratos", "fr-FR": "Filtre des contrats"},
+  "sheet.idx_search_ph": {"pt-BR": "Título, referência ou contraparte", "en-US": "Title, reference or counterparty", "es-ES": "Título, referencia o contraparte", "fr-FR": "Titre, référence ou contrepartie"},
+  "sheet.idx_st_active": {"pt-BR": "Ativos", "en-US": "Active", "es-ES": "Activos", "fr-FR": "Actifs"},
+  "sheet.idx_st_archived": {"pt-BR": "Arquivados", "en-US": "Archived", "es-ES": "Archivados", "fr-FR": "Archivés"},
+  "sheet.idx_st_closed": {"pt-BR": "Encerrados", "en-US": "Closed", "es-ES": "Cerrados", "fr-FR": "Clôturés"},
+  "sheet.idx_state_closed_on": {"pt-BR": "Encerrado em {0}", "en-US": "Closed on {0}", "es-ES": "Cerrado el {0}", "fr-FR": "Clôturé le {0}"},
+  "sheet.idx_start": {"pt-BR": "Início: {0}", "en-US": "Start: {0}", "es-ES": "Inicio: {0}", "fr-FR": "Début : {0}"},
+  "sheet.idx_start_undefined": {"pt-BR": "Início: não definido", "en-US": "Start: undefined", "es-ES": "Inicio: no definido", "fr-FR": "Début : non défini"},
+  "sheet.idx_end": {"pt-BR": "Término: {0}", "en-US": "End: {0}", "es-ES": "Termino: {0}", "fr-FR": "Fin : {0}"},
+  "sheet.idx_indefinite_term": {"pt-BR": "Prazo indeterminado", "en-US": "Indefinite term", "es-ES": "Plazo indeterminado", "fr-FR": "Durée indéterminée"},
+  "sheet.idx_counterparty": {"pt-BR": "Contraparte: {0}", "en-US": "Counterparty: {0}", "es-ES": "Contraparte: {0}", "fr-FR": "Contrepartie : {0}"},
+  "sheet.idx_version": {"pt-BR": "Versão:", "en-US": "Version:", "es-ES": "Versión:", "fr-FR": "Version :"},
+  "sheet.idx_pagination_aria": {"pt-BR": "Paginação de contratos", "en-US": "Contract pagination", "es-ES": "Paginación de contratos", "fr-FR": "Pagination des contrats"},
+  "sheet.idx_page_of": {"pt-BR": "Página {0} de {1} ({2} contrato(s))", "en-US": "Page {0} of {1} ({2} contract(s))", "es-ES": "Página {0} de {1} ({2} contrato(s))", "fr-FR": "Page {0} sur {1} ({2} contrat(s))"},
+  "sheet.idx_empty_title": {"pt-BR": "Nenhum contrato encontrado", "en-US": "No contracts found", "es-ES": "Ningún contrato encontrado", "fr-FR": "Aucun contrat trouvé"},
+  "sheet.idx_empty_body": {"pt-BR": "Não há contratos para os filtros aplicados. Inicie um novo contrato a partir de um modelo publicado.", "en-US": "No contracts match the applied filters. Start a new contract from a published template.", "es-ES": "No hay contratos para los filtros aplicados. Inicie un nuevo contrato desde una plantilla publicada.", "fr-FR": "Aucun contrat ne correspond aux filtres appliqués. Créez un nouveau contrat à partir d'un modèle publié."}
+}

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Odca.Configuration.Localization;
 using Odca.Contracts.Support;
 using Odca.Web.Models;
 using Odca.Web.Services;
@@ -13,10 +14,14 @@ namespace Odca.Web.Controllers;
 // aplicadas no SQL e o ator real fica em audit/events. Superficie pt-first (divida i18n registrada).
 [Authorize(Roles = "SuperAdministrator")]
 [Route("administracao/suporte-sessoes")]
-public sealed class SupportSessionsController(OdcaApiClient api, IConfiguration configuration) : Controller
+public sealed class SupportSessionsController(OdcaApiClient api, IConfiguration configuration, LocalizationService loc) : Controller
 {
     // D-OC39 (Sprint 5/F-1): espelho BFF da janela Identity:RecentAuthMinutes (mesma chave da API).
     private int RecentMfaWindowMinutes => Math.Max(1, configuration.GetValue("Identity:RecentAuthMinutes", 15));
+
+    // D-OC42 (S8): padrão canônico de cultura (CultureMiddleware) e localização das mensagens BFF.
+    private string? Culture => HttpContext.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] as string;
+    private string L(string key, params string[] args) => loc.T(key, Culture, args);
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -27,7 +32,7 @@ public sealed class SupportSessionsController(OdcaApiClient api, IConfiguration 
             return Challenge();
         }
 
-        ViewData["Title"] = "Sessões de suporte";
+        ViewData["Title"] = L("support.title");
         var sessions = await api.GetSupportSessionsAsync(token, 50, cancellationToken);
         var customers = await api.GetCustomersAsync(token, null, null, null, cancellationToken);
         return View(new SupportSessionsViewModel
@@ -64,15 +69,15 @@ public sealed class SupportSessionsController(OdcaApiClient api, IConfiguration 
 
             TempData["Error"] = result.Status switch
             {
-                ApiCallStatus.Conflict => result.UserMessage("Já existe uma sessão ativa para esta organização."),
-                ApiCallStatus.InvalidRequest or ApiCallStatus.NotFound => result.UserMessage("Confira a organização, o motivo (5 a 1000 caracteres) e a duração (1 a 480 minutos)."),
-                ApiCallStatus.Forbidden => "Verifique sua permissão de superadministrador.",
-                _ => "Não foi possível abrir a sessão. Tente novamente."
+                ApiCallStatus.Conflict => result.UserMessage(L("support.err_active_exists")),
+                ApiCallStatus.InvalidRequest or ApiCallStatus.NotFound => result.UserMessage(L("support.err_invalid")),
+                ApiCallStatus.Forbidden => L("support.err_forbidden"),
+                _ => L("support.err_open_fail")
             };
             return RedirectToAction(nameof(Index));
         }
 
-        TempData["Success"] = $"Sessão aberta para a organização informada. Janela de {model.DurationMinutes} minuto(s).";
+        TempData["Success"] = L("support.ok_opened", model.DurationMinutes.ToString(System.Globalization.CultureInfo.InvariantCulture));
         return RedirectToAction(nameof(Index));
     }
 
@@ -117,13 +122,13 @@ public sealed class SupportSessionsController(OdcaApiClient api, IConfiguration 
                 return redirect;
             }
 
-            TempData["Error"] = result.UserMessage("A sessão não foi encontrada ou já não está ativa.");
+            TempData["Error"] = result.UserMessage(L("support.err_not_active"));
             return RedirectToAction(nameof(Index));
         }
 
         TempData["Success"] = !end && !revoke
-            ? $"Sessão estendida em {minutes} minuto(s). Nova expiração: {result.Value!.ExpiresAt:dd/MM/yyyy HH:mm}."
-            : end ? "Sessão encerrada pelo responsável." : "Sessão revogada.";
+            ? L("support.ok_extended", minutes.ToString(System.Globalization.CultureInfo.InvariantCulture), result.Value!.ExpiresAt.ToString("dd/MM/yyyy HH:mm", System.Globalization.CultureInfo.InvariantCulture))
+            : end ? L("support.ok_ended") : L("support.ok_revoked");
         return RedirectToAction(nameof(Index));
     }
 

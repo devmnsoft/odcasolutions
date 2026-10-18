@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Odca.Contracts.Solicitations;
+using Odca.Configuration.Localization;
 using Odca.Web.Services;
 
 namespace Odca.Web.Controllers;
@@ -12,23 +13,27 @@ namespace Odca.Web.Controllers;
 /// </summary>
 [Authorize(Roles = "SuperAdministrator")]
 [Route("administracao/atendimento-odca")]
-public sealed class AdminSolicitacoesController(OdcaApiClient api) : Controller
+public sealed class AdminSolicitacoesController(OdcaApiClient api, LocalizationService loc) : Controller
 {
+    // D-OC42 (S8): padrão canônico de cultura (CultureMiddleware) e localização das mensagens BFF.
+    private string? Culture => HttpContext.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] as string;
+    private string L(string key, params string[] args) => loc.T(key, Culture, args);
+
     [HttpGet]
     public async Task<IActionResult> Index(Guid? tenantId, string? service, string? status, string? search, CancellationToken ct)
     {
-        ViewData["Title"] = "Fila de solicitações ODCA";
+        ViewData["Title"] = L("admin.queue_title");
         var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
         var result = await api.GetPlatformSolicitationsAsync(token, tenantId, service, status, search, ct);
         ViewData["TenantId"] = tenantId; ViewData["Service"] = service; ViewData["Status"] = status; ViewData["Search"] = search;
-        ViewData["LoadError"] = result.Succeeded ? null : result.UserMessage("Não foi possível carregar a fila.");
+        ViewData["LoadError"] = result.Succeeded ? null : result.UserMessage(L("admin.queue_load_error"));
         return View(result.Value ?? []);
     }
 
     [HttpGet("{solicitationId:guid}")]
     public async Task<IActionResult> Detalhes(Guid solicitationId, CancellationToken ct)
     {
-        ViewData["Title"] = "Atendimento ODCA";
+        ViewData["Title"] = L("admin.queue_crumb");
         var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
         var result = await api.GetPlatformSolicitationAsync(token, solicitationId, ct);
         if (result.Status == ApiCallStatus.NotFound) return NotFound();
@@ -43,8 +48,8 @@ public sealed class AdminSolicitacoesController(OdcaApiClient api) : Controller
         var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
         var result = await api.PlatformSolicitationMessageAsync(token, solicitationId, new SolicitationMessageRequest(body, expectedVersion, tenantId), ct);
         TempData[result.Succeeded ? "SolNotice" : "SolError"] = result.Succeeded
-            ? "Resposta registrada ao cliente."
-            : result.UserMessage("Não foi possível registrar a resposta. Atualize a página e tente novamente.");
+            ? L("admin.msg_reply_ok")
+            : result.UserMessage(L("admin.msg_reply_fail"));
         return RedirectToAction(nameof(Detalhes), new { solicitationId });
     }
 
@@ -58,18 +63,18 @@ public sealed class AdminSolicitacoesController(OdcaApiClient api) : Controller
         var result = await api.PlatformSolicitationActionAsync(token, solicitationId,
             new SolicitationActionRequest(action, text, priority, assignee, expectedVersion, tenantId), ct);
         TempData[result.Succeeded ? "SolNotice" : "SolError"] = result.Succeeded
-            ? "Ação registrada no atendimento."
-            : result.UserMessage("Não foi possível registrar a ação. Atualize a página e tente novamente.");
+            ? L("admin.msg_action_ok")
+            : result.UserMessage(L("admin.msg_action_fail"));
         return RedirectToAction(nameof(Detalhes), new { solicitationId });
     }
 
     [HttpGet("aprovacoes")]
     public async Task<IActionResult> Aprovacoes(CancellationToken ct)
     {
-        ViewData["Title"] = "Aprovação de modelos oficiais";
+        ViewData["Title"] = L("admin.approvals_title");
         var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
         var result = await api.GetTemplateApprovalsAsync(token, ct);
-        ViewData["LoadError"] = result.Succeeded ? null : result.UserMessage("Não foi possível carregar a fila de aprovações.");
+        ViewData["LoadError"] = result.Succeeded ? null : result.UserMessage(L("admin.approvals_load_error"));
         return View(result.Value ?? []);
     }
 
@@ -80,8 +85,8 @@ public sealed class AdminSolicitacoesController(OdcaApiClient api) : Controller
         var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
         var result = await api.DecideTemplateApprovalAsync(token, tenantId, key, new ApprovalDecisionRequest(decision, note), ct);
         TempData[result.Succeeded ? "SolNotice" : "SolError"] = result.Succeeded
-            ? decision == "aprovado" ? "Modelo aprovado; o cliente pode seguir com o preparativo de assinatura." : "Modelo reprovado; o bloqueio volta a valer para novas confirmações."
-            : result.UserMessage("Não foi possível registrar a decisão.");
+            ? decision == "aprovado" ? L("admin.msg_decision_approved_ok") : L("admin.msg_decision_rejected_ok")
+            : result.UserMessage(L("admin.msg_decision_fail"));
         return RedirectToAction(nameof(Aprovacoes));
     }
 }

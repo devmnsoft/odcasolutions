@@ -27,12 +27,13 @@
 }
 
 @functions {
-    private static string StatusLabel(string? value) => value switch
+    // D-OC42 (S8): status de contrato pelo catálogo (antes literal pt-BR estático).
+    private string StatusLabel(string? value) => value switch
     {
-        "active" => "Ativo",
-        "archived" => "Arquivado",
-        "closed" => "Encerrado",
-        "expired" => "Vencido",
+        "active" => L.T("sheet.status_active", SigCulture),
+        "archived" => L.T("sheet.status_archived", SigCulture),
+        "closed" => L.T("sheet.status_closed", SigCulture),
+        "expired" => L.T("sheet.status_expired", SigCulture),
         _ => value ?? "—"
     };
 
@@ -59,22 +60,76 @@
         _ => value ?? "—"
     };
 
-    private static string EventLabel(string value) => value switch
+    // D-OC42 (S8): rótulos de evento pelo catálogo (antes literals pt-BR estáticos).
+    private string EventLabel(string value) => value switch
     {
-        "contract.updated" => "Detalhes do contrato atualizados",
-        "contract.duplicated" => "Contrato duplicado",
-        "contract.archived" => "Contrato arquivado",
-        "contract.restored" => "Contrato restaurado",
-        "contract.closed" => "Contrato encerrado",
-        "draft.created" => "Minuta criada",
-        "draft.saved" => "Minuta salva",
-        "draft.patient_associated" => "Paciente vinculado à minuta",
-        "version.generated" => "Versão numerada gerada",
-        "signature.completed" => "Assinaturas concluídas",
-        "document_uploaded" => "Documento enviado ao contrato",
-        "extraction_review_applied" => "Revisão de importação aplicada",
-        "renewal_decision" => "Decisão de renovação registrada",
+        "contract.updated" => L.T("sheet.ev_contract_updated", SigCulture),
+        "contract.duplicated" => L.T("sheet.ev_contract_duplicated", SigCulture),
+        "contract.archived" => L.T("sheet.ev_contract_archived", SigCulture),
+        "contract.restored" => L.T("sheet.ev_contract_restored", SigCulture),
+        "contract.closed" => L.T("sheet.ev_contract_closed", SigCulture),
+        "draft.created" => L.T("sheet.ev_draft_created", SigCulture),
+        "draft.saved" => L.T("sheet.ev_draft_saved", SigCulture),
+        "draft.patient_associated" => L.T("sheet.ev_draft_patient_associated", SigCulture),
+        "version.generated" => L.T("sheet.ev_version_generated", SigCulture),
+        "signature.completed" => L.T("sheet.ev_signature_completed", SigCulture),
+        "document_uploaded" => L.T("sheet.ev_document_uploaded", SigCulture),
+        "extraction_review_applied" => L.T("sheet.ev_extraction_review_applied", SigCulture),
+        "renewal_decision" => L.T("sheet.ev_renewal_decision", SigCulture),
         _ => value
+    };
+
+    // D-OC42 (S8): mapeia códigos de obrigação/solicitação/documento para rótulos de catálogo.
+    private string ObligationUrgency(string? value) => value switch
+    {
+        "Overdue" => L.T("inbox.urgency_overdue", SigCulture),
+        "DueToday" => L.T("inbox.urgency_today_label", SigCulture),
+        "DueThisWeek" => L.T("inbox.urgency_week_label", SigCulture),
+        "Upcoming" => L.T("inbox.urgency_upcoming_label", SigCulture),
+        _ => value ?? ""
+    };
+
+    private string ObligationStatus(string? value) => value switch
+    {
+        "open" => L.T("obl.status_open", SigCulture),
+        "in_progress" => L.T("obl.status_in_progress", SigCulture),
+        "fulfilled" => L.T("obl.status_fulfilled", SigCulture),
+        "cancelled" => L.T("obl.status_cancelled", SigCulture),
+        _ => value ?? ""
+    };
+
+    private string SolStatus(string? value) => value switch
+    {
+        "open" => L.T("admin.st_open", SigCulture),
+        "in_progress" => L.T("admin.st_in_service", SigCulture),
+        "awaiting_customer" => L.T("admin.st_waiting_customer", SigCulture),
+        _ => value ?? ""
+    };
+
+    private string SolService(string? value) => value switch
+    {
+        "revisao" => L.T("sol.service.revisao", SigCulture),
+        "adaptacao" => L.T("sol.service.adaptacao", SigCulture),
+        "esclarecimento" => L.T("sol.service.esclarecimento", SigCulture),
+        "suporte_tecnico" => L.T("sol.service.suporte_tecnico", SigCulture),
+        _ => value ?? ""
+    };
+
+    private string SolPriority(string? value) => value switch
+    {
+        "baixa" => L.T("sol.priority.baixa", SigCulture),
+        "normal" => L.T("sol.priority.normal", SigCulture),
+        "alta" => L.T("sol.priority.alta", SigCulture),
+        "critica" => L.T("sol.priority.critica", SigCulture),
+        _ => value ?? ""
+    };
+
+    private string DocState(string? value) => value switch
+    {
+        "safe" => L.T("sheet.doc_state_safe", SigCulture),
+        "rejected" => L.T("sheet.doc_state_rejected", SigCulture),
+        "pending" => L.T("sheet.doc_state_pending", SigCulture),
+        _ => value ?? ""
     };
 
     private static string EventPageUrl(Guid tenantId, Guid contractId, int page, string? from, int? year, int? month, string? scope, string? kind, string? urgency, Guid? viewId, Guid? obrigacao)
@@ -87,67 +142,67 @@
 @if (sheet is null)
 {
     <div class="empty-state">
-        <strong>Ficha indisponível</strong>
-        <p>@(error ?? "O contrato não está acessível no contexto do usuário ou organização atual.")</p>
-        <a class="button button-quiet" asp-controller="Inbox" asp-action="Index" asp-route-tenantId="@tenantId">Ir para a caixa operacional</a>
+        <strong>@L.T("sheet.unavailable_title", _culture)</strong>
+        <p>@(error ?? L.T("sheet.unavailable_body", _culture))</p>
+        <a class="button button-quiet" asp-controller="Inbox" asp-action="Index" asp-route-tenantId="@tenantId">@L.T("sheet.go_inbox", _culture)</a>
     </div>
     return;
 }
 
 <header class="renewal-heading">
     <div>
-        <nav class="breadcrumb-trail" aria-label="Navegação estrutural">
+        <nav class="breadcrumb-trail" aria-label="@L.T("common.breadcrumb_aria", _culture)">
             @if (Model.FromSource == "agenda")
             {
                 <a asp-controller="Agenda" asp-action="Index" asp-route-tenantId="@tenantId"
-                   asp-route-year="@Model.Year" asp-route-month="@Model.Month" asp-route-scope="@Model.Scope">← Agenda</a>
+                   asp-route-year="@Model.Year" asp-route-month="@Model.Month" asp-route-scope="@Model.Scope">← @L.T("agenda", _culture)</a>
             }
             else
             {
                 <a asp-controller="Inbox" asp-action="Index" asp-route-tenantId="@tenantId"
-                   asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId">← Caixa operacional</a>
+                   asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId">← @L.T("nav.aria_operations_inbox", _culture)</a>
             }
-            <span>/ Contratos</span>
+            <span>/ @L.T("group_contratos", _culture)</span>
         </nav>
         <div class="form-actions-row">
             <h1>@sheet.Title</h1>
             @if (sheet.Status == "closed")
             {
-                <span class="status-label" title="Encerrado em @(sheet.ClosedAt?.ToString("dd/MM/yyyy HH:mm"))">Encerrado</span>
+                <span class="status-label" title="@L.T("sheet.title_closed_tip", _culture, sheet.ClosedAt?.ToString("dd/MM/yyyy HH:mm") ?? "")">@L.T("sheet.status_closed", _culture)</span>
             }
             else if (sheet.Status == "archived")
             {
-                <span class="status-label" title="Arquivado em @(sheet.ArchivedAt?.ToString("dd/MM/yyyy HH:mm"))">Arquivado</span>
+                <span class="status-label" title="@L.T("sheet.title_archived_tip", _culture, sheet.ArchivedAt?.ToString("dd/MM/yyyy HH:mm") ?? "")">@L.T("sheet.status_archived", _culture)</span>
             }
             else if (sheet.Status == "expired")
             {
-                <span class="status-label" title="Vigência terminou em @(sheet.EndsOn?.ToString("dd/MM/yyyy"))">Vencido</span>
+                <span class="status-label" title="@L.T("sheet.title_expired_tip", _culture, sheet.EndsOn?.ToString("dd/MM/yyyy") ?? "")">@L.T("sheet.status_expired", _culture)</span>
             }
             @if (sheet.HasImportAwaitingReview)
             {
                 @if (sheet.ImportId.HasValue)
                 {
                     <a class="chip-warning" asp-controller="Imports" asp-action="Review" asp-route-tenantId="@tenantId" asp-route-importId="@sheet.ImportId.Value">
-                        <span class="status-label">Importação</span>
-                        <span>Aguardando revisão</span>
+                        <span class="status-label">@L.T("sheet.import_badge", _culture)</span>
+                        <span>@L.T("sheet.import_awaiting_review", _culture)</span>
                     </a>
                 }
                 else
                 {
                     <a class="chip-warning" asp-controller="Imports" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-awaitingReview="true">
-                        <span class="status-label">Importação</span>
-                        <span>Aguardando revisão</span>
+                        <span class="status-label">@L.T("sheet.import_badge", _culture)</span>
+                        <span>@L.T("sheet.import_awaiting_review", _culture)</span>
                     </a>
                 }
             }
         </div>
         <p class="muted">
-            Situação: <strong>@StatusLabel(sheet.Status)</strong> ·
-            Vigência: @(sheet.StartsOn?.ToString("dd/MM/yyyy") ?? "Início n/d") a @(sheet.EndsOn?.ToString("dd/MM/yyyy") ?? "Sem término") ·
-            Tipo: @(sheet.ContractType ?? "Geral") ·
-            Responsável: @(sheet.OwnerName ?? "Não atribuído") ·
-            @(string.IsNullOrWhiteSpace(sheet.Reference) ? "" : $"Referência: <strong>{sheet.Reference}</strong> · ")
-            Versão otimista: @sheet.Version
+            @L.T("common.situation", _culture): <strong>@StatusLabel(sheet.Status)</strong> ·
+            @L.T("sheet.vigencia", _culture): @(sheet.StartsOn?.ToString("dd/MM/yyyy") ?? L.T("sheet.start_unknown", _culture)) a @(sheet.EndsOn?.ToString("dd/MM/yyyy") ?? L.T("sheet.no_end", _culture)) ·
+            @L.T("common.type", _culture): @(sheet.ContractType ?? L.T("sheet.type_general", _culture)) ·
+            @L.T("common.responsible", _culture): @(sheet.OwnerName ?? L.T("sheet.owner_unassigned", _culture)) ·
+            @(string.IsNullOrWhiteSpace(sheet.Reference) ? "" : L.T("sheet.reference_label", _culture) + ": <strong>" + sheet.Reference + "</strong> · ")
+            @L.T("sheet.opt_version", _culture): @sheet.Version
         </p>
     </div>
 </header>
@@ -228,60 +283,60 @@
         <h2>@L.T("sheet.details", _culture)</h2>
         @if (Model.CanManageContracts)
         {
-            <span class="muted">Alterações ficam registradas no histórico e na auditoria.</span>
+            <span class="muted">@L.T("sheet.details_note", _culture)</span>
         }
     </div>
 
     <div class="renewal-cards">
         <div>
             <strong>@(string.IsNullOrWhiteSpace(sheet.Reference) ? "—" : sheet.Reference)</strong>
-            <span>Referência interna</span>
+            <span>@L.T("sheet.ref_internal", _culture)</span>
         </div>
         <div>
             <strong>@(sheet.ArchivedAt?.ToString("dd/MM/yyyy HH:mm") ?? "—")</strong>
-            <span>Arquivado em</span>
+            <span>@L.T("sheet.archived_at_label", _culture)</span>
         </div>
         <div>
             <strong>@(sheet.ClosedOn?.ToString("dd/MM/yyyy") ?? "—")</strong>
-            <span>Data do encerramento</span>
+            <span>@L.T("sheet.close_date_label", _culture)</span>
         </div>
         <div>
-            <strong>@(string.IsNullOrWhiteSpace(sheet.ClosureReason) ? "—" : "Registrado")</strong>
-            <span>Motivo do encerramento</span>
+            <strong>@(string.IsNullOrWhiteSpace(sheet.ClosureReason) ? "—" : L.T("sheet.closure_registered", _culture))</strong>
+            <span>@L.T("sheet.closure_reason_label", _culture)</span>
         </div>
     </div>
 
     @if (!string.IsNullOrWhiteSpace(sheet.ArchiveReason))
     {
-        <p class="muted"><strong>Motivo do arquivamento:</strong> @sheet.ArchiveReason</p>
+        <p class="muted"><strong>@L.T("sheet.archive_reason_label", _culture):</strong> @sheet.ArchiveReason</p>
     }
     @if (!string.IsNullOrWhiteSpace(sheet.ClosureReason))
     {
-        <p class="muted"><strong>Motivo do encerramento:</strong> @sheet.ClosureReason</p>
+        <p class="muted"><strong>@L.T("sheet.closure_reason_label", _culture):</strong> @sheet.ClosureReason</p>
     }
 
     @if (Model.CanManageContracts && sheet.Status != "closed")
     {
         <details class="filter-panel">
-            <summary><strong>Editar detalhes</strong> (título, referência interna, responsável)</summary>
+            <summary><strong>@L.T("sheet.edit_details", _culture)</strong> (@L.T("sheet.edit_details_hint", _culture))</summary>
             <form id="details-form" method="post" asp-action="UpdateDetails" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
                   asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
                   asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
-                  class="form-grid" data-processing data-processing-label="Salvando…">
+                  class="form-grid" data-processing data-processing-label="@L.T("sheet.saving", _culture)">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="version" value="@sheet.Version" />
 
-                <label>Título do contrato
+                <label>@L.T("sheet.contract_title_label", _culture)
                     <input type="text" name="title" maxlength="160" value="@sheet.Title" />
                 </label>
 
-                <label>Referência interna
-                    <input type="text" name="reference" maxlength="160" value="@(sheet.Reference ?? "")" placeholder="Ex.: CT-2026-014 (deixe vazio para remover)" />
+                <label>@L.T("sheet.ref_internal", _culture)
+                    <input type="text" name="reference" maxlength="160" value="@(sheet.Reference ?? "")" placeholder="@L.T("sheet.ref_placeholder", _culture)" />
                 </label>
 
-                <label>Responsável interno
+                <label>@L.T("sheet.internal_responsible", _culture)
                     <select name="ownerId" data-initial="@(sheet.OwnerId?.ToString() ?? "")">
-                        <option value="">— selecionar para alterar —</option>
+                        <option value="">@L.T("sheet.select_to_change", _culture)</option>
                         @foreach (var m in Model.ActiveMembers)
                         {
                             <option value="@m.UserId" selected="@(sheet.OwnerId == m.UserId ? "selected" : null)">@m.Name (@m.Email)</option>
@@ -291,26 +346,26 @@
 
                 <label class="form-grid-full check-line">
                     <input type="checkbox" name="clearOwner" value="true" />
-                    <span>Remover o responsável atual (substitui o seletor acima)</span>
+                    <span>@L.T("sheet.clear_owner", _culture)</span>
                 </label>
 
                 <div class="form-grid-full form-actions-row">
-                    <button class="button button-primary" type="submit">Salvar alterações</button>
-                    <span class="muted">Título vazio não é enviado; referência vazia remove a referência anterior.</span>
+                    <button class="button button-primary" type="submit">@L.T("sheet.save_changes", _culture)</button>
+                    <span class="muted">@L.T("sheet.save_note", _culture)</span>
                 </div>
             </form>
         </details>
     }
     else if (!Model.CanManageContracts)
     {
-        <p class="muted">Seu perfil visualiza os detalhes, mas não edita este contrato.</p>
+        <p class="muted">@L.T("sheet.readonly_details", _culture)</p>
     }
 </section>
 
 <!-- SEÇÃO ALTERAÇÕES PENDENTES / CONDIÇÕES E EFEITOS (Item 10) -->
 @if (sheet.PendingChanges is { Count: > 0 })
 {
-    <section id="alteracoes" class="renewal-list" aria-label="Alterações contratuais pendentes">
+    <section id="alteracoes" class="renewal-list" aria-label="@L.T("sheet.alterations_aria", _culture)">
         <div class="section-heading">
             <h2>@L.T("sheet.alterations", _culture)</h2>
             <span>@sheet.PendingChanges.Count @L.T("sheet.alterations_count", _culture)</span>
@@ -358,7 +413,7 @@
                     {
                         <div>
                             <dt>@L.T("sheet.chg_new_period", _culture)</dt>
-                            <dd>@(chg.ProposedStartDate?.ToString("dd/MM/yyyy") ?? "—") → @(chg.ProposedEndDate?.ToString("dd/MM/yyyy") ?? "indeterminado")</dd>
+                            <dd>@(chg.ProposedStartDate?.ToString("dd/MM/yyyy") ?? "—") → @(chg.ProposedEndDate?.ToString("dd/MM/yyyy") ?? L.T("sheet.indefinite", _culture))</dd>
                         </div>
                     }
                     @if (chg.ProposedValue is not null)
@@ -375,28 +430,28 @@
 }
 
 <!-- SEÇÃO RENOVAÇÃO -->
-<section id="renovacao" class="renewal-cards" aria-label="Indicadores de vigência e renovação">
+<section id="renovacao" class="renewal-cards" aria-label="@L.T("sheet.renewal_indicators_aria", _culture)">
     <div>
         <strong>@(sheet.StartsOn?.ToString("dd/MM/yyyy") ?? "—")</strong>
-        <span>Início da vigência</span>
+        <span>@L.T("sheet.vig_start", _culture)</span>
     </div>
     <div>
         <strong>@(sheet.Renewal?.EndsOn?.ToString("dd/MM/yyyy") ?? "—")</strong>
-        <span>Término da vigência</span>
+        <span>@L.T("sheet.vig_end", _culture)</span>
     </div>
     <div>
         <strong>@(sheet.Renewal?.NoticeDueOn?.ToString("dd/MM/yyyy") ?? "—")</strong>
-        <span>Aviso prévio limite</span>
+        <span>@L.T("sheet.notice_due", _culture)</span>
     </div>
     <div>
-        <strong>@(sheet.Renewal?.InThreeMonthWindow == true ? "Sim" : "Não")</strong>
-        <span>Janela de 3 meses</span>
+        <strong>@(sheet.Renewal?.InThreeMonthWindow == true ? L.T("common.yes", _culture) : L.T("common.no", _culture))</strong>
+        <span>@L.T("sheet.three_month_window", _culture)</span>
     </div>
 </section>
 
 <!-- PAINEL DE PROPOSTA DE RENOVAÇÃO / ADITIVO -->
 <details class="filter-panel">
-    <summary><strong>Registrar proposta de alteração ou renovação</strong> (Apenas proposta · Efeito em vigência somente na formalização)</summary>
+    <summary><strong>@L.T("sheet.propose_title", _culture)</strong> (@L.T("sheet.propose_hint", _culture))</summary>
     <form id="renewal-proposal-form" method="post" asp-action="CreateRenewalProposal" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
           asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
           asp-route-scope="@Model.Scope" asp-route-kindFilter="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
@@ -404,45 +459,45 @@
         @Html.AntiForgeryToken()
         <input type="hidden" name="contractVersion" value="@sheet.Version" />
         
-        <label>Tipo de alteração
+        <label>@L.T("sheet.change_type", _culture)
             <select name="kind" required>
                 @if (isAmendmentRequired)
                 {
-                    <option value="amendment" selected>Aditivo contratual (Obrigatório na janela)</option>
+                    <option value="amendment" selected>@L.T("sheet.kind_amendment_window", _culture)</option>
                 }
                 else
                 {
-                    <option value="renewal">Renovação de vigência</option>
-                    <option value="amendment">Aditivo (alteração de escopo/valor/prazo)</option>
-                    <option value="revision">Revisão administrativa (correção não comercial)</option>
+                    <option value="renewal">@L.T("sheet.kind_renewal_term", _culture)</option>
+                    <option value="amendment">@L.T("sheet.kind_amendment_scope", _culture)</option>
+                    <option value="revision">@L.T("sheet.kind_revision_admin", _culture)</option>
                 }
             </select>
         </label>
 
-        <label>Prioridade da proposta
+        <label>@L.T("sheet.proposal_priority", _culture)
             <select name="priority">
-                <option value="low">Baixa</option>
-                <option value="normal" selected>Normal</option>
-                <option value="high">Alta</option>
-                <option value="critical">Crítica</option>
+                <option value="low">@L.T("sol.priority.baixa", _culture)</option>
+                <option value="normal" selected>@L.T("sol.priority.normal", _culture)</option>
+                <option value="high">@L.T("sol.priority.alta", _culture)</option>
+                <option value="critical">@L.T("sol.priority.critica", _culture)</option>
             </select>
         </label>
 
-        <label>Efeito a partir de (EffectiveOn)
+        <label>@L.T("sheet.effective_from", _culture)
             <input type="date" name="effectiveOn" value="@todayStr" required />
         </label>
 
-        <label>Início proposto
+        <label>@L.T("sheet.proposed_start", _culture)
             <input type="date" name="proposedStartDate" value="@(sheet.StartsOn?.ToString("yyyy-MM-dd"))" />
         </label>
 
-        <label>Novo término proposto
+        <label>@L.T("sheet.proposed_end", _culture)
             <input type="date" name="proposedEndDate" value="@(sheet.EndsOn?.AddYears(1).ToString("yyyy-MM-dd"))" />
         </label>
 
-        <label>Responsável
+        <label>@L.T("common.responsible", _culture)
             <select name="responsibleId" required>
-                <option value="">Selecione um membro</option>
+                <option value="">@L.T("sheet.select_member", _culture)</option>
                 @foreach (var m in Model.ActiveMembers)
                 {
                     <option value="@m.UserId">@m.Name (@m.Email)</option>
@@ -450,25 +505,25 @@
             </select>
         </label>
 
-        <label>Valor proposto
+        <label>@L.T("sheet.proposed_value", _culture)
             <input type="number" step="0.01" min="0" name="proposedValue" placeholder="0.00" />
         </label>
 
-        <label>Moeda
+        <label>@L.T("sheet.currency", _culture)
             <input type="text" name="currency" maxlength="3" value="BRL" />
         </label>
 
-        <label class="form-grid-full">Justificativa / Motivo da alteração
-            <textarea name="reason" rows="2" required placeholder="Descreva o motivo da renovação ou alteração contratual"></textarea>
+        <label class="form-grid-full">@L.T("sheet.justification_change", _culture)
+            <textarea name="reason" rows="2" required placeholder="@L.T("sheet.justification_ph", _culture)"></textarea>
         </label>
 
         <div class="form-grid-full form-actions-row">
             <button class="button button-primary" type="button" data-confirm-open data-confirm-form="renewal-proposal-form"
-                    data-confirm-title="Confirmar proposta de alteração"
-                    data-confirm-body="Deseja registrar uma proposta de alteração/renovação para o contrato '@sheet.Title'? A proposta deixa de ser apenas intenção e altera a vigência somente quando formalizada e aplicada na Central de Renovações."
-                    data-confirm-action="Registrar proposta">Registrar proposta</button>
-            <a class="button button-quiet" asp-controller="Renewals" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-counterparty="@sheet.Title">Ver na Central de Renovações</a>
-            <span class="muted">Formalizar e aplicar exclusivamente na Central de Renovações (sem /apply na ficha).</span>
+                    data-confirm-title="@L.T("sheet.confirm_propose_title", _culture)"
+                    data-confirm-body="@L.T("sheet.confirm_propose_body", _culture, sheet.Title)"
+                    data-confirm-action="@L.T("sheet.register_proposal", _culture)">@L.T("sheet.register_proposal", _culture)</button>
+            <a class="button button-quiet" asp-controller="Renewals" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-counterparty="@sheet.Title">@L.T("sheet.view_renewals_center", _culture)</a>
+            <span class="muted">@L.T("sheet.propose_note", _culture)</span>
         </div>
     </form>
 </details>
@@ -481,13 +536,13 @@
         {
             <div class="form-actions-row">
                 <a class="button button-primary" href="/organizacoes/@tenantId/estudio/minutas/@sheet.DraftId.Value?returnUrl=@Uri.EscapeDataString(returnUrl)">
-                    Abrir minuta no Estúdio
+                    @L.T("sheet.open_draft_studio", _culture)
                 </a>
                 <a class="button button-quiet" href="/organizacoes/@tenantId/estudio/minutas/@sheet.DraftId.Value/checklist?version=@sheet.Version" target="_blank">
-                    Checklist
+                    @L.T("sheet.checklist_word", _culture)
                 </a>
                 <a class="button button-quiet" href="/organizacoes/@tenantId/estudio/comparar-versoes?draftId=@sheet.DraftId.Value">
-                    Comparar versões
+                    @L.T("sheet.compare_versions", _culture)
                 </a>
             </div>
         }
@@ -496,11 +551,11 @@
     @if (sheet.CurrentReview is null)
     {
         <div class="empty-state">
-            <strong>Nenhuma revisão formal aberta</strong>
-            <p>Este contrato não possui fluxo de revisão em trâmite no momento.</p>
+            <strong>@L.T("sheet.review_none_title", _culture)</strong>
+            <p>@L.T("sheet.review_none_body", _culture)</p>
             @if (sheet.DraftId.HasValue)
             {
-                <p class="muted">Você pode trabalhar no rascunho da minuta diretamente pelo Estúdio de Contratos.</p>
+                <p class="muted">@L.T("sheet.review_draft_hint", _culture)</p>
             }
         </div>
     }
@@ -508,16 +563,16 @@
     {
         <div class="renewal-cards">
             <div>
-                <strong>@sheet.CurrentReview.Status</strong>
-                <span>Status da revisão</span>
+                <strong>@ReviewStatusLabel(sheet.CurrentReview.Status)</strong>
+                <span>@L.T("sheet.review_status_label", _culture)</span>
             </div>
             <div>
-                <strong>@(sheet.CurrentReview.CurrentReviewerName ?? "Sem revisor designado")</strong>
-                <span>Revisor atual</span>
+                <strong>@(sheet.CurrentReview.CurrentReviewerName ?? L.T("sheet.reviewer_none", _culture))</strong>
+                <span>@L.T("sheet.current_reviewer", _culture)</span>
             </div>
             <div>
-                <strong>@(sheet.CurrentReview.DueAt?.ToString("dd/MM/yyyy HH:mm") ?? "Sem prazo")</strong>
-                <span>Prazo limite</span>
+                <strong>@(sheet.CurrentReview.DueAt?.ToString("dd/MM/yyyy HH:mm") ?? L.T("sheet.due_none", _culture))</strong>
+                <span>@L.T("sheet.deadline_label", _culture)</span>
             </div>
         </div>
     }
@@ -526,13 +581,13 @@
     @if (sheet.DraftId.HasValue)
     {
         <details class="filter-panel" @(sheet.CurrentReview is null ? "open" : "")>
-            <summary><strong>Encaminhar versão para revisão formal</strong></summary>
+            <summary><strong>@L.T("sheet.submit_review_title", _culture)</strong></summary>
             @if (Model.Versions.Count == 0)
             {
                 <div class="empty-state">
-                    <p>Nenhuma versão numerada foi gerada ainda para esta minuta.</p>
+                    <p>@L.T("sheet.no_version_body", _culture)</p>
                     <a class="button button-quiet" href="/organizacoes/@tenantId/estudio/minutas/@sheet.DraftId.Value?returnUrl=@Uri.EscapeDataString(returnUrl)">
-                        Gerar versão no Estúdio
+                        @L.T("sheet.generate_version_studio", _culture)
                     </a>
                 </div>
             }
@@ -543,16 +598,16 @@
                       asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
                       class="form-grid">
                     @Html.AntiForgeryToken()
-                    <label>Versão a revisar
+                    <label>@L.T("sheet.version_to_review", _culture)
                         <select name="generatedVersionId" required>
                             @foreach (var v in Model.Versions)
                             {
-                                <option value="@v.Id">Versão @v.Number (@v.Status) — @v.Author</option>
+                                <option value="@v.Id">@L.T("sheet.version_option", _culture, v.Number.ToString(), ReviewStatusLabel(v.Status)) — @v.Author</option>
                             }
                         </select>
                     </label>
 
-                    <label>Revisor designado
+                    <label>@L.T("sheet.designated_reviewer", _culture)
                         <select name="reviewerId" required>
                             @foreach (var r in Model.Reviewers)
                             {
@@ -561,16 +616,16 @@
                         </select>
                     </label>
 
-                    <label>Prazo limite (opcional)
+                    <label>@L.T("sheet.deadline_optional", _culture)
                         <input type="datetime-local" name="dueAt" />
                     </label>
 
-                    <label class="form-grid-full">Instruções para o revisor
-                        <textarea name="instructions" rows="2" placeholder="Ex.: Verificar cláusula de SLA e rescisão motivada"></textarea>
+                    <label class="form-grid-full">@L.T("sheet.reviewer_instructions", _culture)
+                        <textarea name="instructions" rows="2" placeholder="@L.T("sheet.instructions_ph", _culture)"></textarea>
                     </label>
 
                     <div class="form-grid-full form-actions-row">
-                        <button class="button button-primary" type="submit">Encaminhar para revisão</button>
+                        <button class="button button-primary" type="submit">@L.T("sheet.send_for_review", _culture)</button>
                     </div>
                 </form>
             }
@@ -581,7 +636,7 @@
     @if (sheet.DraftId.HasValue)
     {
         <details class="filter-panel" open>
-            <summary><strong>Comentários contextuais na minuta</strong> <span class="muted">(Comentário não equivale à aprovação formal)</span></summary>
+            <summary><strong>@L.T("sheet.comments_title", _culture)</strong> <span class="muted">(@L.T("sheet.comments_hint", _culture))</span></summary>
             <div>
                 <form method="post" asp-action="AddComment" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
                       asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
@@ -590,14 +645,14 @@
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="draftId" value="@sheet.DraftId.Value" />
                     <input type="hidden" name="draftRevision" value="@sheet.Version" />
-                    <label>Referência (cláusula ou seção)
-                        <input type="text" name="reference" placeholder="Ex.: Cláusula 3.2" maxlength="100" />
+                    <label>@L.T("sheet.comment_reference_label", _culture)
+                        <input type="text" name="reference" placeholder="@L.T("sheet.comment_reference_ph", _culture)" maxlength="100" />
                     </label>
-                    <label>Comentário
-                        <textarea name="body" rows="2" required placeholder="Insira seu apontamento operacional"></textarea>
+                    <label>@L.T("sheet.comment_label", _culture)
+                        <textarea name="body" rows="2" required placeholder="@L.T("sheet.comment_ph", _culture)"></textarea>
                     </label>
                     <div>
-                        <button class="button button-quiet" type="submit">Adicionar comentário</button>
+                        <button class="button button-quiet" type="submit">@L.T("sheet.add_comment", _culture)</button>
                     </div>
                 </form>
 
@@ -611,9 +666,9 @@
                                     <div>
                                         <strong>@comment.Author</strong>
                                         <span class="status-badge @(comment.Resolved ? "status-approved" : "status-pending")">
-                                            @(comment.Resolved ? "Resolvido" : "Pendente")
+                                            @(comment.Resolved ? L.T("sheet.comment_resolved", _culture) : L.T("sheet.comment_pending", _culture))
                                         </span>
-                                        <span class="muted">Ref: @comment.Reference</span>
+                                        <span class="muted">@L.T("sheet.comment_ref_prefix", _culture) @comment.Reference</span>
                                     </div>
                                     <small class="muted">@comment.CreatedAt.ToString("dd/MM/yyyy HH:mm")</small>
                                 </div>
@@ -626,10 +681,10 @@
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="currentResolved" value="@comment.Resolved.ToString().ToLowerInvariant()" />
                                         <button class="button button-quiet" type="button" data-confirm-open data-confirm-form="comment-state-form-@comment.Id"
-                                                data-confirm-title="@(comment.Resolved ? "Reabrir apontamento" : "Resolver apontamento")"
-                                                data-confirm-body="Deseja realmente @(comment.Resolved ? "reabrir a pendência" : "resolver o apontamento") '@comment.Reference'?"
-                                                data-confirm-action="@(comment.Resolved ? "Reabrir pendência" : "Marcar como resolvido")">
-                                            @(comment.Resolved ? "Reabrir pendência" : "Marcar como resolvido")
+                                                data-confirm-title="@(comment.Resolved ? L.T("sheet.comment_reopen_title", _culture) : L.T("sheet.comment_resolve_title", _culture))"
+                                                data-confirm-body="@((comment.Resolved ? L.T("sheet.comment_reopen_body", _culture, comment.Reference) : L.T("sheet.comment_resolve_body", _culture, comment.Reference)))"
+                                                data-confirm-action="@(comment.Resolved ? L.T("sheet.comment_reopen_action", _culture) : L.T("sheet.comment_resolve_action", _culture))">
+                                            @(comment.Resolved ? L.T("sheet.comment_reopen_action", _culture) : L.T("sheet.comment_resolve_action", _culture))
                                         </button>
                                     </form>
                                 </div>
@@ -647,77 +702,77 @@
     <div class="list-header">
         <h2>@L.T("sheet.obligations", _culture)</h2>
         <div class="form-actions-row">
-            <a class="button button-quiet" asp-controller="Obligations" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId">Ver na central de obrigações</a>
-            <span>@sheet.OpenObligations.Count aberta(s)</span>
+            <a class="button button-quiet" asp-controller="Obligations" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId">@L.T("sheet.view_obligations_center", _culture)</a>
+            <span>@L.T("sheet.open_count", _culture, sheet.OpenObligations.Count.ToString(System.Globalization.CultureInfo.InvariantCulture))</span>
         </div>
     </div>
 
     <!-- FORMULÁRIO DE NOVA OBRIGAÇÃO -->
     <details class="filter-panel">
-        <summary><strong>+ Adicionar nova obrigação para este contrato</strong></summary>
+        <summary><strong>+ @L.T("sheet.add_obligation", _culture)</strong></summary>
         <form id="create-obligation-form" method="post" asp-action="CreateObligation" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
               asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
               asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId" asp-route-obrigacao="@Model.SelectedObligationId"
               class="form-grid">
             @Html.AntiForgeryToken()
-            <label>Título da obrigação
-                <input type="text" name="title" required maxlength="160" placeholder="Ex.: Entrega de relatório mensal" />
+            <label>@L.T("sheet.oblig_title_label", _culture)
+                <input type="text" name="title" required maxlength="160" placeholder="@L.T("sheet.oblig_title_ph", _culture)" />
             </label>
-            <label>Parte devedora / obrigada
-                <input type="text" name="obligatedParty" required maxlength="120" placeholder="Ex.: Contratada" />
+            <label>@L.T("sheet.oblig_party", _culture)
+                <input type="text" name="obligatedParty" required maxlength="120" placeholder="@L.T("sheet.oblig_party_ph", _culture)" />
             </label>
-            <label>Categoria
+            <label>@L.T("common.type", _culture)
                 <select name="category" required>
-                    <option value="delivery">Entrega</option>
-                    <option value="document">Documento</option>
-                    <option value="renewal">Renovação</option>
-                    <option value="communication">Comunicação</option>
-                    <option value="financial">Obrigação financeira</option>
-                    <option value="other">Outra</option>
+                    <option value="delivery">@L.T("obl.category_delivery", _culture)</option>
+                    <option value="document">@L.T("obl.category_document", _culture)</option>
+                    <option value="renewal">@L.T("obl.category_renewal", _culture)</option>
+                    <option value="communication">@L.T("obl.category_communication", _culture)</option>
+                    <option value="financial">@L.T("obl.category_financial", _culture)</option>
+                    <option value="other">@L.T("obl.category_other", _culture)</option>
                 </select>
             </label>
-            <label>Prioridade
+            <label>@L.T("common.priority", _culture)
                 <select name="priority" required>
-                    <option value="low">Baixa</option>
-                    <option value="normal" selected>Normal</option>
-                    <option value="high">Alta</option>
-                    <option value="critical">Crítica</option>
+                    <option value="low">@L.T("sol.priority.baixa", _culture)</option>
+                    <option value="normal" selected>@L.T("sol.priority.normal", _culture)</option>
+                    <option value="high">@L.T("sol.priority.alta", _culture)</option>
+                    <option value="critical">@L.T("sol.priority.critica", _culture)</option>
                 </select>
             </label>
-            <label>Prazo de cumprimento
+            <label>@L.T("sheet.due_date_label", _culture)
                 <input type="date" name="dueDate" required value="@todayStr" />
             </label>
-            <label>Responsável interno
+            <label>@L.T("sheet.internal_responsible", _culture)
                 <select name="ownerId" required>
-                    <option value="">Selecione o responsável</option>
+                    <option value="">@L.T("sheet.select_responsible", _culture)</option>
                     @foreach (var m in Model.ActiveMembers)
                     {
                         <option value="@m.UserId">@m.Name (@m.Email)</option>
                     }
                 </select>
             </label>
-            <label>Valor (se financeira)
+            <label>@L.T("sheet.amount_financial", _culture)
                 <input type="number" step="0.01" min="0" name="amount" placeholder="0.00" />
             </label>
-            <label>Moeda
+            <label>@L.T("sheet.currency", _culture)
                 <input type="text" name="currency" maxlength="3" value="BRL" />
             </label>
-            <label class="form-grid-full">Justificativa pós-vigência (obrigatória se o prazo for posterior ao término @(sheet.EndsOn?.ToString("dd/MM/yyyy") ?? "não informado"))
-                <input type="text" name="postTermReason" maxlength="500" placeholder="Justifique o dever posterior ao término" />
+            <label class="form-grid-full">@L.T("sheet.postterm_reason", _culture, sheet.EndsOn?.ToString("dd/MM/yyyy") ?? L.T("sheet.not_informed", _culture))
+                <input type="text" name="postTermReason" maxlength="500" placeholder="@L.T("sheet.postterm_reason_ph", _culture)" />
             </label>
             <label class="form-grid-full check-line">
                 <input type="checkbox" name="evidenceRequired" value="true" />
-                <span>Exigir evidência documental segura anexada para cumprimento</span>
+                <span>@L.T("sheet.evidence_required", _culture)</span>
             </label>
-            <label class="form-grid-full">Instruções ou descrição
-                <textarea name="description" rows="2" placeholder="Detalhes operacionais para o cumprimento"></textarea>
+            <label class="form-grid-full">@L.T("sheet.instructions_or_desc", _culture)
+                <textarea name="description" rows="2" placeholder="@L.T("sheet.desc_ph", _culture)"></textarea>
             </label>
             <div class="form-grid-full">
                 <button class="button button-primary" type="button"
                         data-confirm-open data-confirm-form="create-obligation-form"
-                        data-confirm-title="Confirmar criação de obrigação"
-                        data-confirm-body="Deseja criar a obrigação para o contrato '@sheet.Title'? Ela ficará disponível na caixa operacional após criação."
-                        data-confirm-action="Criar obrigação">Criar obrigação</button>
+                        data-confirm-title="@L.T("sheet.confirm_oblig_title", _culture)"
+                        data-confirm-body="@L.T("sheet.confirm_oblig_body", _culture, sheet.Title)"
+                        data-confirm-action="@L.T("sheet.create_obligation", _culture)">@L.T("sheet.create_obligation", _culture)</button>
             </div>
         </form>
     </details>
@@ -725,8 +780,8 @@
     @if (sheet.OpenObligations.Count == 0)
     {
         <div class="empty-state">
-            <strong>Nenhuma obrigação pendente</strong>
-            <p>Todas as obrigações deste contrato foram cumpridas ou não há pendências cadastradas.</p>
+            <strong>@L.T("sheet.no_open_obligations", _culture)</strong>
+            <p>@L.T("sheet.no_open_obligations_body", _culture)</p>
         </div>
     }
     else
@@ -736,21 +791,21 @@
             var isSelected = Model.SelectedObligationId == item.SourceId;
             <article class="renewal-row @(isSelected ? "urgent" : null)">
                 <div>
-                    <span class="status-label">@item.Urgency · @item.Status</span>
+                    <span class="status-label">@ObligationUrgency(item.Urgency) · @ObligationStatus(item.Status)</span>
                     <h3>@item.Title</h3>
-                    <p>Responsável: <strong>@(item.OwnerName ?? "Não atribuído")</strong></p>
+                    <p>@L.T("common.responsible", _culture): <strong>@(item.OwnerName ?? L.T("sheet.owner_unassigned", _culture))</strong></p>
                 </div>
                 <dl>
                     <div>
-                        <dt>Prazo</dt>
-                        <dd>@(item.DueOn?.ToString("dd/MM/yyyy") ?? "Sem data")</dd>
+                        <dt>@L.T("sheet.oblig_due", _culture)</dt>
+                        <dd>@(item.DueOn?.ToString("dd/MM/yyyy") ?? L.T("sheet.no_date", _culture))</dd>
                     </div>
                 </dl>
                 <div class="form-actions-row">
                     <!-- BOTÃO HISTÓRICO (DRAWER) -->
                     <button type="button" class="button button-quiet btn-history-drawer"
                             data-id="@item.SourceId" data-title="@item.Title">
-                        Ver histórico
+                        @L.T("sheet.view_history", _culture)
                     </button>
 
                     <!-- AÇÃO INICIAR -->
@@ -763,15 +818,15 @@
                             <input type="hidden" name="version" value="@item.Version" />
                             <button class="button button-quiet" type="button"
                                     data-confirm-open data-confirm-form="start-form-@item.SourceId"
-                                    data-confirm-title="Confirmar início da obrigação"
-                                    data-confirm-body="Deseja iniciar a obrigação '@item.Title'?"
-                                    data-confirm-action="Iniciar">Iniciar</button>
+                                    data-confirm-title="@L.T("sheet.confirm_start_title", _culture)"
+                                    data-confirm-body="@L.T("sheet.confirm_start_body", _culture, item.Title)"
+                                    data-confirm-action="@L.T("sheet.action_start", _culture)">@L.T("sheet.action_start", _culture)</button>
                         </form>
                     }
 
                     <!-- AÇÃO CUMPRIR -->
                     <details>
-                        <summary class="button button-quiet">Cumprir</summary>
+                        <summary class="button button-quiet">@L.T("sheet.action_fulfill", _culture)</summary>
                         <div class="details-subpanel">
                             <form id="fulfill-form-@item.SourceId" method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="fulfill"
                                   asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
@@ -779,32 +834,32 @@
                                   class="form-stack">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="version" value="@item.Version" />
-                                <label>Data de efetivação (vazio = fuso da organização)
+                                <label>@L.T("sheet.effective_date", _culture)
                                     <input type="date" name="effectiveAt" value="@todayStr" />
                                 </label>
-                                <label>Documento de evidência (versão segura)
+                                <label>@L.T("sheet.evidence_doc_label", _culture)
                                     <select name="evidenceDocumentVersionId">
-                                        <option value="">Sem anexo</option>
+                                        <option value="">@L.T("sheet.no_attachment", _culture)</option>
                                         @foreach (var doc in sheet.Documents.Where(d => d.SafetyState == "safe"))
                                         {
                                             <option value="@doc.VersionId">@doc.Name</option>
                                         }
                                     </select>
                                 </label>
-                                <label>Nota de cumprimento
-                                    <input type="text" name="note" placeholder="Observações" />
+                                <label>@L.T("sheet.fulfill_note_label", _culture)
+                                    <input type="text" name="note" placeholder="@L.T("sheet.note_ph", _culture)" />
                                 </label>
                                 <button class="button button-primary" type="button" data-confirm-open data-confirm-form="fulfill-form-@item.SourceId"
-                                        data-confirm-title="Confirmar cumprimento"
-                                        data-confirm-body="Deseja registrar o cumprimento da obrigação '@item.Title'?"
-                                        data-confirm-action="Confirmar cumprimento">Confirmar cumprimento</button>
+                                        data-confirm-title="@L.T("sheet.confirm_fulfill_title", _culture)"
+                                        data-confirm-body="@L.T("sheet.confirm_fulfill_body", _culture, item.Title)"
+                                        data-confirm-action="@L.T("sheet.confirm_fulfill_title", _culture)">@L.T("sheet.confirm_fulfill_title", _culture)</button>
                             </form>
                         </div>
                     </details>
 
                     <!-- AÇÃO REAGENDAR -->
                     <details>
-                        <summary class="button button-quiet">Reagendar</summary>
+                        <summary class="button button-quiet">@L.T("sheet.action_reschedule", _culture)</summary>
                         <div class="details-subpanel">
                             <form id="reschedule-form-@item.SourceId" method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="reschedule"
                                   asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
@@ -812,24 +867,24 @@
                                   class="form-stack">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="version" value="@item.Version" />
-                                <label>Novo prazo
+                                <label>@L.T("sheet.new_due", _culture)
                                     <input type="date" name="dueDate" required />
                                 </label>
-                                <label>Motivo do reagendamento
-                                    <input type="text" name="reason" required placeholder="Justificativa" />
+                                <label>@L.T("sheet.reschedule_reason", _culture)
+                                    <input type="text" name="reason" required placeholder="@L.T("sheet.justification_short", _culture)" />
                                 </label>
                                 <button class="button button-primary" type="button"
                                         data-confirm-open data-confirm-form="reschedule-form-@item.SourceId"
-                                        data-confirm-title="Confirmar reagendamento"
-                                        data-confirm-body="Deseja reagendar a obrigação '@item.Title'?"
-                                        data-confirm-action="Reagendar">Reagendar</button>
+                                        data-confirm-title="@L.T("sheet.confirm_resched_title", _culture)"
+                                        data-confirm-body="@L.T("sheet.confirm_resched_body", _culture, item.Title)"
+                                        data-confirm-action="@L.T("sheet.action_reschedule", _culture)">@L.T("sheet.action_reschedule", _culture)</button>
                             </form>
                         </div>
                     </details>
 
                     <!-- AÇÃO REATRIBUIR -->
                     <details>
-                        <summary class="button button-quiet">Reatribuir</summary>
+                        <summary class="button button-quiet">@L.T("sheet.action_reassign", _culture)</summary>
                         <div class="details-subpanel">
                             <form id="reassign-form-@item.SourceId" method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="reassign"
                                   asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
@@ -837,30 +892,30 @@
                                   class="form-stack">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="version" value="@item.Version" />
-                                <label>Novo responsável
+                                <label>@L.T("sheet.new_responsible", _culture)
                                     <select name="ownerId" required>
-                                        <option value="">Selecione</option>
+                                        <option value="">@L.T("sheet.select_any", _culture)</option>
                                         @foreach (var m in Model.ActiveMembers.Where(m => m.UserId != item.OwnerId))
                                         {
                                             <option value="@m.UserId">@m.Name</option>
                                         }
                                     </select>
                                 </label>
-                                <label>Motivo da reatribuição
-                                    <input type="text" name="reason" required placeholder="Justificativa" />
+                                <label>@L.T("sheet.reassign_reason", _culture)
+                                    <input type="text" name="reason" required placeholder="@L.T("sheet.justification_short", _culture)" />
                                 </label>
                                 <button class="button button-primary" type="button"
                                         data-confirm-open data-confirm-form="reassign-form-@item.SourceId"
-                                        data-confirm-title="Confirmar reatribuição"
-                                        data-confirm-body="Deseja reatribuir a obrigação '@item.Title' para outro responsável?"
-                                        data-confirm-action="Reatribuir">Reatribuir</button>
+                                        data-confirm-title="@L.T("sheet.confirm_reassign_title", _culture)"
+                                        data-confirm-body="@L.T("sheet.confirm_reassign_body", _culture, item.Title)"
+                                        data-confirm-action="@L.T("sheet.action_reassign", _culture)">@L.T("sheet.action_reassign", _culture)</button>
                             </form>
                         </div>
                     </details>
 
                     <!-- AÇÃO CANCELAR -->
                     <details>
-                        <summary class="button button-quiet">Cancelar</summary>
+                        <summary class="button button-quiet">@L.T("action.cancel", _culture)</summary>
                         <div class="details-subpanel">
                             <form id="cancel-form-@item.SourceId" method="post" asp-action="PerformObligationAction" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId" asp-route-id="@item.SourceId" asp-route-operation="cancel"
                                   asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
@@ -868,13 +923,13 @@
                                   class="form-stack">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="version" value="@item.Version" />
-                                <label>Motivo do cancelamento
-                                    <input type="text" name="reason" required placeholder="Justificativa" />
+                                <label>@L.T("sheet.cancel_reason_label", _culture)
+                                    <input type="text" name="reason" required placeholder="@L.T("sheet.justification_short", _culture)" />
                                 </label>
                                 <button class="button button-danger" type="button" data-confirm-open data-confirm-form="cancel-form-@item.SourceId"
-                                        data-confirm-title="Confirmar cancelamento"
-                                        data-confirm-body="Deseja realmente cancelar a obrigação '@item.Title'?"
-                                        data-confirm-action="Confirmar cancelamento">Confirmar cancelamento</button>
+                                        data-confirm-title="@L.T("sheet.confirm_cancel_title", _culture)"
+                                        data-confirm-body="@L.T("sheet.confirm_cancel_body", _culture, item.Title)"
+                                        data-confirm-action="@L.T("sheet.confirm_cancel_title", _culture)">@L.T("sheet.confirm_cancel_title", _culture)</button>
                             </form>
                         </div>
                     </details>
@@ -890,14 +945,14 @@
         <h2>@L.T("sheet.drafts", _culture)</h2>
     </div>
     <p class="muted">
-        Modelos são pontos de partida operacionais recomendados pelo contexto contratual. Revisar antes de usar; não constituem parecer jurídico nem garantia de conformidade.
+        @L.T("sheet.templates_note", _culture)
     </p>
 
     @if (sheet.RecommendedTemplates is null || sheet.RecommendedTemplates.Count == 0)
     {
         <div class="empty-state">
-            <strong>Nenhuma minuta sugerida no momento</strong>
-            <p>Enquanto houver revisão aberta fora da janela de renovação, minutas primárias são ocultadas.</p>
+            <strong>@L.T("sheet.no_templates_title", _culture)</strong>
+            <p>@L.T("sheet.no_templates_body", _culture)</p>
         </div>
     }
     else
@@ -919,11 +974,11 @@
                         <input type="hidden" name="sheetVersion" value="@sheet.Version" />
                         <button class="button button-primary" type="button"
                                 data-confirm-open data-confirm-form="draft-form-@template.Key"
-                                data-confirm-title="Gerar rascunho oficial"
-                                data-confirm-body="Deseja criar um rascunho de '@template.Name' para o contrato '@sheet.Title'? A minuta será aberta no Estúdio para preenchimento e revisão."
-                                data-confirm-action="Gerar rascunho">Gerar rascunho oficial</button>
+                                data-confirm-title="@L.T("sheet.generate_draft_title", _culture)"
+                                data-confirm-body="@L.T("sheet.confirm_draft_body", _culture, template.Name, sheet.Title)"
+                                data-confirm-action="@L.T("sheet.generate_draft_action", _culture)">@L.T("sheet.generate_draft_title", _culture)</button>
                     </form>
-                    <a class="button button-quiet" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-type="@template.ContractType">Ver no Estúdio</a>
+                    <a class="button button-quiet" asp-controller="Studio" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-type="@template.ContractType">@L.T("sheet.view_studio", _culture)</a>
                 </div>
             </article>
         }
@@ -1129,11 +1184,11 @@
 <section id="documentos" class="renewal-list">
     <div class="list-header">
         <h2>@L.T("sheet.documents", _culture)</h2>
-        <span>@sheet.Documents.Count documento(s)</span>
+        <span>@L.T("sheet.documents_count", _culture, sheet.Documents.Count.ToString(System.Globalization.CultureInfo.InvariantCulture))</span>
     </div>
     @if (sheet.Documents.Count == 0)
     {
-        <p class="muted">Nenhum documento anexado a este contrato.</p>
+        <p class="muted">@L.T("sheet.no_documents", _culture)</p>
     }
     else
     {
@@ -1141,7 +1196,7 @@
         {
             <article class="renewal-row">
                 <div>
-                    <span class="status-label">@document.SafetyState</span>
+                    <span class="status-label">@DocState(document.SafetyState)</span>
                     @if (document.SafetyState == "safe" && document.SecurityEngine == "simulated-scanner-dev")
                     {
                         <span class="status-label badge-muted" title="Engine: simulated-scanner-dev">@L.T("sheet.doc_simulated", _culture)</span>
@@ -1150,7 +1205,7 @@
                 </div>
                 <dl>
                     <div>
-                        <dt>Última atualização</dt>
+                        <dt>@L.T("sheet.last_updated", _culture)</dt>
                         <dd>@document.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</dd>
                     </div>
                 </dl>
@@ -1162,11 +1217,11 @@
                            asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
                            asp-route-documentId="@document.DocumentId" asp-route-versionId="@document.VersionId"
                            asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
-                           asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId">Baixar</a>
+                           asp-route-scope="@Model.Scope" asp-route-kind="@Model.Kind" asp-route-urgency="@Model.Urgency" asp-route-viewId="@Model.ViewId">@L.T("action.download", _culture)</a>
                     }
                     else
                     {
-                        <span class="status-label muted" title="Documento em análise de segurança. Download indisponível.">Quarentena</span>
+                        <span class="status-label muted" title="@L.T("sheet.quarantine_tip", _culture)">@L.T("sheet.doc_quarantine", _culture)</span>
                     }
                 </div>
             </article>
@@ -1177,7 +1232,7 @@
 <!-- SEÇÃO SEQUÊNCIA DE DOCUMENTOS DERIVADOS (Item 12) -->
 @if (sheet.DerivedDocuments is { Count: > 0 })
 {
-    <section id="derivados" class="renewal-list" aria-label="Sequência de documentos">
+    <section id="derivados" class="renewal-list" aria-label="@L.T("sheet.derived_aria", _culture)">
         <div class="list-header">
             <h2>@L.T("sheet.derived", _culture)</h2>
             <span>@sheet.DerivedDocuments.Count @L.T("sheet.derived_count", _culture)</span>
@@ -1210,7 +1265,7 @@
                         : $"{L.T("sheet.derived_from", _culture)} {kindLabel}")</h3>
                     @if (!string.IsNullOrWhiteSpace(d.Sha256Prefix))
                     {
-                        <p class="muted" title="SHA-256 canônico">@d.Sha256Prefix…</p>
+                        <p class="muted" title="@L.T("sheet.sha_canonical", _culture)">@d.Sha256Prefix…</p>
                     }
                 </div>
                 <dl>
@@ -1241,10 +1296,10 @@
                         @if (hasDelta)
                         {
                             var beforePeriod = (d.BeforeStart is not null || d.BeforeEnd is not null)
-                                ? $"{(d.BeforeStart?.ToString("dd/MM/yyyy") ?? "—")} → {(d.BeforeEnd?.ToString("dd/MM/yyyy") ?? "indeterminado")}"
+                                ? $"{(d.BeforeStart?.ToString("dd/MM/yyyy") ?? "—")} → {(d.BeforeEnd?.ToString("dd/MM/yyyy") ?? L.T("sheet.indefinite", _culture))}"
                                 : null;
                             var afterPeriod = (d.AfterStart is not null || d.AfterEnd is not null)
-                                ? $"{(d.AfterStart?.ToString("dd/MM/yyyy") ?? "—")} → {(d.AfterEnd?.ToString("dd/MM/yyyy") ?? "indeterminado")}"
+                                ? $"{(d.AfterStart?.ToString("dd/MM/yyyy") ?? "—")} → {(d.AfterEnd?.ToString("dd/MM/yyyy") ?? L.T("sheet.indefinite", _culture))}"
                                 : null;
                             var beforeValue = d.BeforeValue is not null
                                 ? $"{d.BeforeValue.Value.ToString("N2")} {(d.BeforeCurrency ?? "")}".TrimEnd()
@@ -1282,26 +1337,26 @@
     <section id="solicitacoes" class="renewal-list">
         <div class="list-header">
             <h2>@L.T("sheet.solicitations", _culture)</h2>
-            <span>@sheet.Solicitations.Count solicitação(ões)</span>
+            <span>@L.T("sheet.sol_count", _culture, sheet.Solicitations.Count.ToString(System.Globalization.CultureInfo.InvariantCulture))</span>
         </div>
         @foreach (var sol in sheet.Solicitations)
         {
             <article class="renewal-row">
                 <div>
-                    <span class="status-label">@sol.StatusLabel</span>
+                    <span class="status-label">@SolStatus(sol.Status)</span>
                     <h3>@sol.Subject</h3>
                 </div>
                 <dl>
-                    <div><dt>Serviço</dt><dd>@sol.ServiceLabel</dd></div>
-                    <div><dt>Prioridade</dt><dd>@sol.Priority</dd></div>
+                    <div><dt>@L.T("common.service", _culture)</dt><dd>@SolService(sol.ServiceType)</dd></div>
+                    <div><dt>@L.T("common.priority", _culture)</dt><dd>@SolPriority(sol.Priority)</dd></div>
                     @if (sol.SlaDueOn.HasValue)
                     {
-                        <div><dt>Prazo SLA</dt><dd>@sol.SlaDueOn.Value.ToString("dd/MM/yyyy")</dd></div>
+                        <div><dt>@L.T("sheet.sla_due", _culture)</dt><dd>@sol.SlaDueOn.Value.ToString("dd/MM/yyyy")</dd></div>
                     }
                 </dl>
                 <div class="next-action">
                     <a class="button button-quiet" asp-controller="Solicitacoes" asp-action="Detail"
-                       asp-route-tenantId="@tenantId" asp-route-id="@sol.Id">Abrir</a>
+                       asp-route-tenantId="@tenantId" asp-route-id="@sol.Id">@L.T("common.open", _culture)</a>
                 </div>
             </article>
         }
@@ -1311,17 +1366,17 @@
 <!-- SEÇÃO HISTÓRICO DO CONTRATO (B.3.2c) -->
 @if (Model.CanReadHistory)
 {
-    <section id="historico" class="renewal-list" aria-label="Histórico do contrato">
+    <section id="historico" class="renewal-list" aria-label="@L.T("sheet.history_aria", _culture)">
         <div class="list-header">
             <h2>@L.T("sheet.history", _culture)</h2>
-            <span>@Model.EventTotal evento(s)</span>
+            <span>@L.T("sheet.events_count", _culture, Model.EventTotal.ToString(System.Globalization.CultureInfo.InvariantCulture))</span>
         </div>
 
         @if (Model.Events.Count == 0)
         {
             <div class="empty-state">
-                <strong>Nenhum evento registrado</strong>
-                <p>Ações sobre este contrato aparecerão aqui quando ocorrerem.</p>
+                <strong>@L.T("sheet.no_events_title", _culture)</strong>
+                <p>@L.T("sheet.no_events_body", _culture)</p>
             </div>
         }
         else
@@ -1335,12 +1390,12 @@
                     </div>
                     <dl>
                         <div>
-                            <dt>Quando</dt>
+                            <dt>@L.T("sheet.when", _culture)</dt>
                             <dd>@ev.OccurredAt.ToString("dd/MM/yyyy HH:mm")</dd>
                         </div>
                         <div>
-                            <dt>Por</dt>
-                            <dd>@(string.IsNullOrWhiteSpace(ev.Actor) ? "Sistema" : ev.Actor)</dd>
+                            <dt>@L.T("sheet.by_actor", _culture)</dt>
+                            <dd>@(string.IsNullOrWhiteSpace(ev.Actor) ? L.T("sheet.system", _culture) : ev.Actor)</dd>
                         </div>
                     </dl>
                     <div class="next-action">
@@ -1356,7 +1411,7 @@
             {
                 <div class="form-actions-row">
                     <a class="button button-quiet"
-                       href="@EventPageUrl(tenantIdValue, sheet.ContractId, Model.EventPage + 1, Model.FromSource, Model.Year, Model.Month, Model.Scope, Model.Kind, Model.Urgency, Model.ViewId, Model.SelectedObligationId)">Próximos eventos</a>
+                       href="@EventPageUrl(tenantIdValue, sheet.ContractId, Model.EventPage + 1, Model.FromSource, Model.Year, Model.Month, Model.Scope, Model.Kind, Model.Urgency, Model.ViewId, Model.SelectedObligationId)">@L.T("sheet.next_events", _culture)</a>
                 </div>
             }
         }
@@ -1364,15 +1419,15 @@
 }
 
 <!-- SEÇÃO AÇÕES DO CICLO DE VIDA (B.3.2c) -->
-<section id="acoes" class="renewal-list" aria-label="Ações do ciclo de vida do contrato">
+<section id="acoes" class="renewal-list" aria-label="@L.T("sheet.actions_aria", _culture)">
     <div class="list-header">
         <h2>@L.T("sheet.actions", _culture)</h2>
-        <span class="muted">Registro com auditoria · sem exclusão física de contratos emitidos ou assinados</span>
+        <span class="muted">@L.T("sheet.actions_note", _culture)</span>
     </div>
 
     @if (!Model.CanManageContracts)
     {
-        <p class="muted">Seu perfil visualiza a ficha, mas não realiza ações de ciclo de vida (exige permissão de gestão de contratos).</p>
+        <p class="muted">@L.T("sheet.actions_readonly", _culture)</p>
     }
     else
     {
@@ -1385,16 +1440,16 @@
                     @Html.AntiForgeryToken()
                     <button class="button button-primary" type="button"
                             data-confirm-open data-confirm-form="duplicate-form"
-                            data-confirm-title="Duplicar contrato"
-                            data-confirm-body="Deseja criar uma cópia deste contrato? A minuta original é copiada; assinaturas, versões geradas, obrigações e histórico não são copiados."
-                            data-confirm-action="Criar cópia">Duplicar contrato</button>
+                            data-confirm-title="@L.T("sheet.duplicate_btn", _culture)"
+                            data-confirm-body="@L.T("sheet.dup_confirm_body", _culture)"
+                            data-confirm-action="@L.T("sheet.dup_action", _culture)">@L.T("sheet.duplicate_btn", _culture)</button>
                 </form>
             }
 
             @if (sheet.Status == "active" || sheet.Status == "expired")
             {
                 <details data-dirty-form>
-                    <summary class="button button-quiet">Arquivar</summary>
+                    <summary class="button button-quiet">@L.T("sheet.archive_btn", _culture)</summary>
                     <div class="details-subpanel">
                         <form id="archive-form" method="post" asp-action="Archive" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
                               asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
@@ -1402,14 +1457,14 @@
                               class="form-stack">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="version" value="@sheet.Version" />
-                            <label>Motivo do arquivamento (opcional)
-                                <textarea name="reason" rows="2" maxlength="500" placeholder="Ex.: documento digitalizado substituiu este registro"></textarea>
+                            <label>@L.T("sheet.archive_reason_optional", _culture)
+                                <textarea name="reason" rows="2" maxlength="500" placeholder="@L.T("sheet.archive_reason_ph", _culture)"></textarea>
                             </label>
                             <button class="button button-quiet" type="button"
                                     data-confirm-open data-confirm-form="archive-form"
-                                    data-confirm-title="Arquivar contrato"
-                                    data-confirm-body="Deseja arquivar o contrato '@sheet.Title'? Ele sai da lista ativa e pode ser restaurado a qualquer momento. Arquivar não rescinde o contrato."
-                                    data-confirm-action="Arquivar">Arquivar contrato</button>
+                                    data-confirm-title="@L.T("sheet.archive_contract_btn", _culture)"
+                                    data-confirm-body="@L.T("sheet.archive_confirm_body", _culture, sheet.Title)"
+                                    data-confirm-action="@L.T("sheet.archive_btn", _culture)">@L.T("sheet.archive_contract_btn", _culture)</button>
                         </form>
                     </div>
                 </details>
@@ -1424,16 +1479,16 @@
                     <input type="hidden" name="version" value="@sheet.Version" />
                     <button class="button button-primary" type="button"
                             data-confirm-open data-confirm-form="restore-form"
-                            data-confirm-title="Restaurar contrato"
-                            data-confirm-body="Deseja restaurar o contrato '@sheet.Title' para a lista ativa?"
-                            data-confirm-action="Restaurar">Restaurar contrato</button>
+                            data-confirm-title="@L.T("sheet.restore_btn", _culture)"
+                            data-confirm-body="@L.T("sheet.restore_confirm_body", _culture, sheet.Title)"
+                            data-confirm-action="@L.T("sheet.restore_action", _culture)">@L.T("sheet.restore_btn", _culture)</button>
                 </form>
             }
 
             @if (sheet.Status != "closed")
             {
                 <details data-dirty-form>
-                    <summary class="button button-danger">Encerrar</summary>
+                    <summary class="button button-danger">@L.T("sheet.close_btn", _culture)</summary>
                     <div class="details-subpanel">
                         <form id="close-form" method="post" asp-action="Close" asp-route-tenantId="@tenantId" asp-route-contractId="@sheet.ContractId"
                               asp-route-from="@Model.FromSource" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
@@ -1441,17 +1496,17 @@
                               class="form-stack">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="version" value="@sheet.Version" />
-                            <label>Data do encerramento
+                            <label>@L.T("sheet.close_date_label", _culture)
                                 <input type="date" name="closedOn" required min="@todayStr" value="@todayStr" />
                             </label>
-                            <label>Motivo do encerramento
-                                <textarea name="closureReason" rows="3" required minlength="5" maxlength="2000" placeholder="Descreva o motivo (rescisão, término natural, substituição por novo contrato…)"></textarea>
+                            <label>@L.T("sheet.closure_reason_label", _culture)
+                                <textarea name="closureReason" rows="3" required minlength="5" maxlength="2000" placeholder="@L.T("sheet.close_reason_ph", _culture)"></textarea>
                             </label>
                             <button class="button button-danger" type="button"
                                     data-confirm-open data-confirm-form="close-form"
-                                    data-confirm-title="Encerrar contrato"
-                                    data-confirm-body="Deseja encerrar o contrato '@sheet.Title'? O encerramento registra data e motivo, arquiva o contrato e o registro permanece no histórico."
-                                    data-confirm-action="Encerrar contrato">Encerrar contrato</button>
+                                    data-confirm-title="@L.T("sheet.close_confirm_title", _culture)"
+                                    data-confirm-body="@L.T("sheet.close_confirm_body", _culture, sheet.Title)"
+                                    data-confirm-action="@L.T("sheet.close_confirm_title", _culture)">@L.T("sheet.close_confirm_title", _culture)</button>
                         </form>
                     </div>
                 </details>
@@ -1459,13 +1514,13 @@
         </div>
 
         <p class="muted">
-            Encerrar ≠ arquivar: encerrar registra o fim da relação contratual (data + motivo) e também arquiva. Contratos encerrados não podem ser duplicados.
+            @L.T("sheet.close_vs_archive", _culture)
         </p>
     }
 
     <!-- NOVA SOLICITACAO ODCA A PARTIR DO CONTRATO (Item 19) -->
     <details data-dirty-form style="margin-top:1rem;">
-        <summary class="button button-quiet">Abrir solicitação ODCA</summary>
+        <summary class="button button-quiet">@L.T("sheet.new_sol_btn", _culture)</summary>
         <div class="details-subpanel">
             <form id="new-solicitation-form" class="form-stack" method="post"
                   asp-controller="Solicitacoes" asp-action="Create"
@@ -1474,33 +1529,33 @@
                   data-contract-title="@sheet.Title">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="contractContext" value="@sheet.ContractId" />
-                <label>Serviço
+                <label>@L.T("common.service", _culture)
                     <select name="service" required>
-                        <option value="" disabled selected>Selecione o serviço</option>
-                        <option value="revisao">Revisão documental</option>
-                        <option value="adaptacao">Adaptação de modelo</option>
-                        <option value="esclarecimento">Esclarecimento contratual</option>
-                        <option value="suporte_tecnico">Suporte técnico</option>
+                        <option value="" disabled selected>@L.T("sheet.select_service", _culture)</option>
+                        <option value="revisao">@L.T("sheet.svc_documental_review", _culture)</option>
+                        <option value="adaptacao">@L.T("sheet.svc_model_adaptation", _culture)</option>
+                        <option value="esclarecimento">@L.T("sheet.svc_contractual_clarification", _culture)</option>
+                        <option value="suporte_tecnico">@L.T("sol.service.suporte_tecnico", _culture)</option>
                     </select>
                 </label>
-                <label>Prioridade
+                <label>@L.T("common.priority", _culture)
                     <select name="priority">
-                        <option value="normal" selected>Normal</option>
-                        <option value="alta">Alta</option>
-                        <option value="critica">Crítica</option>
-                        <option value="baixa">Baixa</option>
+                        <option value="normal" selected>@L.T("sol.priority.normal", _culture)</option>
+                        <option value="alta">@L.T("sol.priority.alta", _culture)</option>
+                        <option value="critica">@L.T("sol.priority.critica", _culture)</option>
+                        <option value="baixa">@L.T("sol.priority.baixa", _culture)</option>
                     </select>
                 </label>
-                <label>Assunto
+                <label>@L.T("sheet.subject_label", _culture)
                     <input type="text" name="subject" required minlength="5" maxlength="300"
-                           value="@($"Relação ao contrato: {sheet.Title}")" />
+                           value="@(L.T("sheet.subject_default", _culture, sheet.Title))" />
                 </label>
-                <label>Descrição
+                <label>@L.T("common.description", _culture)
                     <textarea name="body" rows="3" required minlength="10" maxlength="5000"
-                              placeholder="Descreva sua solicitação…"></textarea>
+                              placeholder="@L.T("sheet.sol_desc_ph", _culture)"></textarea>
                 </label>
-                <p class="muted"><small>A solicitação será registrada com SLA conforme o plano da organização. O suporte técnico está disponível em todos os planos.</small></p>
-                <button class="button button-primary" type="submit">Enviar solicitação</button>
+                <p class="muted"><small>@L.T("sheet.sol_sla_note", _culture)</small></p>
+                <button class="button button-primary" type="submit">@L.T("sheet.send_sol", _culture)</button>
             </form>
         </div>
     </details>
@@ -1510,17 +1565,33 @@
 <div id="history-backdrop" class="history-drawer-backdrop" hidden></div>
 <aside id="history-drawer" class="history-drawer" aria-labelledby="history-drawer-title" aria-modal="true" role="dialog" hidden>
     <div class="history-drawer-header">
-        <h3 id="history-drawer-title">Histórico da obrigação</h3>
-        <button type="button" id="history-drawer-close" class="button button-quiet" aria-label="Fechar histórico">✕</button>
+        <h3 id="history-drawer-title">@L.T("sheet.drawer_title", _culture)</h3>
+        <button type="button" id="history-drawer-close" class="button button-quiet" aria-label="@L.T("sheet.drawer_close_aria", _culture)">✕</button>
     </div>
     <div id="history-drawer-subtitle" class="muted"></div>
     <div id="history-drawer-content" role="region" aria-live="polite">
-        <p class="muted">Carregando histórico...</p>
+        <p class="muted">@L.T("sheet.drawer_loading", _culture)</p>
     </div>
 </aside>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // D-OC42 (S8): bag de mensagens do drawer em português da cultura atual (padrão canônico da página).
+    const drawerI18n = @System.Text.Json.JsonSerializer.Serialize(new
+    {
+        culture = _culture ?? "pt-BR",
+        loading = L.T("sheet.drawer_loading", _culture),
+        sessionExpired = L.T("sheet.session_expired", _culture),
+        forbidden = L.T("sheet.drawer_forbidden", _culture),
+        notFound = L.T("sheet.drawer_not_found", _culture),
+        fetchFail = L.T("sheet.drawer_fetch_fail", _culture),
+        noEvents = L.T("sheet.drawer_no_events", _culture),
+        eventWord = L.T("sheet.event_word", _culture),
+        byPrefix = L.T("sheet.by_prefix", _culture),
+        system = L.T("sheet.system", _culture),
+        error = L.T("sheet.drawer_error", _culture)
+    });
+
     // Subnav sticky com aria-current
     function updateSubnavActive() {
         const hash = window.location.hash || '#detalhes';
@@ -1567,7 +1638,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!id) return;
 
             if (subtitle) subtitle.textContent = title || '';
-            if (content) content.textContent = 'Carregando histórico...';
+            if (content) content.textContent = drawerI18n.loading;
             if (backdrop) backdrop.hidden = false;
             if (drawer) drawer.hidden = false;
 
@@ -1577,7 +1648,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 content.textContent = '';
 
                 if (response.redirected || response.status === 401) {
-                    content.textContent = 'Sessão expirada. Você será redirecionado ao login.';
+                    content.textContent = drawerI18n.sessionExpired;
                     setTimeout(() => window.location.assign('/entrar?ReturnUrl=' + encodeURIComponent(window.location.pathname + window.location.search)), 1200);
                     return;
                 }
@@ -1585,7 +1656,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.status === 403) {
                     const alert = document.createElement('div');
                     alert.className = 'validation-summary';
-                    alert.textContent = 'Acesso restrito: você não possui permissão para visualizar o histórico desta obrigação (somente o responsável ou usuários com tenant.obligations.read_all).';
+                    alert.textContent = drawerI18n.forbidden;
                     content.appendChild(alert);
                     return;
                 }
@@ -1593,7 +1664,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.status === 404) {
                     const p = document.createElement('p');
                     p.className = 'muted';
-                    p.textContent = 'Histórico não encontrado ou obrigação excluída.';
+                    p.textContent = drawerI18n.notFound;
                     content.appendChild(p);
                     return;
                 }
@@ -1601,7 +1672,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!response.ok) {
                     const p = document.createElement('p');
                     p.className = 'muted';
-                    p.textContent = 'Não foi possível consultar o histórico no momento.';
+                    p.textContent = drawerI18n.fetchFail;
                     content.appendChild(p);
                     return;
                 }
@@ -1611,7 +1682,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (items.length === 0) {
                     const p = document.createElement('p');
                     p.className = 'muted';
-                    p.textContent = 'Nenhum evento registrado até o momento.';
+                    p.textContent = drawerI18n.noEvents;
                     content.appendChild(p);
                     return;
                 }
@@ -1627,21 +1698,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     header.className = 'list-header';
 
                     const typeSpan = document.createElement('strong');
-                    typeSpan.textContent = ev.eventType || ev.EventType || 'Evento';
+                    typeSpan.textContent = ev.eventType || ev.EventType || drawerI18n.eventWord;
                     header.appendChild(typeSpan);
 
                     const dateSpan = document.createElement('small');
                     dateSpan.className = 'muted';
                     const dt = ev.occurredAt || ev.OccurredAt;
-                    dateSpan.textContent = dt ? new Date(dt).toLocaleString('pt-BR') : '';
+                    dateSpan.textContent = dt ? new Date(dt).toLocaleString(drawerI18n.culture) : '';
                     header.appendChild(dateSpan);
 
                     card.appendChild(header);
 
                     const actorP = document.createElement('p');
                     const actorBold = document.createElement('strong');
-                    actorBold.textContent = ev.actor || ev.Actor || 'Sistema';
-                    actorP.appendChild(document.createTextNode('Por: '));
+                    actorBold.textContent = ev.actor || ev.Actor || drawerI18n.system;
+                    actorP.appendChild(document.createTextNode(drawerI18n.byPrefix));
                     actorP.appendChild(actorBold);
                     card.appendChild(actorP);
 
@@ -1658,7 +1729,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 content.appendChild(list);
             } catch (err) {
-                if (content) content.textContent = 'Erro ao carregar o histórico.';
+                if (content) content.textContent = drawerI18n.error;
             }
         });
     });

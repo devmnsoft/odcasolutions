@@ -1,29 +1,31 @@
 @using Odca.Contracts.Solicitations
 @model SolicitationListItem[]
 @{
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("admin.queue_title", _c);
     Guid? filterTenant=ViewData["TenantId"] as Guid?; var service=ViewData["Service"] as string; var status=ViewData["Status"] as string; var search=ViewData["Search"] as string;
-    string ServiceLabel(string value)=>value switch { "revisao"=>"Revisão","adaptacao"=>"Adaptação","esclarecimento"=>"Esclarecimento","suporte_tecnico"=>"Suporte técnico",_=>value };
-    string StatusLabel(string value)=>value switch { "aberta"=>"Aberta","triagem"=>"Em triagem","em_atendimento"=>"Em atendimento","aguardando_cliente"=>"Aguardando cliente","resolvida"=>"Resolvida","encerrada"=>"Encerrada","cancelada"=>"Cancelada",_=>value };
-    string PriorityLabel(string value)=>value switch { "baixa"=>"Baixa","normal"=>"Normal","alta"=>"Alta","critica"=>"Crítica",_=>value };
+    string ServiceLabel(string value)=>value switch { "revisao"=>L.T("admin.svc_review",_c),"adaptacao"=>L.T("admin.svc_adaptation",_c),"esclarecimento"=>L.T("admin.svc_clarification",_c),"suporte_tecnico"=>L.T("admin.svc_tech_support",_c),_=>value };
+    string StatusLabel(string value)=>value switch { "aberta"=>L.T("admin.st_open",_c),"triagem"=>L.T("admin.st_triage",_c),"em_atendimento"=>L.T("admin.st_in_service",_c),"aguardando_cliente"=>L.T("admin.st_waiting_customer",_c),"resolvida"=>L.T("admin.st_resolved",_c),"encerrada"=>L.T("admin.st_closed",_c),"cancelada"=>L.T("admin.st_cancelled",_c),_=>value };
+    string PriorityLabel(string value)=>value switch { "baixa"=>L.T("sol.priority.baixa",_c),"normal"=>L.T("sol.priority.normal",_c),"alta"=>L.T("sol.priority.alta",_c),"critica"=>L.T("sol.priority.critica",_c),_=>value };
     string Fmt(DateTime? value)=>value?.ToString("dd/MM/yyyy HH:mm")??"—";
 }
-<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-controller="Home" asp-action="Index">Visão global</a><span>/</span><span aria-current="page">Atendimento ODCA</span></nav>
-<header class="page-heading"><div><p class="eyebrow">Plataforma MNSOFT</p><h1>Fila de solicitações ODCA</h1><p>Atenda as solicitações dos clientes dentro dos prazos de SLA do plano de cada organização.</p></div><a class="button button-quiet" asp-action="Aprovacoes">Aprovação de modelos</a></header>
+<nav class="breadcrumb" aria-label="@L.T("common.breadcrumb_aria",_c)"><a asp-controller="Home" asp-action="Index">@L.T("visao-global",_c)</a><span>/</span><span aria-current="page">@L.T("admin.queue_crumb",_c)</span></nav>
+<header class="page-heading"><div><p class="eyebrow">@L.T("common.platform_mns",_c)</p><h1>@L.T("admin.queue_title",_c)</h1><p>@L.T("admin.queue_subtitle",_c)</p></div><a class="button button-quiet" asp-action="Aprovacoes">@L.T("admin.approvals_link",_c)</a></header>
 @if(ViewData["LoadError"] is string loadError){<div class="alert alert-error" role="alert">@loadError</div>}
 @if(TempData["SolNotice"] is string notice){<div class="alert alert-success" role="status">@notice</div>}
-<section class="help-card" aria-labelledby="fila-help"><h2 id="fila-help">Fluxo de atendimento</h2><p>Abra a solicitação, faça a <strong>triagem</strong> (a primeira resposta do SLA zera ao responder ou iniciar o atendimento), resolva com um resumo da solução e aguarde o cliente encerrar. Pausas e esperas justificadas param o relógio; violações ficam registradas no histórico.</p></section>
-<form method="get" class="review-filters" aria-label="Filtros da fila">
- <label>Organização (ID)<input type="text" name="tenantId" value="@filterTenant" placeholder="opcional" /></label>
- <label>Serviço<select name="service"><option value="">Todos</option>@foreach(var option in new[]{("revisao","Revisão"),("adaptacao","Adaptação"),("esclarecimento","Esclarecimento"),("suporte_tecnico","Suporte técnico")}){<option value="@option.Item1" selected="@(service==option.Item1)">@option.Item2</option>}</select></label>
- <label>Situação<select name="status"><option value="">Todas</option>@foreach(var option in new[]{("aberta","Aberta"),("triagem","Em triagem"),("em_atendimento","Em atendimento"),("aguardando_cliente","Aguardando cliente"),("resolvida","Resolvida"),("encerrada","Encerrada"),("cancelada","Cancelada")}){<option value="@option.Item1" selected="@(status==option.Item1)">@option.Item2</option>}</select></label>
- <label>Buscar<input type="search" name="search" value="@search" placeholder="Protocolo, assunto ou organização" /></label>
- <button class="button button-quiet" type="submit">Aplicar filtros</button>
+<section class="help-card" aria-labelledby="fila-help"><h2 id="fila-help">@L.T("admin.flow_title",_c)</h2><p>@L.T("admin.flow_body_a",_c)<strong>@L.T("admin.triage_word",_c)</strong>@L.T("admin.flow_body_b",_c)</p></section>
+<form method="get" class="review-filters" aria-label="@L.T("admin.filters_aria",_c)">
+ <label>@L.T("admin.filter_org",_c)<input type="text" name="tenantId" value="@filterTenant" placeholder="@L.T("admin.filter_org_ph",_c)" /></label>
+ <label>@L.T("common.service",_c)<select name="service"><option value="">@L.T("admin.filter_service_all",_c)</option>@foreach(var option in new[]{("revisao","admin.svc_review"),("adaptacao","admin.svc_adaptation"),("esclarecimento","admin.svc_clarification"),("suporte_tecnico","admin.svc_tech_support")}){<option value="@option.Item1" selected="@(service==option.Item1)">@L.T(option.Item2,_c)</option>}</select></label>
+ <label>@L.T("common.situation",_c)<select name="status"><option value="">@L.T("admin.filter_status_all",_c)</option>@foreach(var option in new[]{("aberta","admin.st_open"),("triagem","admin.st_triage"),("em_atendimento","admin.st_in_service"),("aguardando_cliente","admin.st_waiting_customer"),("resolvida","admin.st_resolved"),("encerrada","admin.st_closed"),("cancelada","admin.st_cancelled")}){<option value="@option.Item1" selected="@(status==option.Item1)">@L.T(option.Item2,_c)</option>}</select></label>
+ <label>@L.T("admin.filter_search",_c)<input type="search" name="search" value="@search" placeholder="@L.T("admin.filter_search_ph",_c)" /></label>
+ <button class="button button-quiet" type="submit">@L.T("common.apply_filters",_c)</button>
 </form>
-<section aria-label="Fila de solicitações">
- @if(Model.Length==0){<div class="empty-state"><p>Nenhuma solicitação na fila com estes filtros.</p></div>}
+<section aria-label="@L.T("admin.queue_section_aria",_c)">
+ @if(Model.Length==0){<div class="empty-state"><p>@L.T("admin.empty_queue",_c)</p></div>}
  else
  {
-  <div class="table-scroll"><table><thead><tr><th>Protocolo</th><th>Organização</th><th>Assunto</th><th>Prioridade</th><th>Situação</th><th>Responsável</th><th>Primeira resposta</th><th>Resolução</th><th>Abertura</th></tr></thead><tbody>
+  <div class="table-scroll"><table><thead><tr><th>@L.T("admin.col_protocol",_c)</th><th>@L.T("common.org",_c)</th><th>@L.T("admin.col_subject",_c)</th><th>@L.T("common.priority",_c)</th><th>@L.T("common.situation",_c)</th><th>@L.T("common.responsible",_c)</th><th>@L.T("admin.col_first_response",_c)</th><th>@L.T("admin.col_resolution",_c)</th><th>@L.T("admin.col_opened",_c)</th></tr></thead><tbody>
   @foreach(var item in Model)
   {
    <tr>
@@ -31,10 +33,10 @@
     <td>@item.OrganizationName</td>
     <td>@item.Subject</td>
     <td>@PriorityLabel(item.Priority)</td>
-    <td><span class="status-badge status-@item.Status">@StatusLabel(item.Status)</span>@if(item.Paused){<span class="status-badge">SLA pausado</span>}@if(item.FirstResponseBreachAt is not null||item.ResolutionBreachAt is not null){<span class="status-badge status-cancelled">Violação</span>}</td>
+    <td><span class="status-badge status-@item.Status">@StatusLabel(item.Status)</span>@if(item.Paused){<span class="status-badge">@L.T("admin.sla_paused_badge",_c)</span>}@if(item.FirstResponseBreachAt is not null||item.ResolutionBreachAt is not null){<span class="status-badge status-cancelled">@L.T("admin.breach_badge",_c)</span>}</td>
     <td>@(item.AssigneeName??"—")</td>
-    <td>@if(item.FirstResponseBreachAt is not null){<strong>Violada @Fmt(item.FirstResponseBreachAt)</strong>}else if(item.FirstResponseDueAt is not null && item.ResolvedAt is null && item.ClosedAt is null && item.CancelledAt is null && item.FirstResponseDueAt < DateTime.UtcNow){<strong>Vencida — @Fmt(item.FirstResponseDueAt)</strong>}else{@Fmt(item.FirstResponseDueAt)}</td>
-    <td>@if(item.ResolutionBreachAt is not null){<strong>Violada @Fmt(item.ResolutionBreachAt)</strong>}else{@Fmt(item.ResolutionDueAt)}</td>
+    <td>@if(item.FirstResponseBreachAt is not null){<strong>@L.T("admin.first_response_breached",_c,Fmt(item.FirstResponseBreachAt))</strong>}else if(item.FirstResponseDueAt is not null && item.ResolvedAt is null && item.ClosedAt is null && item.CancelledAt is null && item.FirstResponseDueAt < DateTime.UtcNow){<strong>@L.T("admin.first_response_overdue",_c,Fmt(item.FirstResponseDueAt))</strong>}else{@Fmt(item.FirstResponseDueAt)}</td>
+    <td>@if(item.ResolutionBreachAt is not null){<strong>@L.T("admin.first_response_breached",_c,Fmt(item.ResolutionBreachAt))</strong>}else{@Fmt(item.ResolutionDueAt)}</td>
     <td>@Fmt(item.OpenedAt)</td>
    </tr>
   }
