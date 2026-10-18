@@ -593,4 +593,27 @@ public sealed class MigrationChecksumTests
         Assert.Contains("CREATE UNIQUE INDEX IF NOT EXISTS user_notifications_source_uq", canonical, StringComparison.Ordinal);
         Assert.Contains("ON odca.user_notifications(tenant_id,source_id) WHERE source_id IS NOT NULL", canonical, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ReleaseV060AddsAuditedSupportSessionExtensionWithoutRewritingEarlierMigrations()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var previous = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v059.sql")).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v060.sql")).Replace("\r\n", "\n");
+        DatabaseMigrator.ValidateChecksums(previous);
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        DatabaseMigrator.ValidateChecksums(canonical);
+        for (var version = 1; version <= 59; version++)
+            Assert.Equal(MigrationBlock(previous, version), MigrationBlock(canonical, version));
+        // D-OC39 (Sprint 5/F-2): extensao da janela de sessao de suporte — 1 a 480 minutos,
+        // sem retroceder a expiracao (GREATEST(now(), expires_at)), com evento 'extended'
+        // (ja previsto no CHECK da fundacao v020) e auditoria com o ator real; grant
+        // restrito ao odca_app.
+        Assert.Contains("CREATE OR REPLACE FUNCTION odca.extend_support_session(", canonical, StringComparison.Ordinal);
+        Assert.Contains("GREATEST(now(), v_session.expires_at) + make_interval(mins => p_minutes)", MigrationBlock(canonical, 60), StringComparison.Ordinal);
+        Assert.Contains("GRANT EXECUTE ON FUNCTION odca.extend_support_session(uuid,uuid,integer) TO odca_app", canonical, StringComparison.Ordinal);
+        Assert.Contains("CREATE OR REPLACE FUNCTION odca.support_session_tenant_name(p_actor_id uuid, p_tenant_id uuid)", canonical, StringComparison.Ordinal);
+        Assert.Contains("GRANT EXECUTE ON FUNCTION odca.support_session_tenant_name(uuid,uuid) TO odca_app", canonical, StringComparison.Ordinal);
+        Assert.DoesNotContain("ODCA-MIGRATION 061", snapshot, StringComparison.Ordinal);
+    }
 }

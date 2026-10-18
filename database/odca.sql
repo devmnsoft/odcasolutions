@@ -6552,3 +6552,95 @@ VALUES(59,'Notificacoes in-app: deduplicacao deterministica por origem (source_i
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 059
+-- ODCA-MIGRATION 060 CHECKSUM 1562ceacb177ea199cfeaf6eaf281af3e8052f704c570a3373f7a8e4bf5169ca
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
+
+DO $odca$
+DECLARE
+    expected_checksum constant char(64) := '1562ceacb177ea199cfeaf6eaf281af3e8052f704c570a3373f7a8e4bf5169ca';
+    recorded_checksum char(64);
+BEGIN
+    SELECT checksum INTO recorded_checksum FROM odca.schema_migrations WHERE version = 60;
+    IF recorded_checksum IS NOT NULL AND recorded_checksum <> expected_checksum THEN
+        RAISE EXCEPTION 'ODCA migration 060 checksum mismatch: stored %, expected %', recorded_checksum, expected_checksum;
+    END IF;
+END
+$odca$;
+
+-- D-OC39 (Sprint 5/F-2): extensao da sessao temporaria de suporte.
+-- O mesmo padrao de governanca do open/close (v020): somente superadministrador,
+-- somente sessao ativa, duracao limitada a 1..480 minutos; a expiracao nunca
+-- retrocede (GREATEST(now(), expires_at)) e o ato e auditado com o ator real
+-- (evento 'extended' + audit_events), fechando o ciclo aberto no CHECK
+-- de event_type desde a fundacao.
+CREATE OR REPLACE FUNCTION odca.extend_support_session(
+    p_actor_id uuid, p_session_id uuid, p_minutes integer DEFAULT 30)
+RETURNS timestamptz
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, odca
+AS $$
+DECLARE
+    v_is_admin boolean;
+    v_session odca.support_sessions;
+    v_new_expires timestamptz;
+BEGIN
+    SELECT is_platform_administrator INTO v_is_admin FROM odca.users WHERE id = p_actor_id AND NOT is_deleted;
+    IF NOT COALESCE(v_is_admin, false) THEN
+        RAISE EXCEPTION 'not a platform administrator' USING ERRCODE = '42501';
+    END IF;
+    IF p_minutes NOT BETWEEN 1 AND 480 THEN
+        RAISE EXCEPTION 'duration must be between 1 and 480 minutes' USING ERRCODE = '22023';
+    END IF;
+
+    SELECT * INTO v_session FROM odca.support_sessions WHERE id = p_session_id FOR UPDATE;
+    IF NOT FOUND OR v_session.status <> 'active' THEN
+        RAISE EXCEPTION 'session not found or not active' USING ERRCODE = '02000';
+    END IF;
+
+    v_new_expires := GREATEST(now(), v_session.expires_at) + make_interval(mins => p_minutes);
+    UPDATE odca.support_sessions SET expires_at = v_new_expires WHERE id = p_session_id;
+
+    INSERT INTO odca.support_session_events(session_id, actor_user_id, event_type, details)
+    VALUES(p_session_id, p_actor_id, 'extended', jsonb_build_object('minutes', p_minutes, 'new_expires_at', to_char(v_new_expires, 'YYYY-MM-DD HH24:MI:SS TZ')));
+
+    INSERT INTO odca.audit_events(scope_type, actor_user_id, action, entity_type, entity_id, result, metadata)
+    VALUES('platform', p_actor_id, 'superadmin.support_session.extended', 'support_session', p_session_id, 'success',
+           jsonb_build_object('tenant_id', v_session.tenant_id, 'minutes', p_minutes));
+
+    RETURN v_new_expires;
+END
+$$;
+
+REVOKE ALL ON FUNCTION odca.extend_support_session(uuid,uuid,integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.extend_support_session(uuid,uuid,integer) TO odca_app;
+
+-- D-OC39 (Sprint 5/F-2): nome de exibicao do tenant nas leituras de plataforma da
+-- sessao de suporte. Tenants tem RLS forcada (tenant_isolation) e estas leituras sao
+-- multi-tenant, entao o nome e resolvido em funcao SECURITY DEFINER que exige ator
+-- superadministrador valido, na mesma governanca de open/close/extend.
+CREATE OR REPLACE FUNCTION odca.support_session_tenant_name(p_actor_id uuid, p_tenant_id uuid)
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, odca
+AS $$
+    SELECT CASE
+             WHEN NOT EXISTS (
+                 SELECT 1 FROM odca.users u
+                  WHERE u.id = p_actor_id AND u.is_platform_administrator AND NOT u.is_deleted)
+             THEN NULL::text
+             ELSE COALESCE((SELECT t.display_name FROM odca.tenants t WHERE t.id = p_tenant_id), '-')
+           END;
+$$;
+
+REVOKE ALL ON FUNCTION odca.support_session_tenant_name(uuid,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.support_session_tenant_name(uuid,uuid) TO odca_app;
+
+INSERT INTO odca.schema_migrations(version,name,checksum)
+VALUES(60,'Sessao de suporte: extensao auditada (extend_support_session)','1562ceacb177ea199cfeaf6eaf281af3e8052f704c570a3373f7a8e4bf5169ca')
+ON CONFLICT(version) DO NOTHING;
+COMMIT;
+-- ODCA-END 060

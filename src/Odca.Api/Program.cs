@@ -157,6 +157,10 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
         };
     });
 builder.Services.AddSingleton<IAuthorizationHandler, MfaVerifiedForSuperAdministratorHandler>();
+// D-OC39 (Sprint 5/F-1): reautenticacao MFA recente para operacoes sensiveis.
+builder.Services.Configure<Odca.Api.RecentMfaOptions>(
+    builder.Configuration.GetSection(Odca.Api.RecentMfaOptions.Section));
+builder.Services.AddSingleton<IAuthorizationHandler, Odca.Api.RecentMfaHandler>();
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("PasswordChanged", policy => policy
@@ -168,6 +172,9 @@ builder.Services.AddAuthorization(options =>
         .RequireRole("SuperAdministrator")
         .RequireClaim("must_change_password", "false")
         .RequireClaim("mfa_verified", "true"));
+    options.AddPolicy("RecentMfa", policy => policy
+        .RequireAuthenticatedUser()
+        .Requirements.Add(new RecentMfaRequirement()));
 });
 
 var app = builder.Build();

@@ -192,22 +192,27 @@ public sealed class OrganizationsController(TenantAdministrationService service)
     }
 
     [HttpPost("{tenantId:guid}/members/{userId:guid}/block")]
+    [Authorize(Policy = "RecentMfa")]
     public Task<IActionResult> BlockMember(Guid tenantId, Guid userId, [FromBody] MemberStatusChangeRequest? request, CancellationToken cancellationToken)
         => ChangeMemberStatus(tenantId, userId, "blocked", request?.Reason, cancellationToken);
 
     [HttpPost("{tenantId:guid}/members/{userId:guid}/unblock")]
+    [Authorize(Policy = "RecentMfa")]
     public Task<IActionResult> UnblockMember(Guid tenantId, Guid userId, [FromBody] MemberStatusChangeRequest? request, CancellationToken cancellationToken)
         => ChangeMemberStatus(tenantId, userId, "active", request?.Reason, cancellationToken);
 
     [HttpPost("{tenantId:guid}/members/{userId:guid}/inactivate")]
+    [Authorize(Policy = "RecentMfa")]
     public Task<IActionResult> InactivateMember(Guid tenantId, Guid userId, [FromBody] MemberStatusChangeRequest? request, CancellationToken cancellationToken)
         => ChangeMemberStatus(tenantId, userId, "inactive", request?.Reason, cancellationToken);
 
     [HttpPost("{tenantId:guid}/members/{userId:guid}/restore")]
+    [Authorize(Policy = "RecentMfa")]
     public Task<IActionResult> RestoreMember(Guid tenantId, Guid userId, [FromBody] MemberStatusChangeRequest? request, CancellationToken cancellationToken)
         => ChangeMemberStatus(tenantId, userId, "active", request?.Reason, cancellationToken);
 
     [HttpPut("{tenantId:guid}/members/{userId:guid}/roles")]
+    [Authorize(Policy = "RecentMfa")]
     public async Task<IActionResult> UpdateMemberRoles(
         Guid tenantId,
         Guid userId,
@@ -246,6 +251,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
     }
 
     [HttpPost("{tenantId:guid}/roles")]
+    [Authorize(Policy = "RecentMfa")]
     public async Task<IActionResult> CreateRole(
         Guid tenantId,
         CreateTenantRoleRequest request,
@@ -270,6 +276,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
     }
 
     [HttpPut("{tenantId:guid}/roles/{roleId:guid}")]
+    [Authorize(Policy = "RecentMfa")]
     public async Task<IActionResult> UpdateRole(
         Guid tenantId,
         Guid roleId,
@@ -310,6 +317,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
     }
 
     [HttpPut("{tenantId:guid}/roles/{roleId:guid}/permissions")]
+    [Authorize(Policy = "RecentMfa")]
     public async Task<IActionResult> UpdateRolePermissions(
         Guid tenantId,
         Guid roleId,
@@ -346,6 +354,7 @@ public sealed class OrganizationsController(TenantAdministrationService service)
     }
 
     [HttpPost("{tenantId:guid}/administration/transfer")]
+    [Authorize(Policy = "RecentMfa")]
     public async Task<IActionResult> TransferAdministration(
         Guid tenantId,
         [FromBody] TransferAdministrationRequest request,

@@ -1,0 +1,119 @@
+@model Odca.Web.Models.SupportSessionsViewModel
+@using Odca.Contracts.Support
+@using System.Globalization
+@{
+    ViewData["Title"] = "Sessões de suporte";
+    var ptBr = CultureInfo.GetCultureInfo("pt-BR");
+}
+<nav class="breadcrumb" aria-label="Navegação estrutural">
+    <a asp-controller="Home" asp-action="Index">Visão global</a><span aria-hidden="true">/</span><span>Sessões de suporte</span>
+</nav>
+<header class="page-heading">
+    <div>
+        <p class="eyebrow">Administração global</p>
+        <h1>Sessões de suporte</h1>
+        <p>Janelas temporárias em que um superadministrador atua junto a uma organização, com duração limitada e motivo obrigatório. Cada abertura, extensão, encerramento ou revogação registra auditoria com o ator real.</p>
+    </div>
+    <a class="button button-primary" asp-controller="Home" asp-action="Index">Voltar ao painel</a>
+</header>
+
+@if (TempData["Success"] is string supportFeedback)
+{
+    <div class="alert alert-success" role="status">@supportFeedback</div>
+}
+@if (TempData["Error"] is string supportError)
+{
+    <div class="alert alert-error" role="alert">@supportError</div>
+}
+
+<section class="panel">
+    <h2>Abrir nova sessão</h2>
+    @if (Model.CustomersLoadFailed)
+    {
+        <div class="alert alert-error" role="alert">Não foi possível carregar as organizações agora. A lista abaixo pode estar incompleta; a abertura continuará disponível.</div>
+    }
+    <form method="post" asp-action="Open" class="form-stack">
+        @Html.AntiForgeryToken()
+        <div class="form-grid">
+            <label>Organização<select name="TenantId" required>
+                <option value="">Selecione a organização</option>
+                @foreach (var customer in Model.Customers)
+                {
+                    <option value="@customer.TenantId">@customer.Name</option>
+                }
+            </select></label>
+            <label>Duração (minutos)<input type="number" name="DurationMinutes" min="1" max="480" value="60" required/>
+                <small>Entre 1 e 480 minutos. A expiração nunca retrocede ao estender.</small></label>
+        </div>
+        <label>Motivo<textarea name="Reason" rows="2" minlength="5" maxlength="1000" required placeholder="Descreva o atendimento (entre 5 e 1000 caracteres)"></textarea></label>
+        <div class="form-actions"><button class="button button-primary" type="submit">Abrir sessão</button></div>
+    </form>
+    <details class="help-card">
+        <summary>O que é uma sessão de suporte?</summary>
+        <p>É a janela registrada e auditada em que o superadministrador acompanha uma organização específica. Exige verificação MFA recente para abrir, estender, encerrar ou revogar. Quando expira ou é revogada, passa a ser exibida como inativa — a sessão expirada não é prorrogada sozinha, apenas estendida enquanto estiver ativa.</p>
+        <p>Limites: uma sessão ativa por superadministrador por organização; duração entre 1 e 480 minutos; motivo com pelo menos 5 caracteres.</p>
+    </details>
+</section>
+
+<section class="panel">
+    <h2>Sessões recentes</h2>
+    @if (Model.SessionsLoadFailed)
+    {
+        <div class="alert alert-error" role="alert">Não foi possível carregar as sessões agora. Nenhuma sessão foi ocultada; recarregue a página.</div>
+    }
+    @if (Model.Sessions.Length == 0 && !Model.SessionsLoadFailed)
+    {
+        <p class="muted">Nenhuma sessão registrada ainda.</p>
+    }
+    @if (Model.Sessions.Length > 0)
+    {
+        <table class="data-table">
+            <thead>
+                <tr><th>Organização</th><th>Motivo</th><th>Situação</th><th>Início</th><th>Expira / expirou</th><th>Aberta por</th><th class="actions">Ações</th></tr>
+            </thead>
+            <tbody>
+            @foreach (var session in Model.Sessions)
+            {
+                var isActive = session.Status == "active";
+                var statusText = isActive ? (session.Valid ? "Ativa" : "Expirada") : session.Status switch
+                {
+                    "ended" => "Encerrada",
+                    "revoked" => "Revogada",
+                    _ => session.Status
+                };
+                var statusClass = isActive ? (session.Valid ? "status-badge status-approved" : "status-badge status-pending")
+                    : session.Status == "revoked" ? "status-badge status-rejected" : "status-badge";
+                <tr>
+                    <td>@session.TenantName</td>
+                    <td class="nowrap-muted">@session.Reason</td>
+                    <td><span class="@statusClass">@statusText</span></td>
+                    <td>@session.StartedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm", ptBr)</td>
+                    <td>@session.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm", ptBr)</td>
+                    <td>@session.SuperadminName</td>
+                    <td class="actions">
+                        @if (session.Valid)
+                        {
+                            <form method="post" asp-action="Extend" class="inline-form">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="SessionId" value="@session.Id"/>
+                                <input type="number" name="Minutes" min="1" max="480" value="30" aria-label="Minutos para estender"/>
+                                <button class="button" type="submit">Estender</button>
+                            </form>
+                            <form method="post" asp-action="End" class="inline-form">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="SessionId" value="@session.Id"/>
+                                <button class="button" type="submit">Encerrar</button>
+                            </form>
+                            <form method="post" asp-action="Revoke" class="inline-form">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="SessionId" value="@session.Id"/>
+                                <button class="button button-danger" type="submit">Revogar</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</section>

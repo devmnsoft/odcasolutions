@@ -538,6 +538,47 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
 
         if (movedQuarantine > 0 || movedFinal > 0)
             logger.LogInformation("Reconciliacao documental: {Quarantine} tmp(s) de quarentena e {Final} arquivo(s) final(is) movidos para retencao.", movedQuarantine, movedFinal);
+
+        // D-OC39 (Sprint 5/A-1): purga fisica apos a retencao da area reconciled.
+        // So e removido o que ja estava em reconciled/{yyyy-MM}/ com data de escrita mais
+        // velha que Documents:ReconciledPurgeRetentionDays (padrao 30 dias); o mes do
+        // diretorio apenas organiza a visao humana — a decisao usa o horario do arquivo.
+        var purgeCutoff = DateTime.UtcNow - TimeSpan.FromDays(Math.Max(1, configuration.GetValue("Documents:ReconciledPurgeRetentionDays", 30)));
+        var purgedFiles = 0;
+        var purgedBytes = 0L;
+        foreach (var file in SelectReconciledPurgeCandidates(Path.Combine(root, "reconciled"), purgeCutoff))
+        {
+            PurgeFile(file, ref purgedFiles, ref purgedBytes);
+        }
+        if (purgedFiles > 0)
+            logger.LogInformation("Purga de retencao documental: {Count} arquivo(s) somando {Bytes} bytes removidos de reconciliacao apos {Days} dias.", purgedFiles, purgedBytes, Math.Max(1, configuration.GetValue("Documents:ReconciledPurgeRetentionDays", 30)));
+    }
+
+    /// <summary>D-OC39 (Sprint 5/A-1): candidatos a purga em reconciled/ — horario de escrita
+    /// mais velho que o corte (o mes do subdiretorio apenas organiza a visao humana).</summary>
+    public static IEnumerable<string> SelectReconciledPurgeCandidates(string reconciledRoot, DateTime cutoffUtc)
+    {
+        if (!Directory.Exists(reconciledRoot)) yield break;
+        foreach (var file in Directory.EnumerateFiles(reconciledRoot, "*", SearchOption.AllDirectories))
+        {
+            if (File.GetLastWriteTimeUtc(file) < cutoffUtc) yield return file;
+        }
+    }
+
+    private void PurgeFile(string file, ref int count, ref long bytes)
+    {
+        try
+        {
+            var info = new FileInfo(file);
+            var size = info.Length;
+            File.Delete(file);
+            count++;
+            bytes += size;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogWarning(exception, "Purga de retencao documental nao removeu um arquivo (sem expor caminho): {ErrorType}", exception.GetType().Name);
+        }
     }
 
     private void MoveToReconciled(string root, string file, string relativeKey)

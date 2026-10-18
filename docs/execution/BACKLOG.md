@@ -492,3 +492,17 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [ ] CI oficial deste SHA: pendente — branch sem push; nenhum ID de execução inventado.
 - [ ] Aceite humano dos fluxos de atendimento/sino/obrigações: pendente (capturas disponíveis para revisão).
 - [x] Commit único "sem push" fechando a Sprint 4.
+
+## Sprint 5 - segurança e operacional: reautenticação MFA recente, sessões de suporte de plataforma e purga de retenção documental (D-OC39) (19/10/2026)
+
+- [x] F-1: reautenticação MFA recente para operações sensíveis — claims `mfa_enrolled`/`mfa_verified_at` no token, política `RecentMfa` (janela `Identity:RecentAuthMinutes`, padrão 15, explícita nos appsettings da API e da Web); handler isenta não-superadmin, troca forçada de senha e pré-inscrição; aplicada em `change-password`, `mfa/enrollment`, `mfa/enrollment/regenerate` e nas 9 escritas administrativas (membros, papéis, permissões, transferência) + escritas de suporte. API devolve 403 puro (`api.auth.recent_auth_required`); Web redireciona para `/mfa/desafio?returnUrl=` preservando o destino. 22 fatos novos de Domain.
+- [x] F-2: sessões temporárias de suporte de plataforma ponta a ponta — migração **v060** (`extend_support_session` com evento/audit e expiração sem retrocesso + `support_session_tenant_name`, leitura governada que corrige o JOIN direto em `odca.tenants` com RLS FORCADA), API `api/v1/platform/support-sessions` (8 operações; 409 `active_exists`; expiração virtual; `end` dono/admin e `revoke` qualquer superadmin terminais; eventos + auditoria com ator real), Web BFF pt-first `/administracao/suporte-sessoes` com item de navegação e feedback. 8 fatos de integração + 1 de checksum.
+- [x] A-1: purga física da área reconciliada no worker por idade de escrita (`Documents:ReconciledPurgeRetentionDays`, padrão 30 dias) — seleção testável e falha isolada por arquivo sem expor caminho.
+- [x] A-2: prova ao vivo `scripts/qa/validate-d39-s5-web.ps1` **fails=0** (rodada final 22/22 executados; 23 definidos — P0a só em base sem v060; convergência 2→0 registrada; falhas intermediárias classificadas como harness) e capturas CDP `scripts/qa/capture-d39-screens.ps1`: 1 tela × pt-BR × 360/768/1280/1440 + zoom 200% = **ok=5 fail=0** (PNGs fora do repo por tamanho).
+- [x] Doc D-OC39 consolidada e STATUS.md atualizado; `.odca/progress.json` inalterado (sem CI oficial verde nem aceite humano para creditar marco).
+- [ ] Impersonação profunda dentro da janela de suporte (fronteira honesta do F-2) — dívida.
+- [ ] i18n da área de sessões de suporte (pt-first nesta sprint) — dívida.
+- [ ] Fila administrativa de atendimento, privacidade, conteúdo das notificações e `aria-label`s da navegação global (carreados das S3–S4) — dívidas.
+- [ ] CI oficial deste SHA: pendente — branch sem push; nenhum ID de execução inventado.
+- [ ] Aceite humano dos fluxos de reautenticação/suporte e da purga: pendente (capturas disponíveis para revisão).
+- [x] Commit único "sem push" fechando a Sprint 5.

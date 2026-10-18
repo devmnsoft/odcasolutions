@@ -24,6 +24,7 @@
     <ProjectReference Include="..\..\src\Odca.Web\Odca.Web.csproj" />
     <ProjectReference Include="..\..\src\Odca.Api\Odca.Api.csproj" />
     <ProjectReference Include="..\..\src\Odca.Bootstrap\Odca.Bootstrap.csproj" />
+    <ProjectReference Include="..\..\src\Odca.Worker\Odca.Worker.csproj" />
   </ItemGroup>
 
 </Project>

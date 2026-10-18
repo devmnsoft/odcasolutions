@@ -12,10 +12,12 @@ using QRCoder;
 
 namespace Odca.Web.Controllers;
 
-public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContext tenantContext, LocalizationService loc) : Controller
+public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContext tenantContext, LocalizationService loc, IConfiguration configuration) : Controller
 {
     private string? Culture => HttpContext.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] as string;
     private string L(string key, params string[] args) => loc.T(key, Culture, args);
+    // D-OC39 (Sprint 5/F-1): espelho BFF da janela Identity:RecentAuthMinutes (mesma chave da API).
+    private int RecentMfaWindowMinutes => Math.Max(1, configuration.GetValue("Identity:RecentAuthMinutes", 15));
     [AllowAnonymous]
     [HttpGet("entrar")]
     public IActionResult Login(string? returnUrl = null) =>
@@ -187,6 +189,13 @@ public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContex
             {
                 await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                 return RedirectToAction(nameof(Login));
+            }
+
+            // D-OC39 (Sprint 5/F-1): MFA recente obsoleto → desafio com retorno à tela de troca.
+            if (result.Status == ApiCallStatus.Forbidden &&
+                RecentAuthGuard.NeedsFreshChallenge(token, RecentMfaWindowMinutes))
+            {
+                return RedirectToAction(nameof(MfaChallenge), new { returnUrl = Request.Path });
             }
 
             ModelState.AddModelError(string.Empty, result.Status switch

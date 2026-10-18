@@ -22,6 +22,13 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : ITokenServic
             new("security_version", session.SecurityVersion.ToString(CultureInfo.InvariantCulture)),
             new("must_change_password", user.MustChangePassword ? "true" : "false"),
             new("mfa_verified", session.AuthenticationLevel == "mfa" ? "true" : "false"),
+            new("mfa_enrolled", user.MfaConfirmedAt is not null ? "true" : "false"),
+            // D-OC39 (Sprint 5/F-1): instante (unix seconds) em que o MFA foi verificado na
+            // sessao; a politica RecentMfa exige esse valor fresco (dentro da janela
+            // Identity:RecentAuthMinutes) para operacoes sensiveis de superadministrador.
+            new("mfa_verified_at", session.MfaCompletedAt is { } completed
+                ? ((long)completed.ToUnixTimeSeconds()).ToString(CultureInfo.InvariantCulture)
+                : "0"),
             new(ClaimTypes.Name, user.DisplayName),
             new(ClaimTypes.Email, user.Email)
         };

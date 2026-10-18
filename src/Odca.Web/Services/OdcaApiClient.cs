@@ -19,6 +19,7 @@ using Odca.Contracts.DocumentImports;
 using Odca.Contracts.Reviews;
 using Odca.Contracts.Patients;
 using Odca.Contracts.Administration;
+using Odca.Contracts.Support;
 
 namespace Odca.Web.Services;
 
@@ -256,6 +257,14 @@ public sealed partial class OdcaApiClient(HttpClient client, IHttpContextAccesso
             .Select(item => $"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(item.Value!)}"));
         return SendAsync<PlatformAuditPageResponse>(CreateAuthorized(HttpMethod.Get, $"api/v1/platform/audit/events?{encoded}", token), false, ct);
     }
+
+    // D-OC39 (Sprint 5/F-2): sessao temporaria de suporte (plataforma).
+    public Task<ApiCallResult<SupportSessionResponse[]>> GetSupportSessionsAsync(string token,int limit,CancellationToken ct)=>SendAsync<SupportSessionResponse[]>(CreateAuthorized(HttpMethod.Get,$"api/v1/platform/support-sessions?limit={limit}",token),false,ct);
+    public async Task<ApiCallResult<SupportSessionResponse>> OpenSupportSessionAsync(string token,OpenSupportSessionRequest body,CancellationToken ct){using var m=CreateAuthorized(HttpMethod.Post,"api/v1/platform/support-sessions",token);m.Content=JsonContent.Create(body);return await SendAsync<SupportSessionResponse>(m,false,ct);}
+    public async Task<ApiCallResult<SupportSessionResponse>> ExtendSupportSessionAsync(string token,Guid sessionId,ExtendSupportSessionRequest body,CancellationToken ct){using var m=CreateAuthorized(HttpMethod.Post,$"api/v1/platform/support-sessions/{sessionId}/extend",token);m.Content=JsonContent.Create(body);return await SendAsync<SupportSessionResponse>(m,false,ct);}
+    public Task<ApiCallResult<SupportSessionResponse>> EndSupportSessionAsync(string token,Guid sessionId,CancellationToken ct)=>SendAsync<SupportSessionResponse>(CreateAuthorized(HttpMethod.Post,$"api/v1/platform/support-sessions/{sessionId}/end",token),false,ct);
+    public Task<ApiCallResult<SupportSessionResponse>> RevokeSupportSessionAsync(string token,Guid sessionId,CancellationToken ct)=>SendAsync<SupportSessionResponse>(CreateAuthorized(HttpMethod.Post,$"api/v1/platform/support-sessions/{sessionId}/revoke",token),false,ct);
+    public Task<ApiCallResult<SupportSessionEventResponse[]>> GetSupportSessionEventsAsync(string token,Guid sessionId,CancellationToken ct)=>SendAsync<SupportSessionEventResponse[]>(CreateAuthorized(HttpMethod.Get,$"api/v1/platform/support-sessions/{sessionId}/events",token),false,ct);
     public Task<ApiCallResult<RenewalPage>> GetRenewalsAsync(string token,Guid tenantId,DateOnly? from,DateOnly? to,Guid? ownerId,string? contractType,string? counterparty,string? status,string? priority,bool mine,bool withoutOwner,int page,int pageSize,CancellationToken cancellationToken)
     {
         var query=new Dictionary<string,string?> { ["from"]=from?.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture),["to"]=to?.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture),["ownerId"]=ownerId?.ToString(),["contractType"]=contractType,["counterparty"]=counterparty,["status"]=status,["priority"]=priority,["mine"]=mine?"true":null,["withoutOwner"]=withoutOwner?"true":null,["page"]=page.ToString(CultureInfo.InvariantCulture),["pageSize"]=pageSize.ToString(CultureInfo.InvariantCulture)};

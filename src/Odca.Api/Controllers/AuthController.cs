@@ -52,6 +52,8 @@ public sealed class AuthController(
 
     [HttpPost("change-password")]
     [Authorize]
+    // D-OC39 (Sprint 5/F-1): reautenticação recente (isenta o fluxo de troca forçada via must_change_password).
+    [Authorize(Policy = "RecentMfa")]
     public async Task<ActionResult<LoginResponse>> ChangePassword(
         ChangePasswordRequest request,
         CancellationToken cancellationToken)
@@ -91,6 +93,7 @@ public sealed class AuthController(
 
     [HttpPost("mfa/enrollment")]
     [Authorize]
+    [Authorize(Policy = "RecentMfa")]
     public async Task<ActionResult<MfaEnrollmentResponse>> StartMfaEnrollment(CancellationToken cancellationToken)
     {
         if (!TryGetIdentity(out var userId, out var sessionId, out var securityVersion))
@@ -109,6 +112,7 @@ public sealed class AuthController(
 
     [HttpPost("mfa/enrollment/regenerate")]
     [Authorize]
+    [Authorize(Policy = "RecentMfa")]
     public async Task<ActionResult<MfaEnrollmentResponse>> RegenerateMfaEnrollment(CancellationToken cancellationToken)
     {
         if (!TryGetIdentity(out var userId, out var sessionId, out var securityVersion))

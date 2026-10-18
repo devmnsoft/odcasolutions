@@ -8,12 +8,22 @@ using Odca.Web.Services;
 namespace Odca.Web.Controllers;
 
 [Authorize]
-public sealed class OrganizationsController(OdcaApiClient api) : Controller
+public sealed class OrganizationsController(OdcaApiClient api, IConfiguration configuration) : Controller
 {
     private static readonly HashSet<string> MemberActions = new(StringComparer.OrdinalIgnoreCase)
     {
         "block", "unblock", "inactivate", "restore"
     };
+
+    // D-OC39 (Sprint 5/F-1): espelho BFF da janela Identity:RecentAuthMinutes (mesma chave da API).
+    private int RecentMfaWindowMinutes => Math.Max(1, configuration.GetValue("Identity:RecentAuthMinutes", 15));
+
+    /// <summary>D-OC39 (Sprint 5/F-1): quando o 403 veio da exigência de MFA recente (regra local
+    /// idêntica à política da API), redireciona ao desafio MFA preservando o destino original.</summary>
+    private RedirectToActionResult? RecentAuthRedirect(string? token)
+        => RecentAuthGuard.NeedsFreshChallenge(token, RecentMfaWindowMinutes)
+            ? RedirectToAction("MfaChallenge", "Account", new { returnUrl = Request.Path + Request.QueryString })
+            : null;
 
     [HttpGet("organizacoes")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -478,6 +488,15 @@ public sealed class OrganizationsController(OdcaApiClient api) : Controller
             new MemberStatusChangeRequest(reason),
             cancellationToken);
 
+        if (result.Status == ApiCallStatus.Forbidden)
+        {
+            var redirect = RecentAuthRedirect(token);
+            if (redirect is not null)
+            {
+                return redirect;
+            }
+        }
+
         TempData[result.Status == ApiCallStatus.Success ? "Success" : "Error"] =
             result.Status == ApiCallStatus.Success
                 ? MemberActionSuccess(actionName)
@@ -514,6 +533,15 @@ public sealed class OrganizationsController(OdcaApiClient api) : Controller
             new UpdateMemberRolesRequest(model.RoleIds ?? []),
             cancellationToken);
 
+        if (result.Status == ApiCallStatus.Forbidden)
+        {
+            var redirect = RecentAuthRedirect(token);
+            if (redirect is not null)
+            {
+                return redirect;
+            }
+        }
+
         TempData[result.Status == ApiCallStatus.Success ? "Success" : "Error"] =
             result.Status == ApiCallStatus.Success
                 ? "Perfis do membro atualizados."
@@ -547,6 +575,16 @@ public sealed class OrganizationsController(OdcaApiClient api) : Controller
             tenantId,
             new TransferAdministrationRequest(targetUserId, reason),
             cancellationToken);
+
+        if (result.Status == ApiCallStatus.Forbidden)
+        {
+            var redirect = RecentAuthRedirect(token);
+            if (redirect is not null)
+            {
+                return redirect;
+            }
+        }
+
         TempData[result.Status == ApiCallStatus.Success ? "Success" : "Error"] =
             result.Status == ApiCallStatus.Success
                 ? "Administração principal transferida. As sessões das duas pessoas foram encerradas."
