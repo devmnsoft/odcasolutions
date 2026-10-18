@@ -1,66 +1,68 @@
 @model Odca.Web.Models.RenewalDetailViewModel
 @{
-  ViewData["Title"]="Proposta de renovação";
+  ViewData["Title"]=L.T("ren.detail_title",(string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey]);
+  var _c=(string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+  var ci=System.Globalization.CultureInfo.GetCultureInfo(_c ?? "pt-BR");
   var tenantId=ViewData["TenantId"];
   var r=Model.Request;
   System.Func<string,string>StLabel=s=>s switch{
-    "draft"=>"Em preparação","in_review"=>"Em revisão","internally_approved"=>"Aprovada internamente","awaiting_formalization"=>"Aguardando formalização",
-    "formalized"=>"Formalizado","cancelled"=>"Cancelado","conflict"=>"Conflito",_=>s.Replace('_',' ')};
-  System.Func<string,string>AppLabel=s=>s switch{"not_applied"=>"Não aplicada","scheduled"=>"Agendada","applied"=>"Aplicada","failed"=>"Falhou",_=>s.Replace('_',' ')};
-  System.Func<string?,string>PrioLabel=p=>p switch{"low"=>"Baixa","normal"=>"Normal","high"=>"Alta","critical"=>"Crítica",_=>"Não definida"};
-  System.Func<string,string>EvLabel=t=>t switch{"created"=>"Proposta criada","submitted"=>"Encaminhada para revisão","cancelled"=>"Cancelada","manual_formalization"=>"Formalização manual registrada",_=>t.Replace('_',' ')};
-  var kindLabel=r.Kind switch{"amendment"=>"Aditivo","revision"=>"Revisão administrativa",_=>"Renovação"};
+    "draft"=>L.T("ren.st_draft",_c),"in_review"=>L.T("common.status_in_review",_c),"internally_approved"=>L.T("common.status_internally_approved",_c),"awaiting_formalization"=>L.T("ren.st_awaiting_formalization",_c),
+    "formalized"=>L.T("ren.st_formalized",_c),"cancelled"=>L.T("ren.st_cancelled",_c),"conflict"=>L.T("ren.st_conflict",_c),_=>s.Replace('_',' ')};
+  System.Func<string,string>AppLabel=s=>s switch{"not_applied"=>L.T("ren.app_not_applied",_c),"scheduled"=>L.T("ren.app_scheduled",_c),"applied"=>L.T("ren.app_applied",_c),"failed"=>L.T("ren.app_failed",_c),_=>s.Replace('_',' ')};
+  System.Func<string?,string>PrioLabel=p=>p switch{"low"=>L.T("common.prio_low",_c),"normal"=>L.T("common.prio_normal",_c),"high"=>L.T("common.prio_high",_c),"critical"=>L.T("common.prio_critical",_c),_=>L.T("common.prio_undefined",_c)};
+  System.Func<string,string>EvLabel=t=>t switch{"created"=>L.T("ren.ev_created",_c),"submitted"=>L.T("ren.ev_submitted",_c),"cancelled"=>L.T("ren.ev_cancelled",_c),"manual_formalization"=>L.T("ren.ev_manual",_c),_=>t.Replace('_',' ')};
+  var kindLabel=r.Kind switch{"amendment"=>L.T("ren.kind_amendment",_c),"revision"=>L.T("ren.kind_revision",_c),_=>L.T("ren.kind_renewal",_c)};
   var chosenEvidence=r.EvidenceCandidates.FirstOrDefault(x=>x.VersionId==r.EvidenceVersionId);
   var showSubmit=Model.CanSubmit&&r.Status=="draft";
   var showCancel=Model.CanCancel&&!(r.Status=="formalized"||r.Status=="cancelled"||r.Status=="conflict");
   var showFormalize=Model.CanFormalize&&(r.Status=="in_review"||r.Status=="internally_approved"||r.Status=="awaiting_formalization");
   var showApply=Model.CanApply&&r.Status=="formalized"&&(r.ApplicationStatus=="not_applied"||r.ApplicationStatus=="scheduled");
 }
-<header class="renewal-heading"><div><p class="eyebrow">Central de renovações · detalhe da proposta</p><h1>Proposta de renovação</h1><p class="muted">Registro de intenção — o contrato vigente só muda quando a alteração for aplicada.</p></div><a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">Voltar para a central</a></header>
+<header class="renewal-heading"><div><p class="eyebrow">@L.T("ren.detail_eyebrow",_c)</p><h1>@L.T("ren.detail_title",_c)</h1><p class="muted">@L.T("ren.detail_subtitle",_c)</p></div><a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">@L.T("ren.back_to_center",_c)</a></header>
 
 <section class="detail-grid">
  <div class="detail-card">
-  <h2>Dados da proposta</h2>
+  <h2>@L.T("ren.data_title",_c)</h2>
   <dl class="detail-dl">
-   <div><dt>Contrato</dt><dd><a href="/organizacoes/@tenantId/contratos/@r.ContractId">@r.ContractName</a></dd></div>
-   <div><dt>Tipo de alteração</dt><dd>@kindLabel</dd></div>
-   <div><dt>Situação</dt><dd class="status-label">@StLabel(r.Status)</dd></div>
-   <div><dt>Aplicação da vigência</dt><dd>@AppLabel(r.ApplicationStatus)</dd></div>
-   <div><dt>Prioridade</dt><dd>@PrioLabel(r.Priority)</dd></div>
-   <div><dt>Responsável</dt><dd>@(string.IsNullOrWhiteSpace(r.ResponsibleName)?"Não definido":r.ResponsibleName)</dd></div>
-   <div><dt>Motivo</dt><dd>@r.Reason</dd></div>
+   <div><dt>@L.T("common.contract",_c)</dt><dd><a href="/organizacoes/@tenantId/contratos/@r.ContractId">@r.ContractName</a></dd></div>
+   <div><dt>@L.T("ren.kind_dt",_c)</dt><dd>@kindLabel</dd></div>
+   <div><dt>@L.T("common.situation",_c)</dt><dd class="status-label">@StLabel(r.Status)</dd></div>
+   <div><dt>@L.T("ren.application_label",_c)</dt><dd>@AppLabel(r.ApplicationStatus)</dd></div>
+   <div><dt>@L.T("common.priority",_c)</dt><dd>@PrioLabel(r.Priority)</dd></div>
+   <div><dt>@L.T("common.responsible",_c)</dt><dd>@(string.IsNullOrWhiteSpace(r.ResponsibleName)?L.T("common.not_defined",_c):r.ResponsibleName)</dd></div>
+   <div><dt>@L.T("common.reason",_c)</dt><dd>@r.Reason</dd></div>
   </dl>
  </div>
  <div class="detail-card">
-  <h2>Vigência atual × proposta</h2>
-  <table class="detail-table"><thead><tr><th></th><th>Contrato vigente</th><th>Proposto</th></tr></thead><tbody>
-   <tr><td>Início</td><td>@(r.CurrentStartDate?.ToString("dd/MM/yyyy")??"—")</td><td>@(r.ProposedStartDate?.ToString("dd/MM/yyyy")??"Indefinido")</td></tr>
-   <tr><td>Término</td><td>@(r.CurrentEndDate?.ToString("dd/MM/yyyy")??"Prazo indeterminado")</td><td>@(r.ProposedEndDate?.ToString("dd/MM/yyyy")??"Indefinido")</td></tr>
-   <tr><td>Valor</td><td>@(r.CurrentValue?.ToString("C")??"—")</td><td>@(r.ProposedValue?.ToString("C")??"—")</td></tr>
+  <h2>@L.T("ren.vigency_title",_c)</h2>
+  <table class="detail-table"><thead><tr><th></th><th>@L.T("ren.current_contract",_c)</th><th>@L.T("ren.proposed",_c)</th></tr></thead><tbody>
+   <tr><td>@L.T("ren.start_date",_c)</td><td>@(r.CurrentStartDate.HasValue?CulturedTime.Date(r.CurrentStartDate.Value,_c):"—")</td><td>@(r.ProposedStartDate.HasValue?CulturedTime.Date(r.ProposedStartDate.Value,_c):L.T("common.undefined",_c))</td></tr>
+   <tr><td>@L.T("ren.end_date",_c)</td><td>@(r.CurrentEndDate.HasValue?CulturedTime.Date(r.CurrentEndDate.Value,_c):L.T("ren.st_indeterminate",_c))</td><td>@(r.ProposedEndDate.HasValue?CulturedTime.Date(r.ProposedEndDate.Value,_c):L.T("common.undefined",_c))</td></tr>
+   <tr><td>@L.T("ren.amount",_c)</td><td>@(r.CurrentValue?.ToString("N2",ci)??"—")</td><td>@(r.ProposedValue?.ToString("N2",ci)??"—")</td></tr>
   </tbody></table>
   <dl class="detail-dl">
-   <div><dt>Data de efeito da aplicação</dt><dd>@r.EffectiveOn.ToString("dd/MM/yyyy")</dd></div>
-   <div><dt>Versão base do contrato</dt><dd>@r.BaseContractVersion</dd></div>
-   <div><dt>Moeda proposta</dt><dd>@(string.IsNullOrWhiteSpace(r.Currency)?"—":r.Currency)</dd></div>
+   <div><dt>@L.T("ren.effective_on_label",_c)</dt><dd>@CulturedTime.Date(r.EffectiveOn,_c)</dd></div>
+   <div><dt>@L.T("ren.base_version_label",_c)</dt><dd>@r.BaseContractVersion</dd></div>
+   <div><dt>@L.T("ren.currency_label",_c)</dt><dd>@(string.IsNullOrWhiteSpace(r.Currency)?"—":r.Currency)</dd></div>
   </dl>
  </div>
 </section>
 
-@if(r.EvidenceVersionId.HasValue){<section class="detail-card"><h2>Formalização registrada</h2><dl class="detail-dl">
- <div><dt>Data da formalização</dt><dd>@(r.FormalizedAt?.ToString("dd/MM/yyyy")??"—")</dd></div>
- <div><dt>Evidência anexada</dt><dd>@(chosenEvidence is not null?chosenEvidence.DisplayName:r.EvidenceVersionId.ToString())</dd></div>
- <div><dt>Justificativa</dt><dd>@(string.IsNullOrWhiteSpace(r.FormalizationJustification)?"—":r.FormalizationJustification)</dd></div>
+@if(r.EvidenceVersionId.HasValue){<section class="detail-card"><h2>@L.T("ren.formalization_recorded",_c)</h2><dl class="detail-dl">
+ <div><dt>@L.T("ren.formalized_at_label",_c)</dt><dd>@(r.FormalizedAt.HasValue?CulturedTime.Date(r.FormalizedAt.Value,_c):"—")</dd></div>
+ <div><dt>@L.T("ren.evidence_attached",_c)</dt><dd>@(chosenEvidence is not null?chosenEvidence.DisplayName:r.EvidenceVersionId.ToString())</dd></div>
+ <div><dt>@L.T("common.justification",_c)</dt><dd>@(string.IsNullOrWhiteSpace(r.FormalizationJustification)?"—":r.FormalizationJustification)</dd></div>
 </dl></section>}
 
 <section class="detail-actions">
- @if(showSubmit){<form method="post" asp-action="Submit" asp-route-tenantId="@tenantId" asp-route-id="@r.Id" class="inline-form" id="submit-form">@Html.AntiForgeryToken()<input type="hidden" name="rowVersion" value="@r.RowVersion"/><div><strong>Encaminhar para revisão</strong><p class="muted">A proposta sai do rascunho e segue para a revisão existente.</p></div><button type="button" class="button button-primary" data-confirm-open data-confirm-form="submit-form" data-confirm-title="Encaminhar para revisão" data-confirm-body="A proposta sai do rascunho e passa a acompanhar a revisão." data-confirm-action="Encaminhar">Encaminhar para revisão</button></form>}
- @if(showCancel){<form method="post" asp-action="Cancel" asp-route-tenantId="@tenantId" asp-route-id="@r.Id" class="cancel-form" id="cancel-form">@Html.AntiForgeryToken()<input type="hidden" name="rowVersion" value="@r.RowVersion"/><label>Motivo do cancelamento (opcional)<textarea name="reason" rows="2" maxlength="300"></textarea></label><div class="form-actions-row"><button type="submit" class="button button-quiet">Cancelar proposta</button></div></form>}
- @if(showFormalize){<form method="post" asp-action="Formalize" asp-route-tenantId="@tenantId" asp-route-id="@r.Id" class="formalize-form" id="formalize-form">@Html.AntiForgeryToken()<input type="hidden" name="rowVersion" value="@r.RowVersion"/><h2>Registrar formalização manual</h2><label>Evidência segura do contrato<select name="evidenceVersionId" required><option value="">Selecionar versão do documento…</option>@foreach(var ev in r.EvidenceCandidates){<option value="@ev.VersionId">v@ev.VersionNumber · @ev.DisplayName · @ev.SecurityStatus</option>}</select></label>@if(r.EvidenceCandidates.Count==0){<p class="permission-note">Nenhuma evidência com status seguro neste contrato. Registre o documento na ficha antes de formalizar.</p>}<label>Data da formalização<input type="date" name="formalizedOn" required max="@Model.Today.ToString("yyyy-MM-dd")"/></label><label>Justificativa<textarea name="justification" rows="3" required maxlength="500"></textarea></label><div class="form-actions-row"><button type="submit" class="button button-primary">Registrar formalização manual</button></div><p class="permission-note">Formalizar registra a intenção firmada; a vigência só muda quando a alteração for aplicada.</p></form>}
- @if(showApply){<form method="post" asp-action="Apply" asp-route-tenantId="@tenantId" asp-route-requestId="@r.Id" class="inline-form" id="apply-form">@Html.AntiForgeryToken()<input type="hidden" name="rowVersion" value="@r.RowVersion"/><div><strong>Aplicar alteração agora</strong><p class="muted">Isto altera a vigência no contrato. A proposta deixa de ser só intenção.</p></div><button type="button" class="button button-primary" data-confirm-open data-confirm-form="apply-form" data-confirm-title="Aplicar alteração de vigência" data-confirm-body="Isto altera a vigência no contrato. A proposta deixa de ser só intenção." data-confirm-action="Aplicar alteração">Aplicar alteração agora</button></form>}
- @if(!showSubmit&&!showCancel&&!showFormalize&&!showApply){<p class="permission-note">Não há ações disponíveis para esta proposta neste estado e perfil.</p>}
+ @if(showSubmit){<form method="post" asp-action="Submit" asp-route-tenantId="@tenantId" asp-route-id="@r.Id" class="inline-form" id="submit-form">@Html.AntiForgeryToken()<input type="hidden" name="rowVersion" value="@r.RowVersion"/><div><strong>@L.T("ren.submit_title",_c)</strong><p class="muted">@L.T("ren.submit_muted",_c)</p></div><button type="button" class="button button-primary" data-confirm-open data-confirm-form="submit-form" data-confirm-title="@L.T("ren.submit_title",_c)" data-confirm-body="@L.T("ren.submit_confirm_body",_c)" data-confirm-action="@L.T("ren.submit_confirm_action",_c)">@L.T("ren.submit_title",_c)</button></form>}
+ @if(showCancel){<form method="post" asp-action="Cancel" asp-route-tenantId="@tenantId" asp-route-id="@r.Id" class="cancel-form" id="cancel-form">@Html.AntiForgeryToken()<input type="hidden" name="rowVersion" value="@r.RowVersion"/><label>@L.T("ren.cancel_reason_label",_c)<textarea name="reason" rows="2" maxlength="300"></textarea></label><div class="form-actions-row"><button type="submit" class="button button-quiet">@L.T("ren.cancel_button",_c)</button></div></form>}
+ @if(showFormalize){<form method="post" asp-action="Formalize" asp-route-tenantId="@tenantId" asp-route-id="@r.Id" class="formalize-form" id="formalize-form">@Html.AntiForgeryToken()<input type="hidden" name="rowVersion" value="@r.RowVersion"/><h2>@L.T("ren.formalize_title",_c)</h2><label>@L.T("ren.formalize_evidence_label",_c)<select name="evidenceVersionId" required><option value="">@L.T("ren.formalize_evidence_placeholder",_c)</option>@foreach(var ev in r.EvidenceCandidates){<option value="@ev.VersionId">v@ev.VersionNumber · @ev.DisplayName · @ev.SecurityStatus</option>}</select></label>@if(r.EvidenceCandidates.Count==0){<p class="permission-note">@L.T("ren.formalize_no_evidence",_c)</p>}<label>@L.T("ren.formalized_at_label",_c)<input type="date" name="formalizedOn" required max="@Model.Today.ToString("yyyy-MM-dd")"/></label><label>@L.T("common.justification",_c)<textarea name="justification" rows="3" required maxlength="500"></textarea></label><div class="form-actions-row"><button type="submit" class="button button-primary">@L.T("ren.formalize_title",_c)</button></div><p class="permission-note">@L.T("ren.formalize_note",_c)</p></form>}
+ @if(showApply){<form method="post" asp-action="Apply" asp-route-tenantId="@tenantId" asp-route-requestId="@r.Id" class="inline-form" id="apply-form">@Html.AntiForgeryToken()<input type="hidden" name="rowVersion" value="@r.RowVersion"/><div><strong>@L.T("ren.apply_now",_c)</strong><p class="muted">@L.T("ren.apply_now_muted",_c)</p></div><button type="button" class="button button-primary" data-confirm-open data-confirm-form="apply-form" data-confirm-title="@L.T("ren.apply_confirm_title",_c)" data-confirm-body="@L.T("ren.apply_now_muted",_c)" data-confirm-action="@L.T("ren.apply_button",_c)">@L.T("ren.apply_now",_c)</button></form>}
+ @if(!showSubmit&&!showCancel&&!showFormalize&&!showApply){<p class="permission-note">@L.T("ren.no_actions",_c)</p>}
 </section>
 
-<section class="detail-card"><h2>Histórico da proposta</h2>
-@if(r.Events.Count==0){<p class="muted">Sem eventos registrados.</p>}
-else{<ol class="timeline">@foreach(var e in r.Events){<li><strong>@EvLabel(e.EventType)</strong><span>@e.OccurredAt.ToString("dd/MM/yyyy HH:mm") · @(string.IsNullOrWhiteSpace(e.ActorName)?"Sistema":e.ActorName)</span></li>}</ol>}
+<section class="detail-card"><h2>@L.T("ren.history_title",_c)</h2>
+@if(r.Events.Count==0){<p class="muted">@L.T("ren.history_empty",_c)</p>}
+else{<ol class="timeline">@foreach(var e in r.Events){<li><strong>@EvLabel(e.EventType)</strong><span>@CulturedTime.DateTime(e.OccurredAt,_c) · @(string.IsNullOrWhiteSpace(e.ActorName)?L.T("common.system",_c):e.ActorName)</span></li>}</ol>}
 </section>

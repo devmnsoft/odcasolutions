@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Odca.Configuration.Localization;
 using Odca.Web.Services;
 
 namespace Odca.Web.Controllers;
@@ -11,8 +12,12 @@ namespace Odca.Web.Controllers;
 /// </summary>
 [Authorize]
 [Route("organizacoes/{tenantId:guid}/acoes")]
-public sealed class ActionsController(OdcaApiClient api) : Controller
+public sealed class ActionsController(OdcaApiClient api, LocalizationService loc) : Controller
 {
+    // D-OC47 (S13): cultura canônica via CultureMiddleware e mensagens do BFF localizadas.
+    private string? Culture => HttpContext.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] as string;
+    private string L(string key, params string[] args) => loc.T(key, Culture, args);
+
     [HttpGet("")]
     public async Task<IActionResult> Index(
         Guid tenantId,
@@ -21,7 +26,7 @@ public sealed class ActionsController(OdcaApiClient api) : Controller
         int page = 1,
         CancellationToken ct = default)
     {
-        ViewData["Title"] = "Central de Ações";
+        ViewData["Title"] = L("actions.title");
         ViewData["TenantId"] = tenantId;
         var token = await HttpContext.GetTokenAsync("access_token");
         if (token is null) return Challenge();
@@ -32,7 +37,7 @@ public sealed class ActionsController(OdcaApiClient api) : Controller
         if (!result.Succeeded || result.Value is null)
             return View(new ActionCenterViewModel
             {
-                Error = result.UserMessage("Não foi possível carregar a central de ações."),
+                Error = result.UserMessage(L("actions.msg_load_fail")),
                 Scope = scope,
                 Source = source,
                 Page = page,

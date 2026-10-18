@@ -122,7 +122,8 @@ if ([string]$T -ne '20000000-0000-4000-8000-000000000001') { Write-Host ('TENANT
 # S7: documentos/obrigacoes/privacidade em 4 idiomas (nova cobr.) + regressao das rotas do piloto.
 # S8 (D-OC42): + contratos (lista), ficha do contrato (contrato fixo da prova ...201) e agenda
 # (cliente, 4 idiomas) + notificacoes da plataforma (superadmin, pt-BR).
-# 51 par (rota x idioma) x 4 viewports = 204 medidas previstas.
+# S13 (D-OC47): + renovacoes, solicitacoes (revisoes) e acoes do cliente em 4 idiomas.
+# 63 par (rota x idioma) x 4 viewports = 252 medidas previstas.
 $cfgObj = [ordered]@{
   base = 'http://localhost:5144'
   outDir = $outDir
@@ -149,12 +150,15 @@ $cfgObj = [ordered]@{
     [ordered]@{ id = 'auditoria';          path = '/administracao/auditoria';            session = 'superadmin'; langs = @('pt-BR') },
     [ordered]@{ id = 'contratos';          path = '/organizacoes/' + $T + '/contratos';  session = 'cliente';    langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
     [ordered]@{ id = 'ficha-contrato';     path = '/organizacoes/' + $T + '/contratos/76000000-0000-0000-0000-000000000201'; session = 'cliente'; langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
-    [ordered]@{ id = 'agenda';             path = '/organizacoes/' + $T + '/agenda';     session = 'cliente';    langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') }
+    [ordered]@{ id = 'agenda';             path = '/organizacoes/' + $T + '/agenda';     session = 'cliente';    langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'renovacoes';         path = '/organizacoes/' + $T + '/renovacoes'; session = 'cliente';    langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'solicitacoes';       path = '/organizacoes/' + $T + '/solicitacoes'; session = 'cliente';  langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'acoes';              path = '/organizacoes/' + $T + '/acoes';      session = 'cliente';    langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') }
   )
 }
 $cfgFile = Join-Path $logDir 'd41-audit-cfg.json'
 Set-Content -Path $cfgFile -Value ($cfgObj | ConvertTo-Json -Depth 10) -Encoding utf8
-LogEv 'AUDIT: 17 rotas x idiomas x 4 viewports (204 medidas previstas); PNG apenas de falhas em ' + $outDir
+LogEv 'AUDIT: 20 rotas x idiomas x 4 viewports (252 medidas previstas); PNG apenas de falhas em ' + $outDir
 
 # ---------- execucao ----------
 $driver = Join-Path $root 'scripts\qa\cdp-design-audit.mjs'

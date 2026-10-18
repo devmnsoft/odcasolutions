@@ -6,7 +6,7 @@
 }
 <header class="renewal-heading">
     <div>
-        <p class="eyebrow">Operações</p>
+        <p class="eyebrow">@L.T("common.operations", _culture)</p>
         <h1>@L.T("actions.title", _culture)</h1>
         <p class="muted">@L.T("actions.subtitle", _culture)</p>
     </div>
@@ -20,7 +20,7 @@
 @if (ac is not null)
 {
     <!-- Summary cards -->
-    <section class="inbox-summary-cards" aria-label="Resumo por categoria">
+    <section class="inbox-summary-cards" aria-label="@L.T("actions.aria_summary", _culture)">
         <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-scope="@Model.Scope" class="@(Model.Source is null ? "" : "")">
             <strong>@ac.Overdue.Count</strong><span>@L.T("actions.overdue", _culture)</span>
         </a>
@@ -33,26 +33,26 @@
 
     <!-- Filters -->
     <details class="filter-panel" open>
-        <summary>Filtros</summary>
+        <summary>@L.T("common.filters", _culture)</summary>
         <form method="get" class="renewal-filters">
-            <label>Escopo
+            <label>@L.T("inbox.scope", _culture)
                 <select name="scope">
                     <option value="mine" selected="@(Model.Scope=="mine")">@L.T("inbox.scope_mine", _culture)</option>
                     <option value="organization" selected="@(Model.Scope=="organization")">@L.T("inbox.scope_org", _culture)</option>
                 </select>
             </label>
-            <label>Fonte
+            <label>@L.T("actions.source_label", _culture)
                 <select name="source">
-                    <option value="">Todas</option>
-                    <option value="obligation" selected="@(Model.Source=="obligation")">Obrigações</option>
-                    <option value="renewal" selected="@(Model.Source=="renewal")">Alterações</option>
-                    <option value="solicitation" selected="@(Model.Source=="solicitation")">Solicitações</option>
-                    <option value="signature" selected="@(Model.Source=="signature")">Assinaturas</option>
-                    <option value="contract" selected="@(Model.Source=="contract")">Contratos</option>
+                    <option value="">@L.T("common.all", _culture)</option>
+                    <option value="obligation" selected="@(Model.Source=="obligation")">@L.T("actions.src_obligations", _culture)</option>
+                    <option value="renewal" selected="@(Model.Source=="renewal")">@L.T("actions.src_renewals", _culture)</option>
+                    <option value="solicitation" selected="@(Model.Source=="solicitation")">@L.T("actions.src_solicitations", _culture)</option>
+                    <option value="signature" selected="@(Model.Source=="signature")">@L.T("actions.src_signatures", _culture)</option>
+                    <option value="contract" selected="@(Model.Source=="contract")">@L.T("actions.src_contracts", _culture)</option>
                 </select>
             </label>
-            <button class="button button-primary" type="submit">Aplicar</button>
-            <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">Limpar</a>
+            <button class="button button-primary" type="submit">@L.T("common.apply", _culture)</button>
+            <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId">@L.T("common.clear", _culture)</a>
         </form>
     </details>
 
@@ -89,22 +89,22 @@
                 };
                 var sourceLabel = item.SourceType switch
                 {
-                    "obligation" => "Obrigação",
-                    "renewal" => "Alteração",
-                    "solicitation" => "Solicitação",
-                    "signature" => "Assinatura",
-                    "contract" => "Contrato",
+                    "obligation" => L.T("common.obligation", _culture),
+                    "renewal" => L.T("actions.srct_renewal", _culture),
+                    "solicitation" => L.T("actions.srct_solicitation", _culture),
+                    "signature" => L.T("actions.srct_signature", _culture),
+                    "contract" => L.T("common.contract", _culture),
                     _ => item.SourceType
                 };
                 <article class="renewal-row">
                     <div>
                         <span class="status-label">@sourceLabel · @catLabel @(item.Priority == "critical" ? "⚠" : "")</span>
                         <h3>@item.Context</h3>
-                        <p>@(item.Reason ?? "") @(item.Responsible != null ? "· Resp: " + item.Responsible : "")</p>
+                        <p>@(item.Reason ?? "") @(item.Responsible != null ? L.T("actions.responsible_inline", _culture, item.Responsible) : "")</p>
                     </div>
                     <dl>
-                        <div><dt>Prazo</dt><dd>@(item.Deadline?.ToString("dd/MM/yyyy") ?? "—")</dd></div>
-                        <div><dt>Ação</dt><dd>@item.NextAction</dd></div>
+                        <div><dt>@L.T("common.due_date", _culture)</dt><dd>@(item.Deadline.HasValue ? CulturedTime.Date(item.Deadline.Value, _culture) : "—")</dd></div>
+                        <div><dt>@L.T("actions.item_action", _culture)</dt><dd>@item.NextAction</dd></div>
                     </dl>
                 </article>
             }
@@ -114,9 +114,9 @@
     <!-- Pagination -->
     @if (Model.Page * 25 < ac.Total)
     {
-        <nav class="pagination" aria-label="Paginação">
-            <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-scope="@Model.Scope" asp-route-source="@Model.Source" asp-route-page="@(Model.Page + 1)">Próxima →</a>
-            <span>Página @Model.Page de @((int)Math.Ceiling(ac.Total / 25.0))</span>
+        <nav class="pagination" aria-label="@L.T("common.pagination_aria", _culture)">
+            <a asp-action="Index" asp-route-tenantId="@tenantId" asp-route-scope="@Model.Scope" asp-route-source="@Model.Source" asp-route-page="@(Model.Page + 1)">@L.T("common.next", _culture) →</a>
+            <span>@L.T("common.page_of", _culture, Model.Page.ToString(), ((int)Math.Ceiling(ac.Total / 25.0)).ToString())</span>
         </nav>
     }
 }
