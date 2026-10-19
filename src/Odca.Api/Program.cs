@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Odca.AI;
 using Odca.Application.Identity;
 using Odca.Infrastructure;
 using Odca.Infrastructure.Database;
@@ -52,6 +53,8 @@ builder.Services.AddProblemDetails(options =>
     };
 });
 builder.Services.AddControllers();
+// D-OC52 (Sprint 18): análise IA com provedor configurável (seção "Ai") e fallback honesto.
+builder.Services.AddOdcaAi(builder.Configuration);
 builder.Services.AddTransient<OrganizationFeatureGate>();
 // O ReleaseFeatureGate implementa IMiddleware e é resolvido pelo container, então precisa de registro explícito.
 builder.Services.AddTransient<ReleaseFeatureGate>();

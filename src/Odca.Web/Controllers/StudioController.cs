@@ -587,6 +587,25 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         return StatusCode(r.Status == ApiCallStatus.Conflict ? 409 : 422, new { title = r.ErrorTitle, detail = r.ErrorDetail });
     }
 
+    // D-OC52 (Sprint 18): análise IA do documento por versão exata — o contrato é resolvido do
+    // rascunho no servidor, como na extração; indisponibilidade de provedor/vínculo responde 200
+    // com available=false (estado declarado, nunca erro inventado).
+    [HttpGet("minutas/{draftId:guid}/documentos/{documentId:guid}/versoes/{versionId:guid}/analise-ia")]
+    public async Task<IActionResult> DocumentAiAnalysis(Guid tenantId, Guid draftId, Guid documentId, Guid versionId, CancellationToken ct)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Unauthorized();
+        var draft = await api.GetStudioDraftAsync(token, tenantId, draftId, ct);
+        if (!draft.Succeeded) return draft.Status == ApiCallStatus.NotFound ? NotFound() : StatusCode(422, new { title = draft.ErrorTitle });
+        var r = await api.GetDocumentAiAnalysisAsync(token, tenantId, draft.Value!.ContractId, documentId, versionId, ct);
+        if (r.Succeeded) return Json(r.Value);
+        if (r.Status == ApiCallStatus.NotFound) return NotFound();
+        if (r.Status == ApiCallStatus.Forbidden) return Forbid();
+        // 503 do gate de liberação chega como Unavailable: preserva o título/detalhe localizados.
+        if (r.Status == ApiCallStatus.Unavailable || r.Status == ApiCallStatus.Timeout)
+            return StatusCode(503, new { title = r.ErrorTitle, detail = r.ErrorDetail });
+        return StatusCode(422, new { title = r.ErrorTitle, detail = r.ErrorDetail });
+    }
+
     [HttpPost("minutas/{draftId:guid}/aplicar-extracao")]
     public async Task<IActionResult> ApplyExtraction(Guid tenantId, Guid draftId, [FromBody] ApplyDraftExtractionRequest request, CancellationToken ct)
     {

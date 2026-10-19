@@ -96,6 +96,9 @@
           "Microsoft.IdentityModel.Tokens": "8.23.0"
         }
       },
+      "odca.ai": {
+        "type": "Project"
+      },
       "odca.application": {
         "type": "Project",
         "dependencies": {

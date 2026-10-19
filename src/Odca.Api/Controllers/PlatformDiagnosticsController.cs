@@ -187,7 +187,15 @@ public sealed class PlatformDiagnosticsController(NpgsqlDataSource dataSource, I
                 dependencies.Add(new PlatformDiagnosticsDependency("notifications.transport", "Notifications:", "unavailable", "nenhum provedor de transporte configurado (FilePickup ou SMTP)."));
             }
 
-            // 8) Envelope de assinatura externa: dependência conhecida e pendente de decisão de
+            // 8) D-OC52 (Sprint 18): provedor de análise IA — configurado ou fallback honesto.
+            var aiProvider = string.IsNullOrWhiteSpace(configuration["Ai:Provider"]) ? "none" : configuration["Ai:Provider"]!.Trim().ToLowerInvariant();
+            var aiModelLabel = string.IsNullOrWhiteSpace(configuration["Ai:Model"]) ? "não informado" : configuration["Ai:Model"]!;
+            if (aiProvider == "http" && !string.IsNullOrWhiteSpace(configuration["Ai:Endpoint"]) && !string.IsNullOrWhiteSpace(configuration["Ai:ApiKey"]))
+            dependencies.Add(new PlatformDiagnosticsDependency("ai.provider", "Ai:Endpoint", "configured", $"provedor http configurado (modelo {aiModelLabel}); chamadas sob demanda, sem sonda automática."));
+            else
+                dependencies.Add(new PlatformDiagnosticsDependency("ai.provider", "Ai:Provider", "not_applicable", "nenhum provedor configurado; a interface exibe o estado de indisponibilidade com transparência."));
+
+            // 9) Envelope de assinatura externa: dependência conhecida e pendente de decisão de
             // fornecedor — exibida como indisponível com a decisão registrada (DECISIONS-LOG).
             dependencies.Add(new PlatformDiagnosticsDependency("signatures.external-envelope", "—", "unavailable", "fornecedor externo não escolhido para a estreia; decisão registrada em DECISIONS-LOG."));
         }

@@ -32,7 +32,7 @@ for (const file of deltaFiles) {
     fail(`JSON inválido em ${file}: ${e.message}`);
   }
   for (const [key, values] of Object.entries(parsed)) {
-    if (!/^[a-z][a-z0-9]*(\.[a-z0-9_\-]+)+$/i.test(key)) fail(`chave com formato inesperado: ${key} em ${file}`);
+    if (!/^\p{L}[\p{L}\p{N}_\-]*(\.[\p{L}\p{N}_\-]+)*$/u.test(key)) fail(`chave com formato inesperado: ${key} em ${file}`);
     for (const culture of cultures) {
       if (typeof values[culture] !== 'string' || values[culture].length === 0) {
         fail(`valor vazio ou ausente: ${key}[${culture}] em ${file}`);

@@ -22,5 +22,13 @@
     "MalwareScannerExecutable": "clamscan",
     "PdfTextExecutable": "pdftotext",
     "OcrExecutable": "tesseract"
+  },
+  "Ai": {
+    "Provider": "none",
+    "Endpoint": "",
+    "ApiKey": "<chave-do-provedor-fora-do-Git>",
+    "Model": "",
+    "TimeoutSeconds": 20,
+    "MaxInputChars": 24000
   }
 }

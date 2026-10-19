@@ -6,18 +6,20 @@ namespace Odca.Api;
 
 /// <summary>
 /// Bloqueia no servidor os recursos que não devem estar disponíveis neste ciclo de liberação
-/// (jornada documental MVP): importações de contratos, envio de arquivos para contratos e a
-/// extração automática de dados (OCR). O bloqueio é por versão, não por organização, plano ou
-/// permissão, e é controlado pela seção "Features" da configuração da API. Falha fechado: sem
-/// habilitação explícita em "true", o recurso responde 503 problem+json antes de qualquer regra
-/// de suspensão, módulo, franquia ou permissão. Consultas de leitura fora dessas superfícies
-/// (listas, download de versões já aprovadas) permanecem disponíveis.
+/// (jornada documental MVP): importações de contratos, envio de arquivos para contratos, a
+/// extração automática de dados (OCR) e a análise com inteligência artificial. O bloqueio é por
+/// versão, não por organização, plano ou permissão, e é controlado pela seção "Features" da
+/// configuração da API. Falha fechado: sem habilitação explícita em "true", o recurso responde
+/// 503 problem+json antes de qualquer regra de suspensão, módulo, franquia ou permissão.
+/// Consultas de leitura fora dessas superfícies (listas, download de versões já aprovadas)
+/// permanecem disponíveis.
 /// </summary>
 public sealed class ReleaseFeatureGate(IConfiguration configuration) : IMiddleware
 {
     public const string ContractImports = "ContractImports";
     public const string DocumentUpload = "DocumentUpload";
     public const string OcrExtraction = "OcrExtraction";
+    public const string AiAnalysis = "AiAnalysis";
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
@@ -45,6 +47,7 @@ public sealed class ReleaseFeatureGate(IConfiguration configuration) : IMiddlewa
             {
                 ContractImports => localizer.T("api.gate.release_imports", culture),
                 DocumentUpload => localizer.T("api.gate.release_document_upload", culture),
+                AiAnalysis => localizer.T("api.gate.release_ai", culture),
                 _ => localizer.T("api.gate.release_ocr", culture)
             },
             status = StatusCodes.Status503ServiceUnavailable,
@@ -54,7 +57,7 @@ public sealed class ReleaseFeatureGate(IConfiguration configuration) : IMiddlewa
         });
     }
 
-    private static bool TryResolveFeature(string? path, string method, out string feature)
+    internal static bool TryResolveFeature(string? path, string method, out string feature)
     {
         feature = string.Empty;
         if (string.IsNullOrEmpty(path))
@@ -95,6 +98,12 @@ public sealed class ReleaseFeatureGate(IConfiguration configuration) : IMiddlewa
             if (segments.Any(segment => segment == "extractions"))
             {
                 feature = OcrExtraction;
+                return true;
+            }
+
+            if (segments.Length >= 7 && segments[4] == "versions" && segments[6] == "ai-analysis")
+            {
+                feature = AiAnalysis;
                 return true;
             }
 

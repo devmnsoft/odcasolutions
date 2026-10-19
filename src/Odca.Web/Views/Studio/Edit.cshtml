@@ -35,6 +35,7 @@
      data-upload-url="@Url.Action("UploadDocument",new{tenantId,draftId=Model.Id})"
      data-extract-url="@Url.Action("ExtractDocument",new{tenantId,draftId=Model.Id})"
      data-extraction-base="/organizacoes/@tenantId/estudio/minutas/@Model.Id/extracao/"
+     data-ai-base="/organizacoes/@tenantId/estudio/minutas/@Model.Id/documentos/"
      data-apply-extraction-url="@Url.Action("ApplyExtraction",new{tenantId,draftId=Model.Id})">
     <header class="studio-head">
         <div><p class="eyebrow">@L.T("studio.e_studio_eyebrow",_culture)</p><h1>@Model.Title</h1><span class="status-chip">@L.T("studio.e_status_editing",_culture)</span></div>

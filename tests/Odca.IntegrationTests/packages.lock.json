@@ -494,11 +494,15 @@
           "xunit.extensibility.core": "[2.9.3]"
         }
       },
+      "odca.ai": {
+        "type": "Project"
+      },
       "odca.api": {
         "type": "Project",
         "dependencies": {
           "Microsoft.AspNetCore.Authentication.JwtBearer": "[10.0.12, )",
           "Microsoft.AspNetCore.OpenApi": "[10.0.12, )",
+          "Odca.AI": "[1.0.0, )",
           "Odca.Application": "[1.0.0, )",
           "Odca.Configuration": "[1.0.0, )",
           "Odca.Contracts": "[1.0.0, )",

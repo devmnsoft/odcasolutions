@@ -125,6 +125,10 @@ public sealed partial class OdcaApiClient(HttpClient client, IHttpContextAccesso
     public Task<ApiCallResult<JsonElement>> GetDocumentExtractionAsync(string token, Guid tenantId, Guid contractId, Guid extractionId, CancellationToken ct) =>
         SendAsync<JsonElement>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contracts/{contractId}/documents/extractions/{extractionId}", token), false, ct);
 
+    // D-OC52 (Sprint 18): análise IA por versão exata do documento (texto extraído da versão).
+    public Task<ApiCallResult<JsonElement>> GetDocumentAiAnalysisAsync(string token, Guid tenantId, Guid contractId, Guid documentId, Guid versionId, CancellationToken ct) =>
+        SendAsync<JsonElement>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contracts/{contractId}/documents/{documentId}/versions/{versionId}/ai-analysis", token), false, ct);
+
     public async Task<ApiCallResult<JsonElement>> ApplyDraftExtractionAsync(string token, Guid tenantId, Guid draftId, ApplyDraftExtractionRequest request, CancellationToken ct)
     {
         using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/apply-extraction", token);
