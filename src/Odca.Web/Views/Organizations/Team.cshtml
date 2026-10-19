@@ -1,6 +1,7 @@
 @model TeamPageViewModel
 @{
-    ViewData["Title"] = "Equipe e perfis";
+    ViewData["Title"] = L.T("org.team_title", (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey]);
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
     var org = Model.Organization;
     var members = Model.Members;
     var invitations = Model.Invitations;
@@ -10,15 +11,15 @@
 <section class="page-heading">
     <div>
         <span class="eyebrow">@org.Name</span>
-        <h1>Central da equipe</h1>
-        <p>Vínculos, convites e perfis válidos somente nesta organização.</p>
+        <h1>@L.T("org.team_h1", _c)</h1>
+        <p>@L.T("org.team_subtitle", _c)</p>
     </div>
     <div class="toolbar">
         @if (Model.CanManageOrganization)
         {
-            <a class="button" asp-action="Edit" asp-route-tenantId="@org.Id">Editar organização</a>
+            <a class="button" asp-action="Edit" asp-route-tenantId="@org.Id">@L.T("org.edit_org", _c)</a>
         }
-        <a class="button" asp-action="Index">Trocar organização</a>
+        <a class="button" asp-action="Index">@L.T("org.switch_org", _c)</a>
     </div>
 </section>
 
@@ -33,40 +34,40 @@
 
 @if (Model.Overview is not null)
 {
-    <div class="metrics team-overview" aria-label="Resumo de membros, convites e vagas">
-        <div class="metric"><span>Membros ativos</span><strong>@Model.Overview.ActiveMembers</strong><small>vagas ocupadas por pessoas</small></div>
-        <div class="metric"><span>Convites válidos</span><strong>@Model.Overview.ValidInvitations</strong><small>vagas temporariamente reservadas</small></div>
-        <div class="metric"><span>Vagas disponíveis</span><strong>@Model.Overview.AvailableSeats</strong><small>de @Model.Overview.SeatLimit no plano atual</small></div>
-        <div class="metric"><span>Vagas ocupadas</span><strong>@((long)Model.Overview.ActiveMembers + Model.Overview.ValidInvitations)</strong><small>membros e convites válidos</small></div>
+    <div class="metrics team-overview" aria-label="@L.T("org.metrics_aria", _c)">
+        <div class="metric"><span>@L.T("org.m_active_members", _c)</span><strong>@Model.Overview.ActiveMembers</strong><small>@L.T("org.m_active_members_sub", _c)</small></div>
+        <div class="metric"><span>@L.T("org.m_valid_invitations", _c)</span><strong>@Model.Overview.ValidInvitations</strong><small>@L.T("org.m_valid_invitations_sub", _c)</small></div>
+        <div class="metric"><span>@L.T("org.m_available_seats", _c)</span><strong>@Model.Overview.AvailableSeats</strong><small>@L.T("org.m_available_seats_sub", _c, Model.Overview.SeatLimit.ToString(System.Globalization.CultureInfo.InvariantCulture))</small></div>
+        <div class="metric"><span>@L.T("org.m_used_seats", _c)</span><strong>@((long)Model.Overview.ActiveMembers + Model.Overview.ValidInvitations)</strong><small>@L.T("org.m_used_seats_sub", _c)</small></div>
     </div>
 }
 else if (Model.OverviewLoadFailed)
 {
     <div class="overview-error" role="alert">
-        <div><strong>Não foi possível carregar o resumo.</strong><span>Tente novamente; as listas da equipe continuam disponíveis.</span></div>
-        <a class="button" asp-action="Team" asp-route-tenantId="@org.Id" asp-route-tab="@Model.Tab">Tentar novamente</a>
+        <div><strong>@L.T("org.overview_error", _c)</strong><span>@L.T("org.overview_error_hint", _c)</span></div>
+        <a class="button" asp-action="Team" asp-route-tenantId="@org.Id" asp-route-tab="@Model.Tab">@L.T("org.retry", _c)</a>
     </div>
 }
 
 <div class="toolbar">
-    <nav class="tabs" aria-label="Seções da equipe">
+    <nav class="tabs" aria-label="@L.T("org.tabs_aria", _c)">
         <a class="tab @(Model.Tab == "pessoas" ? "active" : null)"
            asp-action="Team" asp-route-tenantId="@org.Id" asp-route-tab="pessoas"
            asp-route-search="@Model.Search" asp-route-status="@Model.Status" asp-route-page="1"
-           aria-current="@(Model.Tab == "pessoas" ? "page" : null)">Pessoas</a>
+           aria-current="@(Model.Tab == "pessoas" ? "page" : null)">@L.T("org.tab_people", _c)</a>
         <a class="tab @(Model.Tab == "convites" ? "active" : null)"
            asp-action="Team" asp-route-tenantId="@org.Id" asp-route-tab="convites"
            asp-route-invitationStatus="@Model.InvitationStatus" asp-route-page="1"
-           aria-current="@(Model.Tab == "convites" ? "page" : null)">Convites</a>
+           aria-current="@(Model.Tab == "convites" ? "page" : null)">@L.T("org.tab_invitations", _c)</a>
         <a class="tab @(Model.Tab == "perfis" ? "active" : null)"
            asp-action="Team" asp-route-tenantId="@org.Id" asp-route-tab="perfis"
-           aria-current="@(Model.Tab == "perfis" ? "page" : null)">Perfis</a>
+           aria-current="@(Model.Tab == "perfis" ? "page" : null)">@L.T("org.tab_roles", _c)</a>
     </nav>
     @if (Model.CanManageTeam)
     {
         <div class="toolbar">
-            <button class="button button-primary" type="button" data-open-panel="invite">Convidar pessoa</button>
-            <button class="button" type="button" data-open-panel="role">Novo perfil</button>
+            <button class="button button-primary" type="button" data-open-panel="invite">@L.T("org.invite_person", _c)</button>
+            <button class="button" type="button" data-open-panel="role">@L.T("org.new_role", _c)</button>
         </div>
     }
 </div>
@@ -76,27 +77,27 @@ else if (Model.OverviewLoadFailed)
     <section class="card">
         <form method="get" class="form-inline toolbar" action="@Url.Action("Team", new { tenantId = org.Id })">
             <input type="hidden" name="tab" value="pessoas" />
-            <label>Buscar<input name="search" value="@Model.Search" placeholder="Nome ou e-mail" /></label>
-            <label>Estado
+            <label>@L.T("org.search_label", _c)<input name="search" value="@Model.Search" placeholder="@L.T("org.search_placeholder", _c)" /></label>
+            <label>@L.T("common.state", _c)
                 <select name="status">
-                    <option value="">Todos</option>
-                    <option value="active" selected="@(Model.Status == "active")">Ativo</option>
-                    <option value="blocked" selected="@(Model.Status == "blocked")">Bloqueado</option>
-                    <option value="inactive" selected="@(Model.Status == "inactive")">Inativo</option>
+                    <option value="">@L.T("obl.status_all", _c)</option>
+                    <option value="active" selected="@(Model.Status == "active")">@L.T("org.mem_active", _c)</option>
+                    <option value="blocked" selected="@(Model.Status == "blocked")">@L.T("org.mem_blocked", _c)</option>
+                    <option value="inactive" selected="@(Model.Status == "inactive")">@L.T("org.mem_inactive", _c)</option>
                 </select>
             </label>
-            <button class="button" type="submit">Filtrar</button>
+            <button class="button" type="submit">@L.T("action.filter", _c)</button>
         </form>
-        <p class="muted">Bloquear suspende o acesso mantendo o vínculo. Inativar remove o membro da contagem de assentos ativos.</p>
+        <p class="muted">@L.T("org.filter_note", _c)</p>
         <div class="table-wrap">
             <table>
                 <thead>
-                    <tr><th>Nome</th><th>E-mail</th><th>Estado</th><th>Perfis</th><th>Ações</th></tr>
+                    <tr><th>@L.T("org.th_name", _c)</th><th>@L.T("org.th_email", _c)</th><th>@L.T("common.state", _c)</th><th>@L.T("org.tab_roles", _c)</th><th>@L.T("common.actions", _c)</th></tr>
                 </thead>
                 <tbody>
                 @if (members is null || members.Items.Count == 0)
                 {
-                    <tr><td colspan="5"><div class="empty-state"><h2>Nenhuma pessoa encontrada</h2><p>Ajuste a busca ou convide alguém para esta organização.</p></div></td></tr>
+                    <tr><td colspan="5"><div class="empty-state"><h2>@L.T("org.empty_people_title", _c)</h2><p>@L.T("org.empty_people_body", _c)</p></div></td></tr>
                 }
                 else
                 {
@@ -105,13 +106,13 @@ else if (Model.OverviewLoadFailed)
                         <tr>
                             <td>@member.Name</td>
                             <td>@member.Email</td>
-                            <td><span class="@TenancyDisplay.MemberStatusClass(member.Status)">@TenancyDisplay.MemberStatus(member.Status)</span></td>
+                            <td><span class="@TenancyDisplay.MemberStatusClass(member.Status)">@TenancyDisplay.MemberStatus(member.Status, k => L.T(k, _c))</span></td>
                             <td>@(member.Roles.Length == 0 ? "—" : string.Join(", ", member.Roles))</td>
                             <td>
                                 @if (Model.CanManageTeam)
                                 {
                                     <details class="action-menu">
-                                        <summary class="button button-small">Ações</summary>
+                                        <summary class="button button-small">@L.T("common.actions", _c)</summary>
                                         <div class="action-menu-panel">
                                             <a class="button button-small"
                                                asp-action="Team"
@@ -121,39 +122,39 @@ else if (Model.OverviewLoadFailed)
                                                asp-route-status="@Model.Status"
                                                asp-route-page="@Model.Page"
                                                asp-route-editMemberId="@member.UserId"
-                                               asp-route-panel="member-roles">Alterar perfis</a>
+                                               asp-route-panel="member-roles">@L.T("org.change_roles", _c)</a>
                                             @if (member.Status == "active")
                                             {
                                                 <button class="button button-small" type="button"
                                                         data-confirm-open
-                                                        data-confirm-title="Bloquear @member.Name?"
-                                                        data-confirm-body="O acesso à organização será suspenso imediatamente. O vínculo permanece e poderá ser desbloqueado depois."
-                                                        data-confirm-action="Bloquear"
-                                                        data-confirm-form="member-action-@member.UserId-block">Bloquear</button>
+                                                        data-confirm-title="@L.T("org.confirm_block_title", _c, member.Name)"
+                                                        data-confirm-body="@L.T("org.confirm_block_body", _c)"
+                                                        data-confirm-action="@L.T("org.block", _c)"
+                                                        data-confirm-form="member-action-@member.UserId-block">@L.T("org.block", _c)</button>
                                                 <button class="button button-small" type="button"
                                                         data-confirm-open
-                                                        data-confirm-title="Inativar @member.Name?"
-                                                        data-confirm-body="O membro deixa de contar como assento ativo e perde o acesso operacional."
-                                                        data-confirm-action="Inativar"
-                                                        data-confirm-form="member-action-@member.UserId-inactivate">Inativar</button>
+                                                        data-confirm-title="@L.T("org.confirm_inactivate_title", _c, member.Name)"
+                                                        data-confirm-body="@L.T("org.confirm_inactivate_body", _c)"
+                                                        data-confirm-action="@L.T("org.inactivate", _c)"
+                                                        data-confirm-form="member-action-@member.UserId-inactivate">@L.T("org.inactivate", _c)</button>
                                             }
                                             @if (member.Status == "blocked")
                                             {
                                                 <button class="button button-small" type="button"
                                                         data-confirm-open
-                                                        data-confirm-title="Desbloquear @member.Name?"
-                                                        data-confirm-body="O membro poderá voltar a acessar conforme seus perfis."
-                                                        data-confirm-action="Desbloquear"
-                                                        data-confirm-form="member-action-@member.UserId-unblock">Desbloquear</button>
+                                                        data-confirm-title="@L.T("org.confirm_unblock_title", _c, member.Name)"
+                                                        data-confirm-body="@L.T("org.confirm_unblock_body", _c)"
+                                                        data-confirm-action="@L.T("org.unblock", _c)"
+                                                        data-confirm-form="member-action-@member.UserId-unblock">@L.T("org.unblock", _c)</button>
                                             }
                                             @if (member.Status == "inactive")
                                             {
                                                 <button class="button button-small" type="button"
                                                         data-confirm-open
-                                                        data-confirm-title="Restaurar @member.Name?"
-                                                        data-confirm-body="O membro volta ao estado ativo e passa a consumir um assento."
-                                                        data-confirm-action="Restaurar"
-                                                        data-confirm-form="member-action-@member.UserId-restore">Restaurar</button>
+                                                        data-confirm-title="@L.T("org.confirm_restore_title", _c, member.Name)"
+                                                        data-confirm-body="@L.T("org.confirm_restore_body", _c)"
+                                                        data-confirm-action="@L.T("org.restore", _c)"
+                                                        data-confirm-form="member-action-@member.UserId-restore">@L.T("org.restore", _c)</button>
                                             }
                                         </div>
                                     </details>
@@ -171,13 +172,13 @@ else if (Model.OverviewLoadFailed)
                                             <input type="hidden" name="search" value="@Model.Search" />
                                             <input type="hidden" name="status" value="@Model.Status" />
                                             <input type="hidden" name="page" value="@Model.Page" />
-                                            <input type="hidden" name="Reason" value="Ação administrativa pela central da equipe." />
+                                            <input type="hidden" name="Reason" value="@L.T("org.default_action_reason", _c)" />
                                         </form>
                                     }
                                 }
                                 else
                                 {
-                                    <span class="muted">Somente leitura</span>
+                                    <span class="muted">@L.T("org.readonly", _c)</span>
                                 }
                             </td>
                         </tr>
@@ -188,41 +189,41 @@ else if (Model.OverviewLoadFailed)
         </div>
         @if (members is not null && members.TotalCount > members.PageSize)
         {
-            <nav class="pagination" aria-label="Paginação de pessoas">
+            <nav class="pagination" aria-label="@L.T("org.pagi_people", _c)">
                 <a class="button button-small @(Model.Page <= 1 ? "disabled" : null)"
                    asp-action="Team" asp-route-tenantId="@org.Id" asp-route-tab="pessoas"
-                   asp-route-search="@Model.Search" asp-route-status="@Model.Status" asp-route-page="@(Model.Page - 1)">Anterior</a>
-                <span>Página @Model.Page de @totalPages (@members.TotalCount)</span>
+                   asp-route-search="@Model.Search" asp-route-status="@Model.Status" asp-route-page="@(Model.Page - 1)">@L.T("common.prev", _c)</a>
+                <span>@L.T("org.page_info", _c, Model.Page.ToString(System.Globalization.CultureInfo.InvariantCulture), totalPages.ToString(System.Globalization.CultureInfo.InvariantCulture), members.TotalCount.ToString(System.Globalization.CultureInfo.InvariantCulture))</span>
                 <a class="button button-small @(Model.Page >= totalPages ? "disabled" : null)"
                    asp-action="Team" asp-route-tenantId="@org.Id" asp-route-tab="pessoas"
-                   asp-route-search="@Model.Search" asp-route-status="@Model.Status" asp-route-page="@(Model.Page + 1)">Próxima</a>
+                   asp-route-search="@Model.Search" asp-route-status="@Model.Status" asp-route-page="@(Model.Page + 1)">@L.T("common.next", _c)</a>
             </nav>
         }
         @if (Model.CanManageOrganization && members is not null && members.Items.Count > 0)
         {
             <form asp-action="TransferAdministration" asp-route-tenantId="@org.Id" method="post" class="form-stack" id="transfer-administration">
                 @Html.AntiForgeryToken()
-                <h2>Transferir a administração principal</h2>
-                <p class="muted">A pessoa escolhida passa a ser a administradora principal e o seu perfil principal é retirado. A sessão das duas pessoas é encerrada. O último administrador principal ativo não pode ser removido por este fluxo.</p>
-                <label>Pessoa ativa desta página
+                <h2>@L.T("org.transfer_title", _c)</h2>
+                <p class="muted">@L.T("org.transfer_note", _c)</p>
+                <label>@L.T("org.transfer_select_label", _c)
                     <select name="targetUserId" required>
-                        <option value="">Selecione pelo nome</option>
+                        <option value="">@L.T("org.transfer_select_option", _c)</option>
                         @foreach (var member in members.Items.Where(item => item.Status == "active"))
                         {
                             <option value="@member.UserId">@member.Name</option>
                         }
                     </select>
                 </label>
-                <label>Justificativa
+                <label>@L.T("org.justification", _c)
                     <input name="justification" minlength="5" maxlength="500" required />
-                    <small>Informe o motivo, entre 5 e 500 caracteres.</small>
+                    <small>@L.T("org.transfer_help", _c)</small>
                 </label>
                 <button class="button button-danger" type="button"
                         data-confirm-open
                         data-confirm-form="transfer-administration"
-                        data-confirm-title="Transferir a administração principal?"
-                        data-confirm-body="Esta ação altera quem responde pela organização. Ela não concede acesso à plataforma MNSOFT."
-                        data-confirm-action="Transferir">Transferir</button>
+                        data-confirm-title="@L.T("org.transfer_confirm_title", _c)"
+                        data-confirm-body="@L.T("org.transfer_confirm_body", _c)"
+                        data-confirm-action="@L.T("org.transfer", _c)">@L.T("org.transfer", _c)</button>
             </form>
         }
     </section>
@@ -232,29 +233,29 @@ else if (Model.Tab == "convites")
     <section class="card">
         <form method="get" class="form-inline toolbar" action="@Url.Action("Team", new { tenantId = org.Id })">
             <input type="hidden" name="tab" value="convites" />
-            <label>Estado do convite
+            <label>@L.T("org.invitation_status_label", _c)
                 <select name="invitationStatus">
-                    <option value="">Todos</option>
-                    <option value="pending" selected="@(Model.InvitationStatus == "pending")">Pendente</option>
-                    <option value="sent" selected="@(Model.InvitationStatus == "sent")">Enviado</option>
-                    <option value="failed" selected="@(Model.InvitationStatus == "failed")">Falha</option>
-                    <option value="accepted" selected="@(Model.InvitationStatus == "accepted")">Aceito</option>
-                    <option value="cancelled" selected="@(Model.InvitationStatus == "cancelled")">Cancelado</option>
-                    <option value="expired" selected="@(Model.InvitationStatus == "expired")">Expirado</option>
+                    <option value="">@L.T("obl.status_all", _c)</option>
+                    <option value="pending" selected="@(Model.InvitationStatus == "pending")">@L.T("org.inv_pending", _c)</option>
+                    <option value="sent" selected="@(Model.InvitationStatus == "sent")">@L.T("org.inv_sent", _c)</option>
+                    <option value="failed" selected="@(Model.InvitationStatus == "failed")">@L.T("org.invopt_failed", _c)</option>
+                    <option value="accepted" selected="@(Model.InvitationStatus == "accepted")">@L.T("org.inv_accepted", _c)</option>
+                    <option value="cancelled" selected="@(Model.InvitationStatus == "cancelled")">@L.T("org.inv_cancelled", _c)</option>
+                    <option value="expired" selected="@(Model.InvitationStatus == "expired")">@L.T("org.inv_expired", _c)</option>
                 </select>
             </label>
-            <button class="button" type="submit">Filtrar</button>
+            <button class="button" type="submit">@L.T("action.filter", _c)</button>
         </form>
-        <p class="muted">Convite na fila ainda não significa entrega confirmada ao destinatário.</p>
+        <p class="muted">@L.T("org.queue_note", _c)</p>
         <div class="table-wrap">
             <table>
                 <thead>
-                    <tr><th>Destinatário</th><th>Perfil</th><th>Criado</th><th>Expira</th><th>Convite</th><th>Entrega</th><th>Ações</th></tr>
+                    <tr><th>@L.T("org.th_recipient", _c)</th><th>@L.T("org.th_role", _c)</th><th>@L.T("org.th_created", _c)</th><th>@L.T("org.th_expires", _c)</th><th>@L.T("org.th_invitation", _c)</th><th>@L.T("org.th_delivery", _c)</th><th>@L.T("common.actions", _c)</th></tr>
                 </thead>
                 <tbody>
                 @if (invitations is null || invitations.Items.Count == 0)
                 {
-                    <tr><td colspan="7"><div class="empty-state"><h2>Nenhum convite</h2><p>Convide pessoas pela ação Convidar pessoa.</p></div></td></tr>
+                    <tr><td colspan="7"><div class="empty-state"><h2>@L.T("org.empty_invites_title", _c)</h2><p>@L.T("org.empty_invites_body", _c)</p></div></td></tr>
                 }
                 else
                 {
@@ -263,14 +264,14 @@ else if (Model.Tab == "convites")
                         <tr>
                             <td>@invite.Recipient</td>
                             <td>@invite.RoleName</td>
-                            <td>@invite.CreatedAt.ToLocalTime().ToString("g")</td>
-                            <td>@invite.ExpiresAt.ToLocalTime().ToString("g")</td>
-                            <td><span class="@TenancyDisplay.InvitationStatusClass(invite.Status)">@TenancyDisplay.InvitationStatus(invite.Status)</span></td>
+                            <td>@CulturedTime.DateTime(invite.CreatedAt.ToLocalTime(), _c)</td>
+                            <td>@CulturedTime.DateTime(invite.ExpiresAt.ToLocalTime(), _c)</td>
+                            <td><span class="@TenancyDisplay.InvitationStatusClass(invite.Status)">@TenancyDisplay.InvitationStatus(invite.Status, k => L.T(k, _c))</span></td>
                             <td>
-                                <span class="@TenancyDisplay.DeliveryStatusClass(invite.DeliveryStatus)">@TenancyDisplay.DeliveryStatus(invite.DeliveryStatus)</span>
+                                <span class="@TenancyDisplay.DeliveryStatusClass(invite.DeliveryStatus)">@TenancyDisplay.DeliveryStatus(invite.DeliveryStatus, k => L.T(k, _c))</span>
                                 @if (!string.IsNullOrWhiteSpace(invite.DeliveryErrorCode))
                                 {
-                                    <span class="muted">@TenancyDisplay.DeliveryErrorMessage(invite.DeliveryErrorCode)</span>
+                                    <span class="muted">@TenancyDisplay.DeliveryErrorMessage(invite.DeliveryErrorCode, k => L.T(k, _c))</span>
                                 }
                             </td>
                             <td>
@@ -278,14 +279,14 @@ else if (Model.Tab == "convites")
                                 {
                                     <div class="toolbar">
                                         <form asp-action="ResendInvitation" asp-route-tenantId="@org.Id" asp-route-invitationId="@invite.Id" method="post" data-processing>@Html.AntiForgeryToken()
-                                            <button class="button button-small" type="submit" data-processing-label="Enfileirando…">Reenviar</button>
+                                            <button class="button button-small" type="submit" data-processing-label="@L.T("org.enqueuing", _c)">@L.T("org.resend", _c)</button>
                                         </form>
                                         <button class="button button-small" type="button"
                                                 data-confirm-open
-                                                data-confirm-title="Cancelar convite para @invite.Recipient?"
-                                                data-confirm-body="O destinatário não poderá mais aceitar este convite."
-                                                data-confirm-action="Cancelar convite"
-                                                data-confirm-form="cancel-invite-@invite.Id">Cancelar</button>
+                                                data-confirm-title="@L.T("org.confirm_cancel_invite_title", _c, invite.Recipient)"
+                                                data-confirm-body="@L.T("org.confirm_cancel_invite_body", _c)"
+                                                data-confirm-action="@L.T("org.cancel_invitation", _c)"
+                                                data-confirm-form="cancel-invite-@invite.Id">@L.T("action.cancel", _c)</button>
                                         <form id="cancel-invite-@invite.Id" class="sr-form"
                                               asp-action="CancelInvitation" asp-route-tenantId="@org.Id" asp-route-invitationId="@invite.Id" method="post">@Html.AntiForgeryToken()</form>
                                     </div>
@@ -303,14 +304,14 @@ else if (Model.Tab == "convites")
         </div>
         @if (invitations is not null && invitations.TotalCount > invitations.PageSize)
         {
-            <nav class="pagination" aria-label="Paginação de convites">
+            <nav class="pagination" aria-label="@L.T("org.pagi_invitations", _c)">
                 <a class="button button-small"
                    asp-action="Team" asp-route-tenantId="@org.Id" asp-route-tab="convites"
-                   asp-route-invitationStatus="@Model.InvitationStatus" asp-route-page="@(Model.Page - 1)">Anterior</a>
-                <span>Página @Model.Page de @invitePages (@invitations.TotalCount)</span>
+                   asp-route-invitationStatus="@Model.InvitationStatus" asp-route-page="@(Model.Page - 1)">@L.T("common.prev", _c)</a>
+                <span>@L.T("org.page_info", _c, Model.Page.ToString(System.Globalization.CultureInfo.InvariantCulture), invitePages.ToString(System.Globalization.CultureInfo.InvariantCulture), invitations.TotalCount.ToString(System.Globalization.CultureInfo.InvariantCulture))</span>
                 <a class="button button-small"
                    asp-action="Team" asp-route-tenantId="@org.Id" asp-route-tab="convites"
-                   asp-route-invitationStatus="@Model.InvitationStatus" asp-route-page="@(Model.Page + 1)">Próxima</a>
+                   asp-route-invitationStatus="@Model.InvitationStatus" asp-route-page="@(Model.Page + 1)">@L.T("common.next", _c)</a>
             </nav>
         }
     </section>
@@ -321,21 +322,21 @@ else
         <div class="table-wrap">
             <table>
                 <thead>
-                    <tr><th>Perfil</th><th>Tipo</th><th>Permissões</th><th>Ações</th></tr>
+                    <tr><th>@L.T("org.th_role", _c)</th><th>@L.T("common.type", _c)</th><th>@L.T("org.th_permissions", _c)</th><th>@L.T("common.actions", _c)</th></tr>
                 </thead>
                 <tbody>
                 @if (Model.Roles.Length == 0)
                 {
-                    <tr><td colspan="4"><div class="empty-state"><h2>Nenhum perfil</h2><p>Crie um perfil delegável para organizar permissões.</p></div></td></tr>
+                    <tr><td colspan="4"><div class="empty-state"><h2>@L.T("org.empty_roles_title", _c)</h2><p>@L.T("org.empty_roles_body", _c)</p></div></td></tr>
                 }
                 else
                 {
                     foreach (var role in Model.Roles)
                     {
                         <tr>
-                            <td title="@role.Name">@TenancyDisplay.RolePresentation(role.Name)</td>
-                            <td>@(role.IsSystem ? "Sistema" : "Personalizado")</td>
-                            <td>@string.Join(", ", role.Permissions.Select(TenancyDisplay.PermissionLabel))</td>
+                            <td title="@role.Name">@TenancyDisplay.RolePresentation(role.Name, k => L.T(k, _c))</td>
+                            <td>@(role.IsSystem ? L.T("org.role_system", _c) : L.T("org.role_custom", _c))</td>
+                            <td>@string.Join(", ", role.Permissions.Select(p => TenancyDisplay.PermissionLabel(p, k => L.T(k, _c))))</td>
                             <td>
                                 @if (Model.CanManageTeam && !role.IsSystem)
                                 {
@@ -344,11 +345,11 @@ else
                                        asp-route-tenantId="@org.Id"
                                        asp-route-tab="perfis"
                                        asp-route-editRoleId="@role.Id"
-                                       asp-route-panel="role">Editar</a>
+                                       asp-route-panel="role">@L.T("action.edit", _c)</a>
                                 }
                                 else if (role.IsSystem)
                                 {
-                                    <span class="muted">Protegido</span>
+                                    <span class="muted">@L.T("org.protected", _c)</span>
                                 }
                             </td>
                         </tr>
@@ -365,44 +366,44 @@ else
 
 <aside class="drawer-panel @(Model.OpenPanel == "invite" ? "is-open" : null)" id="panel-invite" data-panel="invite" aria-hidden="@(Model.OpenPanel == "invite" ? "false" : "true")">
     <div class="drawer-header">
-        <h2>Convidar pessoa</h2>
-        <button type="button" class="icon-button" data-close-panel aria-label="Fechar"><span aria-hidden="true">×</span></button>
+        <h2>@L.T("org.invite_person", _c)</h2>
+        <button type="button" class="icon-button" data-close-panel aria-label="@L.T("org.close_panel", _c)"><span aria-hidden="true">×</span></button>
     </div>
     <form asp-action="Invite" asp-route-tenantId="@org.Id" method="post" data-processing>
         @Html.AntiForgeryToken()
         <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
         <input type="hidden" name="TenantId" value="@org.Id" />
         <input type="hidden" name="IdempotencyKey" value="@Model.Invite.IdempotencyKey" />
-        <label>E-mail
+        <label>@L.T("org.th_email", _c)
             <input name="Email" type="email" required autocomplete="email" value="@Model.Invite.Email" />
         </label>
-        <label>Perfil
+        <label>@L.T("org.th_role", _c)
             <select name="RoleId" required>
-                <option value="">Selecione</option>
+                <option value="">@L.T("common.select", _c)</option>
                 @foreach (var role in Model.Roles.Where(r => !r.IsSystem || r.Permissions.Length > 0))
                 {
-                    <option value="@role.Id" selected="@(Model.Invite.RoleId == role.Id ? "selected" : null)">@TenancyDisplay.RolePresentation(role.Name)</option>
+                    <option value="@role.Id" selected="@(Model.Invite.RoleId == role.Id ? "selected" : null)">@TenancyDisplay.RolePresentation(role.Name, k => L.T(k, _c))</option>
                 }
             </select>
         </label>
-        <button class="button button-primary" type="submit" data-processing-label="Enfileirando…">Enviar convite</button>
+        <button class="button button-primary" type="submit" data-processing-label="@L.T("org.enqueuing", _c)">@L.T("org.send_invitation", _c)</button>
     </form>
 </aside>
 
 <aside class="drawer-panel @(Model.OpenPanel == "role" ? "is-open" : null)" id="panel-role" data-panel="role" aria-hidden="@(Model.OpenPanel == "role" ? "false" : "true")">
     <div class="drawer-header">
-        <h2>@(Model.RoleForm.RoleId is null ? "Novo perfil" : "Editar perfil")</h2>
-        <button type="button" class="icon-button" data-close-panel aria-label="Fechar"><span aria-hidden="true">×</span></button>
+        <h2>@(Model.RoleForm.RoleId is null ? L.T("org.new_role", _c) : L.T("org.edit_role", _c))</h2>
+        <button type="button" class="icon-button" data-close-panel aria-label="@L.T("org.close_panel", _c)"><span aria-hidden="true">×</span></button>
     </div>
     @if (Model.RoleForm.IsSystem)
     {
-        <p class="muted">Perfis de sistema são protegidos e não podem ser alterados por esta tela.</p>
+        <p class="muted">@L.T("org.system_roles_note", _c)</p>
     }
     else
     {
         @if (Model.RoleForm.RoleId is not null && Model.RoleForm.AffectedMemberCount > 0)
         {
-            <p class="warning" role="status">Esta alteração afeta @Model.RoleForm.AffectedMemberCount membro(s) com o perfil.</p>
+            <p class="warning" role="status">@L.T("org.role_affects_warning", _c, Model.RoleForm.AffectedMemberCount.ToString(System.Globalization.CultureInfo.InvariantCulture))</p>
         }
         <form id="role-permission-form"
               asp-action="@(Model.RoleForm.RoleId is null ? "CreateRole" : "UpdateRole")"
@@ -411,18 +412,18 @@ else
               method="post"
               data-processing>
             @Html.AntiForgeryToken()
-            <label>Nome
+            <label>@L.T("org.th_name", _c)
                 <input name="Name" required maxlength="100" value="@Model.RoleForm.Name" @(Model.RoleForm.RoleId is null ? null : "readonly") />
             </label>
             @if (Model.RoleForm.RoleId is not null)
             {
-                <p class="muted">A edição altera apenas as permissões delegáveis do perfil.</p>
+                <p class="muted">@L.T("org.role_edit_note", _c)</p>
             }
-            <p class="muted">A marcação grava a permissão no perfil. Ela não contrata o módulo, não remove um bloqueio e não amplia a franquia. Permissões já gravadas de um módulo não contratado permanecem armazenadas, sem efeito até a contratação.</p>
+            <p class="muted">@L.T("org.role_matrix_note", _c)</p>
             <div class="permission-matrix">
                 <table>
                     <thead>
-                        <tr><th>Módulo</th><th>Ação</th><th>Situação</th><th>Incluir</th></tr>
+                        <tr><th>@L.T("org.perm_matrix_module", _c)</th><th>@L.T("org.perm_matrix_action", _c)</th><th>@L.T("org.perm_matrix_state", _c)</th><th>@L.T("org.perm_matrix_include", _c)</th></tr>
                     </thead>
                     <tbody>
                     @foreach (var permission in TenancyDisplay.PermissionCatalog)
@@ -433,55 +434,55 @@ else
                             : Model.FeatureStates.TryGetValue(permission.Module, out var featureState) ? featureState : "unknown";
                         var inert = state == "plan_restricted";
                         <tr>
-                            <td data-label="Módulo">@permission.Group</td>
-                            <td data-label="Ação">@permission.Label</td>
-                            <td data-label="Situação">
+                            <td data-label="@L.T("org.perm_matrix_module", _c)">@TenancyDisplay.PermissionGroup(permission.Group, k => L.T(k, _c))</td>
+                            <td data-label="@L.T("org.perm_matrix_action", _c)">@TenancyDisplay.PermissionLabel(permission.Code, k => L.T(k, _c))</td>
+                            <td data-label="@L.T("org.perm_matrix_state", _c)">
                                 @if (state == "plan_restricted")
                                 {
-                                    <span class="access-state unavailable">Não contratado</span>
+                                    <span class="access-state unavailable">@L.T("org.ps_unsubscribed", _c)</span>
                                 }
                                 else if (state == "administratively_blocked")
                                 {
-                                    <span class="access-state blocked">Bloqueado administrativamente</span>
+                                    <span class="access-state blocked">@L.T("org.ps_admin_blocked", _c)</span>
                                 }
                                 else if (state == "quota_exhausted")
                                 {
-                                    <span class="access-state limit">Limite atingido</span>
+                                    <span class="access-state limit">@L.T("org.ps_quota", _c)</span>
                                 }
                                 else if (state == "allowed" && selected)
                                 {
-                                    <span class="access-state ready">Disponível</span>
+                                    <span class="access-state ready">@L.T("org.ps_ready", _c)</span>
                                 }
                                 else if (state == "allowed")
                                 {
-                                    <span class="access-state partial">Contratado, sem esta permissão</span>
+                                    <span class="access-state partial">@L.T("org.ps_partial", _c)</span>
                                 }
                                 else if (state == "unknown")
                                 {
-                                    <span class="access-state unavailable">Situação do plano não confirmada</span>
+                                    <span class="access-state unavailable">@L.T("org.ps_unknown", _c)</span>
                                 }
                                 else
                                 {
-                                    <span class="access-state partial">Ação administrativa</span>
+                                    <span class="access-state partial">@L.T("org.ps_admin", _c)</span>
                                 }
                             </td>
-                            <td data-label="Incluir">
+                            <td data-label="@L.T("org.perm_matrix_include", _c)">
                                 @if (inert && selected)
                                 {
                                     <input type="hidden" name="Permissions" value="@permission.Code" />
-                                    <span>Gravada, sem efeito até a contratação</span>
+                                    <span>@L.T("org.perm_recorded_inert", _c)</span>
                                 }
                                 else if (inert)
                                 {
-                                    <span>Não pode ser concedida enquanto o módulo estiver fora do plano</span>
+                                    <span>@L.T("org.perm_cannot_grant", _c)</span>
                                 }
                                 else
                                 {
                                     <label class="checkbox-line">
                                         <input type="checkbox" name="Permissions" value="@permission.Code"
                                                checked="@(selected ? "checked" : null)"
-                                               aria-label="@permission.Group — @permission.Label" />
-                                        <span>@(selected ? "Incluída" : "Não incluída")</span>
+                                               aria-label="@TenancyDisplay.PermissionGroup(permission.Group, k => L.T(k, _c)) — @TenancyDisplay.PermissionLabel(permission.Code, k => L.T(k, _c))" />
+                                        <span>@(selected ? L.T("org.included", _c) : L.T("org.not_included", _c))</span>
                                     </label>
                                 }
                             </td>
@@ -493,10 +494,10 @@ else
             <button class="button button-primary" type="button"
                     data-confirm-open
                     data-confirm-form="role-permission-form"
-                    data-confirm-title="Confirmar perfil"
-                    data-confirm-body="As permissões serão gravadas neste perfil. Quem já o possui terá a sessão encerrada. Isso não altera o plano contratado."
-                    data-confirm-action="Salvar perfil">
-                @(Model.RoleForm.RoleId is null ? "Criar perfil" : "Salvar perfil")
+                    data-confirm-title="@L.T("org.confirm_role_title", _c)"
+                    data-confirm-body="@L.T("org.confirm_role_body", _c)"
+                    data-confirm-action="@L.T("org.save_role", _c)">
+                @(Model.RoleForm.RoleId is null ? L.T("org.create_role", _c) : L.T("org.save_role", _c))
             </button>
         </form>
     }
@@ -504,8 +505,8 @@ else
 
 <aside class="drawer-panel @(Model.OpenPanel == "member-roles" ? "is-open" : null)" id="panel-member-roles" data-panel="member-roles" aria-hidden="@(Model.OpenPanel == "member-roles" ? "false" : "true")">
     <div class="drawer-header">
-        <h2>Perfis de @Model.MemberRoles.MemberName</h2>
-        <button type="button" class="icon-button" data-close-panel aria-label="Fechar"><span aria-hidden="true">×</span></button>
+        <h2>@L.T("org.member_roles_title", _c, Model.MemberRoles.MemberName)</h2>
+        <button type="button" class="icon-button" data-close-panel aria-label="@L.T("org.close_panel", _c)"><span aria-hidden="true">×</span></button>
     </div>
     <form asp-action="UpdateMemberRoles" asp-route-tenantId="@org.Id" asp-route-userId="@Model.MemberRoles.UserId" method="post" data-processing>
         @Html.AntiForgeryToken()
@@ -515,26 +516,26 @@ else
         <input type="hidden" name="status" value="@Model.Status" />
         <input type="hidden" name="page" value="@Model.Page" />
         <fieldset>
-            <legend>Perfis</legend>
+            <legend>@L.T("org.tab_roles", _c)</legend>
             @foreach (var role in Model.Roles)
             {
                 <label class="checkbox-line">
                     <input type="checkbox" name="RoleIds" value="@role.Id"
                            checked="@(Model.MemberRoles.RoleIds.Contains(role.Id) ? "checked" : null)" />
-                    <span title="@role.Name">@TenancyDisplay.RolePresentation(role.Name) @(role.IsSystem ? "(sistema)" : "")</span>
+                    <span title="@role.Name">@TenancyDisplay.RolePresentation(role.Name, k => L.T(k, _c)) @(role.IsSystem ? L.T("org.role_system_tag", _c) : "")</span>
                 </label>
             }
         </fieldset>
-        <p class="muted">A troca de perfil encerra a sessão atual da pessoa. O acesso seguinte usa os perfis gravados e continua limitado ao plano, aos bloqueios e às franquias.</p>
-        <button class="button button-primary" type="submit" data-processing-label="Salvando…">Salvar perfis</button>
+        <p class="muted">@L.T("org.member_roles_note", _c)</p>
+        <button class="button button-primary" type="submit" data-processing-label="@L.T("org.saving", _c)">@L.T("org.save_member_roles", _c)</button>
     </form>
 </aside>
-<details class="help-card"><summary>Como usar</summary>
+<details class="help-card"><summary>@L.T("common.how_to_use", _c)</summary>
     <ol>
-        <li>Busque a pessoa pelo nome e use a paginação quando a lista passar de uma página.</li>
-        <li>Convide escolhendo o perfil pelo nome. A vaga fica reservada até o aceite, o cancelamento ou o vencimento.</li>
-        <li>Na matriz, “Não contratado” não pode ser marcado. Uma permissão já gravada permanece armazenada até a contratação.</li>
-        <li>Bloquear um vínculo vale só nesta organização. A mesma pessoa pode continuar ativa em outra.</li>
+        <li>@L.T("org.help_1", _c)</li>
+        <li>@L.T("org.help_2", _c)</li>
+        <li>@L.T("org.help_3", _c)</li>
+        <li>@L.T("org.help_4", _c)</li>
     </ol>
 </details>
 

@@ -64,6 +64,16 @@ public static class TenancyDisplay
         _ => string.IsNullOrWhiteSpace(code) ? "Desconhecido" : code
     };
 
+    // D-OC48 (S14): sobrecargas cientes de cultura via delegada de tradução (T do padrão
+    // canônico). Códigos fora do domínio seguem exibidos crus, como na versão legada.
+    public static string MemberStatus(string? code, Func<string, string> t) => code switch
+    {
+        "active" => t("org.mem_active"),
+        "blocked" => t("org.mem_blocked"),
+        "inactive" => t("org.mem_inactive"),
+        _ => string.IsNullOrWhiteSpace(code) ? t("org.st_unknown") : code
+    };
+
     public static string MemberStatusClass(string? code) => code switch
     {
         "active" => "badge badge-success",
@@ -81,6 +91,17 @@ public static class TenancyDisplay
         "cancelled" => "Cancelado",
         "expired" => "Expirado",
         _ => string.IsNullOrWhiteSpace(code) ? "Desconhecido" : code
+    };
+
+    public static string InvitationStatus(string? code, Func<string, string> t) => code switch
+    {
+        "pending" => t("org.inv_pending"),
+        "sent" => t("org.inv_sent"),
+        "failed" => t("org.inv_failed"),
+        "accepted" => t("org.inv_accepted"),
+        "cancelled" => t("org.inv_cancelled"),
+        "expired" => t("org.inv_expired"),
+        _ => string.IsNullOrWhiteSpace(code) ? t("org.st_unknown") : code
     };
 
     public static string InvitationStatusClass(string? code) => code switch
@@ -103,6 +124,15 @@ public static class TenancyDisplay
         _ => string.IsNullOrWhiteSpace(code) ? "Indisponível" : code
     };
 
+    public static string DeliveryStatus(string? code, Func<string, string> t) => code switch
+    {
+        "pending" => t("org.del_pending"),
+        "leased" => t("org.del_leased"),
+        "sent" => t("org.del_sent"),
+        "failed" => t("org.del_failed"),
+        _ => string.IsNullOrWhiteSpace(code) ? t("org.del_unavailable") : code
+    };
+
     public static string DeliveryStatusClass(string? code) => code switch
     {
         "pending" => "badge badge-warning",
@@ -120,10 +150,25 @@ public static class TenancyDisplay
         _ => string.IsNullOrWhiteSpace(code) ? "Desconhecido" : code
     };
 
+    public static string OrganizationStatus(string? code, Func<string, string> t) => code switch
+    {
+        "active" => t("org.orgst_active"),
+        "suspended" => t("org.orgst_suspended"),
+        "inactive" => t("org.orgst_inactive"),
+        _ => string.IsNullOrWhiteSpace(code) ? t("org.st_unknown") : code
+    };
+
     public static string RolePresentation(string? name) =>
         string.Equals(name, "Administrador da organização", StringComparison.Ordinal)
             ? "Superadministrador da organização"
             : string.IsNullOrWhiteSpace(name) ? "Perfil" : name;
+
+    /// <summary>D-OC48 (S14): apresentação localizada. O nome canônico pt-BR do superadmin
+    /// continua sendo o marcador determinístico (dados de domínio); a exibição é cultural.</summary>
+    public static string RolePresentation(string? name, Func<string, string> t) =>
+        string.Equals(name, "Administrador da organização", StringComparison.Ordinal)
+            ? t("org.role_superadmin")
+            : string.IsNullOrWhiteSpace(name) ? t("org.role_generic") : name;
 
     public static string PermissionLabel(string code)
     {
@@ -138,6 +183,41 @@ public static class TenancyDisplay
         return code;
     }
 
+    /// <summary>D-OC48 (S14): rótulo localizado (chave perm.&lt;código com underscores&gt;),
+    /// com fallback para o rótulo pt-BR canônico quando a chave não existir.</summary>
+    public static string PermissionLabel(string code, Func<string, string> t)
+    {
+        var key = "perm." + code.Replace('.', '_');
+        var value = t(key);
+        return string.Equals(value, key, StringComparison.Ordinal) ? PermissionLabel(code) : value;
+    }
+
+    /// <summary>D-OC48 (S14): grupo localizado via slug estável (permg.&lt;slug&gt;).</summary>
+    public static string PermissionGroup(string group, Func<string, string> t)
+    {
+        var slug = group switch
+        {
+            "Organização" => "organization",
+            "Equipe" => "team",
+            "Pacientes" => "patients",
+            "Modelos" => "templates",
+            "Minutas" => "drafts",
+            "Documentos" => "documents",
+            "Revisões" => "reviews",
+            "Importações" => "imports",
+            "Plano e auditoria" => "billing",
+            "Obrigações" => "obligations",
+            "Renovações" => "renewals",
+            "Trabalho" => "work",
+            "Privacidade" => "privacy",
+            _ => null
+        };
+        if (slug is null) return group;
+        var key = "permg." + slug;
+        var value = t(key);
+        return string.Equals(value, key, StringComparison.Ordinal) ? group : value;
+    }
+
     public static string DeliveryErrorMessage(string? code) => code switch
     {
         null or "" => string.Empty,
@@ -145,6 +225,15 @@ public static class TenancyDisplay
         "invalid_destination" => "O destino do convite foi recusado pelo transporte.",
         "rate_limited" => "O envio foi limitado temporariamente. Tente reenviar mais tarde.",
         _ => "Não foi possível concluir a entrega. A fila não significa entrega confirmada."
+    };
+
+    public static string DeliveryErrorMessage(string? code, Func<string, string> t) => code switch
+    {
+        null or "" => string.Empty,
+        "transport_unavailable" => t("org.delmsg_transport_unavailable"),
+        "invalid_destination" => t("org.delmsg_invalid_destination"),
+        "rate_limited" => t("org.delmsg_rate_limited"),
+        _ => t("org.delmsg_fallback")
     };
 
     public static bool IsSafeLocalUrl(string? url) =>

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Odca.Configuration.Localization;
 using Odca.Contracts.Onboarding;
 using Odca.Contracts.Tenancy;
 using Odca.Web.Models;
@@ -8,8 +9,12 @@ using Odca.Web.Services;
 
 namespace Odca.Web.Controllers;
 
-public sealed class OnboardingController(OdcaApiClient apiClient, IUserTenantContext tenantContext) : Controller
+public sealed class OnboardingController(OdcaApiClient apiClient, IUserTenantContext tenantContext, LocalizationService loc) : Controller
 {
+    // D-OC48 (S14): padrão canônico de cultura (CultureMiddleware) e localização das mensagens BFF.
+    private string? Culture => HttpContext.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] as string;
+
+    private string L(string key, params string[] args) => loc.T(key, Culture, args);
     [AllowAnonymous]
     [HttpGet("contratar/{planCode?}")]
     public IActionResult Register(string? planCode) =>
@@ -39,9 +44,9 @@ public sealed class OnboardingController(OdcaApiClient apiClient, IUserTenantCon
         {
             ModelState.AddModelError(string.Empty, result.Status switch
             {
-                ApiCallStatus.RateLimited => "Muitas tentativas. Aguarde e tente novamente.",
-                ApiCallStatus.Timeout or ApiCallStatus.Unavailable => "O serviço está temporariamente indisponível.",
-                _ => "Não foi possível iniciar o cadastro. Confira os dados informados."
+                ApiCallStatus.RateLimited => L("api.too_many_attempts"),
+                ApiCallStatus.Timeout or ApiCallStatus.Unavailable => L("api.service_unavailable"),
+                _ => L("onb.reg_start_failed")
             });
             return View(model);
         }
@@ -73,7 +78,7 @@ public sealed class OnboardingController(OdcaApiClient apiClient, IUserTenantCon
             cancellationToken);
         if (!result.Succeeded)
         {
-            ModelState.AddModelError(string.Empty, "Token inválido, expirado ou já utilizado.");
+            ModelState.AddModelError(string.Empty, L("onb.conf_token_invalid"));
             return View(model);
         }
 
@@ -108,7 +113,7 @@ public sealed class OnboardingController(OdcaApiClient apiClient, IUserTenantCon
         }
         else if (overviewResult.Status != ApiCallStatus.Forbidden)
         {
-            overviewError = overviewResult.UserMessage("Não foi possível carregar as informações da organização e pendências.");
+            overviewError = overviewResult.UserMessage(L("onb.err_overview_load"));
         }
 
         var tenantId = result.Value.TenantId;
@@ -128,7 +133,7 @@ public sealed class OnboardingController(OdcaApiClient apiClient, IUserTenantCon
             }
             else if (!docsRes.Succeeded && docsRes.Status != ApiCallStatus.Forbidden)
             {
-                documentsError = docsRes.UserMessage("Não foi possível carregar os documentos recentes.");
+                documentsError = docsRes.UserMessage(L("onb.err_documents_load"));
             }
         }
 
@@ -143,7 +148,7 @@ public sealed class OnboardingController(OdcaApiClient apiClient, IUserTenantCon
             }
             else if (!reviewsRes.Succeeded && reviewsRes.Status != ApiCallStatus.Forbidden)
             {
-                reviewsError = reviewsRes.UserMessage("Não foi possível carregar as revisões atribuídas.");
+                reviewsError = reviewsRes.UserMessage(L("onb.err_reviews_load"));
             }
         }
 
@@ -201,20 +206,20 @@ public sealed class OnboardingController(OdcaApiClient apiClient, IUserTenantCon
         var teamStarted = overview is not null && (overview.ActiveMembers > 1 || overview.ValidInvitations > 0);
         var steps = new List<GettingStartedStepViewModel>
         {
-            new("Confira os dados da organização", "Revise nome, fuso horário e situação antes de iniciar a operação.",
-                "Administrador da organização", "Conferir cadastro", "Organizations", "Edit",
+            new(L("gs.s1_title"), L("gs.s1_desc"),
+                L("gs.s1_responsible"), L("gs.s1_cta"), "Organizations", "Edit",
                 home.TenantStatus == "active", canManageOrganization),
-            new("Confira o plano e os recursos", "Veja a versão contratada, limites e o estado comercial definido pelo servidor.",
-                "Administrador da organização", "Ver plano e consumo", "Consumption", "Index",
+            new(L("gs.s2_title"), L("gs.s2_desc"),
+                L("gs.s1_responsible"), L("gs.s2_cta"), "Consumption", "Index",
                 home.CommercialState == "active", access.HasPermission("tenant.organization.read") || canManageOrganization),
-            new("Convide sua equipe", "Convites reservam assentos até expirar. Escolha somente perfis dentro da sua autoridade.",
-                "Quem administra a equipe", "Abrir convites", "Organizations", "Team",
+            new(L("gs.s3_title"), L("gs.s3_desc"),
+                L("gs.s3_responsible"), L("gs.s3_cta"), "Organizations", "Team",
                 teamStarted, canManageTeam, Optional: true),
-            new("Crie o primeiro contrato", "Use um modelo publicado para criar uma minuta persistida e gerar a primeira versão.",
-                "Quem pode editar minutas", "Abrir modelos", "Studio", "Index",
+            new(L("gs.s4_title"), L("gs.s4_desc"),
+                L("gs.s4_responsible"), L("gs.s4_cta"), "Studio", "Index",
                 overview?.HasContracts == true, canCreateContract),
-            new("Consulte as próximas ações", "Abra a central para acompanhar obrigações, prazos e itens que exigem atenção.",
-                "Quem consulta obrigações", "Abrir pendências", "Inbox", "Index",
+            new(L("gs.s5_title"), L("gs.s5_desc"),
+                L("gs.s5_responsible"), L("gs.s5_cta"), "Inbox", "Index",
                 overview is not null && overview.Pendencies.Count == 0, canReadPendencies)
         };
 

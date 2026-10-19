@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Odca.Configuration.Localization;
 using Odca.Contracts.Tenancy;
 using Odca.Web.Models;
 using Odca.Web.Services;
@@ -8,8 +9,12 @@ using Odca.Web.Services;
 namespace Odca.Web.Controllers;
 
 [Authorize]
-public sealed class OrganizationsController(OdcaApiClient api, IConfiguration configuration) : Controller
+public sealed class OrganizationsController(OdcaApiClient api, IConfiguration configuration, LocalizationService loc) : Controller
 {
+    // D-OC48 (S14): padrão canônico de cultura (CultureMiddleware) e localização das mensagens BFF.
+    private string? Culture => HttpContext.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] as string;
+
+    private string L(string key, params string[] args) => loc.T(key, Culture, args);
     private static readonly HashSet<string> MemberActions = new(StringComparer.OrdinalIgnoreCase)
     {
         "block", "unblock", "inactivate", "restore"
@@ -119,7 +124,7 @@ public sealed class OrganizationsController(OdcaApiClient api, IConfiguration co
 
         if (result.Status == ApiCallStatus.Success)
         {
-            TempData["Success"] = "Organização atualizada.";
+            TempData["Success"] = L("org.msg_updated");
             return RedirectToAction(nameof(Team), new { tenantId });
         }
 
@@ -139,18 +144,18 @@ public sealed class OrganizationsController(OdcaApiClient api, IConfiguration co
             {
                 ModelState.AddModelError(
                     nameof(model.ActivityProfile),
-                    result.UserMessage("O perfil Cirurgião plástico exige plano Enterprise ativo."));
+                    result.UserMessage(L("org.err_profile_plan_required")));
                 return View(model);
             }
 
             model.VersionConflict = true;
             ModelState.AddModelError(
                 string.Empty,
-                result.UserMessage("A organização foi alterada em outra sessão. Recarregue os dados antes de salvar."));
+                result.UserMessage(L("org.err_org_conflict")));
             return View(model);
         }
 
-        ModelState.AddModelError(string.Empty, UserFacingError(result, "Não foi possível salvar a organização."));
+        ModelState.AddModelError(string.Empty, UserFacingError(result, L("org.err_save_failed")));
         return View(model);
     }
 
@@ -302,7 +307,7 @@ public sealed class OrganizationsController(OdcaApiClient api, IConfiguration co
         PreserveInvite(model);
         if (!ModelState.IsValid)
         {
-            TempData["Error"] = "Revise os dados do convite.";
+            TempData["Error"] = L("org.inv_review");
             return RedirectToTeam(tenantId, "convites", panel: "invite");
         }
 
@@ -323,7 +328,7 @@ public sealed class OrganizationsController(OdcaApiClient api, IConfiguration co
             TempData.Remove("InviteEmail");
             TempData.Remove("InviteRoleId");
             TempData.Remove("PreservedIdempotencyKey");
-            TempData["Success"] = "Convite reservado e enfileirado. A fila não confirma entrega imediata.";
+            TempData["Success"] = L("org.inv_queued");
             return RedirectToTeam(tenantId, "convites");
         }
 
@@ -345,8 +350,8 @@ public sealed class OrganizationsController(OdcaApiClient api, IConfiguration co
         var result = await api.CancelInvitationAsync(token, tenantId, invitationId, cancellationToken);
         TempData[result.Status == ApiCallStatus.Success ? "Success" : "Error"] =
             result.Status == ApiCallStatus.Success
-                ? "Convite cancelado."
-                : UserFacingError(result, "Não foi possível cancelar o convite.");
+                ? L("org.inv_cancel_msg")
+                : UserFacingError(result, L("org.inv_cancel_failed"));
         return RedirectToTeam(tenantId, "convites");
     }
 
@@ -363,8 +368,8 @@ public sealed class OrganizationsController(OdcaApiClient api, IConfiguration co
         var result = await api.ResendInvitationAsync(token, tenantId, invitationId, cancellationToken);
         TempData[result.Status == ApiCallStatus.Success ? "Success" : "Error"] =
             result.Status == ApiCallStatus.Success
-                ? "Reenvio enfileirado. A fila não confirma entrega imediata."
-                : UserFacingError(result, "Não foi possível reenviar o convite.");
+                ? L("org.inv_resend_queued")
+                : UserFacingError(result, L("org.inv_resend_failed"));
         return RedirectToTeam(tenantId, "convites");
     }
 
@@ -375,7 +380,7 @@ public sealed class OrganizationsController(OdcaApiClient api, IConfiguration co
         PreserveRoleForm(model);
         if (string.IsNullOrWhiteSpace(model.Name) || model.Permissions is null || model.Permissions.Length == 0)
         {
-            TempData["Error"] = "Informe o nome e ao menos uma permissão.";
+            TempData["Error"] = L("org.role_need_name_perm");
             return RedirectToTeam(tenantId, "perfis", panel: "role");
         }
 
@@ -394,12 +399,12 @@ public sealed class OrganizationsController(OdcaApiClient api, IConfiguration co
         if (result.Succeeded)
         {
             ClearRoleFormTempData();
-            TempData["Success"] = "Perfil criado.";
+            TempData["Success"] = L("org.role_created");
             return RedirectToTeam(tenantId, "perfis");
         }
 
         PreserveRoleForm(model);
-        TempData["Error"] = UserFacingError(result, "Não foi possível criar o perfil. Verifique as permissões que você pode delegar.");
+        TempData["Error"] = UserFacingError(result, L("org.role_create_failed"));
         return RedirectToTeam(tenantId, "perfis", panel: "role");
     }
 
@@ -415,7 +420,7 @@ public sealed class OrganizationsController(OdcaApiClient api, IConfiguration co
         PreserveRoleForm(model);
         if (string.IsNullOrWhiteSpace(model.Name) || model.Permissions is null || model.Permissions.Length == 0)
         {
-            TempData["Error"] = "Informe o nome e ao menos uma permissão.";
+            TempData["Error"] = L("org.role_need_name_perm");
             return RedirectToTeam(tenantId, "perfis", panel: "role", editRoleId: roleId);
         }
 
@@ -437,19 +442,19 @@ public sealed class OrganizationsController(OdcaApiClient api, IConfiguration co
             ClearRoleFormTempData();
             var affected = result.Value!.AffectedMemberCount;
             TempData["Success"] = affected > 0
-                ? $"Permissões atualizadas. {affected} membro(s) afetado(s)."
-                : "Permissões do perfil atualizadas.";
+                ? L("org.role_updated_affected", affected.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                : L("org.role_updated");
             return RedirectToTeam(tenantId, "perfis");
         }
 
         if (result.Status == ApiCallStatus.Conflict)
         {
-            TempData["Error"] = result.UserMessage("O perfil foi alterado em outra sessão. Recarregue e revise.");
+            TempData["Error"] = result.UserMessage(L("org.err_role_conflict"));
             return RedirectToTeam(tenantId, "perfis", panel: "role", editRoleId: roleId);
         }
 
         PreserveRoleForm(model);
-        TempData["Error"] = UserFacingError(result, "Não foi possível atualizar o perfil.");
+        TempData["Error"] = UserFacingError(result, L("org.role_update_failed"));
         return RedirectToTeam(tenantId, "perfis", panel: "role", editRoleId: roleId);
     }
 
@@ -477,7 +482,7 @@ public sealed class OrganizationsController(OdcaApiClient api, IConfiguration co
         }
 
         var reason = string.IsNullOrWhiteSpace(model.Reason)
-            ? "Ação administrativa pela central da equipe."
+            ? L("org.default_action_reason")
             : model.Reason.Trim();
 
         var result = await api.MemberActionAsync(
@@ -500,7 +505,7 @@ public sealed class OrganizationsController(OdcaApiClient api, IConfiguration co
         TempData[result.Status == ApiCallStatus.Success ? "Success" : "Error"] =
             result.Status == ApiCallStatus.Success
                 ? MemberActionSuccess(actionName)
-                : UserFacingError(result, "Não foi possível concluir a ação no membro.");
+                : UserFacingError(result, L("org.member_action_failed"));
         return RedirectToTeam(tenantId, "pessoas", search, status, page: page);
     }
 
@@ -544,8 +549,8 @@ public sealed class OrganizationsController(OdcaApiClient api, IConfiguration co
 
         TempData[result.Status == ApiCallStatus.Success ? "Success" : "Error"] =
             result.Status == ApiCallStatus.Success
-                ? "Perfis do membro atualizados."
-                : UserFacingError(result, "Não foi possível atualizar os perfis do membro.");
+                ? L("org.member_roles_updated")
+                : UserFacingError(result, L("org.member_roles_failed"));
         return RedirectToTeam(tenantId, "pessoas", search, status, page: page);
     }
 
@@ -566,7 +571,7 @@ public sealed class OrganizationsController(OdcaApiClient api, IConfiguration co
         var reason = justification?.Trim() ?? string.Empty;
         if (targetUserId == Guid.Empty || reason.Length is < 5 or > 500)
         {
-            TempData["Error"] = "Escolha uma pessoa ativa e informe uma justificativa entre 5 e 500 caracteres.";
+            TempData["Error"] = L("org.transfer_validation");
             return RedirectToTeam(tenantId, "pessoas");
         }
 
@@ -587,8 +592,8 @@ public sealed class OrganizationsController(OdcaApiClient api, IConfiguration co
 
         TempData[result.Status == ApiCallStatus.Success ? "Success" : "Error"] =
             result.Status == ApiCallStatus.Success
-                ? "Administração principal transferida. As sessões das duas pessoas foram encerradas."
-                : UserFacingError(result, "A administração principal não foi transferida.");
+                ? L("org.transfer_done")
+                : UserFacingError(result, L("org.transfer_failed"));
         return RedirectToTeam(tenantId, "pessoas");
     }
 
@@ -651,14 +656,14 @@ public sealed class OrganizationsController(OdcaApiClient api, IConfiguration co
             model.IsAuthenticated = true;
             ModelState.AddModelError(
                 string.Empty,
-                UserFacingError(result, "Convite inválido, expirado, usado ou destinado a outro e-mail verificado."));
+                UserFacingError(result, L("org.accept_invalid")));
             var previewResult = await api.GetInvitationPreviewAsync(model.InvitationId, model.Token, cancellationToken);
             model.Preview = previewResult.Succeeded ? previewResult.Value : model.Preview;
             return View(model);
         }
 
         await HttpContext.SignOutAsync();
-        TempData["Success"] = "Convite aceito. Entre novamente para carregar as permissões atualizadas.";
+        TempData["Success"] = L("org.accept_ok");
         return RedirectToAction("Login", "Account");
     }
 
@@ -784,30 +789,30 @@ public sealed class OrganizationsController(OdcaApiClient api, IConfiguration co
         TempData.Remove("RolePermissions");
     }
 
-    private static string DefaultInviteError(ApiCallStatus status) => status switch
+    private string DefaultInviteError(ApiCallStatus status) => status switch
     {
-        ApiCallStatus.Conflict => "Conflito de convite ou limite de assentos excedido.",
-        ApiCallStatus.Forbidden => "Você não tem permissão para convidar nesta organização.",
-        ApiCallStatus.Unauthorized => "Sua sessão expirou. Entre novamente.",
-        _ => "Não foi possível convidar. Verifique assentos, perfil e permissões."
+        ApiCallStatus.Conflict => L("org.api_invite_conflict"),
+        ApiCallStatus.Forbidden => L("org.api_invite_forbidden"),
+        ApiCallStatus.Unauthorized => L("org.api_session_expired"),
+        _ => L("org.api_invite_failed")
     };
 
-    private static string MemberActionSuccess(string action) => action.ToLowerInvariant() switch
+    private string MemberActionSuccess(string action) => action.ToLowerInvariant() switch
     {
-        "block" => "Membro bloqueado. O acesso à organização fica suspenso imediatamente.",
-        "unblock" => "Bloqueio removido. O membro pode voltar a acessar conforme seus perfis.",
-        "inactivate" => "Membro inativado. O assento deixa de contar como ativo.",
-        "restore" => "Membro restaurado como ativo.",
-        _ => "Ação concluída."
+        "block" => L("org.ma_block"),
+        "unblock" => L("org.ma_unblock"),
+        "inactivate" => L("org.ma_inactivate"),
+        "restore" => L("org.ma_restore"),
+        _ => L("org.ma_done")
     };
 
-    private static string UserFacingError<T>(ApiCallResult<T> result, string fallback) => result.Status switch
+    private string UserFacingError<T>(ApiCallResult<T> result, string fallback) => result.Status switch
     {
-        ApiCallStatus.Unauthorized => "Sua sessão expirou. Entre novamente.",
-        ApiCallStatus.Forbidden => result.UserMessage("Você não tem permissão para esta ação."),
-        ApiCallStatus.Conflict => result.UserMessage("A operação conflitou com outro estado. Recarregue e tente novamente."),
-        ApiCallStatus.RateLimited => "Muitas tentativas. Aguarde e tente novamente.",
-        ApiCallStatus.Timeout or ApiCallStatus.Unavailable => "O serviço está temporariamente indisponível.",
+        ApiCallStatus.Unauthorized => L("org.api_session_expired"),
+        ApiCallStatus.Forbidden => result.UserMessage(L("org.api_forbidden")),
+        ApiCallStatus.Conflict => result.UserMessage(L("org.api_conflict")),
+        ApiCallStatus.RateLimited => L("api.too_many_attempts"),
+        ApiCallStatus.Timeout or ApiCallStatus.Unavailable => L("api.service_unavailable"),
         ApiCallStatus.InvalidRequest => result.UserMessage(fallback),
         _ => result.UserMessage(fallback)
     };

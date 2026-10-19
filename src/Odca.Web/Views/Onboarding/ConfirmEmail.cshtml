@@ -1,11 +1,12 @@
 @model ConfirmEmailViewModel
 @{
-    ViewData["Title"] = "Confirmar e-mail";
+    ViewData["Title"] = L.T("reg.confirm_email_cta", (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey]);
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
 }
 <section class="narrow">
     <div class="card">
-        <p class="eyebrow">Confirmação</p>
-        <h1>Confirme seu e-mail</h1>
+        <p class="eyebrow">@L.T("conf.eyebrow", _c)</p>
+        <h1>@L.T("conf.h1", _c)</h1>
         <form method="post" novalidate>
             @Html.AntiForgeryToken()
             <div asp-validation-summary="ModelOnly" class="validation" role="alert"></div>
@@ -13,7 +14,7 @@
             <label asp-for="Token"></label>
             <input asp-for="Token" autocomplete="one-time-code" autofocus />
             <span asp-validation-for="Token" class="validation"></span>
-            <button class="button button-primary" type="submit">Confirmar</button>
+            <button class="button button-primary" type="submit">@L.T("conf.confirm", _c)</button>
         </form>
     </div>
 </section>

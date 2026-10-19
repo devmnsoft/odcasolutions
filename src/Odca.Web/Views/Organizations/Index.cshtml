@@ -1,16 +1,17 @@
 @model Odca.Contracts.Tenancy.OrganizationSummary[]
 @{
-    ViewData["Title"] = "Escolher organização";
+    ViewData["Title"] = L.T("org.pick_title", (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey]);
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
 }
 <section class="card help-card">
-    <h2>Como usar</h2>
-    <p>Escolha uma organização para trabalhar no contexto correto. Você pode filtrar pelo nome, abrir a equipe e, quando tiver permissão, editar o cadastro sem informar IDs técnicos.</p>
+    <h2>@L.T("common.how_to_use", _c)</h2>
+    <p>@L.T("org.pick_help", _c)</p>
 </section>
 <section class="page-heading">
     <div>
-        <span class="eyebrow">Contexto de trabalho</span>
-        <h1>Escolha uma organização</h1>
-        <p>Cada página mantém a organização no endereço para evitar ações no contexto errado. Busque pelo nome — não é necessário informar identificadores técnicos.</p>
+        <span class="eyebrow">@L.T("org.context_eyebrow", _c)</span>
+        <h1>@L.T("org.pick_h1", _c)</h1>
+        <p>@L.T("org.pick_subtitle", _c)</p>
     </div>
 </section>
 
@@ -23,8 +24,8 @@
 {
     <div class="toolbar">
         <label class="form-inline">
-            <span class="sr-only">Filtrar organizações</span>
-            <input type="search" data-org-filter placeholder="Filtrar por nome" autocomplete="off" />
+            <span class="sr-only">@L.T("org.filter_aria", _c)</span>
+            <input type="search" data-org-filter placeholder="@L.T("org.filter_by_name", _c)" autocomplete="off" />
         </label>
     </div>
     <div class="card-grid" data-org-list>
@@ -32,26 +33,26 @@
         {
             <article class="card" data-org-name="@item.Name.ToLowerInvariant()">
                 <h2>@item.Name</h2>
-                <p>Estado: <span class="badge">@TenancyDisplay.OrganizationStatus(item.Status)</span></p>
+                <p>@L.T("org.state_prefix", _c)<span class="badge">@TenancyDisplay.OrganizationStatus(item.Status, k => L.T(k, _c))</span></p>
                 <div class="toolbar">
-                    <a class="button button-primary" asp-action="Team" asp-route-tenantId="@item.Id">Abrir equipe</a>
+                    <a class="button button-primary" asp-action="Team" asp-route-tenantId="@item.Id">@L.T("org.open_team", _c)</a>
                     @if (item.Permissions.Contains("tenant.organization.manage"))
                     {
-                        <a class="button" asp-action="Edit" asp-route-tenantId="@item.Id">Editar cadastro</a>
+                        <a class="button" asp-action="Edit" asp-route-tenantId="@item.Id">@L.T("org.open_record", _c)</a>
                     }
                 </div>
             </article>
         }
     </div>
     <div class="empty-state" data-org-empty hidden>
-        <h2>Nenhuma organização correspondente</h2>
-        <p>Ajuste o filtro ou limpe a busca para ver todas as organizações disponíveis.</p>
+        <h2>@L.T("org.empty_match_title", _c)</h2>
+        <p>@L.T("org.empty_match_body", _c)</p>
     </div>
 }
 else
 {
     <div class="empty-state card">
-        <h2>Nenhum acesso ativo</h2>
-        <p>Seu vínculo pode ter sido suspenso, bloqueado ou revogado. Se você recebeu um convite, aceite-o com a conta do e-mail convidado.</p>
+        <h2>@L.T("org.empty_access_title", _c)</h2>
+        <p>@L.T("org.empty_access_body", _c)</p>
     </div>
 }

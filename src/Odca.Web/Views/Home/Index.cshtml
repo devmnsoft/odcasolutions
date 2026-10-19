@@ -1,12 +1,13 @@
 @model Odca.Contracts.Identity.DashboardResponse
 @{
-    ViewData["Title"] = "Visão global";
+    ViewData["Title"] = L.T("visao-global", (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey]);
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
 }
 <section class="dashboard-heading">
     <div>
-        <p class="eyebrow">Visão global</p>
-        <h1>Olá, @Model.DisplayName</h1>
-        <p class="muted">Acompanhe a operação da plataforma, vencimentos e pendências sem perder o isolamento entre clientes.</p>
+        <p class="eyebrow">@L.T("visao-global", _c)</p>
+        <h1>@L.T("dash.greeting", _c, Model.DisplayName)</h1>
+        <p class="muted">@L.T("dash.subtitle", _c)</p>
     </div>
 </section>
 @if (TempData["Success"] is string success)
@@ -17,50 +18,50 @@
 {
     <div class="error" role="alert">@error</div>
 }
-<section class="metrics" aria-label="Indicadores da plataforma">
-    <article class="metric"><span>Total de clientes</span><strong>@Model.TotalTenants</strong></article>
-    <article class="metric"><span>Clientes ativos</span><strong>@Model.ActiveTenants</strong></article>
-    <article class="metric"><span>Clientes bloqueados</span><strong>@Model.BlockedTenants</strong></article>
-    <article class="metric"><span>Clientes inativos</span><strong>@Model.InactiveTenants</strong></article>
-    <article class="metric"><span>Usuários</span><strong>@Model.ActiveUsers</strong></article>
-    <article class="metric"><span>Contratos</span><strong>@Model.Contracts</strong></article>
-    <article class="metric"><span>Contratos vencendo (30 dias)</span><strong>@Model.ContractsExpiring</strong></article>
-    <article class="metric"><span>Obrigações abertas</span><strong>@Model.OpenObligations</strong></article>
-    <article class="metric"><span>Obrigações atrasadas</span><strong>@Model.OverdueObligations</strong></article>
-    <article class="metric"><span>Renovações próximas</span><strong>@Model.UpcomingRenewals</strong></article>
-    <article class="metric"><span>Cobranças pendentes</span><strong>@Model.PendingInvoices</strong></article>
-    <article class="metric"><span>Cobranças vencidas</span><strong>@Model.OverdueInvoices</strong></article>
-    <article class="metric"><span>Armazenamento utilizado</span><strong>@((Model.StorageBytes / 1_048_576d).ToString("N1")) MB</strong></article>
-    <article class="metric"><span>Pendências de privacidade</span><strong>@Model.PendingPrivacyItems</strong></article>
+<section class="metrics" aria-label="@L.T("dash.metrics_aria", _c)">
+    <article class="metric"><span>@L.T("dash.m_total_clients", _c)</span><strong>@Model.TotalTenants</strong></article>
+    <article class="metric"><span>@L.T("dash.m_active_clients", _c)</span><strong>@Model.ActiveTenants</strong></article>
+    <article class="metric"><span>@L.T("dash.m_blocked_clients", _c)</span><strong>@Model.BlockedTenants</strong></article>
+    <article class="metric"><span>@L.T("dash.m_inactive_clients", _c)</span><strong>@Model.InactiveTenants</strong></article>
+    <article class="metric"><span>@L.T("dash.m_users", _c)</span><strong>@Model.ActiveUsers</strong></article>
+    <article class="metric"><span>@L.T("dash.m_contracts", _c)</span><strong>@Model.Contracts</strong></article>
+    <article class="metric"><span>@L.T("dash.m_contracts_expiring", _c)</span><strong>@Model.ContractsExpiring</strong></article>
+    <article class="metric"><span>@L.T("dash.m_open_obligations", _c)</span><strong>@Model.OpenObligations</strong></article>
+    <article class="metric"><span>@L.T("dash.m_overdue_obligations", _c)</span><strong>@Model.OverdueObligations</strong></article>
+    <article class="metric"><span>@L.T("dash.m_upcoming_renewals", _c)</span><strong>@Model.UpcomingRenewals</strong></article>
+    <article class="metric"><span>@L.T("dash.m_pending_invoices", _c)</span><strong>@Model.PendingInvoices</strong></article>
+    <article class="metric"><span>@L.T("dash.m_overdue_invoices", _c)</span><strong>@Model.OverdueInvoices</strong></article>
+    <article class="metric"><span>@L.T("dash.m_storage_used", _c)</span><strong>@((Model.StorageBytes / 1_048_576d).ToString("N1")) MB</strong></article>
+    <article class="metric"><span>@L.T("dash.m_privacy_pending", _c)</span><strong>@Model.PendingPrivacyItems</strong></article>
 </section>
 <section class="card">
-    <div class="section-heading"><div><p class="eyebrow">Atalhos</p><h2>Ações rápidas</h2></div></div>
+    <div class="section-heading"><div><p class="eyebrow">@L.T("dash.shortcuts_eyebrow", _c)</p><h2>@L.T("dash.actions_quick", _c)</h2></div></div>
     <div class="button-row">
-        <a class="button button-primary" asp-controller="Onboarding" asp-action="Register">Cadastrar cliente</a>
-        <a class="button button-link" asp-controller="Organizations" asp-action="Index">Organizações</a>
-        <a class="button button-link" asp-controller="Customers" asp-action="Index">Clientes e liberação de módulos</a>
-        <a class="button button-link" asp-controller="PlatformDiagnostics" asp-action="Index">Diagnóstico de dependências</a>
-        <a class="button button-link" asp-controller="PlatformAudit" asp-action="Index">Auditoria global</a>
-        <a class="button button-link" asp-controller="Plans" asp-action="Index">Ver planos</a>
+        <a class="button button-primary" asp-controller="Onboarding" asp-action="Register">@L.T("dash.act_new_client", _c)</a>
+        <a class="button button-link" asp-controller="Organizations" asp-action="Index">@L.T("organizacoes", _c)</a>
+        <a class="button button-link" asp-controller="Customers" asp-action="Index">@L.T("dash.btn_clients_modules", _c)</a>
+        <a class="button button-link" asp-controller="PlatformDiagnostics" asp-action="Index">@L.T("dash.btn_diagnostics", _c)</a>
+        <a class="button button-link" asp-controller="PlatformAudit" asp-action="Index">@L.T("dash.btn_audit", _c)</a>
+        <a class="button button-link" asp-controller="Plans" asp-action="Index">@L.T("dash.btn_plans", _c)</a>
     </div>
 </section>
 <section class="card">
-    <div class="section-heading"><div><p class="eyebrow">Rastreabilidade</p><h2>Últimos eventos de auditoria</h2></div></div>
+    <div class="section-heading"><div><p class="eyebrow">@L.T("dash.audit_eyebrow", _c)</p><h2>@L.T("dash.audit_title", _c)</h2></div></div>
     @if (Model.RecentAuditEvents.Length == 0)
     {
-        <div class="empty-state"><h3>Nenhum evento registrado</h3><p>Os eventos relevantes aparecerão aqui assim que forem processados.</p></div>
+        <div class="empty-state"><h3>@L.T("dash.audit_empty_title", _c)</h3><p>@L.T("dash.audit_empty_body", _c)</p></div>
     }
     else
     {
-        <div class="table-wrap"><table><thead><tr><th>Data</th><th>Usuário</th><th>Cliente</th><th>Ação</th><th>Entidade</th><th>Resultado</th></tr></thead><tbody>
+        <div class="table-wrap"><table><thead><tr><th>@L.T("dash.th_date", _c)</th><th>@L.T("dash.th_user", _c)</th><th>@L.T("dash.th_client", _c)</th><th>@L.T("dash.th_action", _c)</th><th>@L.T("dash.th_entity", _c)</th><th>@L.T("dash.th_result", _c)</th></tr></thead><tbody>
         @foreach (var item in Model.RecentAuditEvents)
         {
-            <tr><td>@item.OccurredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td><td>@(item.ActorName ?? "Sistema")</td><td>@(item.TenantName ?? "Plataforma")</td><td>@item.Action</td><td>@item.EntityType</td><td><span class="badge">@item.Result</span></td></tr>
+            <tr><td>@CulturedTime.DateTime(item.OccurredAt.ToLocalTime(), _c)</td><td>@(item.ActorName ?? L.T("common.system", _c))</td><td>@(item.TenantName ?? L.T("layout.platform", _c))</td><td>@item.Action</td><td>@item.EntityType</td><td><span class="badge">@item.Result</span></td></tr>
         }
         </tbody></table></div>
     }
 </section>
 <section class="card empty-state">
-    <h2>Como usar</h2>
-    <p>Use os indicadores para acompanhar clientes, contratos, cobranças, consumo e alertas da plataforma. As ações rápidas levam somente a fluxos operacionais já disponíveis; selecione uma organização antes de trabalhar com dados de um cliente.</p>
+    <h2>@L.T("common.how_to_use", _c)</h2>
+    <p>@L.T("dash.howto", _c)</p>
 </section>

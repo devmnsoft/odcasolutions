@@ -1,53 +1,60 @@
 @model CustomerRegistrationViewModel
 @{
-    ViewData["Title"] = "Contratar";
+    ViewData["Title"] = L.T("reg.title", (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey]);
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
 }
 <section class="narrow">
     <div class="card">
-        <p class="eyebrow">Cadastro do cliente</p>
-        <h1>Comece pelo plano escolhido</h1>
-        <p class="muted">O acesso à organização só é liberado após confirmação do e-mail. A contratação fica pendente até validação comercial.</p>
+        <p class="eyebrow">@L.T("reg.eyebrow", _c)</p>
+        <h1>@L.T("reg.h1", _c)</h1>
+        <p class="muted">@L.T("reg.note", _c)</p>
         <form method="post" novalidate data-processing>
             @Html.AntiForgeryToken()
             <div asp-validation-summary="ModelOnly" class="validation" role="alert"></div>
-            <label asp-for="PlanCode"></label>
-            <select asp-for="PlanCode" autofocus>
-                <option value="">Selecione</option>
-                <option value="basic">Basic</option>
-                <option value="intermediate">Intermediário</option>
-                <option value="enterprise">Enterprise</option>
-            </select>
+            <label>@L.T("reg.lbl_plan", _c)
+                <select asp-for="PlanCode" autofocus>
+                    <option value="">@L.T("common.select", _c)</option>
+                    <option value="basic">Basic</option>
+                    <option value="intermediate">@L.T("reg.plan_intermediate", _c)</option>
+                    <option value="enterprise">Enterprise</option>
+                </select>
+            </label>
             <span asp-validation-for="PlanCode" class="validation"></span>
-            <label asp-for="Document"></label>
-            <input asp-for="Document" autocomplete="off" />
+            <label>@L.T("reg.lbl_document", _c)
+                <input asp-for="Document" autocomplete="off" />
+            </label>
             <span asp-validation-for="Document" class="validation"></span>
-            <label asp-for="ResponsibleName"></label>
-            <input asp-for="ResponsibleName" autocomplete="name" />
+            <label>@L.T("reg.lbl_responsible", _c)
+                <input asp-for="ResponsibleName" autocomplete="name" />
+            </label>
             <span asp-validation-for="ResponsibleName" class="validation"></span>
-            <label asp-for="Email"></label>
-            <input asp-for="Email" autocomplete="email" />
+            <label>@L.T("reg.lbl_email", _c)
+                <input asp-for="Email" autocomplete="email" />
+            </label>
             <span asp-validation-for="Email" class="validation"></span>
-            <label asp-for="Password"></label>
-            <div class="field-with-action"><input asp-for="Password" autocomplete="new-password" /><button class="field-action" type="button" data-password-toggle aria-pressed="false">Mostrar</button></div>
+            <label>@L.T("reg.lbl_password", _c)
+                <div class="field-with-action"><input asp-for="Password" autocomplete="new-password" /><button class="field-action" type="button" data-password-toggle aria-pressed="false">@L.T("reg.show", _c)</button></div>
+            </label>
             <span asp-validation-for="Password" class="validation"></span>
-            <label asp-for="ConfirmPassword"></label>
-            <input asp-for="ConfirmPassword" autocomplete="new-password" />
+            <label>@L.T("reg.lbl_confirm_password", _c)
+                <input asp-for="ConfirmPassword" autocomplete="new-password" />
+            </label>
             <span asp-validation-for="ConfirmPassword" class="validation"></span>
             <label class="checkbox-line">
                 <input asp-for="AcceptedTerms" />
-                <span>@Html.DisplayNameFor(model => model.AcceptedTerms)</span>
+                <span>@L.T("reg.chk_terms", _c)</span>
             </label>
             <span asp-validation-for="AcceptedTerms" class="validation"></span>
             <label class="checkbox-line">
                 <input asp-for="AcknowledgedPrivacyNotice" />
-                <span>@Html.DisplayNameFor(model => model.AcknowledgedPrivacyNotice)</span>
+                <span>@L.T("reg.chk_privacy", _c)</span>
             </label>
             <span asp-validation-for="AcknowledgedPrivacyNotice" class="validation"></span>
             <label class="checkbox-line">
                 <input asp-for="MarketingConsent" />
-                <span>@Html.DisplayNameFor(model => model.MarketingConsent)</span>
+                <span>@L.T("reg.chk_marketing", _c)</span>
             </label>
-            <button class="button button-primary button-block" type="submit" data-processing-label="Enviando cadastro…">Criar cadastro</button>
+            <button class="button button-primary button-block" type="submit" data-processing-label="@L.T("reg.submitting", _c)">@L.T("reg.create", _c)</button>
         </form>
     </div>
 </section>

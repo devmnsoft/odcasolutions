@@ -123,7 +123,9 @@ if ([string]$T -ne '20000000-0000-4000-8000-000000000001') { Write-Host ('TENANT
 # S8 (D-OC42): + contratos (lista), ficha do contrato (contrato fixo da prova ...201) e agenda
 # (cliente, 4 idiomas) + notificacoes da plataforma (superadmin, pt-BR).
 # S13 (D-OC47): + renovacoes, solicitacoes (revisoes) e acoes do cliente em 4 idiomas.
-# 63 par (rota x idioma) x 4 viewports = 252 medidas previstas.
+# S14 (D-OC48): + central de organizacao (picker, equipe, editar, visao geral do cliente,
+# primeiros passos) e funil anonimo (aceitar convite, contratar, confirmar e-mail) em 4 idiomas.
+# 95 par (rota x idioma) x 4 viewports = 380 medidas previstas.
 $cfgObj = [ordered]@{
   base = 'http://localhost:5144'
   outDir = $outDir
@@ -153,12 +155,20 @@ $cfgObj = [ordered]@{
     [ordered]@{ id = 'agenda';             path = '/organizacoes/' + $T + '/agenda';     session = 'cliente';    langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
     [ordered]@{ id = 'renovacoes';         path = '/organizacoes/' + $T + '/renovacoes'; session = 'cliente';    langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
     [ordered]@{ id = 'solicitacoes';       path = '/organizacoes/' + $T + '/solicitacoes'; session = 'cliente';  langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
-    [ordered]@{ id = 'acoes';              path = '/organizacoes/' + $T + '/acoes';      session = 'cliente';    langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') }
+    [ordered]@{ id = 'acoes';              path = '/organizacoes/' + $T + '/acoes';      session = 'cliente';    langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'org-picker';         path = '/organizacoes';                       session = 'cliente';    langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'equipe';             path = '/organizacoes/' + $T + '/equipe';     session = 'cliente';    langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'editar-org';         path = '/organizacoes/' + $T + '/editar';     session = 'cliente';    langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'visao-geral-cliente'; path = '/cliente';                          session = 'cliente';    langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'primeiros-passos';   path = '/organizacoes/' + $T + '/primeiros-passos'; session = 'cliente'; langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'aceitar-convite';    path = '/convites/aceitar?invitationId=11111111-2222-3333-4444-555555555555'; session = 'anon'; langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'contratar';          path = '/contratar';                          session = 'anon';       langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'confirmar-email';    path = '/confirmar-email?registrationId=11111111-2222-3333-4444-555555555555'; session = 'anon'; langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') }
   )
 }
 $cfgFile = Join-Path $logDir 'd41-audit-cfg.json'
 Set-Content -Path $cfgFile -Value ($cfgObj | ConvertTo-Json -Depth 10) -Encoding utf8
-LogEv 'AUDIT: 20 rotas x idiomas x 4 viewports (252 medidas previstas); PNG apenas de falhas em ' + $outDir
+LogEv 'AUDIT: 28 rotas x idiomas x 4 viewports (95 pares; 380 medidas previstas); PNG apenas de falhas em ' + $outDir
 
 # ---------- execucao ----------
 $driver = Join-Path $root 'scripts\qa\cdp-design-audit.mjs'

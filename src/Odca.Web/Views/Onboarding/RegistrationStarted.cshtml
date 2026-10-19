@@ -1,19 +1,20 @@
 @model CustomerRegistrationStartedViewModel
 @{
-    ViewData["Title"] = "Cadastro recebido";
+    ViewData["Title"] = L.T("reg.started_title", (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey]);
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
 }
 <section class="narrow">
     <div class="card">
-        <p class="eyebrow">E-mail pendente</p>
-        <h1>Cadastro recebido</h1>
+        <p class="eyebrow">@L.T("reg.started_eyebrow", _c)</p>
+        <h1>@L.T("reg.started_title", _c)</h1>
         <p class="muted">@Model.Message</p>
         @if (Model.DevelopmentConfirmationToken is not null)
         {
             <div class="warning" role="status">
-                <p>Transporte local de desenvolvimento. Use este token para concluir o teste:</p>
+                <p>@L.T("reg.dev_transport", _c)</p>
                 <code>@Model.DevelopmentConfirmationToken</code>
             </div>
-            <a class="button button-primary" asp-action="ConfirmEmail" asp-route-registrationId="@Model.RegistrationId" asp-route-token="@Model.DevelopmentConfirmationToken">Confirmar e-mail</a>
+            <a class="button button-primary" asp-action="ConfirmEmail" asp-route-registrationId="@Model.RegistrationId" asp-route-token="@Model.DevelopmentConfirmationToken">@L.T("reg.confirm_email_cta", _c)</a>
         }
     </div>
 </section>

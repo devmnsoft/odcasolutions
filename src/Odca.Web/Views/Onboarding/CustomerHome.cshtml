@@ -1,6 +1,7 @@
 @model CustomerHomePageViewModel
 @{
-    ViewData["Title"] = "Visão geral";
+    ViewData["Title"] = L.T("onb.home_title", (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey]);
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
     var home = Model.Home;
     var overview = Model.Overview;
     var isSuspended = home.TenantStatus == "suspended";
@@ -21,73 +22,73 @@
 <section>
     <div class="dashboard-heading page-heading">
         <div>
-            <p class="eyebrow">Organização</p>
+            <p class="eyebrow">@L.T("onb.home_eyebrow", _c)</p>
             <h1>@home.OrganizationName</h1>
             @if (isSuspended)
             {
                 <div class="error" role="alert" style="margin-top: 0.5rem;">
-                    <strong>Organização suspensa:</strong> As operações de criação e edição estão temporariamente bloqueadas no servidor.
+                    <strong>@L.T("onb.suspended", _c)</strong> @L.T("onb.suspended_body", _c)
                 </div>
             }
             else if (isCommercialActive)
             {
-                <p class="muted">Situação comercial: <strong style="color: var(--color-success, #16a34a);">Ativa</strong>. Operação documental liberada.</p>
+                <p class="muted">@L.T("onb.commercial_state", _c)<strong style="color: var(--color-success, #16a34a);">@L.T("onb.commercial_active", _c)</strong>. @L.T("onb.commercial_active_body", _c)</p>
             }
             else
             {
-                <p class="muted">Situação comercial: <strong>@home.CommercialState</strong>. Algumas operações podem requerer ativação comercial validada.</p>
+                <p class="muted">@L.T("onb.commercial_state", _c)<strong>@home.CommercialState</strong>. @L.T("onb.commercial_note", _c)</p>
             }
         </div>
         <div class="button-row">
             @if (Model.CanCreateDocument && !isSuspended)
             {
                 <a class="button button-primary" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@home.TenantId">
-                    <span aria-hidden="true">+</span> Novo documento
+                    <span aria-hidden="true">+</span> @L.T("documents.new_document", _c)
                 </a>
             }
             @if (Model.CanManagePatients && !isSuspended)
             {
                 <a class="button" asp-controller="Patients" asp-action="Create" asp-route-tenantId="@home.TenantId">
-                    <span aria-hidden="true">♙</span> Cadastrar paciente
+                    <span aria-hidden="true">♙</span> @L.T("patient.new_cta", _c)
                 </a>
             }
             @if (overview?.Pendencies is { Count: > 0 } || !isCommercialActive)
             {
                 <a class="button button-quiet" asp-controller="Onboarding" asp-action="GettingStarted" asp-route-tenantId="@home.TenantId">
-                    Configurações pendentes
+                    @L.T("onb.pending_settings", _c)
                 </a>
             }
-            <a class="button" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@home.TenantId">Abrir equipe</a>
+            <a class="button" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@home.TenantId">@L.T("org.open_team", _c)</a>
         </div>
     </div>
 
     @* Documentos Recentes *@
     <section class="card" style="margin-bottom: 2rem;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
-            <h2 style="margin:0;">Documentos recentes</h2>
+            <h2 style="margin:0;">@L.T("onb.recent_documents", _c)</h2>
             <a class="button button-small" asp-controller="Documents" asp-action="Index" asp-route-tenantId="@home.TenantId">
-                Ver todos os documentos →
+                @L.T("onb.all_documents", _c) <span aria-hidden="true">→</span>
             </a>
         </div>
 
         @if (Model.DocumentsError is not null)
         {
             <div class="error" role="alert">
-                <strong>Falha ao obter documentos:</strong> @Model.DocumentsError
+                <strong>@L.T("onb.doc_error", _c)</strong> @Model.DocumentsError
             </div>
         }
         else if (Model.RecentDocuments.Count > 0)
         {
             <div class="table-scroll">
-                <table class="table" aria-label="Documentos recentes">
+                <table class="table" aria-label="@L.T("onb.recent_documents", _c)">
                     <thead>
                         <tr>
-                            <th>Título</th>
-                            <th>Tipo</th>
-                            <th>Paciente</th>
-                            <th>Situação</th>
-                            <th>Atualizado em</th>
-                            <th>Ação</th>
+                            <th>@L.T("onb.th_title", _c)</th>
+                            <th>@L.T("common.type", _c)</th>
+                            <th>@L.T("onb.th_patient", _c)</th>
+                            <th>@L.T("onb.th_status", _c)</th>
+                            <th>@L.T("onb.th_updated", _c)</th>
+                            <th>@L.T("actions.item_action", _c)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -104,10 +105,10 @@
                                 <td>
                                     <span class="badge badge-muted">
                                         @(doc.DocumentType switch {
-                                            "service" => "Serviços",
-                                            "consent" => "Consentimento",
-                                            "nda" => "Confidencialidade",
-                                            "amendment" => "Aditivo",
+                                            "service" => L.T("onb.dt_service", _c),
+                                            "consent" => L.T("onb.dt_consent", _c),
+                                            "nda" => L.T("onb.dt_nda", _c),
+                                            "amendment" => L.T("onb.dt_amendment", _c),
                                             _ => doc.DocumentType
                                         })
                                     </span>
@@ -115,15 +116,15 @@
                                 <td>@(doc.PatientName ?? "—")</td>
                                 <td>
                                     <small>
-                                        @(doc.DraftStatus == "draft" ? "Minuta em edição" :
-                                          doc.ReviewStatus == "submitted" ? "Em revisão" :
-                                          doc.ReviewStatus == "internally_approved" ? "Aprovado" :
-                                          doc.PdfStatus == "completed" ? "PDF concluído" : "Registrado")
+                                        @(doc.DraftStatus == "draft" ? L.T("onb.draft_editing", _c) :
+                                          doc.ReviewStatus == "submitted" ? L.T("common.status_in_review", _c) :
+                                          doc.ReviewStatus == "internally_approved" ? L.T("onb.approved", _c) :
+                                          doc.PdfStatus == "completed" ? L.T("onb.pdf_done", _c) : L.T("onb.registered", _c))
                                     </small>
                                 </td>
                                 <td>
                                     <time datetime="@doc.UpdatedAt.ToString("o")">
-                                        @TimeZoneInfo.ConvertTime(doc.UpdatedAt, timeZone).ToString("dd/MM/yyyy HH:mm")
+                                        @CulturedTime.DateTime(TimeZoneInfo.ConvertTime(doc.UpdatedAt, timeZone), _c)
                                     </time>
                                 </td>
                                 <td>
@@ -134,7 +135,7 @@
                                            asp-action="Edit"
                                            asp-route-tenantId="@home.TenantId"
                                            asp-route-draftId="@doc.DraftId.Value">
-                                            Continuar
+                                            @L.T("documents.btn_continue", _c)
                                         </a>
                                     }
                                     else
@@ -144,7 +145,7 @@
                                            asp-action="Sheet"
                                            asp-route-tenantId="@home.TenantId"
                                            asp-route-contractId="@doc.ContractId">
-                                            Abrir
+                                            @L.T("common.open", _c)
                                         </a>
                                     }
                                 </td>
@@ -157,11 +158,11 @@
         else
         {
             <div class="empty-state" style="padding: 1.5rem 0;">
-                <p class="muted">Nenhum documento recente nesta organização.</p>
+                <p class="muted">@L.T("onb.empty_documents", _c)</p>
                 @if (Model.CanCreateDocument && !isSuspended)
                 {
                     <a class="button button-small button-primary" asp-controller="Documents" asp-action="NewDocument" asp-route-tenantId="@home.TenantId">
-                        Criar primeiro documento
+                        @L.T("onb.create_first_document", _c)
                     </a>
                 }
             </div>
@@ -173,28 +174,28 @@
     {
         <section class="card" style="margin-bottom: 2rem;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
-                <h2 style="margin:0;">Revisões atribuídas a você</h2>
+                <h2 style="margin:0;">@L.T("onb.my_reviews", _c)</h2>
                 <a class="button button-small" asp-controller="Reviews" asp-action="Index" asp-route-tenantId="@home.TenantId">
-                    Ver todas as solicitações →
+                    @L.T("onb.all_reviews", _c) <span aria-hidden="true">→</span>
                 </a>
             </div>
 
             @if (Model.ReviewsError is not null)
             {
                 <div class="error" role="alert">
-                    <strong>Falha ao obter revisões:</strong> @Model.ReviewsError
+                    <strong>@L.T("onb.reviews_error", _c)</strong> @Model.ReviewsError
                 </div>
             }
             else if (Model.AssignedReviews.Count > 0)
             {
                 <div class="table-scroll">
-                    <table class="table" aria-label="Revisões atribuídas">
+                    <table class="table" aria-label="@L.T("onb.my_reviews", _c)">
                         <thead>
                             <tr>
-                                <th>Contrato / Documento</th>
-                                <th>Prazo limite</th>
-                                <th>Situação</th>
-                                <th>Ação</th>
+                                <th>@L.T("onb.th_contract_doc", _c)</th>
+                                <th>@L.T("onb.th_deadline", _c)</th>
+                                <th>@L.T("onb.th_status", _c)</th>
+                                <th>@L.T("actions.item_action", _c)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -205,14 +206,22 @@
                                         <strong>@review.Contract</strong>
                                         <br />
                                         <small class="muted">
-                                            @(review.DocumentVersionNumber.HasValue ? $"Versão {review.DocumentVersionNumber.Value}" : "Sem versão documental") · Por @review.Requester
+                                            @(review.DocumentVersionNumber.HasValue ? L.T("onb.version_of", _c, review.DocumentVersionNumber.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)) : L.T("onb.no_version", _c)) · @L.T("onb.by_requester", _c, review.Requester)
                                         </small>
                                     </td>
                                     <td>
-                                        @(review.DueAt.HasValue ? TimeZoneInfo.ConvertTime(review.DueAt.Value, timeZone).ToString("dd/MM/yyyy HH:mm") : "Sem prazo")
+                                        @(review.DueAt.HasValue ? CulturedTime.DateTime(TimeZoneInfo.ConvertTime(review.DueAt.Value, timeZone), _c) : L.T("onb.no_deadline", _c))
                                     </td>
                                     <td>
-                                        <span class="badge badge-muted">@review.Status</span>
+                                        <span class="badge badge-muted">@review.Status switch
+                                        {
+                                            "in_review" => L.T("common.status_in_review", _c),
+                                            "changes_requested" => L.T("rev.st_changes_requested", _c),
+                                            "internally_approved" => L.T("common.status_internally_approved", _c),
+                                            "cancelled" => L.T("rev.st_cancelled", _c),
+                                            "superseded" => L.T("rev.st_superseded", _c),
+                                            _ => review.Status
+                                        }</span>
                                     </td>
                                     <td>
                                         <a class="button button-small button-primary"
@@ -220,7 +229,7 @@
                                            asp-action="Detail"
                                            asp-route-tenantId="@home.TenantId"
                                            asp-route-reviewId="@review.Id">
-                                            Avaliar revisão
+                                            @L.T("onb.assess_review", _c)
                                         </a>
                                     </td>
                                 </tr>
@@ -231,37 +240,37 @@
             }
             else
             {
-                <p class="muted">Nenhuma revisão pendente atribuída a você no momento.</p>
+                <p class="muted">@L.T("onb.empty_reviews", _c)</p>
             }
         </section>
     }
 
     <div class="metrics">
         <a class="metric" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@home.TenantId" asp-route-tab="pessoas" asp-route-status="active">
-            <span>Membros ativos</span>
+            <span>@L.T("org.m_active_members", _c)</span>
             <strong>@(overview?.ActiveMembers.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "—")</strong>
         </a>
         <a class="metric" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@home.TenantId" asp-route-tab="convites" asp-route-invitationStatus="pending">
-            <span>Convites válidos</span>
+            <span>@L.T("org.m_valid_invitations", _c)</span>
             <strong>@(overview?.ValidInvitations.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "—")</strong>
         </a>
         <a class="metric" asp-controller="Organizations" asp-action="Team" asp-route-tenantId="@home.TenantId" asp-route-tab="pessoas">
-            <span>Assentos disponíveis</span>
+            <span>@L.T("onb.available_seats", _c)</span>
             <strong>@(overview?.AvailableSeats.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "—")</strong>
         </a>
     </div>
 
     <div class="metrics">
         <div class="metric">
-            <span>Plano contratado</span>
+            <span>@L.T("onb.contracted_plan", _c)</span>
             <strong>@home.PlanName</strong>
         </div>
         <div class="metric">
-            <span>Limite de usuários</span>
+            <span>@L.T("onb.user_limit", _c)</span>
             <strong>@(overview?.SeatLimit ?? home.ActiveSeats)</strong>
         </div>
         <div class="metric">
-            <span>Capacidade de armazenamento</span>
+            <span>@L.T("onb.storage_capacity", _c)</span>
             <strong>@(home.StorageBytes / 1_000_000_000) GB</strong>
         </div>
     </div>
@@ -269,14 +278,14 @@
     @if (Model.OverviewError is not null)
     {
         <div class="error" role="alert" style="margin-top: 1.5rem;">
-            <strong>Aviso da organização:</strong> @Model.OverviewError
+            <strong>@L.T("onb.org_notice", _c)</strong> @Model.OverviewError
         </div>
     }
 
     @if (overview?.Pendencies is { Count: > 0 })
     {
         <section class="card">
-            <h2>Pendências acionáveis</h2>
+            <h2>@L.T("onb.actionable_pendencies", _c)</h2>
             <ul class="pendency-list">
                 @foreach (var item in overview.Pendencies)
                 {
@@ -287,7 +296,7 @@
                            asp-action="Team"
                            asp-route-tenantId="@home.TenantId"
                            asp-route-tab="@(item.Tab ?? "pessoas")"
-                           asp-route-status="@item.StatusFilter">Abrir</a>
+                           asp-route-status="@item.StatusFilter">@L.T("common.open", _c)</a>
                     </li>
                 }
             </ul>

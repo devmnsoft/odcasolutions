@@ -1,21 +1,22 @@
 @model EditOrganizationViewModel
 @{
-    ViewData["Title"] = "Editar organização";
+    ViewData["Title"] = L.T("org.edit_title", (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey]);
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
 }
 <section class="page-heading">
     <div>
-        <span class="eyebrow">Cadastro</span>
-        <h1>Editar organização</h1>
-        <p>Alterações usam controle de versão. Se outra sessão salvar antes, será preciso recarregar.</p>
+        <span class="eyebrow">@L.T("org.edit_eyebrow", _c)</span>
+        <h1>@L.T("org.edit_title", _c)</h1>
+        <p>@L.T("org.edit_subtitle", _c)</p>
     </div>
-    <a class="button" asp-action="Team" asp-route-tenantId="@Model.TenantId">Voltar à equipe</a>
+    <a class="button" asp-action="Team" asp-route-tenantId="@Model.TenantId">@L.T("org.back_to_team", _c)</a>
 </section>
 
 @if (Model.VersionConflict)
 {
     <div class="alert alert-error" role="alert">
-        Os dados mudaram em outra sessão.
-        <a asp-action="Edit" asp-route-tenantId="@Model.TenantId">Recarregar cadastro</a>
+        @L.T("org.version_conflict_alert", _c)
+        <a asp-action="Edit" asp-route-tenantId="@Model.TenantId">@L.T("org.reload_record", _c)</a>
     </div>
 }
 
@@ -28,21 +29,21 @@
         <input type="hidden" asp-for="Status" />
         <div class="form-grid">
             <label asp-for="Name">
-                Nome
+                @L.T("org.th_name", _c)
                 <input asp-for="Name" maxlength="160" autocomplete="organization" />
                 <span asp-validation-for="Name" class="validation"></span>
             </label>
             <label asp-for="Timezone">
-                Fuso horário
+                @L.T("org.f_timezone", _c)
                 <input asp-for="Timezone" maxlength="80" list="timezone-suggestions" />
                 <span asp-validation-for="Timezone" class="validation"></span>
             </label>
             <label asp-for="ActivityProfile">
-                Perfil de atuação
+                @L.T("org.f_activity_profile", _c)
                 <select asp-for="ActivityProfile">
-                    <option value="general">Geral — biblioteca padrão</option>
-                    <option value="therapy_clinic">Clínica de terapia — campos e mensalidade por sessão</option>
-                    <option value="plastic_surgery">Cirurgião plástico — modelos cirúrgicos (Enterprise)</option>
+                    <option value="general">@L.T("org.ap_general", _c)</option>
+                    <option value="therapy_clinic">@L.T("org.ap_therapy_clinic", _c)</option>
+                    <option value="plastic_surgery">@L.T("org.ap_plastic_surgery", _c)</option>
                 </select>
                 <span asp-validation-for="ActivityProfile" class="validation"></span>
             </label>
@@ -56,10 +57,10 @@
             <option value="America/Cuiaba"></option>
             <option value="UTC"></option>
         </datalist>
-        <p class="muted">Estado atual: @TenancyDisplay.OrganizationStatus(Model.Status)</p>
+        <p class="muted">@L.T("org.current_state", _c)@TenancyDisplay.OrganizationStatus(Model.Status, k => L.T(k, _c))</p>
         <div class="toolbar">
-            <button class="button button-primary" type="submit" data-processing-label="Salvando…">Salvar</button>
-            <a class="button" asp-action="Team" asp-route-tenantId="@Model.TenantId">Cancelar</a>
+            <button class="button button-primary" type="submit" data-processing-label="@L.T("org.saving", _c)">@L.T("action.save", _c)</button>
+            <a class="button" asp-action="Team" asp-route-tenantId="@Model.TenantId">@L.T("action.cancel", _c)</a>
         </div>
     </form>
 </section>
