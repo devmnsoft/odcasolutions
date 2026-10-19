@@ -55,7 +55,8 @@ public sealed class AvisosEConfirmacaoRenovacaoTests
                 context.Response.StatusCode = statusCode;
                 return Task.CompletedTask;
             },
-            NullLogger<BffErrorHandlingMiddleware>.Instance);
+            NullLogger<BffErrorHandlingMiddleware>.Instance,
+            new Odca.Configuration.Localization.LocalizationService());
 
         var context = new DefaultHttpContext();
         await middleware.InvokeAsync(context);

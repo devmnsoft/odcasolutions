@@ -4,7 +4,7 @@
 <nav class="breadcrumb" aria-label="@L.T("common.breadcrumb_aria",_c)"><a asp-controller="Onboarding" asp-action="CustomerHome">@L.T("inicio",_c)</a><span>/</span><span aria-current="page">@L.T("plano-consumo",_c)</span></nav>
 <header class="page-heading"><div><p class="eyebrow">@L.T("cons.eyebrow",_c)</p><h1>@L.T("plano-consumo",_c)</h1><p>@L.T("cons.sub",_c)</p></div><a class="button button-primary" href="#solicitar">@L.T("cons.btn_request",_c)</a></header>
 @if(TempData["Success"] is string success){<div class="alert alert-success" role="status">✓ @success</div>}@if(TempData["Error"] is string error){<div class="alert alert-error" role="alert">! @error</div>}
-<section class="metric-grid" aria-label="Resumo do plano">
+<section class="metric-grid" aria-label="@L.T("cons.plan_summary_aria",_c)">
 <article class="metric-card"><span>@L.T("cons.current_plan",_c)</span><strong>@s.PlanName</strong><small>@L.T("cons.version",_c,s.PlanVersion.ToString(System.Globalization.CultureInfo.InvariantCulture))<span class="status-badge">@StatusLabels.Status(s.SubscriptionStatus,k=>L.T(k,_c))</span></small></article>
 <article class="metric-card"><span>@L.T("cust.th_users",_c)</span><strong>@s.ActiveUsers de @s.ContractedSeats</strong><small>@L.T("cons.seats_detail",_c,s.ReservedInvitations.ToString(System.Globalization.CultureInfo.InvariantCulture),s.AvailableSeats.ToString(System.Globalization.CultureInfo.InvariantCulture))</small></article>
 <article class="metric-card"><span>@L.T("cons.storage_available",_c)</span><strong>@Bytes(s.AvailableStorageBytes)</strong><small>@L.T("cons.max_file",_c,Bytes(s.MaximumFileBytes))</small></article>

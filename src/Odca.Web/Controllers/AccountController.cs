@@ -147,10 +147,10 @@ public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContex
         {
             ModelState.AddModelError(string.Empty, result.Status switch
             {
-                ApiCallStatus.RateLimited => "Muitas tentativas. Aguarde um minuto e tente novamente.",
-                ApiCallStatus.Timeout => "O serviço demorou para responder. Tente novamente.",
-                ApiCallStatus.Unavailable => "O serviço está temporariamente indisponível.",
-                _ => "E-mail/CPF ou senha inválidos."
+                ApiCallStatus.RateLimited => L("acct.err_rate_limited_login"),
+                ApiCallStatus.Timeout => L("acct.err_timeout"),
+                ApiCallStatus.Unavailable => L("acct.err_unavailable"),
+                _ => L("acct.err_credentials")
             });
             return View(model);
         }
@@ -200,16 +200,16 @@ public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContex
 
             ModelState.AddModelError(string.Empty, result.Status switch
             {
-                ApiCallStatus.Forbidden => "Você não tem permissão para alterar esta senha.",
-                ApiCallStatus.RateLimited => "Muitas tentativas. Aguarde e tente novamente.",
-                ApiCallStatus.Timeout or ApiCallStatus.Unavailable => "O serviço está temporariamente indisponível.",
-                _ => "Não foi possível alterar a senha. Confira a senha atual e os requisitos informados."
+                ApiCallStatus.Forbidden => L("acct.err_no_perm_password"),
+                ApiCallStatus.RateLimited => L("acct.err_rate_limited"),
+                ApiCallStatus.Timeout or ApiCallStatus.Unavailable => L("acct.err_unavailable"),
+                _ => L("acct.err_change_pass")
             });
             return View(model);
         }
 
         await SignInAsync(result.Value!);
-        TempData["Success"] = "Senha alterada com segurança.";
+        TempData["Success"] = L("acct.ok_change_pass");
         return RedirectAfterAuthentication(result.Value!);
     }
 
@@ -262,10 +262,10 @@ public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContex
         {
             ModelState.AddModelError(string.Empty, FieldMessage(result, () => result.Status switch
             {
-                ApiCallStatus.Unauthorized => "Sua sessão expirou. Entre novamente.",
-                ApiCallStatus.RateLimited => "Muitas tentativas. Aguarde e tente novamente.",
-                ApiCallStatus.Timeout or ApiCallStatus.Unavailable => "O serviço está temporariamente indisponível.",
-                _ => "Código inválido ou expirado."
+                ApiCallStatus.Unauthorized => L("acct.err_session_expired"),
+                ApiCallStatus.RateLimited => L("acct.err_rate_limited"),
+                ApiCallStatus.Timeout or ApiCallStatus.Unavailable => L("acct.err_unavailable"),
+                _ => L("acct.err_code_invalid")
             }));
             return View(model);
         }
@@ -296,7 +296,7 @@ public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContex
                     OtpAuthUri = fallback.Value.OtpAuthUri,
                     QrDataUri = BuildQrDataUri(fallback.Value.OtpAuthUri)
                 };
-                ModelState.AddModelError(string.Empty, "Não foi possível gerar uma nova chave agora. A chave exibida continua válida.");
+                ModelState.AddModelError(string.Empty, L("acct.err_regen_failed"));
                 return View("MfaEnrollment", model);
             }
 
@@ -339,10 +339,10 @@ public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContex
         {
             ModelState.AddModelError(string.Empty, FieldMessage(result, () => result.Status switch
             {
-                ApiCallStatus.Unauthorized => "Sua sessão expirou. Entre novamente.",
-                ApiCallStatus.RateLimited => "Muitas tentativas. Aguarde e tente novamente.",
-                ApiCallStatus.Timeout or ApiCallStatus.Unavailable => "O serviço está temporariamente indisponível.",
-                _ => "Código inválido, expirado ou já utilizado."
+                ApiCallStatus.Unauthorized => L("acct.err_session_expired"),
+                ApiCallStatus.RateLimited => L("acct.err_rate_limited"),
+                ApiCallStatus.Timeout or ApiCallStatus.Unavailable => L("acct.err_unavailable"),
+                _ => L("acct.err_code_used")
             }));
             return View(model);
         }
@@ -372,7 +372,7 @@ public sealed class AccountController(OdcaApiClient apiClient, IUserTenantContex
 
         if (!remotelyRevoked)
         {
-            TempData["LogoutWarning"] = "A sessão local foi encerrada. A revogação remota não pôde ser confirmada e o acesso expirará automaticamente.";
+            TempData["LogoutWarning"] = L("acct.ok_session_revoked");
         }
         return RedirectToAction(nameof(Login));
     }

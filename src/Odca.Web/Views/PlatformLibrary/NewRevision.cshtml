@@ -6,7 +6,7 @@
     var inv = System.Globalization.CultureInfo.InvariantCulture;
     string Rev(int n) => n.ToString(inv);
 }
-<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-action="Index">@L.T("biblioteca-modelos",_c)</a><span>/</span><span aria-current="page">@L.T("platform.lib_new_revision_btn",_c)</span></nav>
+<nav class="breadcrumb" aria-label="@L.T("common.breadcrumb_aria",_c)"><a asp-action="Index">@L.T("biblioteca-modelos",_c)</a><span>/</span><span aria-current="page">@L.T("platform.lib_new_revision_btn",_c)</span></nav>
 <header class="page-heading">
     <div>
         <p class="eyebrow">@L.T("platform.rev_eyebrow",_c)</p>

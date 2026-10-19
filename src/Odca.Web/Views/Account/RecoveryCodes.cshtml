@@ -1,18 +1,19 @@
 @model MfaRecoveryCodesViewModel
 @{
-    ViewData["Title"] = "Códigos de recuperação";
+    var _culture=(string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("acct.recovery_title",_culture);
 }
 <section class="narrow">
     <div class="card">
-        <p class="eyebrow">MFA confirmado</p>
-        <h1>Guarde os códigos de recuperação</h1>
-        <p class="muted">Cada código funciona uma única vez. Eles não serão exibidos novamente.</p>
-        <ul class="recovery-codes" aria-label="Códigos de recuperação">
+        <p class="eyebrow">@L.T("acct.recovery_eyebrow",_culture)</p>
+        <h1>@L.T("acct.recovery_h",_culture)</h1>
+        <p class="muted">@L.T("acct.recovery_sub",_culture)</p>
+        <ul class="recovery-codes" aria-label="@L.T("acct.recovery_aria",_culture)">
             @foreach (var code in Model.Codes)
             {
                 <li><code>@code</code></li>
             }
         </ul>
-        <a class="button button-primary" asp-controller="Home" asp-action="Index">Continuar</a>
+        <a class="button button-primary" asp-controller="Home" asp-action="Index">@L.T("acct.btn_continue",_culture)</a>
     </div>
 </section>

@@ -1,13 +1,14 @@
 @model LoginViewModel
 @{
-    ViewData["Title"] = "Entrar";
+    var _culture=(string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("acct.login_title",_culture);
 }
 <section class="auth-layout">
     <div class="auth-intro">
-        <p class="eyebrow">Acesso corporativo</p>
-        <h1>Seu ambiente de contratos, com acesso controlado.</h1>
-        <p>Use sua identidade individual. Organização e permissões são verificadas a cada acesso.</p>
-        <p><a asp-controller="Catalog" asp-action="Plans">Conheça os planos publicados</a></p>
+        <p class="eyebrow">@L.T("acct.login_eyebrow",_culture)</p>
+        <h1>@L.T("acct.login_h",_culture)</h1>
+        <p>@L.T("acct.login_sub",_culture)</p>
+        <p><a asp-controller="Catalog" asp-action="Plans">@L.T("acct.link_plans",_culture)</a></p>
     </div>
     <div class="card auth-card">
         @if (TempData["LogoutWarning"] is string warning)
@@ -18,8 +19,8 @@
         {
             <div class="alert alert-success" role="status">@success</div>
         }
-        <h2>Acesse sua conta</h2>
-        <p class="muted">Use seu e-mail ou CPF e sua senha pessoal.</p>
+        <h2>@L.T("acct.login_card_h",_culture)</h2>
+        <p class="muted">@L.T("acct.login_card_sub",_culture)</p>
         <form method="post" novalidate data-processing>
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="ReturnUrl" />
@@ -30,10 +31,10 @@
             <label asp-for="Password"></label>
             <div class="field-with-action">
                 <input asp-for="Password" autocomplete="current-password" />
-                <button class="field-action" type="button" data-password-toggle aria-pressed="false">Mostrar</button>
+                <button class="field-action" type="button" data-password-toggle data-toggle-show="@L.T("acct.toggle_show",_culture)" data-toggle-hide="@L.T("acct.toggle_hide",_culture)" aria-pressed="false">@L.T("acct.toggle_show",_culture)</button>
             </div>
             <span asp-validation-for="Password" class="validation"></span>
-            <button class="button button-primary button-block" type="submit" data-processing-label="Entrando…">Entrar</button>
+            <button class="button button-primary button-block" type="submit" data-processing-label="@L.T("acct.btn_login_processing",_culture)">@L.T("acct.btn_login",_culture)</button>
         </form>
     </div>
 </section>

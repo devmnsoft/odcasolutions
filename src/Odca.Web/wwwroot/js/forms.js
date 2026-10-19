@@ -1,11 +1,13 @@
 (() => {
   document.querySelectorAll('[data-password-toggle]').forEach(button => {
+    const showLabel = button.dataset.toggleShow || 'Mostrar';
+    const hideLabel = button.dataset.toggleHide || 'Ocultar';
     button.addEventListener('click', () => {
       const input = button.closest('.field-with-action')?.querySelector('input');
       if (!input) return;
       const reveal = input.type === 'password';
       input.type = reveal ? 'text' : 'password';
-      button.textContent = reveal ? 'Ocultar' : 'Mostrar';
+      button.textContent = reveal ? hideLabel : showLabel;
       button.setAttribute('aria-pressed', String(reveal));
     });
   });

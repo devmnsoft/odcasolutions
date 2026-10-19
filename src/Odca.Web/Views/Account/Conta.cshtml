@@ -1,46 +1,47 @@
 @{
-    ViewData["Title"] = "Minha conta";
+    var _culture=(string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("minha-conta",_culture);
     var mfaPending = User.FindFirst("requires_mfa_enrollment")?.Value == "true";
 }
 <section class="narrow">
-    <header class="page-heading"><div><p class="eyebrow">Minha conta</p><h1>Segurança da conta</h1><p>Ações sobre o seu próprio usuário, sem depender de outra pessoa da organização.</p></div></header>
+    <header class="page-heading"><div><p class="eyebrow">@L.T("minha-conta",_culture)</p><h1>@L.T("acct.conta_h",_culture)</h1><p>@L.T("acct.conta_sub",_culture)</p></div></header>
 
     <div class="card">
-        <h2>Senha</h2>
-        <p class="muted">Altere a senha de acesso usando a senha atual.</p>
+        <h2>@L.T("acct.section_password",_culture)</h2>
+        <p class="muted">@L.T("acct.password_sub",_culture)</p>
         <div class="button-row">
-            <a class="button button-primary" asp-controller="Account" asp-action="ChangePassword">Alterar senha</a>
+            <a class="button button-primary" asp-controller="Account" asp-action="ChangePassword">@L.T("acct.btn_change_pass",_culture)</a>
         </div>
     </div>
 
     <div class="card">
-        <h2>Autenticação em dois fatores (MFA)</h2>
+        <h2>@L.T("acct.section_mfa",_culture)</h2>
         @if (mfaPending)
         {
-            <p><span class="status-badge">Ativação pendente</span></p>
-            <p class="muted">Cadastre um aplicativo autenticador para proteger o acesso. Ao confirmar, você recebe códigos de recuperação para usar se perder o dispositivo.</p>
+            <p><span class="status-badge">@L.T("acct.mfa_pending",_culture)</span></p>
+            <p class="muted">@L.T("acct.mfa_pending_sub",_culture)</p>
             <div class="button-row">
-                <a class="button button-primary" asp-controller="Account" asp-action="MfaEnrollment">Ativar MFA</a>
+                <a class="button button-primary" asp-controller="Account" asp-action="MfaEnrollment">@L.T("acct.btn_activate_mfa",_culture)</a>
             </div>
         }
         else
         {
-            <p><span class="status-badge">Ativo</span></p>
-            <p class="muted">Se trocar de celular ou perder os códigos de recuperação, gere uma nova chave. A chave anterior deixa de ser válida e novos códigos de recuperação são exibidos na confirmação.</p>
+            <p><span class="status-badge">@L.T("acct.mfa_active",_culture)</span></p>
+            <p class="muted">@L.T("acct.mfa_active_sub",_culture)</p>
             <form method="post" action="/mfa/inscricao/regenerar" class="form-actions-row" data-prevent-double-submit>
                 @Html.AntiForgeryToken()
-                <button class="button button-secondary" type="submit">Gerar nova chave e códigos</button>
+                <button class="button button-secondary" type="submit">@L.T("acct.btn_regen_keys",_culture)</button>
             </form>
         }
     </div>
 
     <div class="card">
-        <h2>Notificações</h2>
-        <p class="muted">Acompanhe os avisos direcionados a você nesta organização, com estado de lido/não lido.</p>
+        <h2>@L.T("acct.section_notif",_culture)</h2>
+        <p class="muted">@L.T("acct.notif_sub",_culture)</p>
         <div class="button-row">
-            <a class="button button-secondary" asp-controller="Account" asp-action="Notifications">Ver notificações</a>
+            <a class="button button-secondary" asp-controller="Account" asp-action="Notifications">@L.T("acct.btn_view_notif",_culture)</a>
         </div>
     </div>
 
-    <details class="help-card"><summary>O que fica aqui depois</summary><p>A preferência de idioma desta conta entra nos próximos blocos da operação contratual; enquanto não existe, não aparece como item "em construção".</p></details>
+    <details class="help-card"><summary>@L.T("acct.help_summary",_culture)</summary><p>@L.T("acct.help_body",_culture)</p></details>
 </section>

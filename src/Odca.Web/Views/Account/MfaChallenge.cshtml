@@ -1,12 +1,13 @@
 @model MfaChallengeViewModel
 @{
-    ViewData["Title"] = "Confirmar MFA";
+    var _culture=(string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("acct.challenge_title",_culture);
 }
 <section class="narrow">
     <div class="card">
-        <p class="eyebrow">Acesso privilegiado</p>
-        <h1>Confirme o segundo fator</h1>
-        <p class="muted">Use o código do autenticador ou um código de recuperação ainda não utilizado.</p>
+        <p class="eyebrow">@L.T("acct.challenge_eyebrow",_culture)</p>
+        <h1>@L.T("acct.challenge_h",_culture)</h1>
+        <p class="muted">@L.T("acct.challenge_sub",_culture)</p>
         <form method="post" novalidate>
             @Html.AntiForgeryToken()
             <div asp-validation-summary="ModelOnly" class="validation" role="alert"></div>
@@ -14,7 +15,7 @@
             <input type="hidden" asp-for="ReturnUrl" />
             <input asp-for="Code" inputmode="numeric" autocomplete="one-time-code" autofocus />
             <span asp-validation-for="Code" class="validation"></span>
-            <button class="button button-primary" type="submit">Verificar</button>
+            <button class="button button-primary" type="submit">@L.T("acct.btn_verify",_culture)</button>
         </form>
     </div>
 </section>

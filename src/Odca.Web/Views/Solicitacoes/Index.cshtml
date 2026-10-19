@@ -9,18 +9,18 @@
     string PriorityLabel(string value)=>value is "baixa" or "normal" or "alta" or "critica"?L.T($"sol.priority.{value}",_culture):value;
     string Fmt(DateTime? value)=>value is null?"—":Odca.Web.Common.CulturedTime.DateTime(value.Value,_culture);
 }
-<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-controller="Onboarding" asp-action="CustomerHome">@L.T("sol.breadcrumb_home",_culture)</a><span>/</span><span aria-current="page">@L.T("sol.center",_culture)</span></nav>
+<nav class="breadcrumb" aria-label="@L.T("common.breadcrumb_aria",_culture)"><a asp-controller="Onboarding" asp-action="CustomerHome">@L.T("sol.breadcrumb_home",_culture)</a><span>/</span><span aria-current="page">@L.T("sol.center",_culture)</span></nav>
 <header class="page-heading"><div><p class="eyebrow">@L.T("sol.eyebrow",_culture)</p><h1>@L.T("sol.center",_culture)</h1><p>@L.T("sol.center_subtitle",_culture)</p></div>@if(canManage){@if(string.IsNullOrEmpty(service)){<a class="button button-primary" asp-action="Nova" asp-route-tenantId="@tenantId">@L.T("sol.new",_culture)</a>}else{<a class="button button-primary" asp-action="Nova" asp-route-tenantId="@tenantId" asp-route-service="@service">@L.T("sol.new_with_service",_culture,ServiceLabel(service))</a>}}</header>
 @if(ViewData["LoadError"] is string loadError){<div class="alert alert-error" role="alert">@loadError</div>}
 @if(TempData["SolNotice"] is string notice){<div class="alert alert-success" role="status">@notice</div>}
 <section class="help-card" aria-labelledby="sol-help"><h2 id="sol-help">@L.T("sol.how_title",_culture)</h2><p>@L.T("sol.how_body_a",_culture) <strong>@L.T("sol.how_paused",_culture)</strong>@L.T("sol.how_body_b",_culture)</p></section>
-<form method="get" class="review-filters" aria-label="Filtros da central">
+<form method="get" class="review-filters" aria-label="@L.T("sol.filters_aria",_culture)">
  <label>@L.T("sol.filter_service",_culture)<select name="service"><option value="">@L.T("sol.all_services",_culture)</option>@foreach(var option in new[]{"revisao","adaptacao","esclarecimento","suporte_tecnico"}){<option value="@option" selected="@(service==option)">@L.T($"sol.service.{option}",_culture)</option>}</select></label>
  <label>@L.T("sol.filter_status",_culture)<select name="status"><option value="">@L.T("sol.all_statuses",_culture)</option>@foreach(var option in new[]{"aberta","triagem","em_atendimento","aguardando_cliente","resolvida","encerrada","cancelada"}){<option value="@option" selected="@(status==option)">@L.T($"sol.status.{option}",_culture)</option>}</select></label>
  <label>@L.T("sol.filter_search",_culture)<input type="search" name="search" value="@search" placeholder="@L.T("sol.search_placeholder",_culture)" /></label>
  <button class="button button-quiet" type="submit">@L.T("sol.apply_filters",_culture)</button>
 </form>
-<section aria-label="Lista de solicitações">
+<section aria-label="@L.T("sol.list_aria",_culture)">
  @if(Model.Length==0){<div class="empty-state"><p>@L.T("sol.empty",_culture)</p></div>}
  else
  {

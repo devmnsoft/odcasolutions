@@ -1,25 +1,26 @@
 @model MfaEnrollmentViewModel
 @{
-    ViewData["Title"] = "Ativar MFA";
+    var _culture=(string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("acct.enroll_title",_culture);
 }
 <section class="narrow">
     <div class="card">
-        <p class="eyebrow">Segundo fator</p>
-        <h1>Ative o autenticador</h1>
-        <p class="muted">Cadastre a chave no seu aplicativo autenticador e confirme com o código de 6 dígitos. Atualizar esta página mantém a mesma chave.</p>
+        <p class="eyebrow">@L.T("acct.enroll_eyebrow",_culture)</p>
+        <h1>@L.T("acct.enroll_h",_culture)</h1>
+        <p class="muted">@L.T("acct.enroll_sub",_culture)</p>
         @if (Model.Regenerated)
         {
-            <div class="notice" role="status">Nova chave gerada. A chave anterior deixou de ser válida.</div>
+            <div class="notice" role="status">@L.T("acct.enroll_regen_notice",_culture)</div>
         }
         <dl class="secret-list">
             @if (!string.IsNullOrWhiteSpace(Model.QrDataUri))
             {
-                <dt>QR Code</dt>
-                <dd><img class="qr-code" src="@Model.QrDataUri" alt="QR Code para escanear no aplicativo autenticador" /></dd>
+                <dt>@L.T("acct.dt_qr",_culture)</dt>
+                <dd><img class="qr-code" src="@Model.QrDataUri" alt="@L.T("acct.qr_alt",_culture)" /></dd>
             }
-            <dt>Chave manual</dt>
+            <dt>@L.T("acct.dt_manual_key",_culture)</dt>
             <dd><code>@Model.ManualKey</code></dd>
-            <dt>URI TOTP</dt>
+            <dt>@L.T("acct.dt_totp_uri",_culture)</dt>
             <dd><code>@Model.OtpAuthUri</code></dd>
         </dl>
         <form method="post" novalidate>
@@ -30,13 +31,13 @@
             <label asp-for="Code"></label>
             <input asp-for="Code" inputmode="numeric" autocomplete="one-time-code" autofocus />
             <span asp-validation-for="Code" class="validation"></span>
-            <button class="button button-primary" type="submit">Confirmar MFA</button>
+            <button class="button button-primary" type="submit">@L.T("acct.btn_confirm_mfa",_culture)</button>
         </form>
         <form method="post" action="/mfa/inscricao/regenerar" class="form-alt">
             @Html.AntiForgeryToken()
-            <button class="button button-secondary button-small" type="submit">Gerar nova chave</button>
+            <button class="button button-secondary button-small" type="submit">@L.T("acct.btn_gen_new_key",_culture)</button>
         </form>
-        <p class="muted help-text">Como usar: escaneie o QR Code (ou digite a chave manual) no aplicativo autenticador e informe o código de 6 dígitos. Se precisar refazer o cadastro, use “Gerar nova chave”.</p>
+        <p class="muted help-text">@L.T("acct.enroll_help",_culture)</p>
     </div>
 </section>
 

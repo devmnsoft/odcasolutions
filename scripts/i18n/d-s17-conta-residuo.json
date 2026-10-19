@@ -1,0 +1,980 @@
+{
+  "acct.access_denied_title": {
+    "pt-BR": "Acesso negado",
+    "en-US": "Access denied",
+    "es-ES": "Acceso denegado",
+    "fr-FR": "Accès refusé"
+  },
+  "acct.access_denied_body": {
+    "pt-BR": "Seu perfil não permite esta operação.",
+    "en-US": "Your profile does not allow this operation.",
+    "es-ES": "Su perfil no permite esta operación.",
+    "fr-FR": "Votre profil ne permet pas cette opération."
+  },
+  "acct.change_pass_title": {
+    "pt-BR": "Alterar senha",
+    "en-US": "Change password",
+    "es-ES": "Cambiar contraseña",
+    "fr-FR": "Changer le mot de passe"
+  },
+  "acct.change_pass_eyebrow": {
+    "pt-BR": "Primeiro acesso",
+    "en-US": "First access",
+    "es-ES": "Primer acceso",
+    "fr-FR": "Premier accès"
+  },
+  "acct.change_pass_h": {
+    "pt-BR": "Crie uma senha só sua",
+    "en-US": "Create your own password",
+    "es-ES": "Cree una contraseña solo suya",
+    "fr-FR": "Créez votre propre mot de passe"
+  },
+  "acct.change_pass_hint": {
+    "pt-BR": "Use 12 ou mais caracteres, incluindo maiúscula, minúscula, número e símbolo.",
+    "en-US": "Use 12 or more characters, including uppercase, lowercase, number, and symbol.",
+    "es-ES": "Use 12 o más caracteres, incluyendo mayúscula, minúscula, número y símbolo.",
+    "fr-FR": "Utilisez 12 caractères ou plus, incluant majuscule, minuscule, chiffre et symbole."
+  },
+  "acct.change_pass_btn": {
+    "pt-BR": "Salvar nova senha",
+    "en-US": "Save new password",
+    "es-ES": "Guardar nueva contraseña",
+    "fr-FR": "Enregistrer le nouveau mot de passe"
+  },
+  "acct.conta_h": {
+    "pt-BR": "Segurança da conta",
+    "en-US": "Account security",
+    "es-ES": "Seguridad de la cuenta",
+    "fr-FR": "Sécurité du compte"
+  },
+  "acct.conta_sub": {
+    "pt-BR": "Ações sobre o seu próprio usuário, sem depender de outra pessoa da organização.",
+    "en-US": "Actions on your own user, without depending on another person in the organization.",
+    "es-ES": "Acciones sobre su propio usuario, sin depender de otra persona de la organización.",
+    "fr-FR": "Actions sur votre propre utilisateur, sans dépendre d'une autre personne de l'organisation."
+  },
+  "acct.section_password": {
+    "pt-BR": "Senha",
+    "en-US": "Password",
+    "es-ES": "Contraseña",
+    "fr-FR": "Mot de passe"
+  },
+  "acct.password_sub": {
+    "pt-BR": "Altere a senha de acesso usando a senha atual.",
+    "en-US": "Change your access password using your current password.",
+    "es-ES": "Cambie la contraseña de acceso usando la contraseña actual.",
+    "fr-FR": "Modifiez votre mot de passe d'accès en utilisant le mot de passe actuel."
+  },
+  "acct.btn_change_pass": {
+    "pt-BR": "Alterar senha",
+    "en-US": "Change password",
+    "es-ES": "Cambiar contraseña",
+    "fr-FR": "Changer le mot de passe"
+  },
+  "acct.section_mfa": {
+    "pt-BR": "Autenticação em dois fatores (MFA)",
+    "en-US": "Two-factor authentication (MFA)",
+    "es-ES": "Autenticación de dos factores (MFA)",
+    "fr-FR": "Authentification à deux facteurs (MFA)"
+  },
+  "acct.mfa_pending": {
+    "pt-BR": "Ativação pendente",
+    "en-US": "Activation pending",
+    "es-ES": "Activación pendiente",
+    "fr-FR": "Activation en attente"
+  },
+  "acct.mfa_pending_sub": {
+    "pt-BR": "Cadastre um aplicativo autenticador para proteger o acesso. Ao confirmar, você recebe códigos de recuperação para usar se perder o dispositivo.",
+    "en-US": "Register an authenticator app to protect access. Upon confirmation, you receive recovery codes to use if you lose your device.",
+    "es-ES": "Registre una aplicación autenticadora para proteger el acceso. Al confirmar, recibirá códigos de recuperación para usar si pierde el dispositivo.",
+    "fr-FR": "Enregistrez une application d'authentification pour protéger l'accès. Après confirmation, vous recevez des codes de récupération à utiliser si vous perdez votre appareil."
+  },
+  "acct.btn_activate_mfa": {
+    "pt-BR": "Ativar MFA",
+    "en-US": "Activate MFA",
+    "es-ES": "Activar MFA",
+    "fr-FR": "Activer le MFA"
+  },
+  "acct.mfa_active": {
+    "pt-BR": "Ativo",
+    "en-US": "Active",
+    "es-ES": "Activo",
+    "fr-FR": "Actif"
+  },
+  "acct.mfa_active_sub": {
+    "pt-BR": "Se trocar de celular ou perder os códigos de recuperação, gere uma nova chave. A chave anterior deixa de ser válida e novos códigos de recuperação são exibidos na confirmação.",
+    "en-US": "If you change phones or lose recovery codes, generate a new key. The previous key becomes invalid and new recovery codes are displayed upon confirmation.",
+    "es-ES": "Si cambia de celular o pierde los códigos de recuperación, genere una nueva clave. La clave anterior deja de ser válida y nuevos códigos de recuperación se muestran al confirmar.",
+    "fr-FR": "Si vous changez de téléphone ou perdez les codes de récupération, générez une nouvelle clé. L'ancienne clé devient invalide et de nouveaux codes de récupération sont affichés à la confirmation."
+  },
+  "acct.btn_regen_keys": {
+    "pt-BR": "Gerar nova chave e códigos",
+    "en-US": "Generate new key and codes",
+    "es-ES": "Generar nueva clave y códigos",
+    "fr-FR": "Générer une nouvelle clé et des codes"
+  },
+  "acct.section_notif": {
+    "pt-BR": "Notificações",
+    "en-US": "Notifications",
+    "es-ES": "Notificaciones",
+    "fr-FR": "Notifications"
+  },
+  "acct.notif_sub": {
+    "pt-BR": "Acompanhe os avisos direcionados a você nesta organização, com estado de lido/não lido.",
+    "en-US": "Follow notifications directed at you in this organization, with read/unread status.",
+    "es-ES": "Siga las notificaciones dirigidas a usted en esta organización, con estado de leído/no leído.",
+    "fr-FR": "Suivez les notifications qui vous sont adressées dans cette organisation, avec état lu/non lu."
+  },
+  "acct.btn_view_notif": {
+    "pt-BR": "Ver notificações",
+    "en-US": "View notifications",
+    "es-ES": "Ver notificaciones",
+    "fr-FR": "Voir les notifications"
+  },
+  "acct.help_summary": {
+    "pt-BR": "O que fica aqui depois",
+    "en-US": "What comes here later",
+    "es-ES": "Qué aparecerá aquí después",
+    "fr-FR": "Ce qui apparaîtra ici plus tard"
+  },
+  "acct.help_body": {
+    "pt-BR": "A preferência de idioma desta conta entra nos próximos blocos da operação contratual; enquanto não existe, não aparece como item \"em construção\".",
+    "en-US": "The language preference for this account will appear in upcoming blocks of the contractual operation; until then it does not show as a \"coming soon\" item.",
+    "es-ES": "La preferencia de idioma de esta cuenta aparecerá en los próximos bloques de la operación contractual; mientras no existe, no aparece como elemento \"en construcción\".",
+    "fr-FR": "La préférence linguistique de ce compte apparaîtra dans les prochains blocs de l'opération contractuelle ; en attendant elle n'apparaît pas comme élément « en construction »."
+  },
+  "acct.login_title": {
+    "pt-BR": "Entrar",
+    "en-US": "Sign in",
+    "es-ES": "Iniciar sesión",
+    "fr-FR": "Se connecter"
+  },
+  "acct.login_eyebrow": {
+    "pt-BR": "Acesso corporativo",
+    "en-US": "Corporate access",
+    "es-ES": "Acceso corporativo",
+    "fr-FR": "Accès entreprise"
+  },
+  "acct.login_h": {
+    "pt-BR": "Seu ambiente de contratos, com acesso controlado.",
+    "en-US": "Your contracts environment, with controlled access.",
+    "es-ES": "Su entorno de contratos, con acceso controlado.",
+    "fr-FR": "Votre espace de contrats, avec accès contrôlé."
+  },
+  "acct.login_sub": {
+    "pt-BR": "Use sua identidade individual. Organização e permissões são verificadas a cada acesso.",
+    "en-US": "Use your individual identity. Organization and permissions are verified at every login.",
+    "es-ES": "Use su identidad individual. La organización y los permisos se verifican en cada acceso.",
+    "fr-FR": "Utilisez votre identité individuelle. L'organisation et les autorisations sont vérifiées à chaque connexion."
+  },
+  "acct.link_plans": {
+    "pt-BR": "Conheça os planos publicados",
+    "en-US": "See published plans",
+    "es-ES": "Ver planes publicados",
+    "fr-FR": "Voir les plans publiés"
+  },
+  "acct.login_card_h": {
+    "pt-BR": "Acesse sua conta",
+    "en-US": "Access your account",
+    "es-ES": "Acceda a su cuenta",
+    "fr-FR": "Accédez à votre compte"
+  },
+  "acct.login_card_sub": {
+    "pt-BR": "Use seu e-mail ou CPF e sua senha pessoal.",
+    "en-US": "Use your email or tax ID and your personal password.",
+    "es-ES": "Use su e-mail o CPF y su contraseña personal.",
+    "fr-FR": "Utilisez votre e-mail ou identifiant fiscal et votre mot de passe."
+  },
+  "acct.toggle_show": {
+    "pt-BR": "Mostrar",
+    "en-US": "Show",
+    "es-ES": "Mostrar",
+    "fr-FR": "Afficher"
+  },
+  "acct.btn_login": {
+    "pt-BR": "Entrar",
+    "en-US": "Sign in",
+    "es-ES": "Iniciar sesión",
+    "fr-FR": "Se connecter"
+  },
+  "acct.btn_login_processing": {
+    "pt-BR": "Entrando…",
+    "en-US": "Signing in…",
+    "es-ES": "Iniciando sesión…",
+    "fr-FR": "Connexion…"
+  },
+  "acct.processing": {
+    "pt-BR": "Processando…",
+    "en-US": "Processing…",
+    "es-ES": "Procesando…",
+    "fr-FR": "Traitement…"
+  },
+  "acct.challenge_title": {
+    "pt-BR": "Confirmar MFA",
+    "en-US": "Verify MFA",
+    "es-ES": "Confirmar MFA",
+    "fr-FR": "Confirmer le MFA"
+  },
+  "acct.challenge_eyebrow": {
+    "pt-BR": "Acesso privilegiado",
+    "en-US": "Privileged access",
+    "es-ES": "Acceso privilegiado",
+    "fr-FR": "Accès privilégié"
+  },
+  "acct.challenge_h": {
+    "pt-BR": "Confirme o segundo fator",
+    "en-US": "Confirm the second factor",
+    "es-ES": "Confirme el segundo factor",
+    "fr-FR": "Confirmez le second facteur"
+  },
+  "acct.challenge_sub": {
+    "pt-BR": "Use o código do autenticador ou um código de recuperação ainda não utilizado.",
+    "en-US": "Use the authenticator code or an unused recovery code.",
+    "es-ES": "Use el código del autenticador o un código de recuperación aún no utilizado.",
+    "fr-FR": "Utilisez le code de l'application d'authentification ou un code de récupération non encore utilisé."
+  },
+  "acct.btn_verify": {
+    "pt-BR": "Verificar",
+    "en-US": "Verify",
+    "es-ES": "Verificar",
+    "fr-FR": "Vérifier"
+  },
+  "acct.enroll_title": {
+    "pt-BR": "Ativar MFA",
+    "en-US": "Activate MFA",
+    "es-ES": "Activar MFA",
+    "fr-FR": "Activer le MFA"
+  },
+  "acct.enroll_eyebrow": {
+    "pt-BR": "Segundo fator",
+    "en-US": "Second factor",
+    "es-ES": "Segundo factor",
+    "fr-FR": "Second facteur"
+  },
+  "acct.enroll_h": {
+    "pt-BR": "Ative o autenticador",
+    "en-US": "Enable the authenticator",
+    "es-ES": "Active el autenticador",
+    "fr-FR": "Activez l'authentificateur"
+  },
+  "acct.enroll_sub": {
+    "pt-BR": "Cadastre a chave no seu aplicativo autenticador e confirme com o código de 6 dígitos. Atualizar esta página mantém a mesma chave.",
+    "en-US": "Register the key in your authenticator app and confirm with the 6-digit code. Refreshing this page keeps the same key.",
+    "es-ES": "Registre la clave en su aplicación autenticadora y confirme con el código de 6 dígitos. Actualizar esta página mantiene la misma clave.",
+    "fr-FR": "Enregistrez la clé dans votre application d'authentification et confirmez avec le code à 6 chiffres. Actualiser cette page conserve la même clé."
+  },
+  "acct.enroll_regen_notice": {
+    "pt-BR": "Nova chave gerada. A chave anterior deixou de ser válida.",
+    "en-US": "New key generated. The previous key is no longer valid.",
+    "es-ES": "Nueva clave generada. La clave anterior dejó de ser válida.",
+    "fr-FR": "Nouvelle clé générée. La clé précédente n'est plus valide."
+  },
+  "acct.dt_qr": {
+    "pt-BR": "QR Code",
+    "en-US": "QR Code",
+    "es-ES": "Código QR",
+    "fr-FR": "Code QR"
+  },
+  "acct.qr_alt": {
+    "pt-BR": "QR Code para escanear no aplicativo autenticador",
+    "en-US": "QR Code to scan in the authenticator app",
+    "es-ES": "Código QR para escanear en la aplicación autenticadora",
+    "fr-FR": "Code QR à scanner dans l'application d'authentification"
+  },
+  "acct.dt_manual_key": {
+    "pt-BR": "Chave manual",
+    "en-US": "Manual key",
+    "es-ES": "Clave manual",
+    "fr-FR": "Clé manuelle"
+  },
+  "acct.dt_totp_uri": {
+    "pt-BR": "URI TOTP",
+    "en-US": "TOTP URI",
+    "es-ES": "URI TOTP",
+    "fr-FR": "URI TOTP"
+  },
+  "acct.btn_confirm_mfa": {
+    "pt-BR": "Confirmar MFA",
+    "en-US": "Confirm MFA",
+    "es-ES": "Confirmar MFA",
+    "fr-FR": "Confirmer le MFA"
+  },
+  "acct.btn_gen_new_key": {
+    "pt-BR": "Gerar nova chave",
+    "en-US": "Generate new key",
+    "es-ES": "Generar nueva clave",
+    "fr-FR": "Générer une nouvelle clé"
+  },
+  "acct.enroll_help": {
+    "pt-BR": "Como usar: escaneie o QR Code (ou digite a chave manual) no aplicativo autenticador e informe o código de 6 dígitos. Se precisar refazer o cadastro, use \"Gerar nova chave\".",
+    "en-US": "How to use: scan the QR code (or enter the manual key) in your authenticator app and enter the 6-digit code. If you need to re-enroll, use \"Generate new key\".",
+    "es-ES": "Cómo usar: escanee el código QR (o ingrese la clave manual) en la aplicación autenticadora e informe el código de 6 dígitos. Si necesita repetir el registro, use \"Generar nueva clave\".",
+    "fr-FR": "Comment utiliser : scannez le code QR (ou saisissez la clé manuelle) dans l'application d'authentification et entrez le code à 6 chiffres. Si vous devez refaire l'enregistrement, utilisez « Générer une nouvelle clé »."
+  },
+  "acct.recovery_title": {
+    "pt-BR": "Códigos de recuperação",
+    "en-US": "Recovery codes",
+    "es-ES": "Códigos de recuperación",
+    "fr-FR": "Codes de récupération"
+  },
+  "acct.recovery_eyebrow": {
+    "pt-BR": "MFA confirmado",
+    "en-US": "MFA confirmed",
+    "es-ES": "MFA confirmado",
+    "fr-FR": "MFA confirmé"
+  },
+  "acct.recovery_h": {
+    "pt-BR": "Guarde os códigos de recuperação",
+    "en-US": "Keep your recovery codes safe",
+    "es-ES": "Guarde los códigos de recuperación",
+    "fr-FR": "Gardez précieusement vos codes de récupération"
+  },
+  "acct.recovery_sub": {
+    "pt-BR": "Cada código funciona uma única vez. Eles não serão exibidos novamente.",
+    "en-US": "Each code works only once. They will not be shown again.",
+    "es-ES": "Cada código funciona una única vez. No se mostrarán nuevamente.",
+    "fr-FR": "Chaque code ne fonctionne qu'une seule fois. Ils ne seront plus affichés."
+  },
+  "acct.recovery_aria": {
+    "pt-BR": "Códigos de recuperação",
+    "en-US": "Recovery codes",
+    "es-ES": "Códigos de recuperación",
+    "fr-FR": "Codes de récupération"
+  },
+  "acct.btn_continue": {
+    "pt-BR": "Continuar",
+    "en-US": "Continue",
+    "es-ES": "Continuar",
+    "fr-FR": "Continuer"
+  },
+  "acct.err_timeout": {
+    "pt-BR": "O serviço demorou para responder. Tente novamente.",
+    "en-US": "The service took too long to respond. Try again.",
+    "es-ES": "El servicio tardó demasiado en responder. Intente nuevamente.",
+    "fr-FR": "Le service a mis trop de temps à répondre. Réessayez."
+  },
+  "acct.err_unavailable": {
+    "pt-BR": "O serviço está temporariamente indisponível.",
+    "en-US": "The service is temporarily unavailable.",
+    "es-ES": "El servicio está temporalmente no disponible.",
+    "fr-FR": "Le service est temporairement indisponible."
+  },
+  "acct.err_credentials": {
+    "pt-BR": "E-mail/CPF ou senha inválidos.",
+    "en-US": "Invalid email/tax ID or password.",
+    "es-ES": "E-mail/CPF o contraseña inválidos.",
+    "fr-FR": "E-mail/identifiant ou mot de passe invalide."
+  },
+  "acct.err_no_perm_password": {
+    "pt-BR": "Você não tem permissão para alterar esta senha.",
+    "en-US": "You do not have permission to change this password.",
+    "es-ES": "No tiene permiso para cambiar esta contraseña.",
+    "fr-FR": "Vous n'avez pas la permission de modifier ce mot de passe."
+  },
+  "acct.err_change_pass": {
+    "pt-BR": "Não foi possível alterar a senha. Confira a senha atual e os requisitos informados.",
+    "en-US": "Could not change the password. Check your current password and the stated requirements.",
+    "es-ES": "No fue posible cambiar la contraseña. Verifique la contraseña actual y los requisitos informados.",
+    "fr-FR": "Impossible de modifier le mot de passe. Vérifiez le mot de passe actuel et les exigences indiquées."
+  },
+  "acct.ok_change_pass": {
+    "pt-BR": "Senha alterada com segurança.",
+    "en-US": "Password changed securely.",
+    "es-ES": "Contraseña cambiada con seguridad.",
+    "fr-FR": "Mot de passe modifié avec sécurité."
+  },
+  "acct.err_session_expired": {
+    "pt-BR": "Sua sessão expirou. Entre novamente.",
+    "en-US": "Your session expired. Please sign in again.",
+    "es-ES": "Su sesión expiró. Inicie sesión nuevamente.",
+    "fr-FR": "Votre session a expiré. Veuillez vous reconnecter."
+  },
+  "acct.err_code_invalid": {
+    "pt-BR": "Código inválido ou expirado.",
+    "en-US": "Code is invalid or expired.",
+    "es-ES": "Código inválido o expirado.",
+    "fr-FR": "Code invalide ou expiré."
+  },
+  "acct.err_regen_failed": {
+    "pt-BR": "Não foi possível gerar uma nova chave agora. A chave exibida continua válida.",
+    "en-US": "Could not generate a new key right now. The displayed key remains valid.",
+    "es-ES": "No fue posible generar una nueva clave ahora. La clave mostrada sigue siendo válida.",
+    "fr-FR": "Impossible de générer une nouvelle clé pour le moment. La clé affichée reste valide."
+  },
+  "acct.err_code_used": {
+    "pt-BR": "Código inválido, expirado ou já utilizado.",
+    "en-US": "Code is invalid, expired, or already used.",
+    "es-ES": "Código inválido, expirado o ya utilizado.",
+    "fr-FR": "Code invalide, expiré ou déjà utilisé."
+  },
+  "acct.err_rate_limited_login": {
+    "pt-BR": "Muitas tentativas. Aguarde um minuto e tente novamente.",
+    "en-US": "Too many attempts. Wait one minute and try again.",
+    "es-ES": "Demasiados intentos. Espere un minuto e intente novamente.",
+    "fr-FR": "Trop d'essais. Attendez une minute et réessayez."
+  },
+  "acct.err_rate_limited": {
+    "pt-BR": "Muitas tentativas. Aguarde e tente novamente.",
+    "en-US": "Too many attempts. Wait and try again.",
+    "es-ES": "Demasiados intentos. Espere e intente nuevamente.",
+    "fr-FR": "Trop d'essais. Attendez et réessayez."
+  },
+  "bff.unavailable_title": {
+    "pt-BR": "Página indisponível",
+    "en-US": "Page unavailable",
+    "es-ES": "Página no disponible",
+    "fr-FR": "Page indisponible"
+  },
+  "bff.unavailable_detail": {
+    "pt-BR": "Não foi possível abrir este recurso agora. O detalhe técnico foi registrado.",
+    "en-US": "This resource could not be opened right now. The technical detail has been logged.",
+    "es-ES": "No fue posible abrir este recurso ahora. El detalle técnico fue registrado.",
+    "fr-FR": "Ce resource n'a pas pu être ouvert pour le moment. Le détail technique a été consigné."
+  },
+  "bff.btn_back_inbox": {
+    "pt-BR": "Voltar à caixa",
+    "en-US": "Back to inbox",
+    "es-ES": "Volver a la bandeja",
+    "fr-FR": "Retour à la boîte"
+  },
+  "bff.btn_close": {
+    "pt-BR": "Fechar",
+    "en-US": "Close",
+    "es-ES": "Cerrar",
+    "fr-FR": "Fermer"
+  },
+  "central-notificacoes": {
+    "pt-BR": "Central de notificações",
+    "en-US": "Notification center",
+    "es-ES": "Centro de notificaciones",
+    "fr-FR": "Centre de notifications"
+  },
+  "cons.plan_summary_aria": {
+    "pt-BR": "Resumo do plano",
+    "en-US": "Plan summary",
+    "es-ES": "Resumen del plan",
+    "fr-FR": "Résumé du plan"
+  },
+  "sol.list_aria": {
+    "pt-BR": "Lista de solicitações",
+    "en-US": "List of requests",
+    "es-ES": "Lista de solicitudes",
+    "fr-FR": "Liste des demandes"
+  },
+  "sol.filters_aria": {
+    "pt-BR": "Filtros da central",
+    "en-US": "Center filters",
+    "es-ES": "Filtros del centro",
+    "fr-FR": "Filtres du centre"
+  },
+  "acct.toggle_hide": {
+    "pt-BR": "Ocultar",
+    "en-US": "Hide",
+    "es-ES": "Ocultar",
+    "fr-FR": "Masquer"
+  },
+  "acct.ok_session_revoked": {
+    "pt-BR": "A sessão local foi encerrada. A revogaço remota não pôde ser confirmada e o acesso expirará automaticamente.",
+    "en-US": "Local session ended. Remote revocation could not be confirmed and access will expire automatically.",
+    "es-ES": "La sesión local fue terminada. La revocación remota no pudo confirmarse y el acceso expirará automáticamente.",
+    "fr-FR": "La session locale a étée terminée. La révocation distante n’a pas pu ätre confirmée et l’accès expirera automatiquement."
+  },
+  "group_início": {
+    "pt-BR": "Início",
+    "en-US": "Home",
+    "es-ES": "Inicio",
+    "fr-FR": "Accueil"
+  },
+  "group_operações": {
+    "pt-BR": "Operações",
+    "en-US": "Operations",
+    "es-ES": "Operaciones",
+    "fr-FR": "Opérations"
+  },
+  "group_minha_organização_e_plano": {
+    "pt-BR": "Minha organização e plano",
+    "en-US": "My organization and plan",
+    "es-ES": "Mi organización y plan",
+    "fr-FR": "Mon organisation et mon plan"
+  },
+  "imp.h": {
+    "pt-BR": "Central de importações",
+    "en-US": "Import center",
+    "es-ES": "Centro de importaciones",
+    "fr-FR": "Centre d'importation"
+  },
+  "imp.sub": {
+    "pt-BR": "Acompanhe a análise, retome revisões e confirme somente dados conferidos.",
+    "en-US": "Track the analysis, resume reviews and confirm only verified data.",
+    "es-ES": "Siga el análisis, retome revisiones y confirme solo datos verificados.",
+    "fr-FR": "Suivez l'analyse, reprenez les révisions et ne confirmez que des données vérifiées."
+  },
+  "imp.help_body": {
+    "pt-BR": "Envie o documento na biblioteca do contrato, solicite a extração e registre a versão nesta central. Nenhuma sugestão é confirmada automaticamente.",
+    "en-US": "Upload the document in the contract library, request the extraction and register the version in this center. No suggestion is confirmed automatically.",
+    "es-ES": "Suba el documento en la biblioteca del contrato, solicite la extracción y registre la versión en este centro. Ninguna sugerencia se confirma automáticamente.",
+    "fr-FR": "Déposez le document dans la bibliothèque du contrat, demandez l'extraction et enregistrez la version dans ce centre. Aucune suggestion n'est confirmée automatiquement."
+  },
+  "imp.soon_lead": {
+    "pt-BR": "Disponível em breve:",
+    "en-US": "Coming soon:",
+    "es-ES": "Próximamente disponible:",
+    "fr-FR": "Bientôt disponible :"
+  },
+  "imp.soon_rest": {
+    "pt-BR": "a Central de importações será habilitada em uma próxima versão. Os documentos e dados já enviados permanecem armazenados e rastreáveis.",
+    "en-US": "the Import center will be enabled in a future version. Documents and data already uploaded remain stored and traceable.",
+    "es-ES": "el Centro de importaciones será habilitado en una próxima versión. Los documentos y datos ya enviados permanecen almacenados y rastreables.",
+    "fr-FR": "le Centre d'importation sera activé dans une prochaine version. Les documents et données déjà envoyés restent stockés et traçables."
+  },
+  "imp.filters_aria": {
+    "pt-BR": "Filtros de importações",
+    "en-US": "Import filters",
+    "es-ES": "Filtros de importaciones",
+    "fr-FR": "Filtres d'importation"
+  },
+  "imp.mine": {
+    "pt-BR": "Minhas importações",
+    "en-US": "My imports",
+    "es-ES": "Mis importaciones",
+    "fr-FR": "Mes importations"
+  },
+  "imp.awaiting": {
+    "pt-BR": "Aguardando revisão",
+    "en-US": "Awaiting review",
+    "es-ES": "En espera de revisión",
+    "fr-FR": "En attente de révision"
+  },
+  "imp.load_fail": {
+    "pt-BR": "Não foi possível carregar.",
+    "en-US": "Could not load.",
+    "es-ES": "No se pudo cargar.",
+    "fr-FR": "Impossible de charger."
+  },
+  "imp.empty_h": {
+    "pt-BR": "Nenhuma importação corresponde aos filtros",
+    "en-US": "No import matches the filters",
+    "es-ES": "Ninguna importación coincide con los filtros",
+    "fr-FR": "Aucune importation ne correspond aux filtres"
+  },
+  "imp.empty_p": {
+    "pt-BR": "Falhas permanecem visíveis ao selecionar \"Todos\".",
+    "en-US": "Failures remain visible when selecting \"All\".",
+    "es-ES": "Las fallas permanecen visibles al seleccionar \"Todos\".",
+    "fr-FR": "Les échecs restent visibles en sélectionnant \"Tous\"."
+  },
+  "imp.list_aria": {
+    "pt-BR": "Importações",
+    "en-US": "Imports",
+    "es-ES": "Importaciones",
+    "fr-FR": "Importations"
+  },
+  "imp.requested_by": {
+    "pt-BR": "Solicitada por {0} em {1}",
+    "en-US": "Requested by {0} on {1}",
+    "es-ES": "Solicitada por {0} el {1}",
+    "fr-FR": "Demandée par {0} le {1}"
+  },
+  "imp.current_step": {
+    "pt-BR": "Etapa atual",
+    "en-US": "Current step",
+    "es-ES": "Etapa actual",
+    "fr-FR": "Étape actuelle"
+  },
+  "imp.no_auto_retry": {
+    "pt-BR": "Não há nova tentativa automática.",
+    "en-US": "No new automatic retry occurs.",
+    "es-ES": "No hay nuevo reintento automático.",
+    "fr-FR": "Aucun nouvel essai automatique."
+  },
+  "imp.resume_same_work": {
+    "pt-BR": "A retomada reutiliza o mesmo trabalho e não duplica uma confirmação.",
+    "en-US": "Resuming reuses the same work and never duplicates a confirmation.",
+    "es-ES": "Retomar reutiliza el mismo trabajo y no duplica una confirmación.",
+    "fr-FR": "Reprendre réutilise le même travail et ne duplique pas une confirmation."
+  },
+  "imp.manual_confirm": {
+    "pt-BR": "A confirmação continua manual.",
+    "en-US": "Confirmation stays manual.",
+    "es-ES": "La confirmación sigue siendo manual.",
+    "fr-FR": "La confirmation reste manuelle."
+  },
+  "imp.continue_review": {
+    "pt-BR": "Continuar revisão",
+    "en-US": "Continue review",
+    "es-ES": "Continuar revisión",
+    "fr-FR": "Continuer la révision"
+  },
+  "imp.open": {
+    "pt-BR": "Abrir",
+    "en-US": "Open",
+    "es-ES": "Abrir",
+    "fr-FR": "Ouvrir"
+  },
+  "imp.diag_quota": {
+    "pt-BR": "A franquia mensal de OCR foi atingida. O texto extraído não foi aplicado.",
+    "en-US": "The monthly OCR quota was reached. The extracted text was not applied.",
+    "es-ES": "La cuota mensual de OCR se alcanzó. El texto extraído no se aplicó.",
+    "fr-FR": "Le forfait mensuel OCR est atteint. Le texte extrait n'a pas été appliqué."
+  },
+  "imp.diag_org_unavailable": {
+    "pt-BR": "A organização está suspensa ou a importação não está disponível. O trabalho pode ser retomado depois, sem duplicar o resultado.",
+    "en-US": "The organization is suspended or import is unavailable. The work can be resumed later without duplicating the result.",
+    "es-ES": "La organización está suspendida o la importación no está disponible. El trabajo puede retomarse después sin duplicar el resultado.",
+    "fr-FR": "L'organisation est suspendue ou l'importation n'est pas disponible. Le travail peut reprendre plus tard sans dupliquer le résultat."
+  },
+  "imp.diag_invalid_document": {
+    "pt-BR": "O arquivo não pôde ser lido. O original permanece armazenado.",
+    "en-US": "The file could not be read. The original remains stored.",
+    "es-ES": "El archivo no pudo leerse. El original permanece almacenado.",
+    "fr-FR": "Le fichier n'a pas pu être lu. L'original reste stocké."
+  },
+  "imp.diag_extractor_unavailable": {
+    "pt-BR": "O extrator falhou. Uma nova tentativa usa o mesmo trabalho.",
+    "en-US": "The extractor failed. A new retry uses the same work.",
+    "es-ES": "El extractor falló. Un nuevo intento reutiliza el mismo trabajo.",
+    "fr-FR": "L'extracteur a échoué. Un nouvel essai réutilise le même travail."
+  },
+  "imp.diag_scanner_not_configured": {
+    "pt-BR": "O analisador de segurança não está configurado.",
+    "en-US": "The security scanner is not configured.",
+    "es-ES": "El analizador de seguridad no está configurado.",
+    "fr-FR": "L'analyseur de sécurité n'est pas configuré."
+  },
+  "imp.diag_prefix": {
+    "pt-BR": "Diagnóstico: ",
+    "en-US": "Diagnostic: ",
+    "es-ES": "Diagnóstico: ",
+    "fr-FR": "Diagnostic: "
+  },
+  "imp.err_date_range": {
+    "pt-BR": "A data final deve ser igual ou posterior à data inicial.",
+    "en-US": "The end date must be equal to or later than the start date.",
+    "es-ES": "La fecha final debe ser igual o posterior a la fecha inicial.",
+    "fr-FR": "La date de fin doit être égale ou postérieure à la date de début."
+  },
+  "imp.err_load": {
+    "pt-BR": "Não foi possível carregar as importações.",
+    "en-US": "Could not load the imports.",
+    "es-ES": "No se pudieron cargar las importaciones.",
+    "fr-FR": "Impossible de charger les importations."
+  },
+  "imp.ok_manual_saved": {
+    "pt-BR": "Dados conferidos e salvos. Revise o resumo antes de confirmar.",
+    "en-US": "Data verified and saved. Review the summary before confirming.",
+    "es-ES": "Datos verificados y guardados. Revise el resumen antes de confirmar.",
+    "fr-FR": "Données vérifiées et enregistrées. Relisez le résumé avant de confirmer."
+  },
+  "imp.err_manual_save": {
+    "pt-BR": "Não foi possível salvar os dados; suas informações foram preservadas.",
+    "en-US": "Could not save the data; your information was preserved.",
+    "es-ES": "No fue posible guardar los datos; su información fue preservada.",
+    "fr-FR": "Impossible d'enregistrer les données ; vos informations ont été préservées."
+  },
+  "imp.ok_already_confirmed": {
+    "pt-BR": "Esta importação já estava confirmada.",
+    "en-US": "This import was already confirmed.",
+    "es-ES": "Esta importación ya estaba confirmada.",
+    "fr-FR": "Cette importation était déjà confirmée."
+  },
+  "imp.ok_confirmed": {
+    "pt-BR": "Contrato importado com rastreabilidade.",
+    "en-US": "Contract imported with traceability.",
+    "es-ES": "Contrato importado con trazabilidad.",
+    "fr-FR": "Contrat importé avec traçabilité."
+  },
+  "imp.err_confirm": {
+    "pt-BR": "Não foi possível confirmar. Confira os dados e tente novamente.",
+    "en-US": "Could not confirm. Check the data and try again.",
+    "es-ES": "No fue posible confirmar. Revise los datos e intente de nuevo.",
+    "fr-FR": "Impossible de confirmer. Vérifiez les données et réessayez."
+  },
+  "imp.ok_cancelled": {
+    "pt-BR": "Importação cancelada com sucesso.",
+    "en-US": "Import cancelled successfully.",
+    "es-ES": "Importación cancelada con éxito.",
+    "fr-FR": "Importation annulée avec succès."
+  },
+  "imp.err_cancel": {
+    "pt-BR": "Não foi possível cancelar a importação.",
+    "en-US": "Could not cancel the import.",
+    "es-ES": "No fue posible cancelar la importación.",
+    "fr-FR": "Impossible d'annuler l'importation."
+  },
+  "imp_rev.title": {
+    "pt-BR": "Revisar importação",
+    "en-US": "Review import",
+    "es-ES": "Revisar importación",
+    "fr-FR": "Réviser l'importation"
+  },
+  "imp_rev.eyebrow": {
+    "pt-BR": "Importação assistida",
+    "en-US": "Assisted import",
+    "es-ES": "Importación asistida",
+    "fr-FR": "Importation assistée"
+  },
+  "imp_rev.sub": {
+    "pt-BR": "Revise cada origem. Valores extraídos nunca são confirmados sem sua decisão.",
+    "en-US": "Review each source. Extracted values are never confirmed without your decision.",
+    "es-ES": "Revise cada origen. Los valores extraídos nunca se confirman sin su decisión.",
+    "fr-FR": "Relisez chaque source. Les valeurs extraites ne sont jamais confirmées sans votre décision."
+  },
+  "imp_rev.help_body": {
+    "pt-BR": "Compare a sugestão com a página indicada, aceite, edite ou rejeite. Salve a revisão antes da confirmação.",
+    "en-US": "Compare the suggestion with the indicated page, accept, edit or reject. Save the review before confirmation.",
+    "es-ES": "Compare la sugerencia con la página indicada, acepte, edite o rechace. Guarde la revisión antes de la confirmación.",
+    "fr-FR": "Comparez la suggestion avec la page indiquée, acceptez, modifiez ou refusez. Enregistrez la révision avant la confirmation."
+  },
+  "imp_rev.progress_aria": {
+    "pt-BR": "Progresso",
+    "en-US": "Progress",
+    "es-ES": "Progreso",
+    "fr-FR": "Progrès"
+  },
+  "imp_rev.step_doc": {
+    "pt-BR": "Documento",
+    "en-US": "Document",
+    "es-ES": "Documento",
+    "fr-FR": "Document"
+  },
+  "imp_rev.step_data": {
+    "pt-BR": "Dados contratuais",
+    "en-US": "Contract data",
+    "es-ES": "Datos contractuales",
+    "fr-FR": "Données contractuelles"
+  },
+  "imp_rev.step_parties": {
+    "pt-BR": "Partes",
+    "en-US": "Parties",
+    "es-ES": "Partes",
+    "fr-FR": "Parties"
+  },
+  "imp_rev.step_obligations": {
+    "pt-BR": "Obrigações",
+    "en-US": "Obligations",
+    "es-ES": "Obligaciones",
+    "fr-FR": "Obligations"
+  },
+  "imp_rev.step_confirm": {
+    "pt-BR": "Confirmação",
+    "en-US": "Confirmation",
+    "es-ES": "Confirmación",
+    "fr-FR": "Confirmation"
+  },
+  "imp_rev.tab_data": {
+    "pt-BR": "Dados",
+    "en-US": "Data",
+    "es-ES": "Datos",
+    "fr-FR": "Données"
+  },
+  "imp_rev.doc_original": {
+    "pt-BR": "Documento original",
+    "en-US": "Original document",
+    "es-ES": "Documento original",
+    "fr-FR": "Document original"
+  },
+  "imp_rev.preview_title": {
+    "pt-BR": "Pré-visualização autorizada do documento",
+    "en-US": "Authorized document preview",
+    "es-ES": "Vista previa autorizada del documento",
+    "fr-FR": "Aperçu autorisé du document"
+  },
+  "imp_rev.viewer_help": {
+    "pt-BR": "Use os controles do visualizador para navegar e ampliar. O servidor revalida tenant e permissão.",
+    "en-US": "Use the viewer controls to navigate and zoom. The server re-validates tenant and permission.",
+    "es-ES": "Use los controles del visor para navegar y ampliar. El servidor revalida tenant y permiso.",
+    "fr-FR": "Utilisez les commandes de la visionneuse pour naviguer et zoomer. Le serveur révalide le tenant et la permission."
+  },
+  "imp_rev.data_check": {
+    "pt-BR": "Conferência dos dados",
+    "en-US": "Data verification",
+    "es-ES": "Verificación de los datos",
+    "fr-FR": "Vérification des données"
+  },
+  "imp_rev.lbl_title": {
+    "pt-BR": "Título do contrato",
+    "en-US": "Contract title",
+    "es-ES": "Título del contrato",
+    "fr-FR": "Titre du contrat"
+  },
+  "imp_rev.lbl_reference": {
+    "pt-BR": "Identificação contratual",
+    "en-US": "Contract reference",
+    "es-ES": "Identificación contractual",
+    "fr-FR": "Référence contractuelle"
+  },
+  "imp_rev.lbl_start": {
+    "pt-BR": "Início",
+    "en-US": "Start",
+    "es-ES": "Inicio",
+    "fr-FR": "Début"
+  },
+  "imp_rev.lbl_end": {
+    "pt-BR": "Término",
+    "en-US": "End",
+    "es-ES": "Término",
+    "fr-FR": "Fin"
+  },
+  "imp_rev.lbl_value": {
+    "pt-BR": "Valor",
+    "en-US": "Value",
+    "es-ES": "Valor",
+    "fr-FR": "Valeur"
+  },
+  "imp_rev.lbl_currency": {
+    "pt-BR": "Moeda (ISO)",
+    "en-US": "Currency (ISO)",
+    "es-ES": "Moneda (ISO)",
+    "fr-FR": "Devise (ISO)"
+  },
+  "imp_rev.manual_help": {
+    "pt-BR": "Preencha manualmente quando não houver extração. Nenhum dado ausente será deduzido.",
+    "en-US": "Fill manually when there is no extraction. No missing data will be inferred.",
+    "es-ES": "Complete manualmente cuando no haya extracción. Ningún dato ausente será deducido.",
+    "fr-FR": "Remplissez manuellement quand il n'y a pas d'extraction. Aucune donnée absente ne sera déduite."
+  },
+  "imp_rev.btn_save_manual": {
+    "pt-BR": "Salvar conferência",
+    "en-US": "Save verification",
+    "es-ES": "Guardar verificación",
+    "fr-FR": "Enregistrer la vérification"
+  },
+  "imp_rev.suggestions": {
+    "pt-BR": "Sugestões da extração",
+    "en-US": "Extraction suggestions",
+    "es-ES": "Sugerencias de la extracción",
+    "fr-FR": "Suggestions d'extraction"
+  },
+  "imp_rev.no_suggestions": {
+    "pt-BR": "Nenhuma sugestão automática. A revisão manual continua disponível.",
+    "en-US": "No automatic suggestion. Manual review remains available.",
+    "es-ES": "Ninguna sugerencia automática. La revisión manual sigue disponible.",
+    "fr-FR": "Aucune suggestion automatique. La révision manuelle reste disponible."
+  },
+  "imp_rev.method_state": {
+    "pt-BR": "Método: {0} · Estado: {1}",
+    "en-US": "Method: {0} · State: {1}",
+    "es-ES": "Método: {0} · Estado: {1}",
+    "fr-FR": "Méthode : {0} · État : {1}"
+  },
+  "imp_rev.extracted": {
+    "pt-BR": "Valor extraído",
+    "en-US": "Extracted value",
+    "es-ES": "Valor extraído",
+    "fr-FR": "Valeur extraite"
+  },
+  "imp_rev.chosen": {
+    "pt-BR": "Valor escolhido para o contrato",
+    "en-US": "Chosen value for the contract",
+    "es-ES": "Valor elegido para el contrato",
+    "fr-FR": "Valeur choisie pour le contrat"
+  },
+  "imp_rev.chosen_hint": {
+    "pt-BR": "(edite para informar manualmente)",
+    "en-US": "(edit to enter manually)",
+    "es-ES": "(edite para informar manualmente)",
+    "fr-FR": "(modifiez pour saisir manuellement)"
+  },
+  "imp_rev.evidence": {
+    "pt-BR": "Trecho de origem:",
+    "en-US": "Source excerpt:",
+    "es-ES": "Fragmento de origen:",
+    "fr-FR": "Extrait de la source :"
+  },
+  "imp_rev.page": {
+    "pt-BR": "Página {0}",
+    "en-US": "Page {0}",
+    "es-ES": "Página {0}",
+    "fr-FR": "Page {0}"
+  },
+  "imp_rev.page_unknown": {
+    "pt-BR": "não identificada",
+    "en-US": "unidentified",
+    "es-ES": "no identificada",
+    "fr-FR": "non identifiée"
+  },
+  "imp_rev.decision": {
+    "pt-BR": "Decisão",
+    "en-US": "Decision",
+    "es-ES": "Decisión",
+    "fr-FR": "Décision"
+  },
+  "imp_rev.dec_accept": {
+    "pt-BR": "Aceitar",
+    "en-US": "Accept",
+    "es-ES": "Aceptar",
+    "fr-FR": "Accepter"
+  },
+  "imp_rev.dec_edit": {
+    "pt-BR": "Editar",
+    "en-US": "Edit",
+    "es-ES": "Editar",
+    "fr-FR": "Modifier"
+  },
+  "imp_rev.dec_reject": {
+    "pt-BR": "Rejeitar",
+    "en-US": "Reject",
+    "es-ES": "Rechazar",
+    "fr-FR": "Refuser"
+  },
+  "imp_rev.btn_save_decisions": {
+    "pt-BR": "Salvar decisões das sugestões",
+    "en-US": "Save suggestion decisions",
+    "es-ES": "Guardar decisiones de las sugerencias",
+    "fr-FR": "Enregistrer les décisions des suggestions"
+  },
+  "imp_rev.extraction_missing": {
+    "pt-BR": "A extração automática não foi solicitada. Confira e salve os dados manualmente acima.",
+    "en-US": "Automatic extraction was not requested. Check and save the data manually above.",
+    "es-ES": "La extracción automática no fue solicitada. Revise y guarde los datos manualmente arriba.",
+    "fr-FR": "L'extraction automatique n'a pas été demandée. Vérifiez et enregistrez les données manuellement ci-dessus."
+  },
+  "imp_rev.confirm_msg": {
+    "pt-BR": "Confirmar a importação com os dados conferidos?",
+    "en-US": "Confirm the import with the verified data?",
+    "es-ES": "¿Confirmar la importación con los datos verificados?",
+    "fr-FR": "Confirmer l’importation avec les donnés vérifiées ?"
+  },
+  "imp_rev.btn_confirm": {
+    "pt-BR": "Confirmar importação",
+    "en-US": "Confirm import",
+    "es-ES": "Confirmar importación",
+    "fr-FR": "Confirmer l'importation"
+  },
+  "imp_rev.cancel_msg": {
+    "pt-BR": "Tem certeza de que deseja cancelar esta importação? Esta ação não pode ser desfeita.",
+    "en-US": "Are you sure you want to cancel this import? This action cannot be undone.",
+    "es-ES": "¿Seguro que desea cancelar esta importación? Esta acción no puede deshacerse.",
+    "fr-FR": "Êtes-vous sûr de vouloir annuler cette importation ? Cette action est irréversible."
+  },
+  "imp_rev.btn_cancel": {
+    "pt-BR": "Cancelar importação",
+    "en-US": "Cancel import",
+    "es-ES": "Cancelar importación",
+    "fr-FR": "Annuler l'importation"
+  },
+  "imp.lbl_state": {
+    "pt-BR": "Estado",
+    "en-US": "State",
+    "es-ES": "Estado",
+    "fr-FR": "Etaê"
+  },
+  "imp_rev.tab_panel_aria": {
+    "pt-BR": "Alternar painel",
+    "en-US": "Switch panel",
+    "es-ES": "Cambiar panel",
+    "fr-FR": "Basculer de panneau"
+  },
+  "imp_rev.summary_count": {
+    "pt-BR": "{0} campos encontrados.",
+    "en-US": "{0} fields found.",
+    "es-ES": "{0} campos encontrados.",
+    "fr-FR": "{0} champs trouvés."
+  },
+  "imp_rev.summary_states": {
+    "pt-BR": "Estados possíveis: não revisado, aceito, corrigido ou rejeitado.",
+    "en-US": "Possible states: not reviewed, accepted, corrected or rejected.",
+    "es-ES": "Estados posibles: no revisado, aceptado, corregido o rechazado.",
+    "fr-FR": "États possibles : non révisé, accepté, corrigé ou refusé."
+  }
+}

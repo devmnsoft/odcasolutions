@@ -1,4 +1,5 @@
 @{
-    ViewData["Title"] = "Acesso negado";
+    var _culture=(string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("acct.access_denied_title",_culture);
 }
-<section class="narrow"><div class="card"><h1>Acesso negado</h1><p>Seu perfil não permite esta operação.</p></div></section>
+<section class="narrow"><div class="card"><h1>@L.T("acct.access_denied_title",_culture)</h1><p>@L.T("acct.access_denied_body",_culture)</p></div></section>

@@ -1,5 +1,6 @@
 @model System.Text.Json.JsonElement
 @{
+    var _c=(string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
     var root = Model.GetProperty("import");
     var tenantId = (Guid)ViewData["TenantId"]!;
     var contractId = root.GetProperty("contract_id").GetGuid();
@@ -9,54 +10,55 @@
     var extractionProperty = root.GetProperty("extraction_job_id");
     Guid? extractionId = extractionProperty.ValueKind == System.Text.Json.JsonValueKind.Null ? null : extractionProperty.GetGuid();
     var contractVersion = root.GetProperty("contract_version").GetInt64();
+    var suggestionCount = Model.GetProperty("suggestions").EnumerateArray().Count();
 }
-<header class="page-heading"><div><span class="eyebrow">IMPORTAÇÃO ASSISTIDA</span><h1>@root.GetProperty("display_name").GetString()</h1><p>Revise cada origem. Valores extraídos nunca são confirmados sem sua decisão.</p></div><details class="help-panel"><summary>Como usar</summary><p>Compare a sugestão com a página indicada, aceite, edite ou rejeite. Salve a revisão antes da confirmação.</p></details></header>
+<header class="page-heading"><div><span class="eyebrow">@L.T("imp_rev.eyebrow",_c)</span><h1>@root.GetProperty("display_name").GetString()</h1><p>@L.T("imp_rev.sub",_c)</p></div><details class="help-panel"><summary>@L.T("inbox.how_to_use",_c)</summary><p>@L.T("imp_rev.help_body",_c)</p></details></header>
 @if(TempData["ImportNotice"] is string notice){<div class="success" role="status">@notice</div>}
 @if(TempData["ImportError"] is string error){<div class="error" role="alert">@error</div>}
-<ol class="import-progress" aria-label="Progresso"><li class="done">Documento</li><li class="current">Dados contratuais</li><li>Partes</li><li>Obrigações</li><li>Confirmação</li></ol>
-<div class="review-mobile-tabs" role="group" aria-label="Alternar painel"><button type="button" class="button button-quiet" data-review-tab="document">Documento</button><button type="button" class="button button-quiet" data-review-tab="data">Dados</button></div>
-<div class="review-summary" role="status"><strong>@Model.GetProperty("suggestions").EnumerateArray().Count()</strong> campos encontrados. Estados possíveis: não revisado, aceito, corrigido ou rejeitado.</div>
+<ol class="import-progress" aria-label="@L.T("imp_rev.progress_aria",_c)"><li class="done">@L.T("imp_rev.step_doc",_c)</li><li class="current">@L.T("imp_rev.step_data",_c)</li><li>@L.T("imp_rev.step_parties",_c)</li><li>@L.T("imp_rev.step_obligations",_c)</li><li>@L.T("imp_rev.step_confirm",_c)</li></ol>
+<div class="review-mobile-tabs" role="group" aria-label="@L.T("imp_rev.tab_panel_aria",_c)"><button type="button" class="button button-quiet" data-review-tab="document">@L.T("imp_rev.step_doc",_c)</button><button type="button" class="button button-quiet" data-review-tab="data">@L.T("imp_rev.tab_data",_c)</button></div>
+<div class="review-summary" role="status"><strong>@L.T("imp_rev.summary_count",_c,suggestionCount.ToString(System.Globalization.CultureInfo.InvariantCulture))</strong> @L.T("imp_rev.summary_states",_c)</div>
 <div class="review-workspace" data-review-workspace>
-    <section class="document-pane" data-review-panel="document"><header><h2>Documento original</h2><span>@root.GetProperty("security_status").GetString()</span></header>
-        <iframe title="Pré-visualização autorizada do documento" src="@Url.Action("Preview",new{tenantId,contractId,documentId,versionId})"></iframe>
-        <p class="muted">Use os controles do visualizador para navegar e ampliar. O servidor revalida tenant e permissão.</p>
+    <section class="document-pane" data-review-panel="document"><header><h2>@L.T("imp_rev.doc_original",_c)</h2><span>@root.GetProperty("security_status").GetString()</span></header>
+        <iframe title="@L.T("imp_rev.preview_title",_c)" src="@Url.Action("Preview",new{tenantId,contractId,documentId,versionId})"></iframe>
+        <p class="muted">@L.T("imp_rev.viewer_help",_c)</p>
     </section>
-    <section class="suggestion-pane" data-review-panel="data" data-import-review data-save-url="@(extractionId.HasValue ? Url.Action("SaveReview",new{tenantId,importId,contractId,extractionId}) : null)" data-contract-version="@contractVersion"><h2>Conferência dos dados</h2>
+    <section class="suggestion-pane" data-review-panel="data" data-import-review data-save-url="@(extractionId.HasValue ? Url.Action("SaveReview",new{tenantId,importId,contractId,extractionId}) : null)" data-contract-version="@contractVersion"><h2>@L.T("imp_rev.data_check",_c)</h2>
         <form asp-action="SaveManualData" asp-route-tenantId="@tenantId" asp-route-importId="@importId" method="post" class="import-manual-form" data-prevent-double-submit>
             @Html.AntiForgeryToken()
             <input type="hidden" name="ReviewVersion" value="@root.GetProperty("review_version").GetInt64()" />
-            <label>Título do contrato<input name="Title" value="@root.GetProperty("title").GetString()" maxlength="160" required /></label>
-            <label>Identificação contratual<input name="Reference" value="@(root.GetProperty("reference").ValueKind == System.Text.Json.JsonValueKind.Null ? null : root.GetProperty("reference").GetString())" maxlength="160" /></label>
-            <div class="form-grid"><label>Início<input type="date" name="StartDate" value="@(root.GetProperty("start_date").ValueKind == System.Text.Json.JsonValueKind.Null ? null : root.GetProperty("start_date").GetString())" /></label><label>Término<input type="date" name="EndDate" value="@(root.GetProperty("end_date").ValueKind == System.Text.Json.JsonValueKind.Null ? null : root.GetProperty("end_date").GetString())" /></label></div>
-            <div class="form-grid"><label>Valor<input type="number" name="Value" step="0.01" min="0" value="@(root.GetProperty("value").ValueKind == System.Text.Json.JsonValueKind.Null ? null : root.GetProperty("value").GetDecimal())" /></label><label>Moeda (ISO)<input name="Currency" maxlength="3" pattern="[A-Za-z]{3}" value="@(root.GetProperty("currency").ValueKind == System.Text.Json.JsonValueKind.Null ? null : root.GetProperty("currency").GetString())" /></label></div>
-            <p class="muted">Preencha manualmente quando não houver extração. Nenhum dado ausente será deduzido.</p>
-            <button class="button button-primary" type="submit">Salvar conferência</button>
+            <label>@L.T("imp_rev.lbl_title",_c)<input name="Title" value="@root.GetProperty("title").GetString()" maxlength="160" required /></label>
+            <label>@L.T("imp_rev.lbl_reference",_c)<input name="Reference" value="@(root.GetProperty("reference").ValueKind == System.Text.Json.JsonValueKind.Null ? null : root.GetProperty("reference").GetString())" maxlength="160" /></label>
+            <div class="form-grid"><label>@L.T("imp_rev.lbl_start",_c)<input type="date" name="StartDate" value="@(root.GetProperty("start_date").ValueKind == System.Text.Json.JsonValueKind.Null ? null : root.GetProperty("start_date").GetString())" /></label><label>@L.T("imp_rev.lbl_end",_c)<input type="date" name="EndDate" value="@(root.GetProperty("end_date").ValueKind == System.Text.Json.JsonValueKind.Null ? null : root.GetProperty("end_date").GetString())" /></label></div>
+            <div class="form-grid"><label>@L.T("imp_rev.lbl_value",_c)<input type="number" name="Value" step="0.01" min="0" value="@(root.GetProperty("value").ValueKind == System.Text.Json.JsonValueKind.Null ? null : root.GetProperty("value").GetDecimal())" /></label><label>@L.T("imp_rev.lbl_currency",_c)<input name="Currency" maxlength="3" pattern="[A-Za-z]{3}" value="@(root.GetProperty("currency").ValueKind == System.Text.Json.JsonValueKind.Null ? null : root.GetProperty("currency").GetString())" /></label></div>
+            <p class="muted">@L.T("imp_rev.manual_help",_c)</p>
+            <button class="button button-primary" type="submit">@L.T("imp_rev.btn_save_manual",_c)</button>
         </form>
-        <h2>Sugestões da extração</h2>
+        <h2>@L.T("imp_rev.suggestions",_c)</h2>
     @Html.AntiForgeryToken()
-    @if(!Model.GetProperty("suggestions").EnumerateArray().Any()){<p>Nenhuma sugestão automática. A revisão manual continua disponível.</p>}
+    @if(!Model.GetProperty("suggestions").EnumerateArray().Any()){<p>@L.T("imp_rev.no_suggestions",_c)</p>}
     @foreach(var suggestion in Model.GetProperty("suggestions").EnumerateArray()){
-        <article class="suggestion-card" data-suggestion-id="@suggestion.GetProperty("id").GetGuid()"><header><strong>@suggestion.GetProperty("field_name").GetString()</strong><span>Método: @suggestion.GetProperty("method").GetString() · Estado: @suggestion.GetProperty("review_status").GetString()</span></header>
-            <label>Valor extraído<input value="@suggestion.GetProperty("extracted_value").GetString()" readonly /></label>
-            <label>Valor escolhido para o contrato <small>(edite para informar manualmente)</small><input data-reviewed-value value="@(suggestion.TryGetProperty("reviewed_value",out var reviewed)?reviewed.GetString():suggestion.GetProperty("normalized_value").GetString())" /></label>
-            <blockquote><strong>Trecho de origem:</strong> @suggestion.GetProperty("evidence").GetString()</blockquote><p>Página @(suggestion.TryGetProperty("page_number",out var page)&&page.ValueKind!=System.Text.Json.JsonValueKind.Null?page.GetInt32().ToString():"não identificada")</p>
-            <fieldset><legend>Decisão</legend><label><input type="radio" value="accepted" name="decision-@suggestion.GetProperty("id").GetGuid()" /> Aceitar</label><label><input type="radio" value="edited" name="decision-@suggestion.GetProperty("id").GetGuid()" /> Editar</label><label><input type="radio" value="rejected" name="decision-@suggestion.GetProperty("id").GetGuid()" /> Rejeitar</label></fieldset>
+        <article class="suggestion-card" data-suggestion-id="@suggestion.GetProperty("id").GetGuid()"><header><strong>@suggestion.GetProperty("field_name").GetString()</strong><span>@L.T("imp_rev.method_state",_c,suggestion.GetProperty("method").GetString() ?? "",suggestion.GetProperty("review_status").GetString() ?? "")</span></header>
+            <label>@L.T("imp_rev.extracted",_c)<input value="@suggestion.GetProperty("extracted_value").GetString()" readonly /></label>
+            <label>@L.T("imp_rev.chosen",_c) <small>@L.T("imp_rev.chosen_hint",_c)</small><input data-reviewed-value value="@(suggestion.TryGetProperty("reviewed_value",out var reviewed)?reviewed.GetString():suggestion.GetProperty("normalized_value").GetString())" /></label>
+            <blockquote><strong>@L.T("imp_rev.evidence",_c)</strong> @suggestion.GetProperty("evidence").GetString()</blockquote><p>@(suggestion.TryGetProperty("page_number",out var page)&&page.ValueKind!=System.Text.Json.JsonValueKind.Null?L.T("imp_rev.page",_c,page.GetInt32().ToString(System.Globalization.CultureInfo.InvariantCulture)):L.T("imp_rev.page_unknown",_c))</p>
+            <fieldset><legend>@L.T("imp_rev.decision",_c)</legend><label><input type="radio" value="accepted" name="decision-@suggestion.GetProperty("id").GetGuid()" /> @L.T("imp_rev.dec_accept",_c)</label><label><input type="radio" value="edited" name="decision-@suggestion.GetProperty("id").GetGuid()" /> @L.T("imp_rev.dec_edit",_c)</label><label><input type="radio" value="rejected" name="decision-@suggestion.GetProperty("id").GetGuid()" /> @L.T("imp_rev.dec_reject",_c)</label></fieldset>
         </article>}
-        <p data-review-message role="status"></p>@if(extractionId.HasValue){<button class="button button-primary" type="button" data-save-review>Salvar decisões das sugestões</button>}else{<p>A extração automática não foi solicitada. Confira e salve os dados manualmente acima.</p>}
+        <p data-review-message role="status"></p>@if(extractionId.HasValue){<button class="button button-primary" type="button" data-save-review>@L.T("imp_rev.btn_save_decisions",_c)</button>}else{<p>@L.T("imp_rev.extraction_missing",_c)</p>}
         <div class="actions-row" style="display:flex;gap:1rem;margin-top:1rem;align-items:center;flex-wrap:wrap;">
-            <form asp-action="Confirm" asp-route-tenantId="@tenantId" asp-route-importId="@importId" method="post" data-prevent-double-submit onsubmit="return confirm('Confirmar a importação com os dados conferidos?');">
+            <form asp-action="Confirm" asp-route-tenantId="@tenantId" asp-route-importId="@importId" method="post" data-prevent-double-submit onsubmit="return confirm('@L.T("imp_rev.confirm_msg",_c)');">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="reviewVersion" value="@root.GetProperty("review_version").GetInt64()" />
-                <button class="button button-primary" type="submit">Confirmar importação</button>
+                <button class="button button-primary" type="submit">@L.T("imp_rev.btn_confirm",_c)</button>
             </form>
             @{
                 var importStatus = root.GetProperty("status").GetString();
             }
             @if (importStatus != "confirmed" && importStatus != "cancelled")
             {
-                <form asp-action="Cancel" asp-route-tenantId="@tenantId" asp-route-importId="@importId" method="post" data-prevent-double-submit onsubmit="return confirm('Tem certeza de que deseja cancelar esta importação? Esta ação não pode ser desfeita.');">
+                <form asp-action="Cancel" asp-route-tenantId="@tenantId" asp-route-importId="@importId" method="post" data-prevent-double-submit onsubmit="return confirm('@L.T("imp_rev.cancel_msg",_c)');">
                     @Html.AntiForgeryToken()
-                    <button class="button button-danger" type="submit">Cancelar importação</button>
+                    <button class="button button-danger" type="submit">@L.T("imp_rev.btn_cancel",_c)</button>
                 </form>
             }
         </div>

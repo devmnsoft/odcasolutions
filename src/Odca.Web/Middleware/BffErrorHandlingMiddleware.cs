@@ -2,12 +2,14 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
+using Odca.Configuration.Localization;
 
 namespace Odca.Web.Middleware;
 
 public sealed partial class BffErrorHandlingMiddleware(
     RequestDelegate next,
-    ILogger<BffErrorHandlingMiddleware> logger)
+    ILogger<BffErrorHandlingMiddleware> logger,
+    LocalizationService loc)
 {
     public async Task InvokeAsync(HttpContext context)
     {
@@ -36,6 +38,7 @@ public sealed partial class BffErrorHandlingMiddleware(
     private async Task HandleErrorResponseAsync(HttpContext context)
     {
         var tenantId = ExtractTenantId(context);
+        var culture = context.Items[CultureMiddleware.ItemsKey] as string;
 
         if (IsJsonRequest(context))
         {
@@ -44,8 +47,8 @@ public sealed partial class BffErrorHandlingMiddleware(
             context.Response.ContentType = "application/json; charset=utf-8";
             await context.Response.WriteAsJsonAsync(new
             {
-                title = "Página indisponível",
-                detail = "Não foi possível abrir este recurso agora. O detalhe técnico foi registrado."
+                title = loc.T("bff.unavailable_title", culture),
+                detail = loc.T("bff.unavailable_detail", culture)
             });
             return;
         }
@@ -75,34 +78,39 @@ public sealed partial class BffErrorHandlingMiddleware(
         }
     }
 
-    private static async Task WriteFallbackHtmlAsync(HttpContext context, Guid? tenantId)
+    private async Task WriteFallbackHtmlAsync(HttpContext context, Guid? tenantId)
     {
+        var culture = context.Items[CultureMiddleware.ItemsKey] as string ?? "pt-BR";
+        var title = loc.T("bff.unavailable_title", culture);
+        var detail = loc.T("bff.unavailable_detail", culture);
+        var closeLabel = loc.T("bff.btn_close", culture);
+
         context.Response.Clear();
         context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
         context.Response.ContentType = "text/html; charset=utf-8";
 
         var tenantButton = tenantId.HasValue
-            ? $"<a class=\"button button-primary\" href=\"/organizacoes/{tenantId.Value}/caixa\">Voltar à caixa</a>"
+            ? $"<a class=\"button button-primary\" href=\"/organizacoes/{tenantId.Value}/caixa\">{loc.T("bff.btn_back_inbox", culture)}</a>"
             : string.Empty;
 
         var html = $$"""
             <!DOCTYPE html>
-            <html lang="pt-BR">
+            <html lang="{{culture}}">
             <head>
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
-                <title>Página indisponível — ODCA Solutions</title>
+                <title>{{title}} — ODCA Solutions</title>
                 <link rel="stylesheet" href="/css/site.css" />
             </head>
             <body class="public">
                 <main class="page-shell">
                     <dialog id="unavailable-dialog" class="unavailable-dialog" role="alertdialog" open aria-labelledby="dialog-title" aria-describedby="dialog-desc">
                         <div class="dialog-content card">
-                            <h2 id="dialog-title">Página indisponível</h2>
-                            <p id="dialog-desc">Não foi possível abrir este recurso agora. O detalhe técnico foi registrado.</p>
+                            <h2 id="dialog-title">{{title}}</h2>
+                            <p id="dialog-desc">{{detail}}</p>
                             <div class="dialog-actions">
                                 <form method="dialog" style="display:inline;">
-                                    <button type="submit" class="button button-quiet" id="btn-close-dialog">Fechar</button>
+                                    <button type="submit" class="button button-quiet" id="btn-close-dialog">{{closeLabel}}</button>
                                 </form>
                                 {{tenantButton}}
                             </div>

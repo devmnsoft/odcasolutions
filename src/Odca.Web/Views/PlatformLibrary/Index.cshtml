@@ -16,7 +16,7 @@
         _ => value
     };
 }
-<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-controller="Home" asp-action="Index">@L.T("visao-global",_c)</a><span>/</span><span aria-current="page">@L.T("biblioteca-modelos",_c)</span></nav>
+<nav class="breadcrumb" aria-label="@L.T("common.breadcrumb_aria",_c)"><a asp-controller="Home" asp-action="Index">@L.T("visao-global",_c)</a><span>/</span><span aria-current="page">@L.T("biblioteca-modelos",_c)</span></nav>
 <header class="page-heading"><div><p class="eyebrow">@L.T("support.eyebrow",_c)</p><h1>@L.T("biblioteca-modelos",_c)</h1><p>@L.T("platform.lib_intro",_c)</p></div><a class="button button-primary" asp-action="Create">@L.T("platform.lib_new",_c)</a></header>
 @if(TempData["Success"] is string ok){<div class="alert alert-success" role="status">@ok</div>}
 @if(TempData["Error"] is string err){<div class="alert alert-error" role="alert">@err</div>}

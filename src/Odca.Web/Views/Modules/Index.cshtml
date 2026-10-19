@@ -3,7 +3,7 @@
     var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
     ViewData["Title"] = Model.Title;
 }
-<nav class="breadcrumb" aria-label="Navegação estrutural">
+<nav class="breadcrumb" aria-label="@L.T("common.breadcrumb_aria",_c)">
     <a asp-controller="Home" asp-action="Index">@L.T("inicio",_c)</a><span aria-hidden="true">/</span><span>@Model.Title</span>
 </nav>
 <section class="page-heading">

@@ -10,7 +10,7 @@
     var order = new Dictionary<string, int> { ["baixa"] = 0, ["normal"] = 1, ["alta"] = 2, ["critica"] = 3 };
     var rows = Model.OrderBy(r => r.PlanCode).ThenBy(r => r.Service).ThenBy(r => order.GetValueOrDefault(r.Priority, 99)).ToArray();
 }
-<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-controller="Home" asp-action="Index">@L.T("visao-global",_c)</a><span>/</span><span aria-current="page">@L.T("configuracoes-operacionais",_c)</span></nav>
+<nav class="breadcrumb" aria-label="@L.T("common.breadcrumb_aria",_c)"><a asp-controller="Home" asp-action="Index">@L.T("visao-global",_c)</a><span>/</span><span aria-current="page">@L.T("configuracoes-operacionais",_c)</span></nav>
 <header class="page-heading"><div><p class="eyebrow">@L.T("support.eyebrow",_c)</p><h1>@L.T("platform.sla_h1",_c)</h1><p>@L.T("platform.sla_intro",_c)</p></div></header>
 <div class="responsive-table panel"><table>
 <thead><tr><th>@L.T("platform.sla_th_plan",_c)</th><th>@L.T("platform.sla_th_service",_c)</th><th>@L.T("platform.sla_th_priority",_c)</th><th>@L.T("platform.sla_th_first",_c)</th><th>@L.T("platform.sla_th_resolution",_c)</th><th>@L.T("platform.sla_th_window",_c)</th><th>@L.T("platform.sla_th_calendar",_c)</th><th>@L.T("common.situation",_c)</th></tr></thead>

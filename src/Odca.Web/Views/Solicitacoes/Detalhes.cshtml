@@ -18,11 +18,11 @@
     string JStr(System.Text.Json.JsonElement e,string n)=>e.TryGetProperty(n,out var v)&&v.ValueKind==JsonValueKind.String?v.GetString()??"" : "";
     var aberta=status is not ("encerrada" or "cancelada");
 }
-<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-action="Index" asp-route-tenantId="@tenantId">@L.T("sol.center",_culture)</a><span>/</span><span aria-current="page">@Str("protocol")</span></nav>
+<nav class="breadcrumb" aria-label="@L.T("common.breadcrumb_aria",_culture)"><a asp-action="Index" asp-route-tenantId="@tenantId">@L.T("sol.center",_culture)</a><span>/</span><span aria-current="page">@Str("protocol")</span></nav>
 <header class="page-heading"><div><p class="eyebrow">@L.T("sol.detail_eyebrow",_culture,ServiceLabel(Str("service")),Str("protocol"))</p><h1>@Str("subject")</h1><p>@L.T("sol.opened_by_line",_culture,Str("openedByName"),Fmt(When("openedAt")))</p></div><span class="status-badge status-@status">@StatusLabel(status)</span>@if(paused){<span class="status-badge">@L.T("sol.sla_paused",_culture)</span>}</header>
 @if(TempData["SolNotice"] is string notice){<div class="alert alert-success" role="status">@notice</div>}@if(TempData["SolError"] is string error){<div class="alert alert-error" role="alert">@error</div>}
 @if(p.TryGetProperty("sla",out _)&&(SlaWhen("firstResponseBreachAt") is not null||SlaWhen("resolutionBreachAt") is not null)){<div class="alert alert-error" role="alert">@L.T("sol.sla_breach_alert",_culture)</div>}
-<section class="summary-grid" aria-label="Resumo da solicitação">
+<section class="summary-grid" aria-label="@L.T("admin.summary_aria",_culture)">
  <article><span>@L.T("sol.col_priority",_culture)</span><strong>@PriorityLabel(Str("priority"))</strong></article>
  <article><span>@L.T("sol.assignee",_culture)</span><strong>@(string.IsNullOrWhiteSpace(Str("assigneeName"))?L.T("sol.status.triagem",_culture):Str("assigneeName"))</strong></article>
  <article><span>@L.T("sol.first_response_due",_culture)</span><strong>@Fmt(SlaWhen("firstResponseDueAt"))</strong>@if(SlaWhen("firstResponseBreachAt") is not null){<small>@L.T("sol.first_response_breached",_culture,Fmt(SlaWhen("firstResponseBreachAt")))</small>}else if(When("firstResponseAt") is DateTime fr){<small>@L.T("sol.first_response_met",_culture,Fmt(fr))</small>}</article>

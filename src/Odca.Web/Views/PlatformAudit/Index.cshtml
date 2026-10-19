@@ -37,7 +37,7 @@
         _ => result
     };
 }
-<nav class="breadcrumb" aria-label="Navegação estrutural">
+<nav class="breadcrumb" aria-label="@L.T("common.breadcrumb_aria",_c)">
     <a asp-controller="Home" asp-action="Index">@L.T("visao-global",_c)</a><span aria-hidden="true">/</span><span>@L.T("platform.audit_title",_c)</span>
 </nav>
 <header class="page-heading">

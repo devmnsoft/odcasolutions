@@ -1,54 +1,54 @@
 @model Odca.Contracts.DocumentImports.ContractImportPage
-@functions {
-    static string ImportDiagnostic(string code) => code switch
-    {
-        "quota-exhausted" => "A franquia mensal de OCR foi atingida. O texto extraído não foi aplicado.",
-        "organization-unavailable" => "A organização está suspensa ou a importação não está disponível. O trabalho pode ser retomado depois, sem duplicar o resultado.",
-        "invalid-document" => "O arquivo não pôde ser lido. O original permanece armazenado.",
-        "extractor-unavailable" => "O extrator falhou. Uma nova tentativa usa o mesmo trabalho.",
-        "scanner-not-configured" => "O analisador de segurança não está configurado.",
-        _ => "Diagnóstico: " + code.Replace('_', ' ').Replace('-', ' ')
-    };
-}
 @{
+    var _c=(string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"]=L.T("imp.h",_c);
     var tenantId = (Guid)ViewData["TenantId"]!;
     var status = ViewData["Status"] as string;
     var from = ViewData["From"] as DateOnly?;
     var to = ViewData["To"] as DateOnly?;
     var loadFailed = ViewData["LoadError"] is string;
+    string ImportDiagnostic(string code) => code switch
+    {
+        "quota-exhausted" => L.T("imp.diag_quota",_c),
+        "organization-unavailable" => L.T("imp.diag_org_unavailable",_c),
+        "invalid-document" => L.T("imp.diag_invalid_document",_c),
+        "extractor-unavailable" => L.T("imp.diag_extractor_unavailable",_c),
+        "scanner-not-configured" => L.T("imp.diag_scanner_not_configured",_c),
+        _ => L.T("imp.diag_prefix",_c) + code.Replace('_', ' ').Replace('-', ' ')
+    };
 }
 <header class="page-heading">
-    <div><span class="eyebrow">CONTRATOS</span><h1>Central de importações</h1><p>Acompanhe a análise, retome revisões e confirme somente dados conferidos.</p></div>
-    <details class="help-panel"><summary>Como usar</summary><p>Envie o documento na biblioteca do contrato, solicite a extração e registre a versão nesta central. Nenhuma sugestão é confirmada automaticamente.</p></details>
+    <div><span class="eyebrow">@L.T("group_contratos",_c)</span><h1>@L.T("imp.h",_c)</h1><p>@L.T("imp.sub",_c)</p></div>
+    <details class="help-panel"><summary>@L.T("inbox.how_to_use",_c)</summary><p>@L.T("imp.help_body",_c)</p></details>
 </header>
-<p class="muted"><strong>Disponível em breve:</strong> a Central de importações será habilitada em uma próxima versão. Os documentos e dados já enviados permanecem armazenados e rastreáveis.</p>
-<form method="get" class="filter-bar" aria-label="Filtros de importações">
-    <label>Estado<select name="status"><option value="">Todos</option>@foreach(var item in new[]{"security_review","queued","processing","awaiting_review","confirmed","failed","cancelled"}){<option value="@item" selected="@(status==item)">@item.Replace('_',' ')</option>}</select></label>
-    <label class="check-label"><input type="checkbox" name="mine" value="true" checked="@((bool)ViewData["Mine"]!)" /> Minhas importações</label>
-    <label class="check-label"><input type="checkbox" name="awaitingReview" value="true" checked="@((bool)ViewData["AwaitingReview"]!)" /> Aguardando revisão</label>
-    <label>De<input type="date" name="from" value="@from?.ToString("yyyy-MM-dd")" /></label>
-    <label>Até<input type="date" name="to" value="@to?.ToString("yyyy-MM-dd")" aria-describedby="date-error" /></label>
-    <button class="button button-primary" type="submit">Filtrar</button>
-    @if(loadFailed){<button class="button button-quiet" type="submit">Tentar novamente</button>}
+<p class="muted"><strong>@L.T("imp.soon_lead",_c)</strong> @L.T("imp.soon_rest",_c)</p>
+<form method="get" class="filter-bar" aria-label="@L.T("imp.filters_aria",_c)">
+    <label>@L.T("imp.lbl_state",_c)<select name="status"><option value="">@L.T("inbox.type_all",_c)</option>@foreach(var item in new[]{"security_review","queued","processing","awaiting_review","confirmed","failed","cancelled"}){<option value="@item" selected="@(status==item)">@item.Replace('_',' ')</option>}</select></label>
+    <label class="check-label"><input type="checkbox" name="mine" value="true" checked="@((bool)ViewData["Mine"]!)" /> @L.T("imp.mine",_c)</label>
+    <label class="check-label"><input type="checkbox" name="awaitingReview" value="true" checked="@((bool)ViewData["AwaitingReview"]!)" /> @L.T("imp.awaiting",_c)</label>
+    <label>@L.T("documents.filter_from",_c)<input type="date" name="from" value="@from?.ToString("yyyy-MM-dd")" /></label>
+    <label>@L.T("documents.filter_to",_c)<input type="date" name="to" value="@to?.ToString("yyyy-MM-dd")" aria-describedby="date-error" /></label>
+    <button class="button button-primary" type="submit">@L.T("action.filter",_c)</button>
+    @if(loadFailed){<button class="button button-quiet" type="submit">@L.T("studio.cat_retry",_c)</button>}
 </form>
 @if(ViewData["DateError"] is string dateError){<p id="date-error" class="field-error" role="alert">@dateError</p>}
 @if(ViewData["LoadError"] is string loadError)
 {
-    <section class="error" role="alert"><strong>Não foi possível carregar.</strong> @loadError</section>
+    <section class="error" role="alert"><strong>@L.T("imp.load_fail",_c)</strong> @loadError</section>
 }
 else if (ViewData["DateError"] is null && Model.Items.Count == 0)
 {
-    <section class="empty-state"><h2>Nenhuma importação corresponde aos filtros</h2><p>Falhas permanecem visíveis ao selecionar “Todos”.</p></section>
+    <section class="empty-state"><h2>@L.T("imp.empty_h",_c)</h2><p>@L.T("imp.empty_p",_c)</p></section>
 }
 else
 {
-    <section class="import-list" aria-label="Importações">
+    <section class="import-list" aria-label="@L.T("imp.list_aria",_c)">
     @foreach(var item in Model.Items)
     {
         <article class="import-row">
-            <div><span class="status-label">@item.Status.Replace('_',' ')</span><h2>@item.DocumentName</h2><p>Solicitada por @item.Requester em @item.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p></div>
-            <div><small>Etapa atual</small><strong>@item.CurrentStep.Replace('_',' ')</strong>@if(item.DiagnosticCode is not null){<span class="field-error">@ImportDiagnostic(item.DiagnosticCode)</span><small>@(item.Status=="failed" && item.DiagnosticCode is "quota-exhausted" or "invalid-document" ? "Não há nova tentativa automática." : item.Status is "queued" or "failed" ? "A retomada reutiliza o mesmo trabalho e não duplica uma confirmação." : "A confirmação continua manual.")</small>}</div>
-            <div class="row-actions"><a class="button button-quiet" asp-action="Review" asp-route-tenantId="@tenantId" asp-route-importId="@item.Id">@(item.Status=="awaiting_review"?"Continuar revisão":"Abrir")</a></div>
+            <div><span class="status-label">@item.Status.Replace('_',' ')</span><h2>@item.DocumentName</h2><p>@L.T("imp.requested_by",_c,item.Requester,CulturedTime.DateTime(item.CreatedAt.ToLocalTime(),_c))</p></div>
+            <div><small>@L.T("imp.current_step",_c)</small><strong>@item.CurrentStep.Replace('_',' ')</strong>@if(item.DiagnosticCode is not null){<span class="field-error">@ImportDiagnostic(item.DiagnosticCode)</span><small>@(item.Status=="failed" && item.DiagnosticCode is "quota-exhausted" or "invalid-document" ? L.T("imp.no_auto_retry",_c) : item.Status is "queued" or "failed" ? L.T("imp.resume_same_work",_c) : L.T("imp.manual_confirm",_c))</small>}</div>
+            <div class="row-actions"><a class="button button-quiet" asp-action="Review" asp-route-tenantId="@tenantId" asp-route-importId="@item.Id">@(item.Status=="awaiting_review"?L.T("imp.continue_review",_c):L.T("imp.open",_c))</a></div>
         </article>
     }
     </section>

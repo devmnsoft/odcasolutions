@@ -182,6 +182,7 @@ try {
 
   const checks = [];
   let okCount = 0, overflowCount = 0, authFailCount = 0, httpFailCount = 0;
+  let consecutiveHttpFail = 0; // r4/D-OC51: circuit breaker contra servidor morto em plena rodada
 
   async function probe(route, lang, width, height) {
     const tag = `${route.id}/${lang}/${width}x${height}`;
@@ -213,21 +214,34 @@ try {
       // Status HTTP do documento principal: pagina de erro (4xx/5xx) nao e overflow nem authfail.
       // Sem isso, o erro 404 da Chromium "encaixa" em viewports >= 908px e vira OK falso
       // (1a auditoria de D-OC40: 5 rotas 404 por tenant corrompido no cfg — ver secao 5).
+      // r4/D-OC51: status vazio ou 0 = falha de rede (ex.: ERR_CONNECTION_REFUSED quando o
+      // servidor cai em plena rodada) — antes virava OVERFLOW falso, porque a pagina de erro
+      // da Chromium tem 908px fixos e so estoura no viewport 768 (title vira "localhost").
+      // Circuit breaker: 4 falhas seguidas encerram a rodada com ERRO-FATAL em vez de medir
+      // meia auditoria contra um servidor morto.
       const stRes = await psend('Runtime.evaluate', {
         expression: '(function(){var n=performance.getEntriesByType("navigation")[0];return String(n && n.responseStatus ? n.responseStatus : "")})()',
       });
       const httpStatus = (stRes.result && stRes.result.result && stRes.result.result.value) || '';
-      if (httpStatus && Number(httpStatus) >= 400) {
-        const rec = { tag, status: 'HTTPFAIL', http: Number(httpStatus), href: loc };
+      if (!httpStatus || Number(httpStatus) >= 400) {
+        const rec = { tag, status: 'HTTPFAIL', http: Number(httpStatus) || 0, href: loc };
         checks.push(rec);
         try {
           const shot = await psend('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
-          if (shot.result && shot.result.data) writeFileSync(`${cfg.outDir}\\${route.id}_${lang}_${width}x${height}_http${httpStatus}.png`, Buffer.from(shot.result.data, 'base64'));
+          if (shot.result && shot.result.data) writeFileSync(`${cfg.outDir}\\${route.id}_${lang}_${width}x${height}_http${httpStatus || 'neterr'}.png`, Buffer.from(shot.result.data, 'base64'));
         } catch {}
-        console.log(`HTTPFAIL ${tag} status=${httpStatus} href=${loc}`);
+        console.log(`HTTPFAIL ${tag} status=${httpStatus || '0'} href=${loc}`);
         httpFailCount++;
+        if (++consecutiveHttpFail >= 4) {
+          console.log('SERVIDOR-CAIU: 4 falhas de rede seguidas; encerrando rodada.');
+          pws.close();
+          edge.kill();
+          try { rmSync(userDataDir, { recursive: true, force: true }); } catch {}
+          process.exit(2);
+        }
         return;
       }
+      consecutiveHttpFail = 0;
       const mRes = await psend('Runtime.evaluate', {
         expression: 'JSON.stringify({sw: document.documentElement.scrollWidth, iw: window.innerWidth, sh: document.documentElement.scrollHeight, ih: window.innerHeight, title: document.title})',
       });

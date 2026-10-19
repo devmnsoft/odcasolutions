@@ -129,7 +129,9 @@ if ([string]$T -ne '20000000-0000-4000-8000-000000000001') { Write-Host ('TENANT
 # SLA, diagnostico, modulos) em 4 idiomas + as 4 rotas superadmin que estavam apenas em pt-BR.
 # S16 (D-OC50): + gestao de clientes (lista, novo, usuarios, detalhe do tenant) e central do
 # cliente (planos, plano-e-consumo, caixa) em 4 idiomas.
-# 46 rotas x idiomas = 179 pares (rota x idioma) x 4 viewports = 716 medidas previstas.
+# S17 (D-OC51): + superficies de conta (login anonimo, minha-conta) e central de importacoes
+# em 4 idiomas.
+# 49 rotas x idiomas = 191 pares (rota x idioma) x 4 viewports = 764 medidas previstas.
 $cfgObj = [ordered]@{
   base = 'http://localhost:5144'
   outDir = $outDir
@@ -185,12 +187,16 @@ $cfgObj = [ordered]@{
     [ordered]@{ id = 'cliente-detalhe';    path = '/administracao/clientes/' + $T;     session = 'superadmin'; langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
     [ordered]@{ id = 'planos';             path = '/conheca-os-planos';                       session = 'cliente';    langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
     [ordered]@{ id = 'plano-consumo';      path = '/organizacoes/' + $T + '/plano-e-consumo'; session = 'cliente'; langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
-    [ordered]@{ id = 'caixa';              path = '/organizacoes/' + $T + '/caixa';     session = 'cliente';    langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') }
+    [ordered]@{ id = 'caixa';              path = '/organizacoes/' + $T + '/caixa';     session = 'cliente';    langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    # S17 (D-OC51): + superficies de conta (login/minha-conta) e central de importacoes em 4 idiomas.
+    [ordered]@{ id = 'login';              path = '/entrar';                                        session = 'anon';     langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'minha-conta';        path = '/minha-conta';                                   session = 'cliente';  langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'importacao';         path = '/organizacoes/' + $T + '/importacoes';           session = 'cliente';  langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') }
   )
 }
 $cfgFile = Join-Path $logDir 'd41-audit-cfg.json'
 Set-Content -Path $cfgFile -Value ($cfgObj | ConvertTo-Json -Depth 10) -Encoding utf8
-LogEv 'AUDIT: 46 rotas x idiomas x 4 viewports (179 pares; 716 medidas previstas); PNG apenas de falhas em ' + $outDir
+LogEv 'AUDIT: 49 rotas x idiomas x 4 viewports (191 pares; 764 medidas previstas); PNG apenas de falhas em ' + $outDir
 
 # ---------- execucao ----------
 $driver = Join-Path $root 'scripts\qa\cdp-design-audit.mjs'

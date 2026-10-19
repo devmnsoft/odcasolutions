@@ -8,25 +8,28 @@ namespace Odca.Web.Controllers;
 
 [Authorize]
 [Route("organizacoes/{tenantId:guid}/importacoes")]
-public sealed class ImportsController(OdcaApiClient api) : Controller
+public sealed class ImportsController(OdcaApiClient api, Odca.Configuration.Localization.LocalizationService loc) : Controller
 {
+    private string? Culture => HttpContext.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] as string;
+    private string L(string key, params string[] args) => loc.T(key, Culture, args);
+
     [HttpGet]
     public async Task<IActionResult> Index(Guid tenantId, string? status = null, bool mine = false, bool awaitingReview = false,
         DateOnly? from = null, DateOnly? to = null, CancellationToken ct = default)
     {
         var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
-        ViewData["Title"] = "Central de importações"; ViewData["TenantId"] = tenantId; ViewData["Status"] = status;
+        ViewData["Title"] = L("imp.h"); ViewData["TenantId"] = tenantId; ViewData["Status"] = status;
         ViewData["Mine"] = mine; ViewData["AwaitingReview"] = awaitingReview; ViewData["From"] = from; ViewData["To"] = to;
         if (from.HasValue && to.HasValue && from.Value > to.Value)
         {
-            ViewData["DateError"] = "A data final deve ser igual ou posterior à data inicial.";
+            ViewData["DateError"] = L("imp.err_date_range");
             return View(new ContractImportPage([], 0));
         }
         var result = await api.GetContractImportsAsync(token, tenantId, status, mine, awaitingReview, from, to, ct);
         if (!result.Succeeded)
         {
             if (result.Status == ApiCallStatus.Forbidden) return Forbid();
-            ViewData["LoadError"] = result.UserMessage("Não foi possível carregar as importações.");
+            ViewData["LoadError"] = result.UserMessage(L("imp.err_load"));
             return View(new ContractImportPage([], 0));
         }
         return View(result.Value!);
@@ -38,7 +41,7 @@ public sealed class ImportsController(OdcaApiClient api) : Controller
         var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Challenge();
         var result = await api.GetContractImportAsync(token, tenantId, importId, ct);
         if (!result.Succeeded) return result.Status == ApiCallStatus.NotFound ? NotFound() : View("~/Views/Shared/ServiceUnavailable.cshtml");
-        ViewData["Title"] = "Revisar importação"; ViewData["TenantId"] = tenantId;
+        ViewData["Title"] = L("imp_rev.title"); ViewData["TenantId"] = tenantId;
         return View(result.Value);
     }
 
@@ -68,8 +71,8 @@ public sealed class ImportsController(OdcaApiClient api) : Controller
         var result = await api.SaveManualImportDataAsync(token, tenantId, importId, request, ct);
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         TempData[result.Succeeded ? "ImportNotice" : "ImportError"] = result.Succeeded
-            ? "Dados conferidos e salvos. Revise o resumo antes de confirmar."
-            : result.UserMessage("Não foi possível salvar os dados; suas informações foram preservadas.");
+            ? L("imp.ok_manual_saved")
+            : result.UserMessage(L("imp.err_manual_save"));
         return RedirectToAction(nameof(Review), new { tenantId, importId });
     }
 
@@ -82,10 +85,10 @@ public sealed class ImportsController(OdcaApiClient api) : Controller
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         if (result.Succeeded && result.Value is not null)
         {
-            TempData["ContractSheetNotice"] = result.Value.Repeated ? "Esta importação já estava confirmada." : "Contrato importado com rastreabilidade.";
+            TempData["ContractSheetNotice"] = result.Value.Repeated ? L("imp.ok_already_confirmed") : L("imp.ok_confirmed");
             return RedirectToAction("Sheet", "Contracts", new { tenantId, contractId = result.Value.ContractId, from = "imports" });
         }
-        TempData["ImportError"] = result.UserMessage("Não foi possível confirmar. Confira os dados e tente novamente.");
+        TempData["ImportError"] = result.UserMessage(L("imp.err_confirm"));
         return RedirectToAction(nameof(Review), new { tenantId, importId });
     }
 
@@ -98,10 +101,10 @@ public sealed class ImportsController(OdcaApiClient api) : Controller
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
         if (result.Succeeded)
         {
-            TempData["ImportNotice"] = "Importação cancelada com sucesso.";
+            TempData["ImportNotice"] = L("imp.ok_cancelled");
             return RedirectToAction(nameof(Index), new { tenantId });
         }
-        TempData["ImportError"] = result.UserMessage("Não foi possível cancelar a importação.");
+        TempData["ImportError"] = result.UserMessage(L("imp.err_cancel"));
         return RedirectToAction(nameof(Review), new { tenantId, importId });
     }
 }
