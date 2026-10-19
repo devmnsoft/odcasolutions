@@ -1,25 +1,26 @@
 @model Odca.Web.Models.CreateCustomerViewModel
 @{
-    ViewData["Title"] = "Nova organização";
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("cust.new_title", _c);
     var planItems = ViewData["PlanItems"] as System.Collections.Generic.IList<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>;
 }
-<nav class="breadcrumb">
-    <a asp-controller="Home" asp-action="Index">Visão global</a>
+<nav class="breadcrumb" aria-label="@L.T("common.breadcrumb_aria",_c)">
+    <a asp-controller="Home" asp-action="Index">@L.T("visao-global",_c)</a>
     <span>/</span>
-    <a asp-action="Index">Clientes</a>
+    <a asp-action="Index">@L.T("cust.area",_c)</a>
     <span>/</span>
-    <span>Nova organização</span>
+    <span aria-current="page">@L.T("cust.new_title",_c)</span>
 </nav>
 
 <header class="page-heading">
     <div>
-        <p class="eyebrow">Administração global</p>
-        <h1>Cadastrar nova organização</h1>
-        <p class="muted">Provisione a organização com plano contratado e administrador inicial responsável.</p>
+        <p class="eyebrow">@L.T("support.eyebrow",_c)</p>
+        <h1>@L.T("cust.create_h",_c)</h1>
+        <p class="muted">@L.T("cust.create_sub",_c)</p>
     </div>
     <details class="help-card">
-        <summary>Como usar</summary>
-        <p>Informe os dados da organização (clínica, consultório ou empresa) e do usuário que atuará como Administrador da Organização. Ao ativar imediatamente, a organização e o administrador estarão prontos para operar e cadastrar pacientes e minutas.</p>
+        <summary>@L.T("common.how_to_use",_c)</summary>
+        <p>@L.T("cust.create_help",_c)</p>
     </details>
 </header>
 
@@ -28,45 +29,45 @@
     <div asp-validation-summary="All" class="alert alert-error" role="alert"></div>
 
     <section class="card">
-        <h2>Dados da Organização</h2>
+        <h2>@L.T("cust.create_org_h",_c)</h2>
         <div class="form-grid">
             <label>
-                Nome da organização / Razão social *
+                @L.T("cust.create_name_label",_c)
                 <input asp-for="OrganizationName" autocomplete="organization" required />
                 <span asp-validation-for="OrganizationName" class="validation"></span>
             </label>
             <label>
-                CNPJ ou CPF do contratante *
+                @L.T("cust.create_doc_label",_c)
                 <input asp-for="Document" placeholder="00.000.000/0000-00 ou 000.000.000-00" autocomplete="off" required />
                 <span asp-validation-for="Document" class="validation"></span>
             </label>
             <label>
-                Plano contratado *
+                @L.T("cust.create_plan_label",_c)
                 <select asp-for="PlanCode" asp-items="planItems" required></select>
-                <small class="muted">Lista carregada do catálogo vigente de planos.</small>
+                <small class="muted">@L.T("cust.create_plan_note",_c)</small>
                 <span asp-validation-for="PlanCode" class="validation"></span>
             </label>
         </div>
     </section>
 
     <section class="card">
-        <h2>Administrador Inicial da Organização</h2>
+        <h2>@L.T("cust.create_admin_h",_c)</h2>
         <p class="muted" style="margin-top: 0; font-size: 0.875rem;">
-            O usuário receberá o perfil <strong>Administrador da organização</strong>, podendo gerenciar a equipe, pacientes e documentos da clínica.
+            @L.T("cust.create_admin_note_pre",_c)<strong>@L.T("cust.create_admin_role",_c)</strong>@L.T("cust.create_admin_note_post",_c)
         </p>
         <div class="form-grid">
             <label>
-                Nome completo do responsável *
+                @L.T("cust.create_adminname_label",_c)
                 <input asp-for="AdminName" autocomplete="name" required />
                 <span asp-validation-for="AdminName" class="validation"></span>
             </label>
             <label>
-                E-mail corporativo / Login *
+                @L.T("cust.create_adminemail_label",_c)
                 <input asp-for="AdminEmail" type="email" autocomplete="email" required />
                 <span asp-validation-for="AdminEmail" class="validation"></span>
             </label>
             <label>
-                Senha de acesso inicial *
+                @L.T("cust.create_password_label",_c)
                 <input asp-for="InitialPassword" type="password" autocomplete="new-password" minlength="8" required />
                 <span asp-validation-for="InitialPassword" class="validation"></span>
             </label>
@@ -74,18 +75,18 @@
     </section>
 
     <section class="card">
-        <h2>Situação Operacional</h2>
+        <h2>@L.T("cust.create_ops_h",_c)</h2>
         <label class="check-label">
             <input asp-for="ActivateDirectly" type="checkbox" />
-            <strong>Liberar operação imediatamente</strong>
+            <strong>@L.T("cust.create_activate",_c)</strong>
         </label>
         <p class="muted" style="font-size: 0.85rem; margin-top: 0.25rem;">
-            Se desmarcado, a organização ficará em estado <em>comercial pendente</em> até validação comercial posterior.
+            @L.T("cust.create_ops_note_pre",_c)<em>@L.T("cust.commercial_pending_term",_c)</em>@L.T("cust.create_ops_note_post",_c)
         </p>
     </section>
 
     <div class="form-actions-row">
-        <button class="button button-primary" type="submit">Cadastrar organização</button>
-        <a class="button button-link" asp-action="Index">Cancelar</a>
+        <button class="button button-primary" type="submit">@L.T("cust.create_submit",_c)</button>
+        <a class="button button-link" asp-action="Index">@L.T("action.cancel",_c)</a>
     </div>
 </form>

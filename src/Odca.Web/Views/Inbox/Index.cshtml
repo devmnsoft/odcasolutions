@@ -58,13 +58,13 @@
 <!-- VISTAS PESSOAIS -->
 @if (Model.Views.Count > 0)
 {
-    <div class="active-filters" aria-label="Vistas salvas">
-        <span><strong>Minhas vistas:</strong></span>
+    <div class="active-filters" aria-label="@L.T("inbox.views_aria", _culture)">
+        <span><strong>@L.T("inbox.my_views", _culture)</strong></span>
         @foreach (var view in Model.Views)
         {
             var isCurrent = Model.CurrentView?.Id == view.Id;
             <a class="filter-chip @(isCurrent ? "active" : null)" asp-action="OpenView" asp-route-tenantId="@tenantId" asp-route-viewId="@view.Id">
-                @view.Name @(view.IsDefault ? "(Padrão)" : null)
+                @view.Name @(view.IsDefault ? L.T("inbox.view_default", _culture) : null)
             </a>
         }
         @if (Model.CurrentView is not null)
@@ -75,12 +75,12 @@
                     <form method="post" asp-action="SetDefaultView" asp-route-tenantId="@tenantId" asp-route-viewId="@Model.CurrentView.Id">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="version" value="@Model.CurrentView.Version" />
-                        <button type="submit" class="button button-quiet">Tornar padrão</button>
+                        <button type="submit" class="button button-quiet">@L.T("inbox.set_default", _culture)</button>
                     </form>
                 }
                 <form method="post" asp-action="DeactivateView" asp-route-tenantId="@tenantId" asp-route-viewId="@Model.CurrentView.Id">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="clear-button-link">Excluir vista</button>
+                    <button type="submit" class="clear-button-link">@L.T("inbox.delete_view", _culture)</button>
                 </form>
             </div>
         }
@@ -126,14 +126,14 @@
 
     <!-- FORMULÁRIO PARA SALVAR VISTA -->
     <details class="details-subpanel">
-        <summary>Salvar estes filtros como vista pessoal</summary>
+        <summary>@L.T("inbox.save_view_summary", _culture)</summary>
         <form method="post" asp-action="SaveView" asp-route-tenantId="@tenantId" class="form-actions-row">
             @Html.AntiForgeryToken()
             <input type="hidden" name="scope" value="@Model.Scope" />
             <input type="hidden" name="kind" value="@Model.Kind" />
             <input type="hidden" name="urgency" value="@Model.Urgency" />
-            <input type="text" name="name" required placeholder="Nome da vista (ex: Críticas da Semana)" maxlength="80" />
-            <button class="button button-quiet" type="submit">Salvar vista</button>
+            <input type="text" name="name" required placeholder="@L.T("inbox.view_name_ph", _culture)" maxlength="80" />
+            <button class="button button-quiet" type="submit">@L.T("inbox.save_view_btn", _culture)</button>
         </form>
     </details>
 </details>
@@ -185,7 +185,7 @@
                     <p>@item.ContractTitle · @(item.OwnerName ?? L.T("inbox.no_owner", _culture))</p>
                 </div>
                 <dl>
-                    <div><dt>@L.T("inbox.due", _culture)</dt><dd>@(item.DueOn?.ToString("dd/MM/yyyy") ?? L.T("inbox.no_date", _culture))</dd></div>
+                    <div><dt>@L.T("inbox.due", _culture)</dt><dd>@(item.DueOn is null ? L.T("inbox.no_date", _culture) : CulturedTime.Date(item.DueOn.Value, _culture))</dd></div>
                     <div><dt>@L.T("inbox.status", _culture)</dt><dd>@item.Status</dd></div>
                 </dl>
                 <div class="next-action"><a class="button button-quiet" href="@item.OpenUrl">@actionLabel</a></div>

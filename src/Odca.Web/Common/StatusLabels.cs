@@ -17,6 +17,18 @@ public static class StatusLabels
         _ => value
     };
 
+    /// <summary>D-OC50 (S16): apresentação localizada. Estados desconhecidos continuam sendo
+    /// exibidos como gravados para não ocultar novas situações.</summary>
+    public static string Status(string? value, Func<string, string> t) => value switch
+    {
+        null or "" => "—",
+        "pending" => t("status.pending"),
+        "active" => t("org.orgst_active"),
+        "suspended" => t("org.orgst_suspended"),
+        "cancelled" or "canceled" => t("status.cancelled"),
+        _ => value
+    };
+
     /// <summary>
     /// Traduz a situação comercial da assinatura (odca.subscriptions.commercial_state).
     /// D-OC31 B.5: a ativação administrativa (tenants.status) é independente do ciclo
@@ -29,6 +41,18 @@ public static class StatusLabels
         "commercial_pending" => "Aguardando confirmação comercial (sem pagamento recebido)",
         "active" => "Ativa administrativa (o sistema não registra pagamento)",
         "suspended" => "Suspensa (sem pagamento recebido)",
+        _ => value
+    };
+
+    /// <summary>D-OC50 (S16): apresentação localizada. A ativação administrativa permanece
+    /// independente do ciclo comercial; nenhum destes estados equivale a pagamento.</summary>
+    public static string Commercial(string? value, Func<string, string> t) => value switch
+    {
+        null or "" => "—",
+        "email_pending" => t("status.commercial_email_pending"),
+        "commercial_pending" => t("status.commercial_pending"),
+        "active" => t("status.commercial_active"),
+        "suspended" => t("status.commercial_suspended"),
         _ => value
     };
 }

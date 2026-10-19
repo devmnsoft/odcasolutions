@@ -1,36 +1,37 @@
 @model Odca.Web.Models.UserSearchViewModel
 @{
-    ViewData["Title"] = "Localizar usuários";
-    string StatusLabel(string? value) => value switch { "active" => "Ativo", "blocked" => "Bloqueado", _ => value ?? "—" };
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("localizar-usuarios", _c);
+    string StatusLabel(string? value) => value switch { "active" => L.T("org.mem_active", _c), "blocked" => L.T("org.mem_blocked", _c), _ => value ?? "—" };
 }
-<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-action="Index">Clientes</a><span>/</span><span aria-current="page">Localizar usuários</span></nav>
-<header class="page-heading"><div><p class="eyebrow">Administração global</p><h1>Localizar usuários</h1><p>Busca em todo o ambiente por e-mail ou nome: identidades, vínculos por organização e situação de cada vínculo. Bloqueios e reabilitações se fazem na tela de equipe da organização correspondente.</p></div></header>
-<form method="get" class="review-filters" aria-label="Busca global de usuários">
- <label>Buscar<input type="search" name="search" value="@Model.Search" placeholder="E-mail ou nome" /></label>
- <button class="button button-primary" type="submit">Pesquisar</button>
+<nav class="breadcrumb" aria-label="@L.T("common.breadcrumb_aria",_c)"><a asp-action="Index">@L.T("cust.area",_c)</a><span>/</span><span aria-current="page">@L.T("localizar-usuarios",_c)</span></nav>
+<header class="page-heading"><div><p class="eyebrow">@L.T("support.eyebrow",_c)</p><h1>@L.T("localizar-usuarios",_c)</h1><p>@L.T("cust.users_sub",_c)</p></div></header>
+<form method="get" class="review-filters" aria-label="@L.T("common.search",_c)">
+ <label>@L.T("action.search",_c)<input type="search" name="search" value="@Model.Search" placeholder="@L.T("cust.users_ph",_c)" /></label>
+ <button class="button button-primary" type="submit">@L.T("documents.filter_search",_c)</button>
 </form>
 @if (Model.Users.Count == 0)
 {
-    <div class="empty-state">@if(string.IsNullOrWhiteSpace(Model.Search)){<p>Nenhum usuário localizado com os filtros atuais.</p>;}else{<p>Nenhum usuário corresponde a "@Model.Search". Confira a grafia do e-mail ou do nome.</p>}</div>
+    <div class="empty-state">@if(string.IsNullOrWhiteSpace(Model.Search)){<p>@L.T("cust.users_empty_nofilter",_c)</p>;}else{<p>@L.T("cust.users_empty_nomatch",_c,Model.Search)</p>}</div>
 }
 else
 {
     <div class="responsive-table panel"><table>
-    <thead><tr><th>Usuário</th><th>E-mail</th><th>Perfil</th><th>Vínculos</th></tr></thead>
+    <thead><tr><th>@L.T("cust.users_th_user",_c)</th><th>@L.T("cust.users_th_email",_c)</th><th>@L.T("cust.users_th_profile",_c)</th><th>@L.T("cust.users_th_links",_c)</th></tr></thead>
     <tbody>
     @foreach(var u in Model.Users)
     {
         <tr>
-          <td data-label="Usuário"><strong>@u.DisplayName</strong>@if(u.IsDeleted){<small style="display:block;color:var(--danger)">Conta removida</small>}</td>
-          <td data-label="E-mail">@u.Email</td>
-          <td data-label="Perfil">@(u.IsPlatformAdministrator ? "Administrador da plataforma" : "Cliente")</td>
-          <td data-label="Vínculos">
+          <td data-label="@L.T("cust.users_th_user",_c)"><strong>@u.DisplayName</strong>@if(u.IsDeleted){<small style="display:block;color:var(--danger)">@L.T("cust.users_removed",_c)</small>}</td>
+          <td data-label="@L.T("cust.users_th_email",_c)">@u.Email</td>
+          <td data-label="@L.T("cust.users_th_profile",_c)">@(u.IsPlatformAdministrator ? L.T("cust.users_profile_platform",_c) : L.T("cust.users_profile_customer",_c))</td>
+          <td data-label="@L.T("cust.users_th_links",_c)">
             @if(u.Links.Count == 0){<span>—</span>}
-            else{<ul style="padding-left:1rem;margin:0">@foreach(var l in u.Links){<li>@(l.TenantName ?? "Organização") — <span class="status-badge">@StatusLabel(l.MembershipStatus)</span>@if(!string.IsNullOrWhiteSpace(l.RoleCode)){<small> · @l.RoleCode</small>}</li>}</ul>}
+            else{<ul style="padding-left:1rem;margin:0">@foreach(var l in u.Links){<li>@(l.TenantName ?? L.T("common.org",_c)) — <span class="status-badge">@StatusLabel(l.MembershipStatus)</span>@if(!string.IsNullOrWhiteSpace(l.RoleCode)){<small> · @l.RoleCode</small>}</li>}</ul>}
           </td>
         </tr>
     }
     </tbody>
     </table></div>
-    <p class="muted">Até 100 resultados por busca, ordenados por e-mail.</p>
+    <p class="muted">@L.T("cust.users_footer",_c)</p>
 }

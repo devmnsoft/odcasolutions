@@ -1,0 +1,1388 @@
+{
+  "status.pending": {
+    "pt-BR": "Pendente",
+    "en-US": "Pending",
+    "es-ES": "Pendiente",
+    "fr-FR": "En attente"
+  },
+  "status.cancelled": {
+    "pt-BR": "Cancelada",
+    "en-US": "Canceled",
+    "es-ES": "Cancelada",
+    "fr-FR": "Annul\u00e9e"
+  },
+  "status.commercial_email_pending": {
+    "pt-BR": "Aguardando e-mail de boas-vindas (sem pagamento recebido)",
+    "en-US": "Awaiting welcome e-mail (no payment received)",
+    "es-ES": "Esperando el correo de bienvenida (sin pago recibido)",
+    "fr-FR": "En attente de l\u2019e-mail de bienvenue (aucun paiement re\u00e7u)"
+  },
+  "status.commercial_pending": {
+    "pt-BR": "Aguardando confirma\u00e7\u00e3o comercial (sem pagamento recebido)",
+    "en-US": "Awaiting commercial confirmation (no payment received)",
+    "es-ES": "Esperando la confirmaci\u00f3n comercial (sin pago recibido)",
+    "fr-FR": "En attente de la confirmation commerciale (aucun paiement re\u00e7u)"
+  },
+  "status.commercial_active": {
+    "pt-BR": "Ativa administrativa (o sistema n\u00e3o registra pagamento)",
+    "en-US": "Administratively active (the system records no payment)",
+    "es-ES": "Activa administrativa (el sistema no registra pago)",
+    "fr-FR": "Active sur le plan administratif (le syst\u00e8me n\u2019enregistre aucun paiement)"
+  },
+  "status.commercial_suspended": {
+    "pt-BR": "Suspensa (sem pagamento recebido)",
+    "en-US": "Suspended (no payment received)",
+    "es-ES": "Suspensa (sin pago recibido)",
+    "fr-FR": "Suspendue (aucun paiement re\u00e7u)"
+  },
+  "cust.title": {
+    "pt-BR": "Administra\u00e7\u00e3o de clientes",
+    "en-US": "Customer administration",
+    "es-ES": "Administraci\u00f3n de clientes",
+    "fr-FR": "Administration des clients"
+  },
+  "cust.area": {
+    "pt-BR": "Clientes",
+    "en-US": "Customers",
+    "es-ES": "Clientes",
+    "fr-FR": "Clients"
+  },
+  "cust.index_sub": {
+    "pt-BR": "Consulte capacidade e pend\u00eancias sem assumir a identidade do cliente.",
+    "en-US": "Check capacity and pending items without assuming the customer\u2019s identity.",
+    "es-ES": "Consulte capacidad y pendientes sin asumir la identidad del cliente.",
+    "fr-FR": "Consultez la capacit\u00e9 et les \u00e9l\u00e9ments en attente sans prendre l\u2019identit\u00e9 du client."
+  },
+  "cust.btn_new": {
+    "pt-BR": "+ Nova organiza\u00e7\u00e3o",
+    "en-US": "+ New organization",
+    "es-ES": "+ Nueva organizaci\u00f3n",
+    "fr-FR": "+ Nouvelle organisation"
+  },
+  "cust.filters": {
+    "pt-BR": "Filtros",
+    "en-US": "Filters",
+    "es-ES": "Filtros",
+    "fr-FR": "Filtres"
+  },
+  "cust.filter_name_doc": {
+    "pt-BR": "Nome ou documento",
+    "en-US": "Name or document",
+    "es-ES": "Nombre o documento",
+    "fr-FR": "Nom ou document"
+  },
+  "cust.plan_basic": {
+    "pt-BR": "B\u00e1sico",
+    "en-US": "Basic",
+    "es-ES": "B\u00e1sico",
+    "fr-FR": "Basique"
+  },
+  "cust.btn_search": {
+    "pt-BR": "Pesquisar",
+    "en-US": "Search",
+    "es-ES": "Buscar",
+    "fr-FR": "Rechercher"
+  },
+  "cust.th_customer": {
+    "pt-BR": "Cliente",
+    "en-US": "Customer",
+    "es-ES": "Cliente",
+    "fr-FR": "Client"
+  },
+  "cust.th_users": {
+    "pt-BR": "Usu\u00e1rios",
+    "en-US": "Users",
+    "es-ES": "Usuarios",
+    "fr-FR": "Utilisateurs"
+  },
+  "cust.th_consumption": {
+    "pt-BR": "Consumo",
+    "en-US": "Usage",
+    "es-ES": "Uso",
+    "fr-FR": "Consommation"
+  },
+  "cust.th_pending": {
+    "pt-BR": "Pend\u00eancias",
+    "en-US": "Pending items",
+    "es-ES": "Pendencias",
+    "fr-FR": "\u00c9l\u00e9ments en attente"
+  },
+  "cust.th_activity": {
+    "pt-BR": "Atividade",
+    "en-US": "Activity",
+    "es-ES": "Actividad",
+    "fr-FR": "Activit\u00e9"
+  },
+  "cust.cell_usage": {
+    "pt-BR": "OCR {0}/{1} \u00b7 assinatura {2}/{3}",
+    "en-US": "OCR {0}/{1} \u00b7 signature {2}/{3}",
+    "es-ES": "OCR {0}/{1} \u00b7 firma {2}/{3}",
+    "fr-FR": "OCR {0}/{1} \u00b7 signature {2}/{3}"
+  },
+  "cust.btn_analyze": {
+    "pt-BR": "Analisar",
+    "en-US": "Analyze",
+    "es-ES": "Analizar",
+    "fr-FR": "Analyser"
+  },
+  "cust.index_help": {
+    "pt-BR": "Pesquise o cliente, confirme o contexto destacado e abra os detalhes para decidir pedidos ou registrar uma concess\u00e3o justificada.",
+    "en-US": "Search the customer, confirm the highlighted context and open the details to decide requests or record a justified grant.",
+    "es-ES": "Busque el cliente, confirme el contexto resaltado y abra los detalles para decidir solicitudes o registrar una concesi\u00f3n justificada.",
+    "fr-FR": "Recherchez le client, confirmez le contexte mis en \u00e9vidence et ouvrez les d\u00e9tails pour d\u00e9cider les demandes ou enregistrer une concession justifi\u00e9e."
+  },
+  "cust.detail_title": {
+    "pt-BR": "Cliente \u00b7 {0}",
+    "en-US": "Customer \u00b7 {0}",
+    "es-ES": "Cliente \u00b7 {0}",
+    "fr-FR": "Client \u00b7 {0}"
+  },
+  "cust.selected": {
+    "pt-BR": "Cliente selecionado",
+    "en-US": "Selected customer",
+    "es-ES": "Cliente seleccionado",
+    "fr-FR": "Client s\u00e9lectionn\u00e9"
+  },
+  "cust.selected_note": {
+    "pt-BR": "As a\u00e7\u00f5es abaixo afetam este tenant e registram o administrador real.",
+    "en-US": "The actions below affect this tenant and record the actual administrator.",
+    "es-ES": "Las acciones de abajo afectan este tenant y registran al administrador real.",
+    "fr-FR": "Les actions ci-dessous affectent ce tenant et enregistrent l\u2019administrateur r\u00e9el."
+  },
+  "cust.btn_grant": {
+    "pt-BR": "Conceder adicional",
+    "en-US": "Grant additional",
+    "es-ES": "Conceder adicional",
+    "fr-FR": "Accorder un suppl\u00e9ment"
+  },
+  "cust.plan_h": {
+    "pt-BR": "Plano e vers\u00e3o contratada",
+    "en-US": "Contracted plan and version",
+    "es-ES": "Plan y versi\u00f3n contratados",
+    "fr-FR": "Plan et version contract\u00e9s"
+  },
+  "cust.plan_p": {
+    "pt-BR": "A organiza\u00e7\u00e3o permanece vinculada \u00e0 vers\u00e3o j\u00e1 contratada at\u00e9 esta confirma\u00e7\u00e3o. Editar o cat\u00e1logo n\u00e3o altera este contrato. A mudan\u00e7a n\u00e3o apaga pacientes, documentos nem hist\u00f3rico e n\u00e3o registra pagamento.",
+    "en-US": "The organization stays bound to the contracted version until this confirmation. Editing the catalog does not change this contract. The change does not delete patients, documents or history and records no payment.",
+    "es-ES": "La organizaci\u00f3n permanece vinculada a la versi\u00f3n ya contratada hasta esta confirmaci\u00f3n. Editar el cat\u00e1logo no altera este contrato. El cambio no borra pacientes, documentos ni historial y no registra pago.",
+    "fr-FR": "L\u2019organisation reste li\u00e9e \u00e0 la version d\u00e9j\u00e0 contract\u00e9e jusqu\u2019\u00e0 cette confirmation. Modifier le catalogue ne modifie pas ce contrat. Le changement n\u2019efface ni patients, ni documents, ni historique et n\u2019enregistre aucun paiement."
+  },
+  "cust.plan_current_label": {
+    "pt-BR": "Plano vigente",
+    "en-US": "Current plan",
+    "es-ES": "Plan vigente",
+    "fr-FR": "Plan actuel"
+  },
+  "cust.plan_select_option": {
+    "pt-BR": "Selecione pelo nome",
+    "en-US": "Select by name",
+    "es-ES": "Seleccione par el nombre",
+    "fr-FR": "S\u00e9lectionner par le nom"
+  },
+  "cust.justification": {
+    "pt-BR": "Justificativa",
+    "en-US": "Justification",
+    "es-ES": "Justificaci\u00f3n",
+    "fr-FR": "Justification"
+  },
+  "cust.plan_just_note": {
+    "pt-BR": "O motivo fica na auditoria, entre 5 e 500 caracteres.",
+    "en-US": "The reason is kept in the audit log, between 5 and 500 characters.",
+    "es-ES": "El motivo queda en la auditor\u00eda, entre 5 y 500 caracteres.",
+    "fr-FR": "La raison est conserv\u00e9e dans l\u2019audit, entre 5 et 500 caract\u00e8res."
+  },
+  "cust.btn_analyze_impact": {
+    "pt-BR": "Analisar impacto",
+    "en-US": "Analyze impact",
+    "es-ES": "Analizar impacto",
+    "fr-FR": "Analyser l\u2019impact"
+  },
+  "cust.preview_title": {
+    "pt-BR": "Resumo de impacto",
+    "en-US": "Impact summary",
+    "es-ES": "Resumen de impacto",
+    "fr-FR": "R\u00e9sum\u00e9 de l\u2019impact"
+  },
+  "cust.preview_change": {
+    "pt-BR": "De {0} v{1} para {2} v{3}.",
+    "en-US": "From {0} v{1} to {2} v{3}.",
+    "es-ES": "De {0} v{1} a {2} v{3}.",
+    "fr-FR": "De {0} v{1} \u00e0 {2} v{3}."
+  },
+  "cust.preview_limits": {
+    "pt-BR": "Pessoas ativas: {0}. Convites que reservam vaga: {1}. Limite atual: {2}. Limite novo: {3}.",
+    "en-US": "Active people: {0}. Invitations reserving a seat: {1}. Current limit: {2}. New limit: {3}.",
+    "es-ES": "Personas activas: {0}. Invitaciones con reserva de cupo: {1}. L\u00edmite actual: {2}. Nuevo l\u00edmite: {3}.",
+    "fr-FR": "Personnes actives : {0}. Invitations r\u00e9servant une place : {1}. Limite actuelle : {2}. Nouvelle limite : {3}."
+  },
+  "cust.preview_over_limit": {
+    "pt-BR": "O consumo de vagas fica acima do novo limite. A pol\u00edtica keep_members_and_documents preserva as pessoas e bloqueia novas vagas; ningu\u00e9m \u00e9 escolhido para bloqueio.",
+    "en-US": "Seat usage goes above the new limit. The keep_members_and_documents policy preserves people and blocks new seats; no one is chosen to be blocked.",
+    "es-ES": "El consumo de cupos supera el nuevo l\u00edmite. La pol\u00edtica keep_members_and_documents preserva a las personas y bloquea nuevos cupos; nadie es elegido para el bloqueo.",
+    "fr-FR": "L\u2019usage des places d\u00e9passe la nouvelle limite. La politique keep_members_and_documents pr\u00e9serve les personnes et bloque les nouvelles places ; personne n\u2019est choisi pour le blocage."
+  },
+  "cust.preview_within_limit": {
+    "pt-BR": "As vagas atuais cabem no novo limite.",
+    "en-US": "Current seats fit within the new limit.",
+    "es-ES": "Los cupos actuales caben en el nuevo l\u00edmite.",
+    "fr-FR": "Les places actuelles tiennent dans la nouvelle limite."
+  },
+  "cust.preview_preserved": {
+    "pt-BR": "Pacientes preservados: {0}. Documentos preservados: {1}.",
+    "en-US": "Patients preserved: {0}. Documents preserved: {1}.",
+    "es-ES": "Pacientes preservados: {0}. Documentos preservados: {1}.",
+    "fr-FR": "Patients pr\u00e9serv\u00e9s : {0}. Documents pr\u00e9serv\u00e9s : {1}."
+  },
+  "cust.confirm_plan_title": {
+    "pt-BR": "Confirmar altera\u00e7\u00e3o de plano",
+    "en-US": "Confirm plan change",
+    "es-ES": "Confirmar cambio de plan",
+    "fr-FR": "Confirmer le changement de plan"
+  },
+  "cust.confirm_plan_body": {
+    "pt-BR": "A vers\u00e3o contratada ser\u00e1 substitu\u00edda. Pacientes, documentos e hist\u00f3rico permanecem. Nenhum pagamento ser\u00e1 registrado.",
+    "en-US": "The contracted version will be replaced. Patients, documents and history remain. No payment will be recorded.",
+    "es-ES": "La versi\u00f3n contratada ser\u00e1 sustituida. Pacientes, documentos e historial permanecen. Ning\u00fan pago ser\u00e1 registrado.",
+    "fr-FR": "La version contract\u00e9e sera remplac\u00e9e. Patients, documents et historique restent. Aucun paiement ne sera enregistr\u00e9."
+  },
+  "cust.confirm_plan_action": {
+    "pt-BR": "Confirmar altera\u00e7\u00e3o",
+    "en-US": "Confirm change",
+    "es-ES": "Confirmar cambio",
+    "fr-FR": "Confirmer le changement"
+  },
+  "cust.invitations_count": {
+    "pt-BR": "{0} convite(s)",
+    "en-US": "{0} invitation(s)",
+    "es-ES": "{0} invitaci\u00f3n(es)",
+    "fr-FR": "{0} invitation(s)"
+  },
+  "cust.m_contracted": {
+    "pt-BR": "Contratado",
+    "en-US": "Contracted",
+    "es-ES": "Contratado",
+    "fr-FR": "Contract\u00e9"
+  },
+  "cust.m_additional": {
+    "pt-BR": "Adicional",
+    "en-US": "Additional",
+    "es-ES": "Adicional",
+    "fr-FR": "Suppl\u00e9mentaire"
+  },
+  "cust.m_used_reserved": {
+    "pt-BR": "Usado + reservado",
+    "en-US": "Used + reserved",
+    "es-ES": "Usado + reservado",
+    "fr-FR": "Utilis\u00e9 + r\u00e9serv\u00e9"
+  },
+  "cust.features_h": {
+    "pt-BR": "Funcionalidades da organiza\u00e7\u00e3o",
+    "en-US": "Organization features",
+    "es-ES": "Funcionalidades de la organizaci\u00f3n",
+    "fr-FR": "Fonctionnalit\u00e9s de l\u2019organisation"
+  },
+  "cust.features_p": {
+    "pt-BR": "O bloqueio administrativo vale na interface, na API e no processamento de importa\u00e7\u00f5es. Ele n\u00e3o muda o plano, n\u00e3o quita cobran\u00e7a e n\u00e3o apaga documentos.",
+    "en-US": "The administrative block applies in the interface, the API and import processing. It does not change the plan, settle a charge or delete documents.",
+    "es-ES": "El bloqueo administrativo rige en la interfaz, en la API y en el procesamiento de importaciones. No cambia el plan, no liquida cobros y no borra documentos.",
+    "fr-FR": "Le blocage administratif s\u2019applique dans l\u2019interface, l\u2019API et le traitement des importations. Il ne change pas le plan, ne r\u00e8gle pas de facture et ne supprime pas de documents."
+  },
+  "cust.features_err_prefix": {
+    "pt-BR": "Falha na consulta.",
+    "en-US": "Lookup failed.",
+    "es-ES": "Fallo en la consulta.",
+    "fr-FR": "\u00c9chec de la consultation."
+  },
+  "cust.features_status_intro": {
+    "pt-BR": "Situa\u00e7\u00e3o administrativa da organiza\u00e7\u00e3o:",
+    "en-US": "Administrative status of the organization:",
+    "es-ES": "Situaci\u00f3n administrativa de la organizaci\u00f3n:",
+    "fr-FR": "Situation administrative de l\u2019organisation :"
+  },
+  "cust.feat_th_feature": {
+    "pt-BR": "Funcionalidade",
+    "en-US": "Feature",
+    "es-ES": "Funcionalidad",
+    "fr-FR": "Fonctionnalit\u00e9"
+  },
+  "cust.feat_blocked": {
+    "pt-BR": "Bloqueada pela administra\u00e7\u00e3o",
+    "en-US": "Blocked by administration",
+    "es-ES": "Bloqueada por la administraci\u00f3n",
+    "fr-FR": "Bloqu\u00e9e par l\u2019administration"
+  },
+  "cust.feat_reason_plan": {
+    "pt-BR": "Plano: {0}",
+    "en-US": "Plan: {0}",
+    "es-ES": "Plan: {0}",
+    "fr-FR": "Plan : {0}"
+  },
+  "cust.feat_unlock_reason": {
+    "pt-BR": "Justificativa da libera\u00e7\u00e3o",
+    "en-US": "Unblock justification",
+    "es-ES": "Justificaci\u00f3n del desbloqueo",
+    "fr-FR": "Justification du d\u00e9blocage"
+  },
+  "cust.feat_btn_unlock": {
+    "pt-BR": "Liberar",
+    "en-US": "Unblock",
+    "es-ES": "Liberar",
+    "fr-FR": "D\u00e9bloquer"
+  },
+  "cust.feat_block_reason": {
+    "pt-BR": "Justificativa do bloqueio",
+    "en-US": "Block justification",
+    "es-ES": "Justificaci\u00f3n del bloqueo",
+    "fr-FR": "Justification du blocage"
+  },
+  "cust.feat_btn_block": {
+    "pt-BR": "Bloquear",
+    "en-US": "Block",
+    "es-ES": "Bloquear",
+    "fr-FR": "Bloquer"
+  },
+  "cust.features_empty": {
+    "pt-BR": "Nenhuma funcionalidade foi retornada. Isso n\u00e3o distingue, sozinho, falha de consulta de aus\u00eancia de bloqueio.",
+    "en-US": "No feature was returned. This alone does not distinguish a lookup failure from the absence of a block.",
+    "es-ES": "Ninguna funcionalidad fue devuelta. Esto por s\u00ed solo no distingue una falla de consulta de la ausencia de bloqueo.",
+    "fr-FR": "Aucune fonctionnalit\u00e9 n\u2019a \u00e9t\u00e9 renvoy\u00e9e. Cela ne distingue pas, \u00e0 lui seul, une erreur de consultation de l\u2019absence de blocage."
+  },
+  "cust.status_h": {
+    "pt-BR": "Situa\u00e7\u00e3o da organiza\u00e7\u00e3o",
+    "en-US": "Organization status",
+    "es-ES": "Situaci\u00f3n de la organizaci\u00f3n",
+    "fr-FR": "Situation de l\u2019organisation"
+  },
+  "cust.status_admin_label": {
+    "pt-BR": "Situa\u00e7\u00e3o administrativa:",
+    "en-US": "Administrative status:",
+    "es-ES": "Situaci\u00f3n administrativa:",
+    "fr-FR": "Situation administrative :"
+  },
+  "cust.status_commercial_label": {
+    "pt-BR": "Situa\u00e7\u00e3o comercial:",
+    "en-US": "Commercial status:",
+    "es-ES": "Situaci\u00f3n comercial:",
+    "fr-FR": "Statut commercial :"
+  },
+  "cust.status_note": {
+    "pt-BR": "A ativa\u00e7\u00e3o administrativa \u00e9 independente do ciclo comercial e n\u00e3o equivale a pagamento recebido. Esta a\u00e7\u00e3o n\u00e3o altera v\u00ednculos, bloqueios individuais, situa\u00e7\u00e3o comercial ou documentos hist\u00f3ricos.",
+    "en-US": "Administrative activation is independent of the commercial cycle and does not equal payment received. This action does not change links, individual blocks, commercial status or historical documents.",
+    "es-ES": "La activaci\u00f3n administrativa es independiente del ciclo comercial y no equivale a pago recibido. Esta acci\u00f3n no altera v\u00ednculos, bloqueos individuales, situaci\u00f3n comercial ni documentos hist\u00f3ricos.",
+    "fr-FR": "L\u2019activation administrative est ind\u00e9pendante du cycle commercial et n\u2019\u00e9quivaut pas \u00e0 un paiement re\u00e7u. Cette action ne modifie ni les liens, ni les blocages individuels, ni le statut commercial, ni les documents historiques."
+  },
+  "cust.btn_restore_org": {
+    "pt-BR": "Restaurar organiza\u00e7\u00e3o",
+    "en-US": "Restore organization",
+    "es-ES": "Restaurar organizaci\u00f3n",
+    "fr-FR": "Restaurer l\u2019organisation"
+  },
+  "cust.btn_suspend_org": {
+    "pt-BR": "Suspender organiza\u00e7\u00e3o",
+    "en-US": "Suspend organization",
+    "es-ES": "Suspender organisation",
+    "fr-FR": "Suspendre l\u2019organisation"
+  },
+  "cust.btn_approve_grant": {
+    "pt-BR": "Aprovar e conceder",
+    "en-US": "Approve and grant",
+    "es-ES": "Aprobar y conceder",
+    "fr-FR": "Approuver et accorder"
+  },
+  "cust.reject_reason": {
+    "pt-BR": "Motivo da rejei\u00e7\u00e3o",
+    "en-US": "Rejection reason",
+    "es-ES": "Motivo del rechazo",
+    "fr-FR": "Motif du rejet"
+  },
+  "cust.btn_reject": {
+    "pt-BR": "Rejeitar",
+    "en-US": "Reject",
+    "es-ES": "Rechazar",
+    "fr-FR": "Rejeter"
+  },
+  "cust.grant_h": {
+    "pt-BR": "Concess\u00e3o manual",
+    "en-US": "Manual grant",
+    "es-ES": "Concesi\u00f3n manuelle",
+    "fr-FR": "Concession manuelle"
+  },
+  "cust.grant_quantity": {
+    "pt-BR": "Quantidade",
+    "en-US": "Quantity",
+    "es-ES": "Cantidad",
+    "fr-FR": "Quantit\u00e9"
+  },
+  "cust.grant_qty_ph": {
+    "pt-BR": "Ex.: 10",
+    "en-US": "E.g.: 10",
+    "es-ES": "Ej.: 10",
+    "fr-FR": "Ex. : 10"
+  },
+  "cust.grant_unit": {
+    "pt-BR": "Unidade",
+    "en-US": "Unit",
+    "es-ES": "Unidad",
+    "fr-FR": "Unit\u00e9"
+  },
+  "cust.unit_gb": {
+    "pt-BR": "GB (Gigabytes)",
+    "en-US": "GB (Gigabytes)",
+    "es-ES": "GB (Gigabytes)",
+    "fr-FR": "GB (Go)"
+  },
+  "cust.unit_mb": {
+    "pt-BR": "MB (Megabytes)",
+    "en-US": "MB (Megabytes)",
+    "es-ES": "MB (Megabytes)",
+    "fr-FR": "MB (Mo)"
+  },
+  "cust.unit_tb": {
+    "pt-BR": "TB (Terabytes)",
+    "en-US": "TB (Terabytes)",
+    "es-ES": "TB (Terabytes)",
+    "fr-FR": "TB (To)"
+  },
+  "cust.grant_note": {
+    "pt-BR": "Esta \u00e9 uma concess\u00e3o comercial manual, n\u00e3o confirma\u00e7\u00e3o de pagamento. A movimenta\u00e7\u00e3o \u00e9 imut\u00e1vel e auditada.",
+    "en-US": "This is a manual commercial grant, not a payment confirmation. The movement is immutable and audited.",
+    "es-ES": "Esta es una concesi\u00f3n comercial manual, no una confirmaci\u00f3n de pago. El movimiento es inmutable y est\u00e1 auditado.",
+    "fr-FR": "Ceci est une concession commerciale manuelle, pas une confirmation de paiement. Le mouvement est immuable et audit\u00e9."
+  },
+  "cust.grant_btn": {
+    "pt-BR": "Confirmar concess\u00e3o",
+    "en-US": "Confirm grant",
+    "es-ES": "Confirmar concesi\u00f3n",
+    "fr-FR": "Confirmer la concession"
+  },
+  "cust.history_h": {
+    "pt-BR": "Auditoria e movimenta\u00e7\u00f5es",
+    "en-US": "Audit and movements",
+    "es-ES": "Auditor\u00eda y movimientos",
+    "fr-FR": "Audit et mouvements"
+  },
+  "cust.help_detail": {
+    "pt-BR": "Aprova\u00e7\u00e3o \u00e9 serializada no banco e concede capacidade uma \u00fanica vez. Rejei\u00e7\u00f5es e concess\u00f5es manuais exigem justificativa e preservam o ator.",
+    "en-US": "Approval is serialized in the database and grants capacity exactly once. Rejections and manual grants require justification and preserve the actor.",
+    "es-ES": "La aprobaci\u00f3n se serializa en la base de datos y concede capacidad una \u00fanica vez. Los rechazos y las concesiones manuales exigen justificaci\u00f3n y preservan al actor.",
+    "fr-FR": "L\u2019approbation est s\u00e9rialis\u00e9e dans la base et accorde la capacit\u00e9 une seule fois. Les rejets et concessions manuelles exigent une justification et pr\u00e9servent l\u2019acteur."
+  },
+  "cust.new_title": {
+    "pt-BR": "Nova organiza\u00e7\u00e3o",
+    "en-US": "New organization",
+    "es-ES": "Nueva organizaci\u00f3n",
+    "fr-FR": "Nouvelle organisation"
+  },
+  "cust.create_h": {
+    "pt-BR": "Cadastrar nova organiza\u00e7\u00e3o",
+    "en-US": "Register new organization",
+    "es-ES": "Registrar nueva organizaci\u00f3n",
+    "fr-FR": "Enregistrer uma nova organisation"
+  },
+  "cust.create_sub": {
+    "pt-BR": "Provisione a organiza\u00e7\u00e3o com plano contratado e administrador inicial respons\u00e1vel.",
+    "en-US": "Provision the organization with the contracted plan and the responsible initial administrator.",
+    "es-ES": "Provisione la organizaci\u00f3n con plan contratado y administrador inicial responsable.",
+    "fr-FR": "Provisionnez l\u2019organisation avec le plan contract\u00e9 et l\u2019administrateur initial responsable."
+  },
+  "cust.create_help": {
+    "pt-BR": "Informe os dados da organiza\u00e7\u00e3o (cl\u00ednica, consult\u00f3rio ou empresa) e do usu\u00e1rio que atuar\u00e1 como Administrador da Organiza\u00e7\u00e3o. Ao ativar imediatamente, a organiza\u00e7\u00e3o e o administrador estar\u00e3o prontos para operar e cadastrar pacientes e minutas.",
+    "en-US": "Provide the organization\u2019s data (clinic, practice or company) and the user who will act as Organization Administrator. When activated immediately, the organization and administrator are ready to operate and register patients and drafts.",
+    "es-ES": "Informe los datos de la organizaci\u00f3n (cl\u00ednica, consultorio o empresa) y del usuario que actuar\u00e1 como Administrador de la Organizaci\u00f3n. Al activar inmediatamente, la organizaci\u00f3n y el administrador estar\u00e1n listos para operar y registrar pacientes y minutas.",
+    "fr-FR": "Indiquez les donn\u00e9es de l\u2019organisation (clinique, cabinet ou entreprise) et l\u2019utilisateur qui agira comme Administrateur de l\u2019organisation. En activant imm\u00e9diatement, l\u2019organisation et l\u2019administrateur sont pr\u00eats \u00e0 op\u00e9rer et \u00e0 enregistrer patients et projets."
+  },
+  "cust.create_org_h": {
+    "pt-BR": "Dados da Organiza\u00e7\u00e3o",
+    "en-US": "Organization Data",
+    "es-ES": "Datos de la Organizaci\u00f3n",
+    "fr-FR": "Donn\u00e9es de l\u2019organisation"
+  },
+  "cust.create_name_label": {
+    "pt-BR": "Nome da organiza\u00e7\u00e3o / Raz\u00e3o social *",
+    "en-US": "Organization name / Legal name *",
+    "es-ES": "Nombre de la organizaci\u00f3n / Raz\u00f3n social *",
+    "fr-FR": "Nom de l\u2019organisation / Raison sociale *"
+  },
+  "cust.create_doc_label": {
+    "pt-BR": "CNPJ ou CPF do contratante *",
+    "en-US": "Contractor\u2019s CNPJ or CPF *",
+    "es-ES": "CNPJ o CPF del contratante *",
+    "fr-FR": "CNPJ ou CPF du contratant *"
+  },
+  "cust.create_plan_label": {
+    "pt-BR": "Plano contratado *",
+    "en-US": "Contracted plan *",
+    "es-ES": "Plan contratado *",
+    "fr-FR": "Plan contract\u00e9 *"
+  },
+  "cust.create_plan_note": {
+    "pt-BR": "Lista carregada do cat\u00e1logo vigente de planos.",
+    "en-US": "List loaded from the current plan catalog.",
+    "es-ES": "Lista cargada del cat\u00e1logo vigente de planes.",
+    "fr-FR": "Liste charg\u00e9e du catalogue de plans en vigueur."
+  },
+  "cust.create_admin_h": {
+    "pt-BR": "Administrador Inicial da Organiza\u00e7\u00e3o",
+    "en-US": "Initial Organization Administrator",
+    "es-ES": "Administrador Inicial de la Organizaci\u00f3n",
+    "fr-FR": "Administrateur initial de l\u2019organisation"
+  },
+  "cust.create_admin_note_pre": {
+    "pt-BR": "O usu\u00e1rio receber\u00e1 o perfil ",
+    "en-US": "The user will receive the ",
+    "es-ES": "El usuario recibir\u00e1 el perfil ",
+    "fr-FR": "L\u2019utilisateur recevra le profil "
+  },
+  "cust.create_admin_role": {
+    "pt-BR": "Administrador da organiza\u00e7\u00e3o",
+    "en-US": "Organization Administrator",
+    "es-ES": "Administrador de la Organizaci\u00f3n",
+    "fr-FR": "Administrateur de l\u2019organisation"
+  },
+  "cust.create_admin_note_post": {
+    "pt-BR": ", podendo gerenciar a equipe, pacientes e documentos da cl\u00ednica.\n        ",
+    "en-US": ", being able to manage the team, patients and documents of the clinic.",
+    "es-ES": ", pudiendo gestionar el equipo, los pacientes y los documentos de la cl\u00ednica.",
+    "fr-FR": ", pouvant g\u00e9rer l\u2019\u00e9quipe, les patients et les documents de la clinique."
+  },
+  "cust.create_adminname_label": {
+    "pt-BR": "Nome completo do respons\u00e1vel *",
+    "en-US": "Responsible person\u2019s full name *",
+    "es-ES": "Nombre completo del responsable *",
+    "fr-FR": "Nom complet du responsable *"
+  },
+  "cust.create_adminemail_label": {
+    "pt-BR": "E-mail corporativo / Login *",
+    "en-US": "Corporate e-mail / Login *",
+    "es-ES": "Correo corporativo / Acceso *",
+    "fr-FR": "E-mail professionnel / Connexion *"
+  },
+  "cust.create_password_label": {
+    "pt-BR": "Senha de acesso inicial *",
+    "en-US": "Initial access password *",
+    "es-ES": "Contrase\u00f1a de acceso inicial *",
+    "fr-FR": "Mot de passe initial *"
+  },
+  "cust.create_ops_h": {
+    "pt-BR": "Situa\u00e7\u00e3o Operacional",
+    "en-US": "Operational Status",
+    "es-ES": "Situaci\u00f3n Operacional",
+    "fr-FR": "Situation op\u00e9rationnelle"
+  },
+  "cust.create_activate": {
+    "pt-BR": "Liberar opera\u00e7\u00e3o imediatamente",
+    "en-US": "Enable operation immediately",
+    "es-ES": "Liberar operaci\u00f3n inmediatamente",
+    "fr-FR": "Activer l\u2019exploitation imm\u00e9diatement"
+  },
+  "cust.create_ops_note_pre": {
+    "pt-BR": "Se desmarcado, a organiza\u00e7\u00e3o ficar\u00e1 em estado ",
+    "en-US": "If unchecked, the organization will stay in ",
+    "es-ES": "Si se desmarca, la organizaci\u00f3n quedar\u00e1 en estado ",
+    "fr-FR": "Si non coch\u00e9, l\u2019organisation restera en \u00e9tat "
+  },
+  "cust.commercial_pending_term": {
+    "pt-BR": "comercial pendente",
+    "en-US": "pending commercial",
+    "es-ES": "pendiente comercial",
+    "fr-FR": "commercial en attente"
+  },
+  "cust.create_ops_note_post": {
+    "pt-BR": " at\u00e9 valida\u00e7\u00e3o comercial posterior.",
+    "en-US": " until later commercial validation.",
+    "es-ES": " hasta validaci\u00f3n comercial posterior.",
+    "fr-FR": " jusqu\u2019\u00e0 validation commerciale ult\u00e9rieure."
+  },
+  "cust.create_submit": {
+    "pt-BR": "Cadastrar organiza\u00e7\u00e3o",
+    "en-US": "Register organization",
+    "es-ES": "Registrar organizaci\u00f3n",
+    "fr-FR": "Enregistrer l\u2019organisation"
+  },
+  "cust.users_sub": {
+    "pt-BR": "Busca em todo o ambiente por e-mail ou nome: identidades, v\u00ednculos por organiza\u00e7\u00e3o e situa\u00e7\u00e3o de cada v\u00ednculo. Bloqueios e reabilita\u00e7\u00f5es se fazem na tela de equipe da organiza\u00e7\u00e3o correspondente.",
+    "en-US": "Environment-wide search by e-mail or name: identities, links per organization and status of each link. Blocks and restorations happen in the team screen of the corresponding organization.",
+    "es-ES": "B\u00fasqueda en todo el entorno por correo o nombre: identidades, v\u00ednculos por organizaci\u00f3n y situaci\u00f3n de cada v\u00ednculo. Los bloqueos y rehabilitaciones se hacen en la pantalla de equipo de la organizaci\u00f3n correspondiente.",
+    "fr-FR": "Recherche sur tout l\u2019environnement par e-mail ou nom : identit\u00e9s, liens par organisation et situation de chaque lien. Les blocages et r\u00e9tablissements se font dans l\u2019\u00e9cran d\u2019\u00e9quipe de l\u2019organisation correspondante."
+  },
+  "cust.users_ph": {
+    "pt-BR": "E-mail ou nome",
+    "en-US": "E-mail or name",
+    "es-ES": "Correo o nombre",
+    "fr-FR": "E-mail ou nom"
+  },
+  "cust.users_empty_nofilter": {
+    "pt-BR": "Nenhum usu\u00e1rio localizado com os filtros atuais.",
+    "en-US": "No user found with the current filters.",
+    "es-ES": "Ning\u00fan usuario localizado con los filtros actuales.",
+    "fr-FR": "Aucun utilisateur trouv\u00e9 avec les filtres actuels."
+  },
+  "cust.users_empty_nomatch": {
+    "pt-BR": "Nenhum usu\u00e1rio corresponde a \"{0}\". Confira a grafia do e-mail ou do nome.",
+    "en-US": "No user matches \"{0}\". Check the spelling of the e-mail or the name.",
+    "es-ES": "Ning\u00fan usuario corresponde a \u00ab{0}\u00bb. Revise la ortograf\u00eda del correo o del nombre.",
+    "fr-FR": "Aucun utilisateur ne correspond \u00e0 \u00ab {0} \u00bb. V\u00e9rifiez l\u2019orthographe de l\u2019e-mail ou du nom."
+  },
+  "cust.users_th_user": {
+    "pt-BR": "Usu\u00e1rio",
+    "en-US": "User",
+    "es-ES": "Usuario",
+    "fr-FR": "Utilisateur"
+  },
+  "cust.users_th_email": {
+    "pt-BR": "E-mail",
+    "en-US": "E-mail",
+    "es-ES": "Correo",
+    "fr-FR": "E-mail"
+  },
+  "cust.users_th_profile": {
+    "pt-BR": "Perfil",
+    "en-US": "Profile",
+    "es-ES": "Perfil",
+    "fr-FR": "Profil"
+  },
+  "cust.users_th_links": {
+    "pt-BR": "V\u00ednculos",
+    "en-US": "Links",
+    "es-ES": "V\u00ednculos",
+    "fr-FR": "Liens"
+  },
+  "cust.users_removed": {
+    "pt-BR": "Conta removida",
+    "en-US": "Account removed",
+    "es-ES": "Cuenta removida",
+    "fr-FR": "Compte supprim\u00e9e"
+  },
+  "cust.users_profile_platform": {
+    "pt-BR": "Administrador da plataforma",
+    "en-US": "Platform administrator",
+    "es-ES": "Administrador de la plataforma",
+    "fr-FR": "Administrateur de la plateforme"
+  },
+  "cust.users_profile_customer": {
+    "pt-BR": "Cliente",
+    "en-US": "Customer",
+    "es-ES": "Cliente",
+    "fr-FR": "Client"
+  },
+  "cust.users_footer": {
+    "pt-BR": "At\u00e9 100 resultados por busca, ordenados por e-mail.",
+    "en-US": "Up to 100 results per search, ordered by e-mail.",
+    "es-ES": "Hasta 100 resultados por b\u00fasqueda, ordenados por correo.",
+    "fr-FR": "Jusqu\u2019\u00e0 100 r\u00e9sultats par recherche, tri\u00e9s par e-mail."
+  },
+  "cust.err_plan_justify": {
+    "pt-BR": "Escolha o plano pelo nome e informe uma justificativa entre 5 e 500 caracteres.",
+    "en-US": "Choose the plan by name and provide a justification between 5 and 500 characters.",
+    "es-ES": "Escoja el plan por el nombre e informe una justificaci\u00f3n entre 5 y 500 caracteres.",
+    "fr-FR": "Choisissez le plan par son nom et indiquez une justification entre 5 et 500 caract\u00e8res."
+  },
+  "cust.err_preview": {
+    "pt-BR": "N\u00e3o foi poss\u00edvel analisar o impacto. Nenhuma altera\u00e7\u00e3o foi aplicada.",
+    "en-US": "Could not analyze the impact. No change was applied.",
+    "es-ES": "No fue posible analizar el impacto. Ninguna alteraci\u00f3n fue aplicada.",
+    "fr-FR": "Impossible d\u2019analyser l\u2019impact. Aucune modification n\u2019a \u00e9t\u00e9 appliqu\u00e9e."
+  },
+  "cust.err_apply_justify": {
+    "pt-BR": "A confirma\u00e7\u00e3o exige o plano e uma justificativa entre 5 e 500 caracteres.",
+    "en-US": "Confirmation requires the plan and a justification between 5 and 500 characters.",
+    "es-ES": "La confirmaci\u00f3n exige el plan y una justificaci\u00f3n entre 5 y 500 caracteres.",
+    "fr-FR": "La confirmation exige le plan et une justification entre 5 et 500 caract\u00e8res."
+  },
+  "cust.ok_apply": {
+    "pt-BR": "Plano alterado e auditado. Pacientes, documentos e hist\u00f3rico foram preservados. Nenhum pagamento foi registrado.",
+    "en-US": "Plan changed and audited. Patients, documents and history were preserved. No payment was recorded.",
+    "es-ES": "Plan alterado y auditado. Pacientes, documentos e historial fueron preservados. Ning\u00fan pago fue registrado.",
+    "fr-FR": "Plan modifi\u00e9 et audit\u00e9. Patients, documents et historique ont \u00e9t\u00e9 pr\u00e9serv\u00e9s. Aucun paiement n\u2019a \u00e9t\u00e9 enregistr\u00e9."
+  },
+  "cust.err_apply": {
+    "pt-BR": "A altera\u00e7\u00e3o de plano n\u00e3o foi aplicada.",
+    "en-US": "The plan change was not applied.",
+    "es-ES": "La alteraci\u00f3n de plan no fue aplicada.",
+    "fr-FR": "Le changement de plan n\u2019a pas \u00e9t\u00e9 appliqu\u00e9."
+  },
+  "cust.ok_decide": {
+    "pt-BR": "Decis\u00e3o confirmada e auditada.",
+    "en-US": "Decision confirmed and audited.",
+    "es-ES": "Decisi\u00f3n confirmada y auditada.",
+    "fr-FR": "D\u00e9cision confirm\u00e9e et audit\u00e9e."
+  },
+  "cust.err_decide": {
+    "pt-BR": "A solicita\u00e7\u00e3o j\u00e1 foi decidida ou n\u00e3o est\u00e1 dispon\u00edvel.",
+    "en-US": "The request was already decided or is not available.",
+    "es-ES": "La solicitud ya fue decidida o no est\u00e1 disponible.",
+    "fr-FR": "La demande a d\u00e9j\u00e0 \u00e9t\u00e9 d\u00e9cid\u00e9e ou n\u2019est pas disponible."
+  },
+  "cust.err_grant_qty": {
+    "pt-BR": "Informe uma quantidade v\u00e1lida maior que zero.",
+    "en-US": "Provide a valid quantity greater than zero.",
+    "es-ES": "Informe una cantidad v\u00e1lida mayor que cero.",
+    "fr-FR": "Indiquez une quantit\u00e9 valide sup\u00e9rieure \u00e0 z\u00e9ro."
+  },
+  "cust.err_grant_range": {
+    "pt-BR": "A capacidade informada est\u00e1 fora dos limites operacionais permitidos.",
+    "en-US": "The capacity provided is outside the allowed operational limits.",
+    "es-ES": "La capacidad informada est\u00e1 fuera de los l\u00edmites operacionales permitidos.",
+    "fr-FR": "La capacit\u00e9 indiqu\u00e9e est hors des limites op\u00e9rationnelles autoris\u00e9es."
+  },
+  "cust.ok_grant": {
+    "pt-BR": "Capacidade adicional concedida e auditada.",
+    "en-US": "Additional capacity granted and audited.",
+    "es-ES": "Capacidad adicional concedida y auditada.",
+    "fr-FR": "Capacit\u00e9 suppl\u00e9mentaire accord\u00e9e et audit\u00e9e."
+  },
+  "cust.err_grant": {
+    "pt-BR": "N\u00e3o foi poss\u00edvel conceder a capacidade.",
+    "en-US": "Could not grant the capacity.",
+    "es-ES": "No fue posible conceder la capacidad.",
+    "fr-FR": "Impossible d\u2019accorder la capacit\u00e9."
+  },
+  "cust.err_catalog": {
+    "pt-BR": "N\u00e3o foi poss\u00edvel consultar o cat\u00e1logo vigente de planos.",
+    "en-US": "Could not look up the current plan catalog.",
+    "es-ES": "No fue posible consultar el cat\u00e1logo vigente de planes.",
+    "fr-FR": "Impossible de consulter le catalogue de plans en vigueur."
+  },
+  "cust.err_plan_invalid": {
+    "pt-BR": "Escolha um plano do cat\u00e1logo vigente.",
+    "en-US": "Choose a plan from the current catalog.",
+    "es-ES": "Escoja un plan del cat\u00e1logo vigente.",
+    "fr-FR": "Choisissez un plan du catalogue en vigueur."
+  },
+  "cust.err_create": {
+    "pt-BR": "N\u00e3o foi poss\u00edvel cadastrar a organiza\u00e7\u00e3o. Verifique se o CNPJ/CPF j\u00e1 est\u00e1 em uso.",
+    "en-US": "Could not register the organization. Check whether the CNPJ/CPF is already in use.",
+    "es-ES": "No fue posible registrar la organizaci\u00f3n. Verifique si el CNPJ/CPF ya est\u00e1 en uso.",
+    "fr-FR": "Impossible d\u2019enregistrer l\u2019organisation. V\u00e9rifiez si le CNPJ/CPF est d\u00e9j\u00e0 utilis\u00e9."
+  },
+  "cust.ok_create": {
+    "pt-BR": "Organiza\u00e7\u00e3o '{0}' cadastrada com sucesso.",
+    "en-US": "Organization \"{0}\" registered successfully.",
+    "es-ES": "Organizaci\u00f3n \u00ab{0}\u00bb registrada con \u00e9xito.",
+    "fr-FR": "Organisation \u00ab {0} \u00bb enregistr\u00e9e avec succ\u00e8s."
+  },
+  "cust.plan_item": {
+    "pt-BR": "{0} \u2014 {1} usu\u00e1rio(s)",
+    "en-US": "{0} \u2014 {1} user(s)",
+    "es-ES": "{0} \u2014 {1} usuario(s)",
+    "fr-FR": "{0} \u2014 {1} utilisateur(s)"
+  },
+  "cust.ok_feature_block": {
+    "pt-BR": "Funcionalidade bloqueada para esta organiza\u00e7\u00e3o. Plano, permiss\u00f5es e documentos foram preservados.",
+    "en-US": "Feature blocked for this organization. Plan, permissions and documents were preserved.",
+    "es-ES": "Funcionalidad bloqueada para esta organizaci\u00f3n. Plan, permisos y documentos fueron preservados.",
+    "fr-FR": "Fonctionnalit\u00e9 bloqu\u00e9e pour cette organisation. Plan, permissions et documents ont \u00e9t\u00e9 pr\u00e9serv\u00e9s."
+  },
+  "cust.ok_feature_unblock": {
+    "pt-BR": "Bloqueio administrativo removido. Se o plano n\u00e3o incluir a funcionalidade, ela continua indispon\u00edvel por restri\u00e7\u00e3o de plano.",
+    "en-US": "Administrative block removed. If the plan does not include the feature, it remains unavailable due to the plan restriction.",
+    "es-ES": "Bloqueo administrativo removido. Si el plan no incluye la funcionalidad, ella continua indisponible por restricci\u00f3n de plan.",
+    "fr-FR": "Blocage administratif retir\u00e9. Si le plan n\u2019inclut pas la fonctionnalit\u00e9, elle reste indisponible par restriction de plan."
+  },
+  "cust.err_feature": {
+    "pt-BR": "N\u00e3o foi poss\u00edvel registrar a decis\u00e3o. Nenhuma libera\u00e7\u00e3o ou pagamento foi presumido.",
+    "en-US": "Could not record the decision. No unlock or payment was assumed.",
+    "es-ES": "No fue posible registrar la decisi\u00f3n. Ninguna liberaci\u00f3n o pago fue presumido.",
+    "fr-FR": "Impossible d\u2019enregistrer la d\u00e9cision. Aucune lib\u00e9ration ni paiement n\u2019a \u00e9t\u00e9 pr\u00e9sum\u00e9."
+  },
+  "cust.err_reason_short": {
+    "pt-BR": "Informe uma justificativa com pelo menos 5 caracteres.",
+    "en-US": "Provide a justification with at least 5 characters.",
+    "es-ES": "Informe una justificaci\u00f3n con al menos 5 caracteres.",
+    "fr-FR": "Indiquez une justification d\u2019au moins 5 caract\u00e8res."
+  },
+  "cust.ok_restore": {
+    "pt-BR": "Organiza\u00e7\u00e3o restaurada. Os bloqueios individuais foram preservados.",
+    "en-US": "Organization restored. Individual blocks were preserved.",
+    "es-ES": "Organizaci\u00f3n restaurada. Los bloqueos individuales fueron preservados.",
+    "fr-FR": "Organisation restaur\u00e9e. Les blocages individuels ont \u00e9t\u00e9 pr\u00e9serv\u00e9s."
+  },
+  "cust.ok_suspend": {
+    "pt-BR": "Organiza\u00e7\u00e3o suspensa. Novas opera\u00e7\u00f5es do cliente foram bloqueadas.",
+    "en-US": "Organization suspended. New customer operations were blocked.",
+    "es-ES": "Organizaci\u00f3n suspendida. Las nuevas operaciones del cliente fueron bloqueadas.",
+    "fr-FR": "Organisation suspendue. Les nouvelles op\u00e9rations du client ont \u00e9t\u00e9 bloqu\u00e9es."
+  },
+  "cust.err_status": {
+    "pt-BR": "A situa\u00e7\u00e3o da organiza\u00e7\u00e3o n\u00e3o p\u00f4de ser alterada.",
+    "en-US": "The organization status could not be changed.",
+    "es-ES": "La situaci\u00f3n de la organizaci\u00f3n no pudo ser alterada.",
+    "fr-FR": "La situation de l\u2019organisation n\u2019a pas pu \u00eatre modifi\u00e9e."
+  },
+  "cust.err_features": {
+    "pt-BR": "N\u00e3o foi poss\u00edvel consultar as funcionalidades. Esta falha n\u00e3o significa que a organiza\u00e7\u00e3o esteja sem bloqueios.",
+    "en-US": "Could not look up the features. This failure does not mean the organization has no blocks.",
+    "es-ES": "No fue posible consultar las funcionalidades. Esta falla no significa que la organizaci\u00f3n est\u00e9 sin bloqueos.",
+    "fr-FR": "Impossible de consulter les fonctionnalit\u00e9s. Cet \u00e9chec ne signifie pas que l\u2019organisation soit sans blocage."
+  },
+  "cust.err_plans_catalog": {
+    "pt-BR": "N\u00e3o foi poss\u00edvel consultar o cat\u00e1logo vigente.",
+    "en-US": "Could not look up the current catalog.",
+    "es-ES": "No fue posible consultar el cat\u00e1logo vigente.",
+    "fr-FR": "Impossible de consulter le catalogue en vigueur."
+  },
+  "cons.eyebrow": {
+    "pt-BR": "Central do cliente",
+    "en-US": "Customer center",
+    "es-ES": "Centro del cliente",
+    "fr-FR": "Centre du client"
+  },
+  "cons.sub": {
+    "pt-BR": "Acompanhe os limites aplicados pelo servidor e solicite capacidade sem cobran\u00e7a simulada.",
+    "en-US": "Follow the limits applied by the server and request capacity without simulated charging.",
+    "es-ES": "Acompa\u00f1e los l\u00edmites aplicados por el servidor y solicite capacidad sin cobro simulado.",
+    "fr-FR": "Suivez les limites appliqu\u00e9es par le serveur et demandez de la capacit\u00e9 sans facturation simul\u00e9e."
+  },
+  "cons.btn_request": {
+    "pt-BR": "Solicitar adicional",
+    "en-US": "Request additional",
+    "es-ES": "Solicitar adicional",
+    "fr-FR": "Demander un suppl\u00e9ment"
+  },
+  "cons.current_plan": {
+    "pt-BR": "Plano atual",
+    "en-US": "Current plan",
+    "es-ES": "Plan actual",
+    "fr-FR": "Plan actuel"
+  },
+  "cons.version": {
+    "pt-BR": "Vers\u00e3o {0} \u00b7 ",
+    "en-US": "Version {0} \u00b7 ",
+    "es-ES": "Versi\u00f3n {0} \u00b7 ",
+    "fr-FR": "Version {0} \u00b7 "
+  },
+  "cons.seats_detail": {
+    "pt-BR": "{0} convite(s) reservam vaga \u00b7 {1} dispon\u00edvel(is)",
+    "en-US": "{0} invitation(s) reserve a seat \u00b7 {1} available",
+    "es-ES": "{0} invitaci\u00f3n(es) reservan cupo \u00b7 {1} disponible(s)",
+    "fr-FR": "{0} invitation(s) r\u00e9servent une place \u00b7 {1} disponible(s)"
+  },
+  "cons.storage_available": {
+    "pt-BR": "Armazenamento dispon\u00edvel",
+    "en-US": "Available storage",
+    "es-ES": "Almacenamiento disponible",
+    "fr-FR": "Stockage disponible"
+  },
+  "cons.max_file": {
+    "pt-BR": "M\u00e1ximo por arquivo: {0}",
+    "en-US": "Maximum per file: {0}",
+    "es-ES": "M\u00e1ximo por archivo: {0}",
+    "fr-FR": "Maximum par fichier : {0}"
+  },
+  "cons.period": {
+    "pt-BR": "Per\u00edodo vigente",
+    "en-US": "Current period",
+    "es-ES": "Per\u00edodo vigente",
+    "fr-FR": "P\u00e9riode en cours"
+  },
+  "cons.period_undefined": {
+    "pt-BR": "N\u00e3o definido",
+    "en-US": "Not defined",
+    "es-ES": "No definido",
+    "fr-FR": "Non d\u00e9fini"
+  },
+  "cons.period_until": {
+    "pt-BR": "at\u00e9 {0}",
+    "en-US": "until {0}",
+    "es-ES": "hasta {0}",
+    "fr-FR": "jusqu\u2019au {0}"
+  },
+  "cons.period_no_end": {
+    "pt-BR": "vig\u00eancia sem t\u00e9rmino cadastrado",
+    "en-US": "validity with no registered end",
+    "es-ES": "vigencia sin t\u00e9rmino registrado",
+    "fr-FR": "validit\u00e9 sans fin enregistr\u00e9e"
+  },
+  "cons.storage_h": {
+    "pt-BR": "Armazenamento",
+    "en-US": "Storage",
+    "es-ES": "Almacenamiento",
+    "fr-FR": "Stockage"
+  },
+  "cons.storage_p": {
+    "pt-BR": "Exclus\u00e3o l\u00f3gica n\u00e3o libera bytes enquanto o arquivo permanecer armazenado.",
+    "en-US": "Logical deletion frees no bytes while the file remains stored.",
+    "es-ES": "La eliminaci\u00f3n l\u00f3gica no libera bytes mientras el archivo permanezca almacenado.",
+    "fr-FR": "La suppression logique ne lib\u00e8re aucun octet tant que le fichier reste stock\u00e9."
+  },
+  "cons.state_limit": {
+    "pt-BR": "! Limite atingido",
+    "en-US": "! Limit reached",
+    "es-ES": "! L\u00edmite alcanzado",
+    "fr-FR": "! Limite atteint"
+  },
+  "cons.state_near": {
+    "pt-BR": "\u25b3 Pr\u00f3ximo do limite",
+    "en-US": "\u25b3 Near the limit",
+    "es-ES": "\u25b3 Cerca del l\u00edmite",
+    "fr-FR": "\u25b3 Proche de la limite"
+  },
+  "cons.state_ok": {
+    "pt-BR": "\u2713 Capacidade dispon\u00edvel",
+    "en-US": "\u2713 Capacity available",
+    "es-ES": "\u2713 Capacidad disponible",
+    "fr-FR": "\u2713 capacit\u00e9 disponible"
+  },
+  "cons.bar_aria": {
+    "pt-BR": "Uso total de armazenamento",
+    "en-US": "Total storage usage",
+    "es-ES": "Uso total de almacenamiento",
+    "fr-FR": "Utilisation totale du stockage"
+  },
+  "cons.bd_contracted": {
+    "pt-BR": "Limite contratado",
+    "en-US": "Contracted limit",
+    "es-ES": "L\u00edmite contratado",
+    "fr-FR": "Limite contractuel"
+  },
+  "cons.bd_additional": {
+    "pt-BR": "Adicionais concedidos",
+    "en-US": "Grants added",
+    "es-ES": "Adicionales concedidos",
+    "fr-FR": "Suppl\u00e9ments accord\u00e9s"
+  },
+  "cons.bd_confirmed": {
+    "pt-BR": "Consumo confirmado",
+    "en-US": "Confirmed usage",
+    "es-ES": "Consumo confirmado",
+    "fr-FR": "Consommation confirm\u00e9e"
+  },
+  "cons.bd_reserved": {
+    "pt-BR": "Reservas tempor\u00e1rias",
+    "en-US": "Temporary reservations",
+    "es-ES": "Reservas temporales",
+    "fr-FR": "R\u00e9servations temporaires"
+  },
+  "cons.bd_available": {
+    "pt-BR": "Disponibilidade",
+    "en-US": "Availability",
+    "es-ES": "Disponibilidad",
+    "fr-FR": "Disponibilit\u00e9"
+  },
+  "cons.req_h": {
+    "pt-BR": "Solicitar armazenamento adicional",
+    "en-US": "Request additional storage",
+    "es-ES": "Solicitar almacenamiento adicional",
+    "fr-FR": "Demander du stockage suppl\u00e9mentaire"
+  },
+  "cons.pkg_empty_t": {
+    "pt-BR": "Nenhum pacote dispon\u00edvel",
+    "en-US": "No package available",
+    "es-ES": "Ning\u00fan paquete disponible",
+    "fr-FR": "Aucun paquet disponible"
+  },
+  "cons.pkg_empty_b": {
+    "pt-BR": "Nenhum pacote possui configura\u00e7\u00e3o comercial publicada e v\u00e1lida. Fale com a equipe ODCA; nenhum pre\u00e7o ou pagamento ser\u00e1 inventado.",
+    "en-US": "No package has a published and valid commercial configuration. Talk to the ODCA team; no price or payment will be invented.",
+    "es-ES": "Ning\u00fan paquete tiene configuraci\u00f3n comercial publicada y v\u00e1lida. Hable con el equipo ODCA; ning\u00fan precio o pago ser\u00e1 inventado.",
+    "fr-FR": "Aucun paquet n\u2019a de configuration commerciale publi\u00e9e et valide. Parlez \u00e0 l\u2019\u00e9quipe ODCA ; aucun prix ou paiement ne sera invent\u00e9."
+  },
+  "cons.step1": {
+    "pt-BR": "1. Escolha o pacote",
+    "en-US": "1. Choose the package",
+    "es-ES": "1. Elija el paquete",
+    "fr-FR": "1. Choisissez le paquet"
+  },
+  "cons.step2": {
+    "pt-BR": "2. Confira a quantidade",
+    "en-US": "2. Check the quantity",
+    "es-ES": "2. Revise la cantidad",
+    "fr-FR": "2. V\u00e9rifiez la quantit\u00e9."
+  },
+  "cons.step3": {
+    "pt-BR": "3. Confirme a solicita\u00e7\u00e3o",
+    "en-US": "3. Confirm the request",
+    "es-ES": "3. Confirme la solicitud",
+    "fr-FR": "3. Confirmez la demande"
+  },
+  "cons.step3_note": {
+    "pt-BR": "O pedido preserva quantidade, condi\u00e7\u00f5es e pre\u00e7o do pacote escolhido. \u201cSolicitado\u201d n\u00e3o significa \u201cAprovado\u201d e n\u00e3o aumenta o limite.",
+    "en-US": "The order preserves the quantity, terms and price of the chosen package. \"Requested\" does not mean \"Approved\" and does not increase the limit.",
+    "es-ES": "El pedido preserva cantidad, condiciones y precio del paquete elegido. \u00abSolicitado\u00bb no significa \u00abAprobado\u00bb y no aumenta el l\u00edmite.",
+    "fr-FR": "La commande conserve la quantit\u00e9, les conditions et le prix du paquet choisi. \u00ab Solicit\u00e9 \u00bb ne signifie pas \u00ab Approuv\u00e9 \u00bb et n\u2019augmente pas la limite."
+  },
+  "cons.req_btn": {
+    "pt-BR": "Confirmar solicita\u00e7\u00e3o",
+    "en-US": "Confirm request",
+    "es-ES": "Confirmar solicitud",
+    "fr-FR": "Confirmer la demande"
+  },
+  "cons.modules_h": {
+    "pt-BR": "M\u00f3dulos e franquias",
+    "en-US": "Modules and monthly allowances",
+    "es-ES": "M\u00f3dulos y franquias",
+    "fr-FR": "Modules et forfaits"
+  },
+  "cons.modules_p": {
+    "pt-BR": "Habilitar um m\u00f3dulo \u00e9 diferente da franquia mensal. O menu mostra \u201cfora do plano\u201d, \u201cbloqueada\u201d ou \u201climite atingido\u201d. Uma permiss\u00e3o de perfil n\u00e3o contrata m\u00f3dulo, e a contrata\u00e7\u00e3o n\u00e3o concede a permiss\u00e3o a todas as pessoas. Quando as p\u00e1ginas de OCR do m\u00eas se esgotam, o m\u00f3dulo de importa\u00e7\u00f5es fica com limite atingido, porque essa franquia j\u00e1 \u00e9 o limite quantitativo do m\u00f3dulo. A franquia de envelopes permanece dispon\u00edvel enquanto nenhum envio real ocorrer. Esta tela n\u00e3o registra pagamento.",
+    "en-US": "Enabling a module is different from the monthly allowance. The menu shows \"off plan\", \"blocked\" or \"limit reached\". A profile permission does not contract a module, and contracting does not grant the permission to everyone. When the month\u2019s OCR pages are exhausted, the imports module hits its limit, because that allowance is already the quantitative limit of the module. The envelope allowance remains available while no real send occurs. This screen records no payment.",
+    "es-ES": "Habilitar un m\u00f3dulo es diferente de la franqu\u00eda mensual. El men\u00fa muestra \u00abfuera del plan\u00bb, \u00abbloqueada\u00bb o \u00abl\u00edmite alcanzado\u00bb. Un permiso de perfil no contrata m\u00f3dulo, y la contrataci\u00f3n no concede el permiso a todas las personas. Cuando las p\u00e1ginas de OCR del mes se agotan, el m\u00f3dulo de importaciones queda con l\u00edmite alcanzado, porque esa franqu\u00eda ya es el l\u00edmite cuantitativo del m\u00f3dulo. La franqu\u00eda de sobres permanece disponible mientras no ocurra ning\u00fan env\u00edo real. Esta pantalla no registra pago.",
+    "fr-FR": "Activer un module est diff\u00e9rent du forfait mensuel. Le menu affiche \u00ab hors plan \u00bb, \u00ab bloqu\u00e9e \u00bb ou \u00ab limite atteinte \u00bb. Une permission de profil ne contracte pas un module, et la contraction n\u2019accorde pas la permission \u00e0 toutes les personnes. Lorsque les pages OCR du mois sont \u00e9puis\u00e9es, le module d\u2019importations atteint sa limite, parce que ce forfait est d\u00e9j\u00e0 la limite quantitative du module. Le forfait d\u2019enveloppes reste disponible tant qu\u2019aucun envoi r\u00e9el n\u2019a lieu. Cet \u00e9cran n\u2019enregistre aucun paiement."
+  },
+  "cons.history_h": {
+    "pt-BR": "Hist\u00f3rico de movimenta\u00e7\u00f5es",
+    "en-US": "Movement history",
+    "es-ES": "Historial de movimientos",
+    "fr-FR": "Historique des mouvements"
+  },
+  "cons.history_empty": {
+    "pt-BR": "Nenhuma movimenta\u00e7\u00e3o registrada.",
+    "en-US": "No movement recorded.",
+    "es-ES": "Ning\u00fan movimiento registrado.",
+    "fr-FR": "Aucun mouvement enregistr\u00e9."
+  },
+  "cons.help_1": {
+    "pt-BR": "Compare contratado, adicional, consumido e reservado.",
+    "en-US": "Compare contracted, additional, consumed and reserved.",
+    "es-ES": "Compare contratado, adicional, consumido y reservado.",
+    "fr-FR": "Comparez contract\u00e9, suppl\u00e9mentaire, consomm\u00e9 et r\u00e9serv\u00e9."
+  },
+  "cons.help_2": {
+    "pt-BR": "Escolha somente pacotes publicados e confira as condi\u00e7\u00f5es.",
+    "en-US": "Choose only published packages and check the terms.",
+    "es-ES": "Elija solo paquetes publicados y revise las condiciones.",
+    "fr-FR": "Choisissez uniquement des paquets publi\u00e9s et v\u00e9rifiez les conditions."
+  },
+  "cons.help_3": {
+    "pt-BR": "Acompanhe a decis\u00e3o; pedidos pendentes n\u00e3o alteram a capacidade.",
+    "en-US": "Follow the decision; pending orders do not change capacity.",
+    "es-ES": "Acompa\u00f1e la decisi\u00f3n; los pedidos pendientes no alteran la capacidad.",
+    "fr-FR": "Suivez la d\u00e9cision ; les commandes pendantes ne modifient pas la capacit\u00e9."
+  },
+  "cons.help_4": {
+    "pt-BR": "Se uma consulta falhar, a tela informa indisponibilidade em vez de mostrar zero.",
+    "en-US": "If a lookup fails, the screen reports unavailability instead of showing zero.",
+    "es-ES": "Si una consulta falla, la pantalla informa indisponibilidad en vez de mostrar cero.",
+    "fr-FR": "Si une consultation \u00e9choue, l\u2019\u00e9cran signale l\u2019indisponibilit\u00e9 au lieu de montrer z\u00e9ro."
+  },
+  "cons.err_request": {
+    "pt-BR": "N\u00e3o foi poss\u00edvel registrar a solicita\u00e7\u00e3o. Revise o pacote e tente novamente.",
+    "en-US": "Could not register the request. Review the package and try again.",
+    "es-ES": "No fue posible registrar la solicitud. Revise el paquete e intente nuevamente.",
+    "fr-FR": "Impossible d\u2019enregistrer la demande. Revoyez le paquet et r\u00e9essayez."
+  },
+  "cons.ok_request": {
+    "pt-BR": "Solicita\u00e7\u00e3o registrada. A capacidade s\u00f3 mudar\u00e1 ap\u00f3s aprova\u00e7\u00e3o expl\u00edcita.",
+    "en-US": "Request registered. Capacity will only change after explicit approval.",
+    "es-ES": "Solicitud registrada. La capacidad solo cambiar\u00e1 tras aprobaci\u00f3n expl\u00edcita.",
+    "fr-FR": "Demande enregistr\u00e9e. La capacit\u00e9 ne changera qu\u2019apr\u00e8s approbation explicite."
+  },
+  "usage.credits_h": {
+    "pt-BR": "Franquias do m\u00eas",
+    "en-US": "Monthly allowances",
+    "es-ES": "Franquias del mes",
+    "fr-FR": "Forfaits du mois"
+  },
+  "usage.credit_line": {
+    "pt-BR": "Contratado {0} \u00b7 consumido {1} \u00b7 reservado {2} \u00b7 dispon\u00edvel {3}",
+    "en-US": "Contracted {0} \u00b7 consumed {1} \u00b7 reserved {2} \u00b7 available {3}",
+    "es-ES": "Contratado {0} \u00b7 consumido {1} \u00b7 reservado {2} \u00b7 disponible {3}",
+    "fr-FR": "Contract\u00e9 {0} \u00b7 consomm\u00e9 {1} \u00b7 r\u00e9serv\u00e9 {2} \u00b7 disponible {3}"
+  },
+  "usage.credit_line_unit": {
+    "pt-BR": "Contratado {0} \u00b7 consumido {1} \u00b7 reservado {2} \u00b7 dispon\u00edvel {3} {4}",
+    "en-US": "Contracted {0} \u00b7 consumed {1} \u00b7 reserved {2} \u00b7 available {3} {4}",
+    "es-ES": "Contratado {0} \u00b7 consumido {1} \u00b7 reservado {2} \u00b7 disponible {3} {4}",
+    "fr-FR": "Contract\u00e9 {0} \u00b7 consomm\u00e9 {1} \u00b7 r\u00e9serv\u00e9 {2} \u00b7 disponible {3} {4}"
+  },
+  "usage.credits_empty": {
+    "pt-BR": "Nenhuma franquia mensal est\u00e1 contratada nesta assinatura.",
+    "en-US": "No monthly allowance is contracted on this subscription.",
+    "es-ES": "Ninguna franqu\u00eda mensual est\u00e1 contratada en esta suscripci\u00f3n.",
+    "fr-FR": "Aucun forfait mensuel n\u2019est contract\u00e9 sur cet abonnement."
+  },
+  "usage.res_ocr": {
+    "pt-BR": "OCR",
+    "en-US": "OCR",
+    "es-ES": "OCR",
+    "fr-FR": "OCR"
+  },
+  "usage.res_signature": {
+    "pt-BR": "Assinatura",
+    "en-US": "Signature",
+    "es-ES": "Firma",
+    "fr-FR": "Signature"
+  },
+  "usage.unit_pages": {
+    "pt-BR": "p\u00e1ginas",
+    "en-US": "pages",
+    "es-ES": "p\u00e1ginas",
+    "fr-FR": "pages"
+  },
+  "usage.unit_envelopes": {
+    "pt-BR": "envelopes",
+    "en-US": "envelopes",
+    "es-ES": "sobres",
+    "fr-FR": "enveloppes"
+  },
+  "usage.credits_note_client": {
+    "pt-BR": "O per\u00edodo \u00e9 o m\u00eas corrente em America/Sao_Paulo. OCR conta p\u00e1ginas efetivamente extra\u00eddas por OCR. PDF com texto nativo n\u00e3o conta. Assinatura conta envelope somente depois que um provedor aceitar o envio; a prepara\u00e7\u00e3o n\u00e3o consome. Esta tela n\u00e3o registra pagamento.",
+    "en-US": "The period is the current month in America/Sao_Paulo. OCR counts pages actually extracted by OCR. Native-text PDFs do not count. Signature counts an envelope only after a provider accepts the send; preparation consumes none. This screen records no payment.",
+    "es-ES": "El per\u00edodo es el mes corriente en America/Sao_Paulo. OCR cuenta p\u00e1ginas efectivamente extra\u00eddas por OCR. Un PDF con texto nativo no cuenta. Firma cuenta sobre solo despu\u00e9s de que un proveedor acepte el env\u00edo; la preparaci\u00f3n no consume. Esta pantalla no registra pago.",
+    "fr-FR": "La p\u00e9riode est le mois courant en America/Sao_Paulo. OCR compte les pages effectivement extraites par OCR. Un PDF au texte natif ne compte pas. Signature compte une enveloppe seulement apr\u00e8s qu\u2019un prestataire accepte l\u2019envoi ; la pr\u00e9paration ne consomme rien. Cet \u00e9cran n\u2019enregistre aucun paiement."
+  },
+  "usage.credits_note_admin": {
+    "pt-BR": "Os mesmos n\u00fameros aparecem para a organiza\u00e7\u00e3o. O consumo n\u00e3o registra pagamento. Envelope s\u00f3 \u00e9 consumido quando um provedor aceitar o envio.",
+    "en-US": "The same numbers appear to the organization. Usage records no payment. An envelope is consumed only when a provider accepts the send.",
+    "es-ES": "Los mismos n\u00fameros aparecen para la organizaci\u00f3n. El consumo no registra pago. El sobre solo se consume cuando un proveedor acepta el envo\u00ed.",
+    "fr-FR": "Les m\u00eames chiffres apparaissent pour l\u2019organisation. La consommation n\u2019enregistre aucun paiement. Une enveloppe n\u2019est consomm\u00e9e que lorsqu\u2019un prestataire accepte l\u2019envoi."
+  },
+  "usage.requests_h": {
+    "pt-BR": "Solicita\u00e7\u00f5es",
+    "en-US": "Requests",
+    "es-ES": "Solicitudes",
+    "fr-FR": "Demandes"
+  },
+  "usage.requests_empty_t": {
+    "pt-BR": "Nenhuma solicita\u00e7\u00e3o",
+    "en-US": "No request",
+    "es-ES": "Ninguna solicitud",
+    "fr-FR": "Aucune demande"
+  },
+  "usage.requests_empty_b": {
+    "pt-BR": "Novos pedidos aparecer\u00e3o aqui ap\u00f3s confirma\u00e7\u00e3o.",
+    "en-US": "New orders will appear here after confirmation.",
+    "es-ES": "Los nuevos pedidos aparecer\u00e1n aqu\u00ed tras confirmaci\u00f3n.",
+    "fr-FR": "Les nouvelles commandes appara\u00edtront ici apr\u00e8s confirmation."
+  },
+  "usage.th_package": {
+    "pt-BR": "Pacote",
+    "en-US": "Package",
+    "es-ES": "Paquete",
+    "fr-FR": "Paquet"
+  },
+  "usage.th_quantity": {
+    "pt-BR": "Quantidade",
+    "en-US": "Quantity",
+    "es-ES": "Cantidad",
+    "fr-FR": "Quantit\u00e9"
+  },
+  "usage.th_requested_at": {
+    "pt-BR": "Solicitada em",
+    "en-US": "Requested on",
+    "es-ES": "Solicitada el",
+    "fr-FR": "Demand\u00e9e le"
+  },
+  "usage.th_decision": {
+    "pt-BR": "Decis\u00e3o",
+    "en-US": "Decision",
+    "es-ES": "Decisi\u00f3n",
+    "fr-FR": "D\u00e9cision"
+  },
+  "plans.title": {
+    "pt-BR": "Planos",
+    "en-US": "Plans",
+    "es-ES": "Planes",
+    "fr-FR": "Plans"
+  },
+  "plans.eyebrow": {
+    "pt-BR": "Cat\u00e1logo versionado",
+    "en-US": "Versioned catalog",
+    "es-ES": "Cat\u00e1logo versionado",
+    "fr-FR": "Catalogue versionn\u00e9"
+  },
+  "plans.sub": {
+    "pt-BR": "Limites t\u00e9cnicos publicados. Pre\u00e7os e contrata\u00e7\u00e3o dependem de defini\u00e7\u00e3o comercial e integra\u00e7\u00e3o de pagamento.",
+    "en-US": "Published technical limits. Prices and contracting depend on the commercial definition and the payment integration.",
+    "es-ES": "L\u00edmites t\u00e9cnicos publicados. Precios y contrataci\u00f3n dependen de definici\u00f3n comercial e integraci\u00f3n de pago.",
+    "fr-FR": "Limites techniques publi\u00e9es. Les prix et la contraction d\u00e9pendent de la d\u00e9finition commerciale et de l\u2019int\u00e9gration de paiement."
+  },
+  "plans.grid_aria": {
+    "pt-BR": "Planos publicados",
+    "en-US": "Published plans",
+    "es-ES": "Planes publicados",
+    "fr-FR": "Plans publi\u00e9s"
+  },
+  "plans.empty_t": {
+    "pt-BR": "Nenhum plano publicado",
+    "en-US": "No plan published",
+    "es-ES": "Ning\u00fan plan publicado",
+    "fr-FR": "Aucun plan publi\u00e9"
+  },
+  "plans.empty_b": {
+    "pt-BR": "O cat\u00e1logo est\u00e1 dispon\u00edvel, mas ainda n\u00e3o h\u00e1 uma vers\u00e3o comercial vigente.",
+    "en-US": "The catalog is available, but there is no current commercial version yet.",
+    "es-ES": "El cat\u00e1logo est\u00e1 disponible, pero a\u00fan no hay una versi\u00f3n comercial vigente.",
+    "fr-FR": "Le catalogue est disponible, mais aucune version commerciale en vigueur n\u2019existe encore."
+  },
+  "plans.version": {
+    "pt-BR": "Vers\u00e3o {0}",
+    "en-US": "Version {0}",
+    "es-ES": "Versi\u00f3n {0}",
+    "fr-FR": "Version {0}"
+  },
+  "plans.dt_seats": {
+    "pt-BR": "Usu\u00e1rios ativos",
+    "en-US": "Active users",
+    "es-ES": "Usuarios activos",
+    "fr-FR": "Utilisateurs actifs"
+  },
+  "plans.dt_storage": {
+    "pt-BR": "Espa\u00e7o da organiza\u00e7\u00e3o",
+    "en-US": "Organization space",
+    "es-ES": "Espacio de la organizaci\u00f3n",
+    "fr-FR": "Espace de l\u2019organisation"
+  },
+  "plans.dt_user_cap": {
+    "pt-BR": "Teto por usu\u00e1rio",
+    "en-US": "Per-user cap",
+    "es-ES": "Tope por usuario",
+    "fr-FR": "Plafond par utilisateur"
+  },
+  "plans.dt_max_file": {
+    "pt-BR": "Arquivo m\u00e1ximo",
+    "en-US": "Maximum file",
+    "es-ES": "Archivo m\u00e1ximo",
+    "fr-FR": "Fichier maximum"
+  },
+  "plans.dt_ocr": {
+    "pt-BR": "OCR mensal",
+    "en-US": "Monthly OCR",
+    "es-ES": "OCR mensual",
+    "fr-FR": "OCR mensuel"
+  },
+  "plans.ocr_unit": {
+    "pt-BR": "p\u00e1ginas",
+    "en-US": "pages",
+    "es-ES": "p\u00e1ginas",
+    "fr-FR": "pages"
+  },
+  "plans.dt_signatures": {
+    "pt-BR": "Assinaturas mensais",
+    "en-US": "Monthly signatures",
+    "es-ES": "Firmas mensuales",
+    "fr-FR": "Signatures mensuelles"
+  },
+  "plans.sig_unit": {
+    "pt-BR": "envelopes",
+    "en-US": "envelopes",
+    "es-ES": "sobres",
+    "fr-FR": "enveloppes"
+  },
+  "plans.dt_modules": {
+    "pt-BR": "M\u00f3dulos habilitados",
+    "en-US": "Enabled modules",
+    "es-ES": "M\u00f3dulos habilitados",
+    "fr-FR": "Modules activ\u00e9s"
+  },
+  "plans.modules_none": {
+    "pt-BR": "Esta vers\u00e3o n\u00e3o declara habilita\u00e7\u00e3o por m\u00f3dulo.",
+    "en-US": "This version does not declare per-module enablement.",
+    "es-ES": "Esta versi\u00f3n no declara habilitaci\u00f3n por m\u00f3dulo.",
+    "fr-FR": "Cette version ne d\u00e9clare pas d\u2019activation par module."
+  },
+  "plans.btn_contract": {
+    "pt-BR": "Contratar",
+    "en-US": "Contract",
+    "es-ES": "Contratar",
+    "fr-FR": "Contracter"
+  },
+  "plans.help": {
+    "pt-BR": "Compare os limites das vers\u00f5es publicadas antes de iniciar um cadastro. O cat\u00e1logo informa a capacidade t\u00e9cnica de cada plano; contrata\u00e7\u00e3o, pre\u00e7o e pagamento s\u00f3 s\u00e3o confirmados nos fluxos comerciais dispon\u00edveis.",
+    "en-US": "Compare the limits of the published versions before starting a registration. The catalog informs the technical capacity of each plan; contracting, price and payment are only confirmed in the available commercial flows.",
+    "es-ES": "Compare los l\u00edmites de las versiones publicadas antes de iniciar un registro. El cat\u00e1logo informa la capacidad t\u00e9cnica de cada plan; contrataci\u00f3n, precio y pago solo se confirman en los flujos comerciales disponibles.",
+    "fr-FR": "Comparez les limites des versions publi\u00e9es avant de commencer un enregistrement. Le catalogue informe de la capacit\u00e9 technique de chaque plan ; contraction, prix et paiement ne sont confirm\u00e9s que dans les flux commerciaux disponibles."
+  },
+  "inbox.views_aria": {
+    "pt-BR": "Vistas salvas",
+    "en-US": "Saved views",
+    "es-ES": "Vistas guardadas",
+    "fr-FR": "Vues enregistr\u00e9es"
+  },
+  "inbox.my_views": {
+    "pt-BR": "Minhas vistas:",
+    "en-US": "My views:",
+    "es-ES": "Mis vistas :",
+    "fr-FR": "Mes vues :"
+  },
+  "inbox.view_default": {
+    "pt-BR": "(Padr\u00e3o)",
+    "en-US": "(Default)",
+    "es-ES": "(Predeterminada)",
+    "fr-FR": "(Par d\u00e9faut)"
+  },
+  "inbox.set_default": {
+    "pt-BR": "Tornar padr\u00e3o",
+    "en-US": "Set as default",
+    "es-ES": "Establecer como predeterminada",
+    "fr-FR": "D\u00e9finir par d\u00e9faut"
+  },
+  "inbox.delete_view": {
+    "pt-BR": "Excluir vista",
+    "en-US": "Delete view",
+    "es-ES": "Eliminar vista",
+    "fr-FR": "Supprimer la vue"
+  },
+  "inbox.save_view_summary": {
+    "pt-BR": "Salvar estes filtros como vista pessoal",
+    "en-US": "Save these filters as a personal view",
+    "es-ES": "Guardar estos filtros como vista personal",
+    "fr-FR": "Enregistrer ces filtres comme vue personnelle"
+  },
+  "inbox.view_name_ph": {
+    "pt-BR": "Nome da vista (ex: Cr\u00edticas da Semana)",
+    "en-US": "View name (e.g.: Urgent items this week)",
+    "es-ES": "Nombre de la vista (ej.: Cr\u00edticas de la semana)",
+    "fr-FR": "Nom de la vue (ex. : Points critiques de la semaine)"
+  },
+  "inbox.save_view_btn": {
+    "pt-BR": "Salvar vista",
+    "en-US": "Save view",
+    "es-ES": "Guardar vista",
+    "fr-FR": "Enregistrer la vue"
+  },
+  "inbox.err_open": {
+    "pt-BR": "N\u00e3o foi poss\u00edvel abrir a caixa operacional.",
+    "en-US": "Could not open the operations inbox.",
+    "es-ES": "No fue posible abrir la caja operacional.",
+    "fr-FR": "Impossible d\u2019ouvrir la bo\u00eate op\u00e9rationnelle."
+  },
+  "inbox.saved_saved": {
+    "pt-BR": "Vista pessoal salva para a caixa operacional.",
+    "en-US": "Personal view saved for the operations inbox.",
+    "es-ES": "Vista personal guardada para la caja operacional.",
+    "fr-FR": "Vue personnelle enregistr\u00e9e pour la bo\u00eete op\u00e9rationnelle."
+  },
+  "inbox.saved_error": {
+    "pt-BR": "N\u00e3o foi poss\u00edvel salvar a vista da caixa. Confira o nome e os filtros.",
+    "en-US": "Could not save the inbox view. Check the name and the filters.",
+    "es-ES": "No fue posible guardar la vista de la caja. Revise el nombre y los filtros.",
+    "fr-FR": "Impossible d\u2019enregistrer la vue de la bo\u00eete. V\u00e9rifiez le nom et les filtres."
+  },
+  "inbox.view_unavailable": {
+    "pt-BR": "Esta vista n\u00e3o est\u00e1 dispon\u00edvel.",
+    "en-US": "This view is not available.",
+    "es-ES": "Esta vista no est\u00e1 disponible.",
+    "fr-FR": "Cette vue n\u2019est pas disponible."
+  },
+  "inbox.default_conflict": {
+    "pt-BR": "A vista foi alterada em outra sess\u00e3o (vers\u00e3o divergente). Recarregue a caixa e defina a vista novamente.",
+    "en-US": "The view was changed in another session (divergent version). Reload the inbox and set the view again.",
+    "es-ES": "La vista fue alterada en otra sesi\u00f3n (versi\u00f3n divergente). Recargue la caja y defina la vista nuevamente.",
+    "fr-FR": "La vue a \u00e9t\u00e9 modifi\u00e9e dans une autre session (version divergente). Rechargez la bo\u00eete et d\u00e9finissez la vue \u00e0 nouveau."
+  },
+  "inbox.default_set": {
+    "pt-BR": "Vista definida como padr\u00e3o para a caixa operacional.",
+    "en-US": "View set as default for the operations inbox.",
+    "es-ES": "Vista definida como predeterminada para la caja operacional.",
+    "fr-FR": "Vue d\u00e9finie comme valeur par d\u00e9faut pour la bo\u00eate op\u00e9rationnelle."
+  },
+  "inbox.default_error": {
+    "pt-BR": "N\u00e3o foi poss\u00edvel definir a vista como padr\u00e3o.",
+    "en-US": "Could not set the view as default.",
+    "es-ES": "No fue posible definir la vista como predeterminada.",
+    "fr-FR": "Impossible de d\u00e9finir la vue par d\u00e9faut."
+  },
+  "inbox.deactivated": {
+    "pt-BR": "Vista inativada.",
+    "en-US": "View deactivated.",
+    "es-ES": "Vista inativada.",
+    "fr-FR": "Vue d\u00e9sactiv\u00e9e."
+  },
+  "inbox.deactivate_error": {
+    "pt-BR": "N\u00e3o foi poss\u00edvel inativar a vista.",
+    "en-US": "Could not deactivate the view.",
+    "es-ES": "No fue posible inactivar la vista.",
+    "fr-FR": "Impossible de d\u00e9sactiver la vue."
+  }
+}

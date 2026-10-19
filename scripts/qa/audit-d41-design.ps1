@@ -127,7 +127,9 @@ if ([string]$T -ne '20000000-0000-4000-8000-000000000001') { Write-Host ('TENANT
 # primeiros passos) e funil anonimo (aceitar convite, contratar, confirmar e-mail) em 4 idiomas.
 # S15 (D-OC49): + area de administracao de plataforma (biblioteca, nova revisao, configuracoes
 # SLA, diagnostico, modulos) em 4 idiomas + as 4 rotas superadmin que estavam apenas em pt-BR.
-# 151 par (rota x idioma) x 4 viewports = 604 medidas previstas.
+# S16 (D-OC50): + gestao de clientes (lista, novo, usuarios, detalhe do tenant) e central do
+# cliente (planos, plano-e-consumo, caixa) em 4 idiomas.
+# 46 rotas x idiomas = 179 pares (rota x idioma) x 4 viewports = 716 medidas previstas.
 $cfgObj = [ordered]@{
   base = 'http://localhost:5144'
   outDir = $outDir
@@ -176,12 +178,19 @@ $cfgObj = [ordered]@{
     [ordered]@{ id = 'primeiros-passos';   path = '/organizacoes/' + $T + '/primeiros-passos'; session = 'cliente'; langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
     [ordered]@{ id = 'aceitar-convite';    path = '/convites/aceitar?invitationId=11111111-2222-3333-4444-555555555555'; session = 'anon'; langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
     [ordered]@{ id = 'contratar';          path = '/contratar';                          session = 'anon';       langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
-    [ordered]@{ id = 'confirmar-email';    path = '/confirmar-email?registrationId=11111111-2222-3333-4444-555555555555'; session = 'anon'; langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') }
+    [ordered]@{ id = 'confirmar-email';    path = '/confirmar-email?registrationId=11111111-2222-3333-4444-555555555555'; session = 'anon'; langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'clientes';           path = '/administracao/clientes';            session = 'superadmin'; langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'clientes-novo';      path = '/administracao/clientes/novo';       session = 'superadmin'; langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'clientes-usuarios';  path = '/administracao/clientes/usuarios';   session = 'superadmin'; langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'cliente-detalhe';    path = '/administracao/clientes/' + $T;     session = 'superadmin'; langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'planos';             path = '/conheca-os-planos';                       session = 'cliente';    langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'plano-consumo';      path = '/organizacoes/' + $T + '/plano-e-consumo'; session = 'cliente'; langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') },
+    [ordered]@{ id = 'caixa';              path = '/organizacoes/' + $T + '/caixa';     session = 'cliente';    langs = @('pt-BR', 'en-US', 'es-ES', 'fr-FR') }
   )
 }
 $cfgFile = Join-Path $logDir 'd41-audit-cfg.json'
 Set-Content -Path $cfgFile -Value ($cfgObj | ConvertTo-Json -Depth 10) -Encoding utf8
-LogEv 'AUDIT: 39 rotas x idiomas x 4 viewports (151 pares; 604 medidas previstas); PNG apenas de falhas em ' + $outDir
+LogEv 'AUDIT: 46 rotas x idiomas x 4 viewports (179 pares; 716 medidas previstas); PNG apenas de falhas em ' + $outDir
 
 # ---------- execucao ----------
 $driver = Join-Path $root 'scripts\qa\cdp-design-audit.mjs'

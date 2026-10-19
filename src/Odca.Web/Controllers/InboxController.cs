@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using Odca.Configuration.Localization;
 using Odca.Contracts.SavedViews;
 using Odca.Web.Models;
 using Odca.Web.Services;
@@ -10,8 +11,11 @@ namespace Odca.Web.Controllers;
 
 [Authorize]
 [Route("organizacoes/{tenantId:guid}/caixa")]
-public sealed class InboxController(OdcaApiClient api) : Controller
+public sealed class InboxController(OdcaApiClient api, LocalizationService loc) : Controller
 {
+    // D-OC50 (S16): padrão canônico de cultura (CultureMiddleware) e localização das mensagens BFF.
+    private string? Culture => HttpContext.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] as string;
+    private string L(string key, params string[] args) => loc.T(key, Culture, args);
     [HttpGet("")]
     public async Task<IActionResult> Index(
         Guid tenantId,
@@ -24,7 +28,7 @@ public sealed class InboxController(OdcaApiClient api) : Controller
         int page = 1,
         CancellationToken ct = default)
     {
-        ViewData["Title"] = "Central de pendências";
+        ViewData["Title"] = L("inbox.title");
         ViewData["TenantId"] = tenantId;
         var token = await HttpContext.GetTokenAsync("access_token");
         if (token is null) return Challenge();
@@ -50,7 +54,7 @@ public sealed class InboxController(OdcaApiClient api) : Controller
             Urgency = urgency,
             Views = views,
             CurrentView = currentView,
-            Error = result.Succeeded ? null : result.UserMessage("Não foi possível abrir a caixa operacional.")
+            Error = result.Succeeded ? null : result.UserMessage(L("inbox.err_open"))
         });
     }
 
@@ -83,8 +87,8 @@ public sealed class InboxController(OdcaApiClient api) : Controller
         if (result.Status == ApiCallStatus.Forbidden) return Forbid();
 
         TempData[result.Succeeded ? "SavedViewNotice" : "SavedViewError"] = result.Succeeded
-            ? "Vista pessoal salva para a caixa operacional."
-            : "Não foi possível salvar a vista da caixa. Confira o nome e os filtros.";
+            ? L("inbox.saved_saved")
+            : L("inbox.saved_error");
 
         var savedViewId = result.Succeeded ? result.Value?.Id : null;
         return RedirectToAction(nameof(Index), new { tenantId, scope, kind, urgency, contractId, ownerId, viewId = savedViewId });
@@ -102,7 +106,7 @@ public sealed class InboxController(OdcaApiClient api) : Controller
         if (result.Status == ApiCallStatus.NotFound) return NotFound();
         if (!result.Succeeded || result.Value is null)
         {
-            TempData["SavedViewError"] = "Esta vista não está disponível.";
+            TempData["SavedViewError"] = L("inbox.view_unavailable");
             return RedirectToAction(nameof(Index), new { tenantId });
         }
 
@@ -135,13 +139,13 @@ public sealed class InboxController(OdcaApiClient api) : Controller
         if (result.Status == ApiCallStatus.NotFound) return NotFound();
         if (result.Status == ApiCallStatus.Conflict)
         {
-            TempData["SavedViewError"] = "A vista foi alterada em outra sessão (versão divergente). Recarregue a caixa e defina a vista novamente.";
+            TempData["SavedViewError"] = L("inbox.default_conflict");
             return RedirectToAction(nameof(Index), new { tenantId });
         }
 
         TempData[result.Succeeded ? "SavedViewNotice" : "SavedViewError"] = result.Succeeded
-            ? "Vista definida como padrão para a caixa operacional."
-            : "Não foi possível definir a vista como padrão.";
+            ? L("inbox.default_set")
+            : L("inbox.default_error");
 
         return RedirectToAction(nameof(OpenView), new { tenantId, viewId });
     }
@@ -159,8 +163,8 @@ public sealed class InboxController(OdcaApiClient api) : Controller
         if (result.Status == ApiCallStatus.NotFound) return NotFound();
 
         TempData[result.Succeeded ? "SavedViewNotice" : "SavedViewError"] = result.Succeeded
-            ? "Vista inativada."
-            : "Não foi possível inativar a vista.";
+            ? L("inbox.deactivated")
+            : L("inbox.deactivate_error");
 
         return RedirectToAction(nameof(Index), new { tenantId });
     }

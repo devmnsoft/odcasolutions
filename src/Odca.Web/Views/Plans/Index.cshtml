@@ -1,58 +1,59 @@
 @model IReadOnlyList<Odca.Contracts.Plans.PlanCatalogResponse>
 @{
-    ViewData["Title"] = "Planos";
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("plans.title", _c);
+    // D-OC50 (S16): nomes de módulo localizados reaproveitando os rótulos canônicos de funcionalidade (api.gate).
+    string ModuleName(string code) => code switch
+    {
+        "module.patients" => L.T("api.gate.feature_patients", _c),
+        "module.contract_drafts" => L.T("api.gate.feature_contract_drafts", _c),
+        "module.templates" => L.T("api.gate.feature_templates", _c),
+        "module.documents" => L.T("api.gate.feature_documents", _c),
+        "module.reviews" => L.T("api.gate.feature_reviews", _c),
+        "module.signatures" => L.T("api.gate.feature_signatures", _c),
+        "module.imports" => L.T("api.gate.feature_imports", _c),
+        _ => code
+    };
 }
 <section class="dashboard-heading">
     <div>
-        <p class="eyebrow">Catálogo versionado</p>
-        <h1>Planos</h1>
-        <p class="muted">Limites técnicos publicados. Preços e contratação dependem de definição comercial e integração de pagamento.</p>
+        <p class="eyebrow">@L.T("plans.eyebrow", _c)</p>
+        <h1>@L.T("plans.title", _c)</h1>
+        <p class="muted">@L.T("plans.sub", _c)</p>
     </div>
 </section>
-<section class="plan-grid" aria-label="Planos publicados">
+<section class="plan-grid" aria-label="@L.T("plans.grid_aria", _c)">
     @if (Model.Count == 0)
     {
         <article class="card plan-card">
-            <h2>Nenhum plano publicado</h2>
-            <p class="muted">O catálogo está disponível, mas ainda não há uma versão comercial vigente.</p>
+            <h2>@L.T("plans.empty_t", _c)</h2>
+            <p class="muted">@L.T("plans.empty_b", _c)</p>
         </article>
     }
     @foreach (var plan in Model)
     {
         <article class="card plan-card">
-            <p class="eyebrow">Versão @plan.Version</p>
+            <p class="eyebrow">@L.T("plans.version", _c, plan.Version.ToString(System.Globalization.CultureInfo.InvariantCulture))</p>
             <h2>@plan.DisplayName</h2>
             <dl>
-                <div><dt>Usuários ativos</dt><dd>@plan.ActiveSeats</dd></div>
-                <div><dt>Espaço da organização</dt><dd>@FormatBytes(plan.StorageBytes)</dd></div>
-                <div><dt>Teto por usuário</dt><dd>@FormatBytes(plan.UserStorageBytes)</dd></div>
-                <div><dt>Arquivo máximo</dt><dd>@FormatBytes(plan.FileBytes)</dd></div>
-                <div><dt>OCR mensal</dt><dd>@plan.OcrPagesMonthly páginas</dd></div>
-                <div><dt>Assinaturas mensais</dt><dd>@plan.SignatureEnvelopesMonthly envelopes</dd></div>
-                <div><dt>Módulos habilitados</dt><dd>@(plan.EnabledModules is { Length: > 0 } ? string.Join(", ", plan.EnabledModules.Select(ModuleName)) : "Esta versão não declara habilitação por módulo.")</dd></div>
+                <div><dt>@L.T("plans.dt_seats", _c)</dt><dd>@plan.ActiveSeats</dd></div>
+                <div><dt>@L.T("plans.dt_storage", _c)</dt><dd>@FormatBytes(plan.StorageBytes)</dd></div>
+                <div><dt>@L.T("plans.dt_user_cap", _c)</dt><dd>@FormatBytes(plan.UserStorageBytes)</dd></div>
+                <div><dt>@L.T("plans.dt_max_file", _c)</dt><dd>@FormatBytes(plan.FileBytes)</dd></div>
+                <div><dt>@L.T("plans.dt_ocr", _c)</dt><dd>@plan.OcrPagesMonthly @L.T("plans.ocr_unit", _c)</dd></div>
+                <div><dt>@L.T("plans.dt_signatures", _c)</dt><dd>@plan.SignatureEnvelopesMonthly @L.T("plans.sig_unit", _c)</dd></div>
+                <div><dt>@L.T("plans.dt_modules", _c)</dt><dd>@(plan.EnabledModules is { Length: > 0 } ? string.Join(", ", plan.EnabledModules.Select(ModuleName)) : L.T("plans.modules_none", _c))</dd></div>
             </dl>
-            <a class="button button-primary" asp-controller="Onboarding" asp-action="Register" asp-route-planCode="@plan.Code">Contratar</a>
+            <a class="button button-primary" asp-controller="Onboarding" asp-action="Register" asp-route-planCode="@plan.Code">@L.T("plans.btn_contract", _c)</a>
         </article>
     }
 </section>
 <section class="card help-card">
-    <h2>Como usar</h2>
-    <p>Compare os limites das versões publicadas antes de iniciar um cadastro. O catálogo informa a capacidade técnica de cada plano; contratação, preço e pagamento só são confirmados nos fluxos comerciais disponíveis.</p>
+    <h2>@L.T("common.how_to_use", _c)</h2>
+    <p>@L.T("plans.help", _c)</p>
 </section>
 @functions {
     private static string FormatBytes(long bytes) => bytes >= 1_000_000_000
         ? $"{bytes / 1_000_000_000} GB"
         : $"{bytes / 1_000_000} MB";
-
-    private static string ModuleName(string code) => code switch
-    {
-        "module.patients" => "Pacientes",
-        "module.contract_drafts" => "Minutas",
-        "module.templates" => "Modelos",
-        "module.documents" => "Documentos",
-        "module.reviews" => "Revisões",
-        "module.signatures" => "Assinaturas",
-        "module.imports" => "Importações",
-        _ => code
-    };
 }
