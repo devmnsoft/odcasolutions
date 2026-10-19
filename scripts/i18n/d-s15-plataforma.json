@@ -1,0 +1,1298 @@
+{
+  "platform.lib_intro": {
+    "pt-BR": "Cat\u00e1logo oficial mantido pela plataforma: nove modelos carregados por c\u00f3digo e publicados para todas as organiza\u00e7\u00f5es. Publicar e retirar exigem justificativa e ficam auditados.",
+    "en-US": "Official catalog maintained by the platform: nine models loaded by code and published to all organizations. Publishing and retiring require a justification and are audited.",
+    "es-ES": "Cat\u00e1logo oficial mantenido por la plataforma: nueve modelos cargados por c\u00f3digo y publicados para todas las organizaciones. Publicar y retirar exigen justificaci\u00f3n y quedan auditados.",
+    "fr-FR": "Catalogue officiel maintenu par la plateforme : neuf mod\u00e8les charg\u00e9s par code et publi\u00e9s pour toutes les organisations. Publier et retirer exigent une justification et sont audit\u00e9s."
+  },
+  "platform.lib_new": {
+    "pt-BR": "+ Novo modelo",
+    "en-US": "+ New model",
+    "es-ES": "+ Nuevo modelo",
+    "fr-FR": "+ Nouveau mod\u00e8le"
+  },
+  "platform.lib_th_model": {
+    "pt-BR": "Modelo",
+    "en-US": "Model",
+    "es-ES": "Modelo",
+    "fr-FR": "Mod\u00e8le"
+  },
+  "platform.lib_th_revision": {
+    "pt-BR": "Revis\u00e3o",
+    "en-US": "Revision",
+    "es-ES": "Revisi\u00f3n",
+    "fr-FR": "R\u00e9vision"
+  },
+  "platform.lib_th_created": {
+    "pt-BR": "Criado em",
+    "en-US": "Created on",
+    "es-ES": "Creado en",
+    "fr-FR": "Cr\u00e9\u00e9 le"
+  },
+  "platform.lib_th_published": {
+    "pt-BR": "Publicado em",
+    "en-US": "Published on",
+    "es-ES": "Publicado el",
+    "fr-FR": "Publi\u00e9 le"
+  },
+  "platform.lib_th_management": {
+    "pt-BR": "Gest\u00e3o do cat\u00e1logo",
+    "en-US": "Catalog management",
+    "es-ES": "Gesti\u00f3n del cat\u00e1logo",
+    "fr-FR": "Gestion du catalogue"
+  },
+  "platform.lib_status_retired": {
+    "pt-BR": "Retirado",
+    "en-US": "Retired",
+    "es-ES": "Retirado",
+    "fr-FR": "Retir\u00e9"
+  },
+  "platform.lib_versions_summary": {
+    "pt-BR": "Vers\u00f5es ({0})",
+    "en-US": "Versions ({0})",
+    "es-ES": "Versiones ({0})",
+    "fr-FR": "Versions ({0})"
+  },
+  "platform.lib_rev_line": {
+    "pt-BR": "Revis\u00e3o {0} \u2014 criada em {1}",
+    "en-US": "Revision {0} \u2014 created on {1}",
+    "es-ES": "Revisi\u00f3n {0} \u2014 creada el {1}",
+    "fr-FR": "R\u00e9vision {0} \u2014 cr\u00e9\u00e9e le {1}"
+  },
+  "platform.lib_rev_published_on": {
+    "pt-BR": " \u00b7 publicada em {0}",
+    "en-US": " \u00b7 published on {0}",
+    "es-ES": " \u00b7 publicada el {0}",
+    "fr-FR": " \u00b7 publi\u00e9e le {0}"
+  },
+  "platform.lib_new_revision_btn": {
+    "pt-BR": "Nova revis\u00e3o",
+    "en-US": "New revision",
+    "es-ES": "Nueva revisi\u00f3n",
+    "fr-FR": "Nouvelle r\u00e9vision"
+  },
+  "platform.lib_reason_retire": {
+    "pt-BR": "Justificativa da retirada",
+    "en-US": "Justification for retirement",
+    "es-ES": "Justificaci\u00f3n de la retirada",
+    "fr-FR": "Justification du retrait"
+  },
+  "platform.lib_reason_publish": {
+    "pt-BR": "Justificativa da publica\u00e7\u00e3o",
+    "en-US": "Justification for publishing",
+    "es-ES": "Justificaci\u00f3n de la publicaci\u00f3n",
+    "fr-FR": "Justification de la publication"
+  },
+  "platform.lib_retire_btn": {
+    "pt-BR": "Retirar do cat\u00e1logo",
+    "en-US": "Retire from catalog",
+    "es-ES": "Retirar del cat\u00e1logo",
+    "fr-FR": "Retirer du catalogue"
+  },
+  "platform.lib_publish_btn": {
+    "pt-BR": "Publicar no cat\u00e1logo",
+    "en-US": "Publish to catalog",
+    "es-ES": "Publicar en el cat\u00e1logo",
+    "fr-FR": "Publier dans le catalogue"
+  },
+  "platform.lib_type_term": {
+    "pt-BR": "Termo",
+    "en-US": "Term",
+    "es-ES": "Documento",
+    "fr-FR": "Document"
+  },
+  "platform.lib_type_release": {
+    "pt-BR": "Autoriza\u00e7\u00e3o",
+    "en-US": "Authorization",
+    "es-ES": "Autorizaci\u00f3n",
+    "fr-FR": "Autorisation"
+  },
+  "platform.lib_type_services": {
+    "pt-BR": "Servi\u00e7os / Terapias",
+    "en-US": "Services / Therapies",
+    "es-ES": "Servicios / Terapias",
+    "fr-FR": "Services / Th\u00e9rapies"
+  },
+  "platform.lib_type_service": {
+    "pt-BR": "Servi\u00e7o \u00fanico",
+    "en-US": "Single service",
+    "es-ES": "Servicio \u00fanico",
+    "fr-FR": "Service unique"
+  },
+  "platform.lib_type_multi": {
+    "pt-BR": "M\u00faltiplas terapias",
+    "en-US": "Multiple therapies",
+    "es-ES": "M\u00faltiples terapias",
+    "fr-FR": "Th\u00e9rapies multiples"
+  },
+  "platform.lib_type_nda": {
+    "pt-BR": "Acordo de confidencialidade (NDA)",
+    "en-US": "Confidentiality agreement (NDA)",
+    "es-ES": "Acuerdo de confidencialidad (NDA)",
+    "fr-FR": "Accord de confidentialit\u00e9 (NDA)"
+  },
+  "platform.lib_type_supply": {
+    "pt-BR": "Fornecimento",
+    "en-US": "Supply",
+    "es-ES": "Suministro",
+    "fr-FR": "Fourniture"
+  },
+  "platform.lib_type_lease": {
+    "pt-BR": "Loca\u00e7\u00e3o",
+    "en-US": "Lease",
+    "es-ES": "Arrendamiento",
+    "fr-FR": "Location"
+  },
+  "platform.lib_type_amendment": {
+    "pt-BR": "Aditivo gen\u00e9rico",
+    "en-US": "Generic amendment",
+    "es-ES": "Aditivo gen\u00e9rico",
+    "fr-FR": "Avenant g\u00e9n\u00e9rique"
+  },
+  "platform.lib_help_body": {
+    "pt-BR": "A retirada n\u00e3o apaga nada: a linha global passa a ficar arquivada e novas organiza\u00e7\u00f5es deixam de receb\u00ea-la; as c\u00f3pias j\u00e1 instaladas e os contratos j\u00e1 emitidos permanecem intactos. A publica\u00e7\u00e3o devolve o modelo ao cat\u00e1logo para resolu\u00e7\u00e3o pelas organiza\u00e7\u00f5es sem c\u00f3pia pr\u00f3pria. Cada opera\u00e7\u00e3o registra um evento de auditoria com a justificativa informada.",
+    "en-US": "Retiring deletes nothing: the global row becomes archived and new organizations stop receiving it; installed copies and issued contracts remain intact. Publishing returns the model to the catalog for resolution by organizations without their own copy. Each operation records an audit event with the provided justification.",
+    "es-ES": "Retirar no borra nada: la l\u00ednea global pasa a quedar archivada y las nuevas organizaciones dejan de recibirla; las copias ya instaladas y los contratos ya emitidos permanecen intactos. La publicaci\u00f3n devuelve el modelo al cat\u00e1logo para resoluci\u00f3n por las organizaciones sin copia propia. Cada operaci\u00f3n registra un evento de auditor\u00eda con la justificaci\u00f3n informada.",
+    "fr-FR": "Le retrait n'efface rien : la ligne globale devient archiv\u00e9e et les nouvelles organisations cessent de la recevoir ; les copies d\u00e9j\u00e0 install\u00e9es et les contrats d\u00e9j\u00e0 \u00e9mis restent intacts. La publication rend le mod\u00e8le au catalogue pour r\u00e9solution par les organisations sans copie propre. Chaque op\u00e9ration enregistre un \u00e9v\u00e9nement d'audit avec la justification fournie."
+  },
+  "platform.tpl_name_ph": {
+    "pt-BR": "Ex: Contrato de Servi\u00e7os Terap\u00eauticos \u2014 Fisioterapia",
+    "en-US": "E.g.: Therapy Services Agreement \u2014 Physical Therapy",
+    "es-ES": "Ej.: Contrato de Servicios Terap\u00e9uticos \u2014 Fisioterapia",
+    "fr-FR": "Ex. : Contrat de services th\u00e9rapeutiques \u2014 Kin\u00e9sith\u00e9rapie"
+  },
+  "platform.tpl_description_ph": {
+    "pt-BR": "Para que serve este modelo? Em quais contextos ser\u00e1 utilizado?",
+    "en-US": "What is this template for? In which contexts will it be used?",
+    "es-ES": "\u00bfPara qu\u00e9 sirve esta plantilla? \u00bfEn qu\u00e9 contextos se utilizar\u00e1?",
+    "fr-FR": "\u00c0 quoi sert ce mod\u00e8le ? Dans quels contextes sera-t-il utilis\u00e9 ?"
+  },
+  "platform.tpl_purpose_ph": {
+    "pt-BR": "Ex: care_agreement, confidentiality, consent",
+    "en-US": "E.g.: care_agreement, confidentiality, consent",
+    "es-ES": "Ej.: care_agreement, confidentiality, consent",
+    "fr-FR": "Ex. : care_agreement, confidentiality, consent"
+  },
+  "platform.tpl_purpose_hint": {
+    "pt-BR": "Usado para categoriza\u00e7\u00e3o e descoberta. Valores comuns: care_agreement, confidentiality, consent, service_agreement, supply, lease.",
+    "en-US": "Used for categorization and discovery. Common values: care_agreement, confidentiality, consent, service_agreement, supply, lease.",
+    "es-ES": "Usado para categorizaci\u00f3n y descubrimiento. Valores comunes: care_agreement, confidentiality, consent, service_agreement, supply, lease.",
+    "fr-FR": "Utilis\u00e9 pour la cat\u00e9gorisation et la d\u00e9couverte. Valeurs courantes : care_agreement, confidentiality, consent, service_agreement, supply, lease."
+  },
+  "platform.rev_title": {
+    "pt-BR": "Nova revis\u00e3o de modelo",
+    "en-US": "New model revision",
+    "es-ES": "Nueva revisi\u00f3n de modelo",
+    "fr-FR": "Nouvelle r\u00e9vision de mod\u00e8le"
+  },
+  "platform.lib_err_name_min": {
+    "pt-BR": "Nome deve ter pelo menos 3 caracteres.",
+    "en-US": "The name must have at least 3 characters.",
+    "es-ES": "El nombre debe tener al menos 3 caracteres.",
+    "fr-FR": "Le nom doit contenir au moins 3 caract\u00e8res."
+  },
+  "platform.lib_ok_created": {
+    "pt-BR": "Modelo criado em rascunho. Publique-o para torn\u00e1-lo dispon\u00edvel \u00e0s organiza\u00e7\u00f5es.",
+    "en-US": "Model created as draft. Publish it to make it available to organizations.",
+    "es-ES": "Modelo creado como borrador. Publ\u00edquelo para hacerlo disponible para las organizaciones.",
+    "fr-FR": "Mod\u00e8le cr\u00e9\u00e9 en brouillon. Publiez-le pour le rendre disponible aux organisations."
+  },
+  "platform.lib_err_create": {
+    "pt-BR": "N\u00e3o foi poss\u00edvel criar o modelo.",
+    "en-US": "Could not create the model.",
+    "es-ES": "No fue posible crear el modelo.",
+    "fr-FR": "Impossible de cr\u00e9er le mod\u00e8le."
+  },
+  "platform.rev_err_load": {
+    "pt-BR": "N\u00e3o foi poss\u00edvel carregar a revis\u00e3o atual do modelo.",
+    "en-US": "Could not load the current model revision.",
+    "es-ES": "No fue posible cargar la revisi\u00f3n actual del modelo.",
+    "fr-FR": "Impossible de charger la r\u00e9vision actuelle du mod\u00e8le."
+  },
+  "platform.rev_err_summary": {
+    "pt-BR": "Informe um resumo da mudan\u00e7a entre 5 e 500 caracteres.",
+    "en-US": "Provide a change summary between 5 and 500 characters.",
+    "es-ES": "Proporcione un resumen del cambio entre 5 y 500 caracteres.",
+    "fr-FR": "Fournissez un r\u00e9sum\u00e9 de la modification entre 5 et 500 caract\u00e8res."
+  },
+  "platform.rev_ok_published": {
+    "pt-BR": "Revis\u00e3o {0} publicada. Documentos emitidos a partir de revis\u00f5es anteriores permanecem intactos (fixados \u00e0 vers\u00e3o de origem).",
+    "en-US": "Revision {0} published. Documents issued from earlier revisions remain intact (pinned to their source version).",
+    "es-ES": "Revisi\u00f3n {0} publicada. Los documentos emitidos a partir de revisiones anteriores permanecen intactos (fijados a la versi\u00f3n de origen).",
+    "fr-FR": "R\u00e9vision {0} publi\u00e9e. Les documents \u00e9mis \u00e0 partir de r\u00e9visions ant\u00e9rieures restent intacts (fix\u00e9s \u00e0 la version d'origine)."
+  },
+  "platform.rev_err_conflict": {
+    "pt-BR": "A revis\u00e3o n\u00e3o foi publicada; verifique a mensagem do servidor.",
+    "en-US": "The revision was not published; check the server message.",
+    "es-ES": "La revisi\u00f3n no fue publicada; verifique el mensaje del servidor.",
+    "fr-FR": "La r\u00e9vision n'a pas \u00e9t\u00e9 publi\u00e9e ; v\u00e9rifiez le message du serveur."
+  },
+  "platform.lib_err_action": {
+    "pt-BR": "A\u00e7\u00e3o inv\u00e1lida para o cat\u00e1logo.",
+    "en-US": "Invalid action for the catalog.",
+    "es-ES": "Acci\u00f3n inv\u00e1lida para el cat\u00e1logo.",
+    "fr-FR": "Action invalide pour le catalogue."
+  },
+  "platform.lib_err_reason": {
+    "pt-BR": "Informe uma justificativa entre 5 e 500 caracteres.",
+    "en-US": "Provide a justification between 5 and 500 characters.",
+    "es-ES": "Proporcione una justificaci\u00f3n entre 5 y 500 caracteres.",
+    "fr-FR": "Fournissez une justification entre 5 et 500 caract\u00e8res."
+  },
+  "platform.lib_ok_retired": {
+    "pt-BR": "Modelo retirado do cat\u00e1logo global. Novas organiza\u00e7\u00f5es n\u00e3o o recebem; c\u00f3pias j\u00e1 instaladas seguem intactas.",
+    "en-US": "Model retired from the global catalog. New organizations will not receive it; installed copies remain intact.",
+    "es-ES": "Modelo retirado del cat\u00e1logo global. Las nuevas organizaciones no lo recibir\u00e1n; las copias ya instaladas siguen intactas.",
+    "fr-FR": "Mod\u00e8le retir\u00e9 du catalogue global. Les nouvelles organisations ne le recevront pas ; les copies d\u00e9j\u00e0 install\u00e9es restent intactes."
+  },
+  "platform.lib_ok_published": {
+    "pt-BR": "Modelo publicado no cat\u00e1logo global. Organiza\u00e7\u00f5es sem c\u00f3pia pr\u00f3pria passam a resolv\u00ea-lo pela linha global.",
+    "en-US": "Model published in the global catalog. Organizations without their own copy now resolve it through the global line.",
+    "es-ES": "Modelo publicado en el cat\u00e1logo global. Las organizaciones sin copia propia pasan a resolverlo por la l\u00ednea global.",
+    "fr-FR": "Mod\u00e8le publi\u00e9 dans le catalogue global. Les organisations sans copie propre passent \u00e0 le r\u00e9soudre via la ligne globale."
+  },
+  "platform.lib_err_apply": {
+    "pt-BR": "A opera\u00e7\u00e3o n\u00e3o foi aplicada.",
+    "en-US": "The operation was not applied.",
+    "es-ES": "La operaci\u00f3n no se aplic\u00f3.",
+    "fr-FR": "L'op\u00e9ration n'a pas \u00e9t\u00e9 appliqu\u00e9e."
+  },
+  "platform.rev_eyebrow": {
+    "pt-BR": "Administra\u00e7\u00e3o global \u00b7 Revis\u00e3o de modelo",
+    "en-US": "Global administration \u00b7 Model revision",
+    "es-ES": "Administraci\u00f3n global \u00b7 Revisi\u00f3n de modelo",
+    "fr-FR": "Administration globale \u00b7 R\u00e9vision de mod\u00e8le"
+  },
+  "platform.rev_h1": {
+    "pt-BR": "Nova revis\u00e3o \u2014 {0}",
+    "en-US": "New revision \u2014 {0}",
+    "es-ES": "Nueva revisi\u00f3n \u2014 {0}",
+    "fr-FR": "Nouvelle r\u00e9vision \u2014 {0}"
+  },
+  "platform.rev_meta_current": {
+    "pt-BR": "Revis\u00e3o atual: {0}",
+    "en-US": "Current revision: {0}",
+    "es-ES": "Revisi\u00f3n actual: {0}",
+    "fr-FR": "R\u00e9vision actuelle : {0}"
+  },
+  "platform.rev_meta_type": {
+    "pt-BR": "tipo ",
+    "en-US": "type ",
+    "es-ES": "tipo ",
+    "fr-FR": "type "
+  },
+  "platform.rev_meta_key": {
+    "pt-BR": "chave ",
+    "en-US": "key ",
+    "es-ES": "clave ",
+    "fr-FR": "cl\u00e9 "
+  },
+  "platform.rev_back": {
+    "pt-BR": "\u2190 Voltar \u00e0 biblioteca",
+    "en-US": "\u2190 Back to library",
+    "es-ES": "\u2190 Volver a la biblioteca",
+    "fr-FR": "\u2190 Retour \u00e0 la biblioth\u00e8que"
+  },
+  "platform.rev_effect_title": {
+    "pt-BR": "Efeito da publica\u00e7\u00e3o.",
+    "en-US": "Effect of publishing.",
+    "es-ES": "Efecto de la publicaci\u00f3n.",
+    "fr-FR": "Effet de la publication."
+  },
+  "platform.rev_effect_a": {
+    "pt-BR": "Publicar a revis\u00e3o {0} cria uma ",
+    "en-US": "Publishing revision {0} creates a ",
+    "es-ES": "Publicar la revisi\u00f3n {0} crea un ",
+    "fr-FR": "Publier la r\u00e9vision {0} cr\u00e9e une "
+  },
+  "platform.rev_effect_strong": {
+    "pt-BR": "nova vers\u00e3o imut\u00e1vel",
+    "en-US": "new immutable version",
+    "es-ES": "nueva versi\u00f3n inmutable",
+    "fr-FR": "nouvelle version immuable"
+  },
+  "platform.rev_effect_b": {
+    "pt-BR": " do modelo. Minutas, vers\u00f5es geradas e contratos j\u00e1 emitidos continuam fixados \u00e0 revis\u00e3o {0} (snapshot imut\u00e1vel com refer\u00eancia \u00e0 vers\u00e3o de origem) \u2014 nenhum documento existente \u00e9 alterado. Novas minutas passam a nascer da revis\u00e3o {1}.",
+    "en-US": " of the model. Drafts, generated versions, and contracts already issued remain pinned to revision {0} (immutable snapshot with reference to the source version) \u2014 no existing document is changed. New drafts are created from revision {1}.",
+    "es-ES": " del modelo. Los borradores, las versiones generadas y los contratos ya emitidos siguen fijados a la revisi\u00f3n {0} (instant\u00e1nea inmutable con referencia a la versi\u00f3n de origen) \u2014 ning\u00fan documento existente se altera. Los nuevos borradores nacen de la revisi\u00f3n {1}.",
+    "fr-FR": " du mod\u00e8le. Les brouillons, les versions g\u00e9n\u00e9r\u00e9es et les contrats d\u00e9j\u00e0 \u00e9mis restent fix\u00e9s \u00e0 la r\u00e9vision {0} (instantan\u00e9 immuable avec r\u00e9f\u00e9rence \u00e0 la version d'origine) \u2014 aucun document existant n'est modifi\u00e9. Les nouveaux brouillons sont cr\u00e9\u00e9s depuis la r\u00e9vision {1}."
+  },
+  "platform.rev_summary_label": {
+    "pt-BR": "Resumo da mudan\u00e7a *",
+    "en-US": "Change summary *",
+    "es-ES": "Resumen del cambio *",
+    "fr-FR": "R\u00e9sum\u00e9 de la modification *"
+  },
+  "platform.rev_summary_hint": {
+    "pt-BR": "(obrigat\u00f3rio, 5\u2013500 caracteres \u2014 fica registrado na auditoria)",
+    "en-US": "(required, 5\u2013500 characters \u2014 recorded in the audit trail)",
+    "es-ES": "(obligatorio, 5\u2013500 caracteres \u2014 queda registrado en la auditor\u00eda)",
+    "fr-FR": "(obligatoire, 5\u2013500 caract\u00e8res \u2014 enregistr\u00e9 dans l'audit)"
+  },
+  "platform.rev_summary_ph": {
+    "pt-BR": "Ex.: ajuste do prazo de aviso pr\u00e9vio na cl\u00e1usula 3 e inclus\u00e3o de campo de cobran\u00e7a",
+    "en-US": "E.g.: adjustment of the prior notice period in clause 3 and addition of a billing field",
+    "es-ES": "Ej.: ajuste del plazo de aviso previo en la cl\u00e1usula 3 e inclusi\u00f3n de campo de cobro",
+    "fr-FR": "Ex. : ajust du d\u00e9lai de pr\u00e9avis \u00e0 la clause 3 et ajout d'un champ de facturation"
+  },
+  "platform.rev_fields_h": {
+    "pt-BR": "Campos Vari\u00e1veis do Modelo",
+    "en-US": "Template Variable Fields",
+    "es-ES": "Campos variables del modelo",
+    "fr-FR": "Champs variables du mod\u00e8le"
+  },
+  "platform.rev_fields_help": {
+    "pt-BR": "Campos din\u00e2micos dispon\u00edveis ao operador ao preencher a minuta.",
+    "en-US": "Dynamic fields available to the operator when filling the draft.",
+    "es-ES": "Campos din\u00e1micos disponibles para el operador al llenar el borrador.",
+    "fr-FR": "Champs dynamiques disponibles par l'op\u00e9rateur lors du remplissage du brouillon."
+  },
+  "platform.rev_fields_add_h": {
+    "pt-BR": "+ Adicionar Novo Campo",
+    "en-US": "+ Add New Field",
+    "es-ES": "+ Agregar nuevo campo",
+    "fr-FR": "+ Ajouter un nouveau champ"
+  },
+  "platform.rev_field_id_label": {
+    "pt-BR": "Identificador:",
+    "en-US": "Identifier:",
+    "es-ES": "Identificador:",
+    "fr-FR": "Identifiant :"
+  },
+  "platform.rev_field_label_label": {
+    "pt-BR": "R\u00f3tulo exibido:",
+    "en-US": "Display label:",
+    "es-ES": "Etiqueta mostrada:",
+    "fr-FR": "Libell\u00e9 affich\u00e9 :"
+  },
+  "platform.rev_field_label_ph": {
+    "pt-BR": "Nome Completo",
+    "en-US": "Full Name",
+    "es-ES": "Nombre Completo",
+    "fr-FR": "Nom complet"
+  },
+  "platform.rev_field_type_label": {
+    "pt-BR": "Tipo de Dado:",
+    "en-US": "Data Type:",
+    "es-ES": "Tipo de dato:",
+    "fr-FR": "Type de donn\u00e9es :"
+  },
+  "platform.rev_field_choices_label": {
+    "pt-BR": "Op\u00e7\u00f5es (separadas por v\u00edrgula):",
+    "en-US": "Options (comma-separated):",
+    "es-ES": "Opciones (separadas por coma):",
+    "fr-FR": "Options (s\u00e9par\u00e9es par des virgules) :"
+  },
+  "platform.rev_field_choices_ph": {
+    "pt-BR": "Op\u00e7\u00e3o 1, Op\u00e7\u00e3o 2",
+    "en-US": "Option 1, Option 2",
+    "es-ES": "Opci\u00f3n 1, Opci\u00f3n 2",
+    "fr-FR": "Option 1, Option 2"
+  },
+  "platform.rev_origin_label": {
+    "pt-BR": "Origem do preenchimento",
+    "en-US": "Fill source",
+    "es-ES": "Origen del llenado",
+    "fr-FR": "Source de remplissage"
+  },
+  "platform.rev_origin_manual": {
+    "pt-BR": "Entrada manual",
+    "en-US": "Manual entry",
+    "es-ES": "Entrada manual",
+    "fr-FR": "Saisie manuelle"
+  },
+  "platform.rev_origin_org": {
+    "pt-BR": "Organiza\u00e7\u00e3o/cl\u00ednica",
+    "en-US": "Organization/clinic",
+    "es-ES": "Organizaci\u00f3n/cl\u00ednica",
+    "fr-FR": "Organisation/clinique"
+  },
+  "platform.rev_origin_patient": {
+    "pt-BR": "Paciente",
+    "en-US": "Patient",
+    "es-ES": "Paciente",
+    "fr-FR": "Patient"
+  },
+  "platform.rev_origin_contractor": {
+    "pt-BR": "Contratante/respons\u00e1vel financeiro",
+    "en-US": "Client/financially responsible party",
+    "es-ES": "Contratante/responsable financiero",
+    "fr-FR": "Mandant/responsable financier"
+  },
+  "platform.rev_origin_representative": {
+    "pt-BR": "Representante",
+    "en-US": "Representative",
+    "es-ES": "Representante",
+    "fr-FR": "Repr\u00e9sentant"
+  },
+  "platform.rev_field_property_label": {
+    "pt-BR": "Propriedade do cadastro",
+    "en-US": "Registration property",
+    "es-ES": "Propiedad del registro",
+    "fr-FR": "Propri\u00e9t\u00e9 de l'enregistrement"
+  },
+  "platform.rev_always_required": {
+    "pt-BR": "Sempre, se estiver marcado como obrigat\u00f3rio",
+    "en-US": "Always, if marked as required",
+    "es-ES": "Siempre, si est\u00e1 marcado como obligatorio",
+    "fr-FR": "Toujours, si coch\u00e9 comme obligatoire"
+  },
+  "platform.rev_field_when_label": {
+    "pt-BR": "Obrigat\u00f3rio quando o campo",
+    "en-US": "Required when the field",
+    "es-ES": "Obligatorio cuando el campo",
+    "fr-FR": "Obligatoire lorsque le champ"
+  },
+  "platform.rev_when_values_label": {
+    "pt-BR": "Valores que ativam a condi\u00e7\u00e3o",
+    "en-US": "Values that activate the condition",
+    "es-ES": "Valores que activan la condici\u00f3n",
+    "fr-FR": "Valeurs qui activent la condition"
+  },
+  "platform.rev_required_check": {
+    "pt-BR": "Campo Obrigat\u00f3rio",
+    "en-US": "Required Field",
+    "es-ES": "Campo obligatorio",
+    "fr-FR": "Champ obligatoire"
+  },
+  "platform.rev_add_field_btn": {
+    "pt-BR": "+ Incluir Campo",
+    "en-US": "+ Add Field",
+    "es-ES": "+ Incluir campo",
+    "fr-FR": "+ Ajouter le champ"
+  },
+  "platform.rev_fields_registered": {
+    "pt-BR": "Campos Cadastrados:",
+    "en-US": "Registered Fields:",
+    "es-ES": "Campos registrados:",
+    "fr-FR": "Champs enregistr\u00e9s :"
+  },
+  "platform.rev_content_h": {
+    "pt-BR": "Conte\u00fado Estruturado do Modelo",
+    "en-US": "Structured Content of the Model",
+    "es-ES": "Contenido estructurado del modelo",
+    "fr-FR": "Contenu structur\u00e9 du mod\u00e8le"
+  },
+  "platform.rev_content_help": {
+    "pt-BR": "Texto das cl\u00e1usulas da nova revis\u00e3o. Clique em um campo \u00e0 esquerda para inseri-lo no texto.",
+    "en-US": "Clause text of the new revision. Click a field on the left to insert it into the text.",
+    "es-ES": "Texto de las cl\u00e1usulas de la nueva revisi\u00f3n. Haga clic en un campo a la izquierda para insertarlo en el texto.",
+    "fr-FR": "Texte des clauses de la nouvelle r\u00e9vision. Cliquez sur un champ \u00e0 gauche pour l'ins\u00e9rer dans le texte."
+  },
+  "platform.rev_text_label": {
+    "pt-BR": "Texto Simples com Marcadores (ex: Use {{identificador_do_campo}} para vari\u00e1veis):",
+    "en-US": "Plain Text with Markers (e.g., use {{field_identifier}} for variables):",
+    "es-ES": "Texto simple con marcadores (ej.: use {{identificador_del_campo}} para variables):",
+    "fr-FR": "Texte simple avec marqueurs (ex. : utilisez {{identifiant_du_champ}} pour les variables) :"
+  },
+  "platform.rev_publish_confirm": {
+    "pt-BR": "Publicar a revis\u00e3o {0}? Documentos emitidos a partir de revis\u00f5es anteriores n\u00e3o s\u00e3o alterados.",
+    "en-US": "Publish revision {0}? Documents issued from earlier revisions are not changed.",
+    "es-ES": "\u00bfPublicar la revisi\u00f3n {0}? Los documentos emitidos a partir de revisiones anteriores no se alteran.",
+    "fr-FR": "Publier la r\u00e9vision {0} ? Les documents \u00e9mis \u00e0 partir de r\u00e9visions ant\u00e9rieures ne sont pas modifi\u00e9s."
+  },
+  "platform.rev_publish_btn": {
+    "pt-BR": "Publicar revis\u00e3o {0}",
+    "en-US": "Publish revision {0}",
+    "es-ES": "Publicar revisi\u00f3n {0}",
+    "fr-FR": "Publier la r\u00e9vision {0}"
+  },
+  "platform.rev_js_no_fields": {
+    "pt-BR": "Nenhum campo vari\u00e1vel configurado.",
+    "en-US": "No variable field configured.",
+    "es-ES": "Ning\u00fan campo variable configurado.",
+    "fr-FR": "Aucun champ variable configur\u00e9."
+  },
+  "platform.rev_js_origin_org": {
+    "pt-BR": "Organiza\u00e7\u00e3o",
+    "en-US": "Organization",
+    "es-ES": "Organizaci\u00f3n",
+    "fr-FR": "Organisation"
+  },
+  "platform.rev_js_origin_manual": {
+    "pt-BR": "Manual",
+    "en-US": "Manual",
+    "es-ES": "Manual",
+    "fr-FR": "Manuel"
+  },
+  "platform.rev_js_origin_contractor": {
+    "pt-BR": "Contratante",
+    "en-US": "Client",
+    "es-ES": "Contratante",
+    "fr-FR": "Mandant"
+  },
+  "platform.rev_js_cond": {
+    "pt-BR": "; obrigat\u00f3rio quando {0} = {1}",
+    "en-US": "; required when {0} = {1}",
+    "es-ES": "; obligatorio cuando {0} = {1}",
+    "fr-FR": "; obligatoire lorsque {0} = {1}"
+  },
+  "platform.rev_js_cond_join": {
+    "pt-BR": " ou ",
+    "en-US": " or ",
+    "es-ES": " o ",
+    "fr-FR": " ou "
+  },
+  "platform.rev_js_required": {
+    "pt-BR": "Obrigat\u00f3rio",
+    "en-US": "Required",
+    "es-ES": "Obligatorio",
+    "fr-FR": "Obligatoire"
+  },
+  "platform.rev_js_help_prefix": {
+    "pt-BR": " ajuda: ",
+    "en-US": " help: ",
+    "es-ES": " ayuda: ",
+    "fr-FR": " aide : "
+  },
+  "platform.rev_js_insert": {
+    "pt-BR": "Inserir",
+    "en-US": "Insert",
+    "es-ES": "Insertar",
+    "fr-FR": "Ins\u00e9rer"
+  },
+  "platform.rev_js_insert_title": {
+    "pt-BR": "Inserir no cursor do texto",
+    "en-US": "Insert at the text cursor",
+    "es-ES": "Insertar en el cursor del texto",
+    "fr-FR": "Ins\u00e9rer au curseur du texte"
+  },
+  "platform.rev_js_remove_title": {
+    "pt-BR": "Remover campo",
+    "en-US": "Remove field",
+    "es-ES": "Quitar campo",
+    "fr-FR": "Supprimer le champ"
+  },
+  "platform.rev_prop_fullname": {
+    "pt-BR": "Nome",
+    "en-US": "Name",
+    "es-ES": "Nombre",
+    "fr-FR": "Nom"
+  },
+  "platform.rev_prop_preferredname": {
+    "pt-BR": "Nome social",
+    "en-US": "Preferred name",
+    "es-ES": "Nombre social",
+    "fr-FR": "Pr\u00e9nom d'usage"
+  },
+  "platform.rev_prop_birthdate": {
+    "pt-BR": "Nascimento",
+    "en-US": "Date of birth",
+    "es-ES": "Fecha de nacimiento",
+    "fr-FR": "Date de naissance"
+  },
+  "platform.rev_prop_identifier": {
+    "pt-BR": "Documento",
+    "en-US": "Document",
+    "es-ES": "Documento",
+    "fr-FR": "Document"
+  },
+  "platform.rev_prop_identifiertype": {
+    "pt-BR": "Tipo de documento",
+    "en-US": "Document type",
+    "es-ES": "Tipo de documento",
+    "fr-FR": "Type de document"
+  },
+  "platform.rev_prop_email": {
+    "pt-BR": "E-mail",
+    "en-US": "E-mail",
+    "es-ES": "Correo electr\u00f3nico",
+    "fr-FR": "Courriel"
+  },
+  "platform.rev_prop_phone": {
+    "pt-BR": "Telefone",
+    "en-US": "Phone",
+    "es-ES": "Tel\u00e9fono",
+    "fr-FR": "T\u00e9l\u00e9phone"
+  },
+  "platform.rev_prop_address": {
+    "pt-BR": "Endere\u00e7o",
+    "en-US": "Address",
+    "es-ES": "Direcci\u00f3n",
+    "fr-FR": "Adresse"
+  },
+  "platform.rev_prop_relationship": {
+    "pt-BR": "Rela\u00e7\u00e3o",
+    "en-US": "Relationship",
+    "es-ES": "Relaci\u00f3n",
+    "fr-FR": "Relation"
+  },
+  "platform.rev_js_manual_nomap": {
+    "pt-BR": "Entrada manual, sem cadastro",
+    "en-US": "Manual entry, no registration",
+    "es-ES": "Entrada manual, sin registro",
+    "fr-FR": "Saisie manuelle, sans enregistrement"
+  },
+  "platform.rev_js_select_property": {
+    "pt-BR": "Selecione a propriedade",
+    "en-US": "Select the property",
+    "es-ES": "Seleccione la propiedad",
+    "fr-FR": "S\u00e9lectionnez la propri\u00e9t\u00e9"
+  },
+  "platform.rev_js_err_id": {
+    "pt-BR": "Informe o identificador ou r\u00f3tulo do campo.",
+    "en-US": "Provide the field identifier or label.",
+    "es-ES": "Informe el identificador o la etiqueta del campo.",
+    "fr-FR": "Fournissez l'identifiant ou le libell\u00e9 du champ."
+  },
+  "platform.rev_js_err_dup_id": {
+    "pt-BR": "J\u00e1 existe um campo com este identificador.",
+    "en-US": "A field with this identifier already exists.",
+    "es-ES": "Ya existe un campo con este identificador.",
+    "fr-FR": "Un champ avec cet identifiant existe d\u00e9j\u00e0."
+  },
+  "platform.rev_js_err_no_property": {
+    "pt-BR": "Selecione a propriedade do cadastro.",
+    "en-US": "Select the registration property.",
+    "es-ES": "Seleccione la propiedad del registro.",
+    "fr-FR": "S\u00e9lectionnez la propri\u00e9t\u00e9 de l'enregistrement."
+  },
+  "platform.rev_js_err_self_condition": {
+    "pt-BR": "Um campo n\u00e3o pode condicionar a si mesmo.",
+    "en-US": "A field cannot depend on itself.",
+    "es-ES": "Un campo no puede depender de s\u00ed mismo.",
+    "fr-FR": "Un champ ne peut pas d\u00e9pendre de lui-m\u00eame."
+  },
+  "platform.rev_js_err_no_when_values": {
+    "pt-BR": "Informe ao menos um valor que torna o campo obrigat\u00f3rio.",
+    "en-US": "Provide at least one value that makes the field required.",
+    "es-ES": "Proporcione al menos un valor que haga el campo obligatorio.",
+    "fr-FR": "Fournissez au moins une valeur qui rend le champ obligatoire."
+  },
+  "platform.rev_js_banner_title": {
+    "pt-BR": "Editor limitado:",
+    "en-US": "Limited editor:",
+    "es-ES": "Editor limitado:",
+    "fr-FR": "\u00c9diteur limit\u00e9 :"
+  },
+  "platform.rev_js_banner_a": {
+    "pt-BR": " este modelo usa recursos que o texto simples n\u00e3o preserva:",
+    "en-US": " this template uses features that plain text does not preserve:",
+    "es-ES": " esta plantilla usa recursos que el texto simple no preserva:",
+    "fr-FR": " ce mod\u00e8le utilise des fonctionnalit\u00e9s que le texte simple ne pr\u00e9serve pas :"
+  },
+  "platform.rev_js_banner_b": {
+    "pt-BR": " Sem altera\u00e7\u00e3o no texto, o original \u00e9 mantido na nova revis\u00e3o.",
+    "en-US": " Without any text change, the original is kept in the new revision.",
+    "es-ES": " Sin alteraci\u00f3n en el texto, o original se mantiene en la nueva revisi\u00f3n.",
+    "fr-FR": " Sans modification du texte, l'original est conserv\u00e9 dans la nouvelle r\u00e9vision."
+  },
+  "platform.rev_js_blocked": {
+    "pt-BR": "A altera\u00e7\u00e3o n\u00e3o foi aplicada. O editor n\u00e3o preserva esta estrutura; a publica\u00e7\u00e3o foi bloqueada para n\u00e3o converter o modelo.",
+    "en-US": "The change was not applied. The editor does not preserve this structure; publishing was blocked to avoid converting the model.",
+    "es-ES": "El cambio no se aplic\u00f3. El editor no preserva esta estructura; la publicaci\u00f3n se bloque\u00f3 para no convertir el modelo.",
+    "fr-FR": "La modification n'a pas \u00e9t\u00e9 appliqu\u00e9e. L'\u00e9diteur ne pr\u00e9serve pas cette structure ; la publication a \u00e9t\u00e9 bloqu\u00e9e pour \u00e9viter de convertir le mod\u00e8le."
+  },
+  "platform.audit_title": {
+    "pt-BR": "Auditoria da plataforma",
+    "en-US": "Platform audit",
+    "es-ES": "Auditor\u00eda de la plataforma",
+    "fr-FR": "Audit de la plateforme"
+  },
+  "platform.audit_intro": {
+    "pt-BR": "Eventos importantes registrados pela plataforma, com filtros, pagina\u00e7\u00e3o e metadados preservados. Esta leitura n\u00e3o altera nada.",
+    "en-US": "Important events recorded by the platform, with filters, pagination, and preserved metadata. This view changes nothing.",
+    "es-ES": "Eventos importantes registrados por la plataforma, con filtros, paginaci\u00f3n y metadatos preservados. Esta lectura no altera nada.",
+    "fr-FR": "\u00c9v\u00e9nements importants enregistr\u00e9s par la plateforme, avec filtres, pagination et m\u00e9tadonn\u00e9es pr\u00e9serv\u00e9es. Cette lecture ne modifie rien."
+  },
+  "platform.audit_search_ph": {
+    "pt-BR": "A\u00e7\u00e3o, entidade ou nome (ex.: identity.login.succeeded)",
+    "en-US": "Action, entity, or name (e.g., identity.login.succeeded)",
+    "es-ES": "Acci\u00f3n, entidad o nombre (ej.: identity.login.succeeded)",
+    "fr-FR": "Action, entit\u00e9 ou nom (ex. : identity.login.succeeded)"
+  },
+  "platform.audit_all_orgs": {
+    "pt-BR": "Todas as organiza\u00e7\u00f5es",
+    "en-US": "All organizations",
+    "es-ES": "Todas las organizaciones",
+    "fr-FR": "Toutes les organisations"
+  },
+  "platform.audit_per_page": {
+    "pt-BR": "Por p\u00e1gina",
+    "en-US": "Per page",
+    "es-ES": "Por p\u00e1gina",
+    "fr-FR": "Par page"
+  },
+  "platform.audit_tenants_error": {
+    "pt-BR": "N\u00e3o foi poss\u00edvel carregar a lista de organiza\u00e7\u00f5es para o filtro. A tabela abaixo reflete a consulta executada.",
+    "en-US": "Could not load the organization list for the filter. The table below reflects the executed query.",
+    "es-ES": "No fue posible cargar la lista de organizaciones para el filtro. La tabla siguiente refleja la consulta ejecutada.",
+    "fr-FR": "Impossible de charger la liste des organisations pour le filtre. Le tableau ci-dessous refl\u00e8te la requ\u00eate ex\u00e9cut\u00e9e."
+  },
+  "platform.audit_th_datetime": {
+    "pt-BR": "Data/hora",
+    "en-US": "Date/time",
+    "es-ES": "Fecha/hora",
+    "fr-FR": "Date/heure"
+  },
+  "platform.audit_r_success": {
+    "pt-BR": "Sucesso",
+    "en-US": "Success",
+    "es-ES": "\u00c9xito",
+    "fr-FR": "Succ\u00e8s"
+  },
+  "platform.audit_r_denied": {
+    "pt-BR": "Negado",
+    "en-US": "Denied",
+    "es-ES": "Denegado",
+    "fr-FR": "Refus\u00e9"
+  },
+  "platform.audit_r_failed": {
+    "pt-BR": "Falhou",
+    "en-US": "Failed",
+    "es-ES": "Fall\u00f3",
+    "fr-FR": "\u00c9chec"
+  },
+  "platform.audit_metadata": {
+    "pt-BR": "Metadados",
+    "en-US": "Metadata",
+    "es-ES": "Metadatos",
+    "fr-FR": "M\u00e9tadonn\u00e9es"
+  },
+  "platform.audit_empty_t": {
+    "pt-BR": "Nenhum evento encontrado",
+    "en-US": "No events found",
+    "es-ES": "Ning\u00fan evento encontrado",
+    "fr-FR": "Aucun \u00e9v\u00e9nement trouv\u00e9"
+  },
+  "platform.audit_empty_b": {
+    "pt-BR": "Ajuste a busca ou os filtros para ampliar a consulta.",
+    "en-US": "Adjust the search or filters to widen the query.",
+    "es-ES": "Ajuste la b\u00fasqueda o los filtros para ampliar la consulta.",
+    "fr-FR": "Ajustez la recherche ou les filtres pour \u00e9largir la requ\u00eate."
+  },
+  "platform.audit_showing": {
+    "pt-BR": "Mostrando {0}\u2013{1} de {2} eventos.",
+    "en-US": "Showing {0}\u2013{1} of {2} events.",
+    "es-ES": "Mostrando {0}\u2013{1} de {2} eventos.",
+    "fr-FR": "Affichage de {0} \u00e0 {1} sur {2} \u00e9v\u00e9nements."
+  },
+  "platform.audit_page": {
+    "pt-BR": "P\u00e1gina {0} de {1}",
+    "en-US": "Page {0} of {1}",
+    "es-ES": "P\u00e1gina {0} de {1}",
+    "fr-FR": "Page {0} sur {1}"
+  },
+  "platform.audit_help_body": {
+    "pt-BR": "A busca cobre a\u00e7\u00e3o, tipo de entidade, organiza\u00e7\u00e3o e usu\u00e1rio (sem diferenciar mai\u00fasculas). O resultado exibe o estado registrado no momento do evento; nenhum dado \u00e9 alterado por esta consulta.",
+    "en-US": "The search covers action, entity type, organization, and user (case-insensitive). Results show the state recorded at event time; no data is changed by this query.",
+    "es-ES": "La b\u00fasqueda cubre acci\u00f3n, tipo de entidad, organizaci\u00f3n y usuario (sin distinguir may\u00fasculas). El resultado muestra el estado registrado en el momento del evento; ning\u00fan dato es alterado por esta consulta.",
+    "fr-FR": "La recherche couvre l'action, le type d'entit\u00e9, l'organisation et l'utilisateur (sans distinction de casse). Le r\u00e9sultat affiche l'\u00e9tat enregistr\u00e9 au moment de l'\u00e9v\u00e9nement ; aucune donn\u00e9e n'est modifi\u00e9e par cette requ\u00eate."
+  },
+  "platform.diag_title": {
+    "pt-BR": "Diagn\u00f3stico de depend\u00eancias",
+    "en-US": "Dependency diagnostics",
+    "es-ES": "Diagn\u00f3stico de dependencias",
+    "fr-FR": "Diagnostic des d\u00e9pendances"
+  },
+  "platform.diag_dep_pdf_renderer": {
+    "pt-BR": "Renderizador PDF interno",
+    "en-US": "Internal PDF renderer",
+    "es-ES": "Renderizador PDF interno",
+    "fr-FR": "Moteur PDF interne"
+  },
+  "platform.diag_dep_pdf_text": {
+    "pt-BR": "Extra\u00e7\u00e3o de texto de PDF (pdftotext)",
+    "en-US": "PDF text extraction (pdftotext)",
+    "es-ES": "Extracci\u00f3n de texto de PDF (pdftotext)",
+    "fr-FR": "Extraction de texte PDF (pdftotext)"
+  },
+  "platform.diag_dep_pdf_render": {
+    "pt-BR": "Renderiza\u00e7\u00e3o de p\u00e1ginas (pdftoppm)",
+    "en-US": "Page rendering (pdftoppm)",
+    "es-ES": "Renderizaci\u00f3n de p\u00e1ginas (pdftoppm)",
+    "fr-FR": "Rendu des pages (pdftoppm)"
+  },
+  "platform.diag_dep_ocr": {
+    "pt-BR": "OCR de p\u00e1ginas escaneadas (tesseract)",
+    "en-US": "OCR of scanned pages (tesseract)",
+    "es-ES": "OCR de p\u00e1ginas escaneadas (tesseract)",
+    "fr-FR": "OCR des pages scann\u00e9es (tesseract)"
+  },
+  "platform.diag_dep_pdf_info": {
+    "pt-BR": "Metadados de PDF (pdfinfo)",
+    "en-US": "PDF metadata (pdfinfo)",
+    "es-ES": "Metadatos de PDF (pdfinfo)",
+    "fr-FR": "M\u00e9tadonn\u00e9es PDF (pdfinfo)"
+  },
+  "platform.diag_dep_malware": {
+    "pt-BR": "Scanner de malware (clamscan)",
+    "en-US": "Malware scanner (clamscan)",
+    "es-ES": "Esc\u00e1ner de malware (clamscan)",
+    "fr-FR": "Scanneur de malwares (clamscan)"
+  },
+  "platform.diag_dep_notif": {
+    "pt-BR": "Transporte de notifica\u00e7\u00f5es (FilePickup/SMTP)",
+    "en-US": "Notification transport (FilePickup/SMTP)",
+    "es-ES": "Transporte de notificaciones (FilePickup/SMTP)",
+    "fr-FR": "Transport de notifications (FilePickup/SMTP)"
+  },
+  "platform.diag_dep_signatures": {
+    "pt-BR": "Envelope de assinatura externa",
+    "en-US": "External signature envelope",
+    "es-ES": "Sobre de firma externa",
+    "fr-FR": "Enveloppe de signature externe"
+  },
+  "platform.diag_st_verified": {
+    "pt-BR": "Comprovado",
+    "en-US": "Verified",
+    "es-ES": "Comprobado",
+    "fr-FR": "Prouv\u00e9"
+  },
+  "platform.diag_st_accessible": {
+    "pt-BR": "Acess\u00edvel",
+    "en-US": "Accessible",
+    "es-ES": "Accesible",
+    "fr-FR": "Accessible"
+  },
+  "platform.diag_st_configured": {
+    "pt-BR": "Configurado",
+    "en-US": "Configured",
+    "es-ES": "Configurado",
+    "fr-FR": "Configur\u00e9"
+  },
+  "platform.diag_st_unavailable": {
+    "pt-BR": "Indispon\u00edvel",
+    "en-US": "Unavailable",
+    "es-ES": "No disponible",
+    "fr-FR": "Indisponible"
+  },
+  "platform.diag_intro": {
+    "pt-BR": "Estado real das depend\u00eancias externas e das filas da plataforma, com corrente honesta: configurado \u2260 acess\u00edvel \u2260 comprovado. Nenhum valor configurado sens\u00edvel \u00e9 exibido \u2014 apenas presen\u00e7a e resultado da sonda.",
+    "en-US": "Actual state of external dependencies and platform queues, with an honest chain: configured \u2260 accessible \u2260 verified. No sensitive configured value is displayed \u2014 only presence and probe result.",
+    "es-ES": "Estado real de las dependencias externas y de las filas de la plataforma, con cadena honesta: configurado \u2260 accesible \u2260 comprobado. Ning\u00fan valor sensible configurado se muestra \u2014 solo presencia y resultado de la sonda.",
+    "fr-FR": "\u00c9tat r\u00e9el des d\u00e9pendances externes et des files de la plateforme, avec cha\u00eene honn\u00eate : configur\u00e9 \u2260 accessible \u2260 prouv\u00e9. Aucune valeur sensible configur\u00e9e n'est affich\u00e9e \u2014 uniquement pr\u00e9sence et r\u00e9sultat de la sonde."
+  },
+  "platform.diag_back": {
+    "pt-BR": "\u2190 Voltar",
+    "en-US": "\u2190 Back",
+    "es-ES": "\u2190 Volver",
+    "fr-FR": "\u2190 Retour"
+  },
+  "platform.diag_th_dependency": {
+    "pt-BR": "Depend\u00eancia",
+    "en-US": "Dependency",
+    "es-ES": "Dependencia",
+    "fr-FR": "D\u00e9pendance"
+  },
+  "platform.diag_th_config": {
+    "pt-BR": "Configura\u00e7\u00e3o",
+    "en-US": "Configuration",
+    "es-ES": "Configuraci\u00f3n",
+    "fr-FR": "Configuration"
+  },
+  "platform.diag_th_probe": {
+    "pt-BR": "Detalhe da sonda",
+    "en-US": "Probe detail",
+    "es-ES": "Detalle de la sonda",
+    "fr-FR": "D\u00e9tail de la sonde"
+  },
+  "platform.diag_queues_h": {
+    "pt-BR": "Filas da plataforma",
+    "en-US": "Platform queues",
+    "es-ES": "Filas de la plataforma",
+    "fr-FR": "Files de la plateforme"
+  },
+  "platform.diag_queues_intro": {
+    "pt-BR": "Contagens atuais por fila de trabalho (escaneamento, extra\u00e7\u00e3o e notifica\u00e7\u00f5es), considerando apenas tenants ativos. Itens parados ou falhos ficam vis\u00edveis aqui para triagem.",
+    "en-US": "Current counts per work queue (scanning, extraction, and notifications), considering only active tenants. Stalled or failed items remain visible here for triage.",
+    "es-ES": "Conteos actuales por cola de trabajo (escaneo, extracci\u00f3n y notificaciones), considerando solo tenants activos. Los elementos parados o fallidos quedan visibles aqu\u00ed para triaje.",
+    "fr-FR": "Comptages actuels par file de travail (num\u00e9risation, extraction et notifications), tenant compte uniquement des locataires actifs. Les \u00e9l\u00e9ments bloqu\u00e9s ou en \u00e9chec restent visibles ici pour le triage."
+  },
+  "platform.diag_q_queue": {
+    "pt-BR": "Fila",
+    "en-US": "Queue",
+    "es-ES": "Cola",
+    "fr-FR": "File"
+  },
+  "platform.diag_q_pending": {
+    "pt-BR": "Pendentes",
+    "en-US": "Pending",
+    "es-ES": "Pendientes",
+    "fr-FR": "En attente"
+  },
+  "platform.diag_q_stalled": {
+    "pt-BR": "Paradas",
+    "en-US": "Stalled",
+    "es-ES": "Paradas",
+    "fr-FR": "Bloqu\u00e9es"
+  },
+  "platform.diag_q_failed": {
+    "pt-BR": "Falhas",
+    "en-US": "Failures",
+    "es-ES": "Fallos",
+    "fr-FR": "\u00c9checs"
+  },
+  "platform.diag_q_oldest": {
+    "pt-BR": "Mais antigo pendente",
+    "en-US": "Oldest pending",
+    "es-ES": "M\u00e1s antiguo pendiente",
+    "fr-FR": "Plus ancien en attente"
+  },
+  "platform.sla_h1": {
+    "pt-BR": "Pol\u00edticas de SLA vigentes",
+    "en-US": "Active SLA policies",
+    "es-ES": "Pol\u00edticas de SLA vigentes",
+    "fr-FR": "Politiques SLA en vigueur"
+  },
+  "platform.sla_intro": {
+    "pt-BR": "Prazos de primeira resposta e de resolu\u00e7\u00e3o por plano, servi\u00e7o e prioridade, calculados em dias \u00fateis dentro da janela comercial indicada (fuso America/Sao_Paulo). Valores atuais do cat\u00e1logo operacional da plataforma.",
+    "en-US": "First response and resolution deadlines by plan, service, and priority, calculated in business days within the stated business window (America/Sao_Paulo time zone). Current values from the platform operations catalog.",
+    "es-ES": "Plazos de primera respuesta y de resoluci\u00f3n por plan, servicio y prioridad, calculados en d\u00edas h\u00e1biles dentro de la ventana comercial indicada (zona horaria America/Sao_Paulo). Valores actuales del cat\u00e1logo operativo de la plataforma.",
+    "fr-FR": "D\u00e9lais de premi\u00e8re r\u00e9ponse et de r\u00e9solution par plan, service et priorit\u00e9, calcul\u00e9s en jours ouvr\u00e9s dans la fen\u00eatre commerciale indiqu\u00e9e (fuseau America/Sao_Paulo). Valeurs actuelles du catalogue op\u00e9rationnel de la plateforme."
+  },
+  "platform.sla_svc_revisao": {
+    "pt-BR": "Revis\u00e3o (documental)",
+    "en-US": "Review (documentary)",
+    "es-ES": "Revisi\u00f3n (documental)",
+    "fr-FR": "Revue (documentaire)"
+  },
+  "platform.sla_svc_adaptacao": {
+    "pt-BR": "Adapta\u00e7\u00e3o (documental)",
+    "en-US": "Adaptation (documentary)",
+    "es-ES": "Adaptaci\u00f3n (documental)",
+    "fr-FR": "Adaptation (documentaire)"
+  },
+  "platform.sla_svc_esclarecimento": {
+    "pt-BR": "Esclarecimento (documental)",
+    "en-US": "Clarification (documentary)",
+    "es-ES": "Esclarecimiento (documental)",
+    "fr-FR": "Pr\u00e9cision (documentaire)"
+  },
+  "platform.sla_svc_suporte": {
+    "pt-BR": "Suporte t\u00e9cnico e recupera\u00e7\u00e3o de acesso",
+    "en-US": "Technical support and access recovery",
+    "es-ES": "Soporte t\u00e9cnico y recuperaci\u00f3n de acceso",
+    "fr-FR": "Support technique et r\u00e9cup\u00e9ration d'acc\u00e8s"
+  },
+  "platform.sla_th_plan": {
+    "pt-BR": "Plano",
+    "en-US": "Plan",
+    "es-ES": "Plan",
+    "fr-FR": "Plan"
+  },
+  "platform.sla_th_service": {
+    "pt-BR": "Servi\u00e7o",
+    "en-US": "Service",
+    "es-ES": "Servicio",
+    "fr-FR": "Service"
+  },
+  "platform.sla_th_priority": {
+    "pt-BR": "Prioridade",
+    "en-US": "Priority",
+    "es-ES": "Prioridad",
+    "fr-FR": "Priorit\u00e9"
+  },
+  "platform.sla_th_first": {
+    "pt-BR": "Primeira resposta",
+    "en-US": "First response",
+    "es-ES": "Primera respuesta",
+    "fr-FR": "Premi\u00e8re r\u00e9ponse"
+  },
+  "platform.sla_th_resolution": {
+    "pt-BR": "Resolu\u00e7\u00e3o",
+    "en-US": "Resolution",
+    "es-ES": "Resoluci\u00f3n",
+    "fr-FR": "R\u00e9solution"
+  },
+  "platform.sla_th_window": {
+    "pt-BR": "Janela comercial",
+    "en-US": "Business window",
+    "es-ES": "Ventana comercial",
+    "fr-FR": "Fen\u00eatre commerciale"
+  },
+  "platform.sla_th_calendar": {
+    "pt-BR": "Calend\u00e1rio",
+    "en-US": "Calendar",
+    "es-ES": "Calendario",
+    "fr-FR": "Calendrier"
+  },
+  "platform.sla_calendar_continuous": {
+    "pt-BR": "Cont\u00ednuo",
+    "en-US": "Continuous",
+    "es-ES": "Continuo",
+    "fr-FR": "Continu"
+  },
+  "platform.sla_st_active": {
+    "pt-BR": "Vigente",
+    "en-US": "Active",
+    "es-ES": "Vigente",
+    "fr-FR": "En vigueur"
+  },
+  "platform.sla_st_disabled": {
+    "pt-BR": "Desativada",
+    "en-US": "Disabled",
+    "es-ES": "Desactivada",
+    "fr-FR": "D\u00e9sactiv\u00e9e"
+  },
+  "platform.sla_help_title": {
+    "pt-BR": "Como ler esta matriz",
+    "en-US": "How to read this matrix",
+    "es-ES": "C\u00f3mo leer esta matriz",
+    "fr-FR": "Comment lire cette matrice"
+  },
+  "platform.sla_help_body": {
+    "pt-BR": "Os servi\u00e7os documentais (revis\u00e3o, adapta\u00e7\u00e3o e esclarecimento) s\u00e3o operados pela equipe ODCA apenas para o plano Enterprise, conforme o escopo contratual. Suporte t\u00e9cnico e recupera\u00e7\u00e3o de acesso est\u00e3o abertos a todos os planos vigentes e usam a linha correspondente ao plano da organiza\u00e7\u00e3o. Alterar estes valores \u00e9 uma decis\u00e3o de pol\u00edtica da plataforma e ainda n\u00e3o \u00e9 exposta para edi\u00e7\u00e3o nesta opera\u00e7\u00e3o.",
+    "en-US": "Documentary services (review, adaptation, and clarification) are operated by the ODCA team only for the Enterprise plan, as per the contractual scope. Technical support and access recovery are open to all active plans and use the row matching the organization's plan. Changing these values is a platform policy decision and is not yet exposed for editing in this operation.",
+    "es-ES": "Los servicios documentales (revisi\u00f3n, adaptaci\u00f3n y esclarecimiento) son operados por el equipo ODCA \u00fanicamente para el plan Enterprise, conforme al alcance contractual. El soporte t\u00e9cnico y la recuperaci\u00f3n de acceso est\u00e1n abiertos a todos los planes vigentes y usan la l\u00ednea correspondiente al plan de la organizaci\u00f3n. Cambiar estos valores es una decisi\u00f3n de pol\u00edtica de la plataforma y a\u00fan no est\u00e1 expuesta para edici\u00f3n en esta operaci\u00f3n.",
+    "fr-FR": "Les services documentaires (revue, adaptation et pr\u00e9cision) sont op\u00e9r\u00e9s par l'\u00e9quipe ODCA uniquement pour le plan Enterprise, conform\u00e9ment au p\u00e9rim\u00e8tre contractuel. Le support technique et la r\u00e9cup\u00e9ration d'acc\u00e8s sont ouverts \u00e0 tous les plans actifs et utilisent la ligne correspondant au plan de l'organisation. Modifier ces valeurs est une d\u00e9cision de politique de la plateforme et n'est pas encore expos\u00e9e \u00e0 l'\u00e9dition dans cette op\u00e9ration."
+  },
+  "module.eyebrow_platform": {
+    "pt-BR": "Administra\u00e7\u00e3o da plataforma",
+    "en-US": "Platform administration",
+    "es-ES": "Administraci\u00f3n de la plataforma",
+    "fr-FR": "Administration de la plateforme"
+  },
+  "module.eyebrow_tenant": {
+    "pt-BR": "\u00c1rea da empresa",
+    "en-US": "Company area",
+    "es-ES": "\u00c1rea de la empresa",
+    "fr-FR": "Espace de l'entreprise"
+  },
+  "module.st_available": {
+    "pt-BR": "Tela dispon\u00edvel",
+    "en-US": "Screen available",
+    "es-ES": "Pantalla disponible",
+    "fr-FR": "\u00c9cran disponible"
+  },
+  "module.ok_h": {
+    "pt-BR": "Este m\u00f3dulo j\u00e1 est\u00e1 operando",
+    "en-US": "This module is already operating",
+    "es-ES": "Este m\u00f3dulo ya est\u00e1 operando",
+    "fr-FR": "Ce module est d\u00e9j\u00e0 op\u00e9rationnel"
+  },
+  "module.ok_p": {
+    "pt-BR": "O m\u00f3dulo indicado est\u00e1 dispon\u00edvel para uso no fluxo principal, sem alterar dados enquanto voc\u00ea apenas consulta.",
+    "en-US": "The indicated module is available for use in the main flow without changing data while you are only browsing.",
+    "es-ES": "El m\u00f3dulo indicado est\u00e1 disponible para uso en el flujo principal, sin alterar datos mientras usted solo consulta.",
+    "fr-FR": "Le module indiqu\u00e9 est disponible dans le flux principal, sans modifier de donn\u00e9es pendant que vous consultez uniquement."
+  },
+  "module.st_construction": {
+    "pt-BR": "Em constru\u00e7\u00e3o controlada",
+    "en-US": "Under controlled construction",
+    "es-ES": "En construcci\u00f3n controlada",
+    "fr-FR": "En construction contr\u00f4l\u00e9e"
+  },
+  "module.pending_h": {
+    "pt-BR": "Esta \u00e1rea ainda n\u00e3o executa altera\u00e7\u00f5es",
+    "en-US": "This area does not perform changes yet",
+    "es-ES": "Esta \u00e1rea a\u00fan no ejecuta cambios",
+    "fr-FR": "Cette zone n'ex\u00e9cute pas encore de modifications"
+  },
+  "module.pending_p": {
+    "pt-BR": "Estamos preparando este m\u00f3dulo sem criar integra\u00e7\u00f5es provis\u00f3rias ou expor dados fora do seu perfil. As funcionalidades j\u00e1 prontas permanecem acess\u00edveis pelo menu.",
+    "en-US": "We are preparing this module without creating provisional integrations or exposing data outside your profile. Features already ready remain accessible from the menu.",
+    "es-ES": "Estamos preparando este m\u00f3dulo sin crear integraciones provisionales ni exponer datos fuera de su perfil. Las funcionalidades ya listas siguen accesibles desde el men\u00fa.",
+    "fr-FR": "Nous pr\u00e9parons ce module sans cr\u00e9er d'int\u00e9grations provisoires ni exposer des donn\u00e9es hors de votre profil. Les fonctionnalit\u00e9s d\u00e9j\u00e0 pr\u00eates restent accessibles depuis le menu."
+  },
+  "module.next_h": {
+    "pt-BR": "Como usar agora",
+    "en-US": "How to use it now",
+    "es-ES": "C\u00f3mo usarlo ahora",
+    "fr-FR": "Comment l'utiliser maintenant"
+  },
+  "module.menu_hint": {
+    "pt-BR": "Se uma op\u00e7\u00e3o esperada n\u00e3o aparecer no menu, confirme seu perfil com o administrador da empresa.",
+    "en-US": "If an expected option does not appear in the menu, confirm your profile with the company administrator.",
+    "es-ES": "Si una opci\u00f3n esperada no aparece en el men\u00fa, confirme su perfil con el administrador de la empresa.",
+    "fr-FR": "Si une option attendue n'appara\u00eet pas dans le menu, confirmez votre profil aupr\u00e8s de l'administrateur de l'entreprise."
+  },
+  "module.tenant_contracts_desc": {
+    "pt-BR": "A vis\u00e3o consolidada de contratos j\u00e1 est\u00e1 dispon\u00edvel em Meus contratos, com estados de ativo, arquivado e encerrado.",
+    "en-US": "The consolidated contracts view is already available in My Contracts, with active, archived, and closed states.",
+    "es-ES": "La vista consolidada de contratos ya est\u00e1 disponible en Mis contratos, con estados de activo, archivado y cerrado.",
+    "fr-FR": "La vue consolid\u00e9e des contrats est d\u00e9j\u00e0 disponible dans Mes contrats, avec les \u00e9tats actif, archiv\u00e9 et clos."
+  },
+  "module.tenant_contracts_next": {
+    "pt-BR": "Use o menu Contratos \u2192 Meus contratos para ver todos os contratos da organiza\u00e7\u00e3o e abrir cada ficha detalhada.",
+    "en-US": "Use the Contracts \u2192 My Contracts menu to see all of the organization's contracts and open each detailed record.",
+    "es-ES": "Use el men\u00fa Contratos \u2192 Mis contratos para ver todos los contratos de la organizaci\u00f3n y abrir cada ficha detallada.",
+    "fr-FR": "Utilisez le menu Contrats \u2192 Mes contrats pour voir tous les contrats de l'organisation et ouvrir chaque fiche d\u00e9taill\u00e9e."
+  },
+  "module.tenant_documents_title": {
+    "pt-BR": "Documentos",
+    "en-US": "Documents",
+    "es-ES": "Documentos",
+    "fr-FR": "Documents"
+  },
+  "module.tenant_documents_desc": {
+    "pt-BR": "A biblioteca consolidada de documentos est\u00e1 em evolu\u00e7\u00e3o. A importa\u00e7\u00e3o de arquivos externos estar\u00e1 dispon\u00edvel em uma pr\u00f3xima vers\u00e3o.",
+    "en-US": "The consolidated document library is evolving. Import of external files will be available in a future version.",
+    "es-ES": "La biblioteca consolidada de documentos est\u00e1 en evoluci\u00f3n. La importaci\u00f3n de archivos externos estar\u00e1 disponible en una pr\u00f3xima versi\u00f3n.",
+    "fr-FR": "La biblioth\u00e8que consolid\u00e9e de documents est en \u00e9volution. L'importation de fichiers externes sera disponible dans une future version."
+  },
+  "module.tenant_documents_next": {
+    "pt-BR": "Enquanto a Central de Importa\u00e7\u00f5es n\u00e3o for liberada, use o est\u00fadio de modelos para gerar novas minutas; os documentos existentes continuam consult\u00e1veis.",
+    "en-US": "Until the Import Center is released, use the template studio to generate new drafts; existing documents remain browsable.",
+    "es-ES": "Mientras el Centro de Importaciones no sea liberado, use el estudio de plantillas para generar nuevos borradores; los documentos existentes siguen consultables.",
+    "fr-FR": "Tant que le Centre d'importations n'est pas disponible, utilisez le studio de mod\u00e8les pour g\u00e9n\u00e9rer de nouveaux brouillons ; les documents existants restent consultables."
+  },
+  "module.tenant_help_desc": {
+    "pt-BR": "Encontre rapidamente o caminho para as rotinas dispon\u00edveis nesta vers\u00e3o.",
+    "en-US": "Quickly find your way to the routines available in this version.",
+    "es-ES": "Encuentre r\u00e1pidamente el camino a las rutinas disponibles en esta versi\u00f3n.",
+    "fr-FR": "Trouvez rapidement le chemin vers les routines disponibles dans cette version."
+  },
+  "module.tenant_help_next": {
+    "pt-BR": "Comece pela tela inicial, acompanhe pend\u00eancias na Caixa e consulte prazos em Obriga\u00e7\u00f5es e Renova\u00e7\u00f5es.",
+    "en-US": "Start at the home screen, follow pending items in the Inbox, and check deadlines under Obligations and Renewals.",
+    "es-ES": "Comience por la pantalla inicial, acompa\u00f1e pendientes en la Caja y consulte plazos en Obligaciones y Renovaciones.",
+    "fr-FR": "Commencez par l'\u00e9cran d'accueil, suivez les \u00e9l\u00e9ments en attente dans la Bo\u00eete et consultez les \u00e9ch\u00e9ances dans Obligations et Renouvellements."
+  },
+  "module.platform_users_desc": {
+    "pt-BR": "A administra\u00e7\u00e3o centralizada de identidades est\u00e1 em constru\u00e7\u00e3o controlada.",
+    "en-US": "Centralized identity administration is under controlled construction.",
+    "es-ES": "La administraci\u00f3n centralizada de identidades est\u00e1 en construcci\u00f3n controlada.",
+    "fr-FR": "L'administration centralis\u00e9e des identit\u00e9s est en construction contr\u00f4l\u00e9e."
+  },
+  "module.platform_users_next": {
+    "pt-BR": "Gerencie os usu\u00e1rios de cada empresa pela \u00e1rea Equipe e permiss\u00f5es at\u00e9 a vis\u00e3o global ser liberada.",
+    "en-US": "Manage each company's users via the Team and permissions area until the global view is released.",
+    "es-ES": "Gestione los usuarios de cada empresa mediante el \u00e1rea Equipo y permisos hasta que la vista global sea liberada.",
+    "fr-FR": "G\u00e9rez les utilisateurs de chaque entreprise via l'espace \u00c9quipe et permissions jusqu'\u00e0 la lib\u00e9ration de la vue globale."
+  },
+  "module.platform_profiles_title": {
+    "pt-BR": "Perfis e permiss\u00f5es",
+    "en-US": "Profiles and permissions",
+    "es-ES": "Perfiles y permisos",
+    "fr-FR": "Profils et permissions"
+  },
+  "module.platform_profiles_desc": {
+    "pt-BR": "A gest\u00e3o de perfis por empresa j\u00e1 existe; a vis\u00e3o global ser\u00e1 disponibilizada em uma pr\u00f3xima evolu\u00e7\u00e3o.",
+    "en-US": "Per-company profile management already exists; the global view will be made available in a later evolution.",
+    "es-ES": "La gesti\u00f3n de perfiles por empresa ya existe; la vista global ser\u00e1 disponibilizada en una pr\u00f3xima evoluci\u00f3n.",
+    "fr-FR": "La gestion des profils par entreprise existe d\u00e9j\u00e0 ; la vue globale sera disponible dans une \u00e9volution ult\u00e9rieure."
+  },
+  "module.platform_profiles_next": {
+    "pt-BR": "Selecione uma empresa e use Equipe e permiss\u00f5es para administrar acessos com seguran\u00e7a.",
+    "en-US": "Select a company and use Team and permissions to manage access securely.",
+    "es-ES": "Seleccione una empresa y use Equipo y permisos para administrar los accesos con seguridad.",
+    "fr-FR": "S\u00e9lectionnez une entreprise et utilisez \u00c9quipe et permissions pour g\u00e9rer les acc\u00e8s en toute s\u00e9curit\u00e9."
+  },
+  "module.platform_signatures_desc": {
+    "pt-BR": "A estrutura de planos e assinaturas est\u00e1 ativa, e esta vis\u00e3o operacional est\u00e1 em constru\u00e7\u00e3o.",
+    "en-US": "The plans and subscriptions structure is active, and this operational view is under construction.",
+    "es-ES": "La estructura de planes y suscripciones est\u00e1 activa, y esta vista operativa est\u00e1 en construcci\u00f3n.",
+    "fr-FR": "La structure des plans et abonnements est active, et cette vue op\u00e9rationnelle est en construction."
+  },
+  "module.platform_signatures_next": {
+    "pt-BR": "Consulte Planos e m\u00f3dulos e Usu\u00e1rios e acessos para acompanhar a configura\u00e7\u00e3o atual.",
+    "en-US": "Check Plans and modules and Users and access to follow the current configuration.",
+    "es-ES": "Consulte Planos y m\u00f3dulos y Usuarios y accesos para seguir la configuraci\u00f3n actual.",
+    "fr-FR": "Consultez Plans et modules et Utilisateurs et acc\u00e8s pour suivre la configuration actuelle."
+  },
+  "module.platform_library_desc": {
+    "pt-BR": "A biblioteca central de modelos da plataforma est\u00e1 em constru\u00e7\u00e3o controlada.",
+    "en-US": "The platform's central template library is under controlled construction.",
+    "es-ES": "La biblioteca central de plantillas de la plataforma est\u00e1 en construcci\u00f3n controlada.",
+    "fr-FR": "La biblioth\u00e8que centrale de mod\u00e8les de la plateforme est en construction contr\u00f4l\u00e9e."
+  },
+  "module.platform_library_next": {
+    "pt-BR": "Os modelos publicados por empresa continuam dispon\u00edveis no est\u00fadio de cada organiza\u00e7\u00e3o.",
+    "en-US": "Templates published by company remain available in each organization's studio.",
+    "es-ES": "Las plantillas publicadas por empresa siguen disponibles en el estudio de cada organizaci\u00f3n.",
+    "fr-FR": "Les mod\u00e8les publi\u00e9s par entreprise restent disponibles dans le studio de chaque organisation."
+  },
+  "module.platform_publish_title": {
+    "pt-BR": "Publica\u00e7\u00e3o e vers\u00f5es",
+    "en-US": "Publishing and versions",
+    "es-ES": "Publicaci\u00f3n y versiones",
+    "fr-FR": "Publication et versions"
+  },
+  "module.platform_publish_desc": {
+    "pt-BR": "O painel global de publica\u00e7\u00e3o e vers\u00f5es de modelos est\u00e1 em constru\u00e7\u00e3o controlada.",
+    "en-US": "The global publishing and versions dashboard for templates is under controlled construction.",
+    "es-ES": "El panel global de publicaci\u00f3n y versiones de plantillas est\u00e1 en construcci\u00f3n controlada.",
+    "fr-FR": "Le tableau de bord global de publication et de versions de mod\u00e8les est en construction contr\u00f4l\u00e9e."
+  },
+  "module.platform_publish_next": {
+    "pt-BR": "Acompanhe as revis\u00f5es publicadas diretamente no est\u00fadio de cada organiza\u00e7\u00e3o at\u00e9 o painel global ser liberado.",
+    "en-US": "Follow published revisions directly in each organization's studio until the global dashboard is released.",
+    "es-ES": "Siga las revisiones publicadas directamente en el estudio de cada organizaci\u00f3n hasta que el panel global sea liberado.",
+    "fr-FR": "Suivez les r\u00e9visions publi\u00e9es directement dans le studio de chaque organisation jusqu'\u00e0 la lib\u00e9ration du tableau de bord global."
+  },
+  "module.platform_sola_title": {
+    "pt-BR": "Solicita\u00e7\u00f5es Enterprise e SLA",
+    "en-US": "Enterprise requests and SLA",
+    "es-ES": "Solicitudes Enterprise y SLA",
+    "fr-FR": "Demandes Enterprise et SLA"
+  },
+  "module.platform_sola_desc": {
+    "pt-BR": "A vis\u00e3o consolidada das solicita\u00e7\u00f5es Enterprise e do SLA est\u00e1 em constru\u00e7\u00e3o controlada.",
+    "en-US": "The consolidated view of Enterprise requests and SLA is under controlled construction.",
+    "es-ES": "La vista consolidada de las solicitudes Enterprise y del SLA est\u00e1 en construcci\u00f3n controlada.",
+    "fr-FR": "La vue consolid\u00e9e des demandes Enterprise et du SLA est en construction contr\u00f4l\u00e9e."
+  },
+  "module.platform_sola_next": {
+    "pt-BR": "As solicita\u00e7\u00f5es por empresa continuam dispon\u00edveis na \u00e1rea Solicita\u00e7\u00f5es ODCA de cada organiza\u00e7\u00e3o.",
+    "en-US": "Per-company requests remain available in each organization's ODCA Requests area.",
+    "es-ES": "Las solicitudes por empresa siguen disponibles en el \u00e1rea Solicitudes ODCA de cada organizaci\u00f3n.",
+    "fr-FR": "Les demandes par entreprise restent disponibles dans l'espace Demandes ODCA de chaque organisation."
+  },
+  "module.platform_billing_title": {
+    "pt-BR": "Cobran\u00e7as e faturas",
+    "en-US": "Billing and invoices",
+    "es-ES": "Cobros y facturas",
+    "fr-FR": "Facturation et factures"
+  },
+  "module.platform_billing_desc": {
+    "pt-BR": "A base de faturamento est\u00e1 preparada, sem integra\u00e7\u00e3o de pagamento nesta sprint.",
+    "en-US": "The billing foundation is ready, without payment integration in this sprint.",
+    "es-ES": "La base de facturaci\u00f3n est\u00e1 preparada, sin integraci\u00f3n de pago en esta sprint.",
+    "fr-FR": "La base de facturation est pr\u00eate, sans int\u00e9gration de paiement dans cette sprint."
+  },
+  "module.platform_billing_next": {
+    "pt-BR": "Nenhuma cobran\u00e7a autom\u00e1tica ser\u00e1 realizada. A opera\u00e7\u00e3o financeira ser\u00e1 habilitada somente ap\u00f3s valida\u00e7\u00e3o.",
+    "en-US": "No automatic charges will be made. The financial operation will be enabled only after validation.",
+    "es-ES": "No se realizar\u00e1 ning\u00fan cobro autom\u00e1tico. La operaci\u00f3n financiera ser\u00e1 habilitada \u00fanicamente despu\u00e9s de la validaci\u00f3n.",
+    "fr-FR": "Aucune facture automatique ne sera \u00e9mise. L'op\u00e9ration financi\u00e8re sera activ\u00e9e uniquement apr\u00e8s validation."
+  },
+  "module.platform_contracts_title": {
+    "pt-BR": "Contratos da plataforma",
+    "en-US": "Platform contracts",
+    "es-ES": "Contratos de la plataforma",
+    "fr-FR": "Contrats de la plateforme"
+  },
+  "module.platform_contracts_desc": {
+    "pt-BR": "O acesso global consolidado a contratos est\u00e1 em constru\u00e7\u00e3o controlada.",
+    "en-US": "Consolidated global access to contracts is under controlled construction.",
+    "es-ES": "El acceso global consolidado a contratos est\u00e1 en construcci\u00f3n controlada.",
+    "fr-FR": "L'acc\u00e8s global consolid\u00e9 aux contrats est en construction contr\u00f4l\u00e9e."
+  },
+  "module.platform_contracts_next": {
+    "pt-BR": "Selecione uma empresa para trabalhar no contexto autorizado, sem misturar dados entre clientes.",
+    "en-US": "Select a company to work in the authorized context, without mixing data across clients.",
+    "es-ES": "Seleccione una empresa para trabajar en el contexto autorizado, sin mezclar datos entre clientes.",
+    "fr-FR": "S\u00e9lectionnez une entreprise pour travailler dans le contexte autoris\u00e9, sans m\u00e9langer les donn\u00e9es entre clients."
+  },
+  "module.platform_audit_desc": {
+    "pt-BR": "Os eventos importantes da plataforma j\u00e1 podem ser consultados em uma tela com busca, filtro por organiza\u00e7\u00e3o, pagina\u00e7\u00e3o e metadados preservados.",
+    "en-US": "Important platform events can already be consulted in a screen with search, per-organization filter, pagination, and preserved metadata.",
+    "es-ES": "Los eventos importantes de la plataforma ya pueden ser consultados en una pantalla con b\u00fasqueda, filtro por organizaci\u00f3n, paginaci\u00f3n y metadatos preservados.",
+    "fr-FR": "Les \u00e9v\u00e9nements importants de la plateforme peuvent d\u00e9j\u00e0 \u00eatre consult\u00e9s dans un \u00e9cran avec recherche, filtre par organisation, pagination et m\u00e9tadonn\u00e9es pr\u00e9serv\u00e9es."
+  },
+  "module.platform_audit_next": {
+    "pt-BR": "Use o menu Auditoria na administra\u00e7\u00e3o global ou abra a tela diretamente para pesquisar os eventos.",
+    "en-US": "Use the Auditoria menu in global administration, or open the screen directly to search the events.",
+    "es-ES": "Use el men\u00fa Auditor\u00eda en la administraci\u00f3n global o abra la pantalla directamente para buscar los eventos.",
+    "fr-FR": "Utilisez le menu Audit dans l'administration globale, ou ouvrez l'\u00e9cran directement pour rechercher les \u00e9v\u00e9nements."
+  },
+  "module.platform_audit_open": {
+    "pt-BR": "Abrir auditoria da plataforma",
+    "en-US": "Open platform audit",
+    "es-ES": "Abrir auditor\u00eda de la plataforma",
+    "fr-FR": "Ouvrir l'audit de la plateforme"
+  },
+  "module.platform_settings_desc": {
+    "pt-BR": "As configura\u00e7\u00f5es globais ser\u00e3o reunidas aqui ap\u00f3s a estabiliza\u00e7\u00e3o dos fluxos principais.",
+    "en-US": "Global settings will be gathered here after the main flows are stabilized.",
+    "es-ES": "Las configuraciones globales ser\u00e1n reunidas aqu\u00ed despu\u00e9s de la estabilizaci\u00f3n de los flujos principales.",
+    "fr-FR": "Les param\u00e8tres globaux seront regroup\u00e9s ici apr\u00e8s la stabilisation des flux principaux."
+  },
+  "module.platform_settings_next": {
+    "pt-BR": "Use apenas as configura\u00e7\u00f5es de ambiente documentadas; nenhuma mudan\u00e7a \u00e9 aplicada nesta tela.",
+    "en-US": "Use only documented environment settings; no change is applied on this screen.",
+    "es-ES": "Use \u00fanicamente las configuraciones de entorno documentadas; ning\u00fan cambio se aplica en esta pantalla.",
+    "fr-FR": "Utilisez uniquement les param\u00e8tres d'environnement document\u00e9s ; aucun changement n'est appliqu\u00e9 sur cet \u00e9cran."
+  }
+}

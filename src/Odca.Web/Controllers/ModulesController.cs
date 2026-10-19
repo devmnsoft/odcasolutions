@@ -6,35 +6,49 @@ namespace Odca.Web.Controllers;
 
 [Authorize]
 [Route("modulos")]
-public sealed class ModulesController : Controller
+public sealed class ModulesController(Odca.Configuration.Localization.LocalizationService loc) : Controller
 {
-    private static readonly Dictionary<string, ModuleStatusViewModel> TenantModules =
-        new Dictionary<string, ModuleStatusViewModel>(StringComparer.OrdinalIgnoreCase)
+    // D-OC49 (S15): o catálogo de módulos armazena CHAVES de localização; os textos são
+    // resolvidos no request com a cultura ativa (CultureMiddleware), preservando o
+    // isolamento por perfil (tenant x plataforma) já existente.
+
+    private string? Culture => HttpContext.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] as string;
+
+    private string L(string key) => loc.T(key, Culture);
+
+    private static readonly Dictionary<string, string[]> TenantModules =
+        new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
-            ["contratos"] = new("Contratos", "A visão consolidada de contratos já está disponível em Meus contratos, com estados de ativo, arquivado e encerrado.", "Use o menu Contratos → Meus contratos para ver todos os contratos da organização e abrir cada ficha detalhada.", false),
-            ["documentos"] = new("Documentos", "A biblioteca consolidada de documentos está em evolução. A importação de arquivos externos estará disponível em uma próxima versão.", "Enquanto a Central de Importações não for liberada, use o estúdio de modelos para gerar novas minutas; os documentos existentes continuam consultáveis.", false),
-            ["ajuda"] = new("Ajuda e como usar", "Encontre rapidamente o caminho para as rotinas disponíveis nesta versão.", "Comece pela tela inicial, acompanhe pendências na Caixa e consulte prazos em Obrigações e Renovações.", false)
+            ["contratos"] = new[] { "group_contratos", "module.tenant_contracts_desc", "module.tenant_contracts_next" },
+            ["documentos"] = new[] { "module.tenant_documents_title", "module.tenant_documents_desc", "module.tenant_documents_next" },
+            ["ajuda"] = new[] { "ajuda", "module.tenant_help_desc", "module.tenant_help_next" }
         };
 
-    private static readonly Dictionary<string, ModuleStatusViewModel> PlatformModules =
-        new Dictionary<string, ModuleStatusViewModel>(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, string[]> PlatformModules =
+        new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
-            ["usuarios"] = new("Usuários e acessos", "A administração centralizada de identidades está em construção controlada.", "Gerencie os usuários de cada empresa pela área Equipe e permissões até a visão global ser liberada.", true),
-            ["perfis"] = new("Perfis e permissões", "A gestão de perfis por empresa já existe; a visão global será disponibilizada em uma próxima evolução.", "Selecione uma empresa e use Equipe e permissões para administrar acessos com segurança.", true),
-            ["assinaturas"] = new("Assinaturas", "A estrutura de planos e assinaturas está ativa, e esta visão operacional está em construção.", "Consulte Planos e módulos e Usuários e acessos para acompanhar a configuração atual.", true),
-            ["biblioteca-modelos"] = new("Biblioteca de modelos", "A biblioteca central de modelos da plataforma está em construção controlada.", "Os modelos publicados por empresa continuam disponíveis no estúdio de cada organização.", true),
-            ["publicacao-versoes"] = new("Publicação e versões", "O painel global de publicação e versões de modelos está em construção controlada.", "Acompanhe as revisões publicadas diretamente no estúdio de cada organização até o painel global ser liberado.", true),
-            ["solicitacoes-enterprise"] = new("Solicitações Enterprise e SLA", "A visão consolidada das solicitações Enterprise e do SLA está em construção controlada.", "As solicitações por empresa continuam disponíveis na área Solicitações ODCA de cada organização.", true),
-            ["cobrancas"] = new("Cobranças e faturas", "A base de faturamento está preparada, sem integração de pagamento nesta sprint.", "Nenhuma cobrança automática será realizada. A operação financeira será habilitada somente após validação.", true),
-            ["contratos"] = new("Contratos da plataforma", "O acesso global consolidado a contratos está em construção controlada.", "Selecione uma empresa para trabalhar no contexto autorizado, sem misturar dados entre clientes.", true),
-            ["auditoria"] = new("Auditoria", "Os eventos importantes da plataforma já podem ser consultados em uma tela com busca, filtro por organização, paginação e metadados preservados.", "Use o menu Auditoria na administração global ou abra a tela diretamente para pesquisar os eventos.", true, OpenHref: "/administracao/auditoria", OpenLinkText: "Abrir auditoria da plataforma"),
-            ["configuracoes"] = new("Configurações operacionais", "As configurações globais serão reunidas aqui após a estabilização dos fluxos principais.", "Use apenas as configurações de ambiente documentadas; nenhuma mudança é aplicada nesta tela.", true)
+            ["usuarios"] = new[] { "usuarios-acessos", "module.platform_users_desc", "module.platform_users_next" },
+            ["perfis"] = new[] { "module.platform_profiles_title", "module.platform_profiles_desc", "module.platform_profiles_next" },
+            ["assinaturas"] = new[] { "assinaturas", "module.platform_signatures_desc", "module.platform_signatures_next" },
+            ["biblioteca-modelos"] = new[] { "biblioteca-modelos", "module.platform_library_desc", "module.platform_library_next" },
+            ["publicacao-versoes"] = new[] { "module.platform_publish_title", "module.platform_publish_desc", "module.platform_publish_next" },
+            ["solicitacoes-enterprise"] = new[] { "module.platform_sola_title", "module.platform_sola_desc", "module.platform_sola_next" },
+            ["cobrancas"] = new[] { "module.platform_billing_title", "module.platform_billing_desc", "module.platform_billing_next" },
+            ["contratos"] = new[] { "module.platform_contracts_title", "module.platform_contracts_desc", "module.platform_contracts_next" },
+            ["auditoria"] = new[] { "auditoria-plataforma", "module.platform_audit_desc", "module.platform_audit_next", "/administracao/auditoria", "module.platform_audit_open" },
+            ["configuracoes"] = new[] { "configuracoes-operacionais", "module.platform_settings_desc", "module.platform_settings_next" }
         };
 
     [HttpGet("{module}")]
     public IActionResult Index(string module)
     {
-        var modules = User.IsInRole("SuperAdministrator") ? PlatformModules : TenantModules;
-        return modules.TryGetValue(module, out var model) ? View(model) : NotFound();
+        var platform = User.IsInRole("SuperAdministrator");
+        var modules = platform ? PlatformModules : TenantModules;
+        if (!modules.TryGetValue(module, out var m)) return NotFound();
+        var vm = new ModuleStatusViewModel(
+            L(m[0]), L(m[1]), L(m[2]), platform,
+            OpenHref: m.Length > 3 ? m[3] : null,
+            OpenLinkText: m.Length > 4 ? L(m[4]) : null);
+        return View(vm);
     }
 }

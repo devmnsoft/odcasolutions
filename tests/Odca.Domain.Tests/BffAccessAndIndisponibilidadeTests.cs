@@ -138,7 +138,9 @@ public sealed class BffAccessAndIndisponibilidadeTests
             claims.Add(new Claim(ClaimTypes.Role, "SuperAdministrator"));
         }
 
-        return new ModulesController
+        // D-OC49 (S15): o controller resolve os textos de módulo via LocalizationService;
+        // cultura ausente cai no fallback pt-BR do serviço.
+        return new ModulesController(new Odca.Configuration.Localization.LocalizationService())
         {
             ControllerContext = new ControllerContext
             {

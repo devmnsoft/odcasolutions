@@ -1,32 +1,33 @@
 @model Odca.Contracts.Administration.SlaPolicyRow[]
 @using Odca.Contracts.Administration
 @{
-    ViewData["Title"] = "Configurações operacionais";
-    string PlanLabel(string value) => value switch { "basic" => "Básico", "intermediate" => "Intermediário", "enterprise" => "Enterprise", _ => value };
-    string ServiceLabel(string value) => value switch { "revisao" => "Revisão (documental)", "adaptacao" => "Adaptação (documental)", "esclarecimento" => "Esclarecimento (documental)", "suporte_tecnico" => "Suporte técnico e recuperação de acesso", _ => value };
-    string PriorityLabel(string value) => value switch { "baixa" => "Baixa", "normal" => "Normal", "alta" => "Alta", "critica" => "Crítica", _ => value };
-    string Hours(int minutes) => minutes % 60 == 0 ? $"{minutes / 60d:0.#} h" : $"{minutes} min";
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("configuracoes-operacionais", _c);
+    string PlanLabel(string value) => value switch { "basic" => "Basic", "intermediate" => L.T("reg.plan_intermediate", _c), "enterprise" => "Enterprise", _ => value };
+    string ServiceLabel(string value) => value switch { "revisao" => L.T("platform.sla_svc_revisao", _c), "adaptacao" => L.T("platform.sla_svc_adaptacao", _c), "esclarecimento" => L.T("platform.sla_svc_esclarecimento", _c), "suporte_tecnico" => L.T("platform.sla_svc_suporte", _c), _ => value };
+    string PriorityLabel(string value) => value switch { "baixa" => L.T("common.prio_low", _c), "normal" => L.T("common.prio_normal", _c), "alta" => L.T("common.prio_high", _c), "critica" => L.T("common.prio_critical", _c), _ => value };
+    string Hours(int minutes) => minutes % 60 == 0 ? $"{(minutes / 60d).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)} h" : $"{minutes} min";
     var order = new Dictionary<string, int> { ["baixa"] = 0, ["normal"] = 1, ["alta"] = 2, ["critica"] = 3 };
     var rows = Model.OrderBy(r => r.PlanCode).ThenBy(r => r.Service).ThenBy(r => order.GetValueOrDefault(r.Priority, 99)).ToArray();
 }
-<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-controller="Home" asp-action="Index">Visão global</a><span>/</span><span aria-current="page">Configurações operacionais</span></nav>
-<header class="page-heading"><div><p class="eyebrow">Administração global</p><h1>Políticas de SLA vigentes</h1><p>Prazos de primeira resposta e de resolução por plano, serviço e prioridade, calculados em dias úteis dentro da janela comercial indicada (fuso America/Sao_Paulo). Valores atuais do catálogo operacional da plataforma.</p></div></header>
+<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-controller="Home" asp-action="Index">@L.T("visao-global",_c)</a><span>/</span><span aria-current="page">@L.T("configuracoes-operacionais",_c)</span></nav>
+<header class="page-heading"><div><p class="eyebrow">@L.T("support.eyebrow",_c)</p><h1>@L.T("platform.sla_h1",_c)</h1><p>@L.T("platform.sla_intro",_c)</p></div></header>
 <div class="responsive-table panel"><table>
-<thead><tr><th>Plano</th><th>Serviço</th><th>Prioridade</th><th>Primeira resposta</th><th>Resolução</th><th>Janela comercial</th><th>Calendário</th><th>Situação</th></tr></thead>
+<thead><tr><th>@L.T("platform.sla_th_plan",_c)</th><th>@L.T("platform.sla_th_service",_c)</th><th>@L.T("platform.sla_th_priority",_c)</th><th>@L.T("platform.sla_th_first",_c)</th><th>@L.T("platform.sla_th_resolution",_c)</th><th>@L.T("platform.sla_th_window",_c)</th><th>@L.T("platform.sla_th_calendar",_c)</th><th>@L.T("common.situation",_c)</th></tr></thead>
 <tbody>
 @foreach(var row in rows)
 {
     <tr>
-      <td data-label="Plano">@PlanLabel(row.PlanCode)</td>
-      <td data-label="Serviço">@ServiceLabel(row.Service)</td>
-      <td data-label="Prioridade">@PriorityLabel(row.Priority)</td>
-      <td data-label="Primeira resposta">@Hours(row.FirstResponseMinutes)</td>
-      <td data-label="Resolução">@Hours(row.ResolutionMinutes)</td>
-      <td data-label="Janela comercial">@row.BusinessStart–@row.BusinessEnd</td>
-      <td data-label="Calendário">@(row.Calendar == "dias_uteis" ? "Dias úteis" : "Contínuo")</td>
-      <td data-label="Situação"><span class="status-badge">@(row.Enabled ? "Vigente" : "Desativada")</span></td>
+      <td data-label="@L.T("platform.sla_th_plan",_c)">@PlanLabel(row.PlanCode)</td>
+      <td data-label="@L.T("platform.sla_th_service",_c)">@ServiceLabel(row.Service)</td>
+      <td data-label="@L.T("platform.sla_th_priority",_c)">@PriorityLabel(row.Priority)</td>
+      <td data-label="@L.T("platform.sla_th_first",_c)">@Hours(row.FirstResponseMinutes)</td>
+      <td data-label="@L.T("platform.sla_th_resolution",_c)">@Hours(row.ResolutionMinutes)</td>
+      <td data-label="@L.T("platform.sla_th_window",_c)">@row.BusinessStart–@row.BusinessEnd</td>
+      <td data-label="@L.T("platform.sla_th_calendar",_c)">@(row.Calendar == "dias_uteis" ? L.T("admin.sla_business_days",_c) : L.T("platform.sla_calendar_continuous",_c))</td>
+      <td data-label="@L.T("common.situation",_c)"><span class="status-badge">@(row.Enabled ? L.T("platform.sla_st_active",_c) : L.T("platform.sla_st_disabled",_c))</span></td>
     </tr>
 }
 </tbody>
 </table></div>
-<details class="help-card"><summary>Como ler esta matriz</summary><p>Os serviços documentais (revisão, adaptação e esclarecimento) são operados pela equipe ODCA apenas para o plano Enterprise, conforme o escopo contratual. Suporte técnico e recuperação de acesso estão abertos a todos os planos vigentes e usam a linha correspondente ao plano da organização. Alterar estes valores é uma decisão de política da plataforma e ainda não é exposta para edição nesta operação.</p></details>
+<details class="help-card"><summary>@L.T("platform.sla_help_title",_c)</summary><p>@L.T("platform.sla_help_body",_c)</p></details>

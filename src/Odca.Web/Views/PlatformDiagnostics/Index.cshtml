@@ -1,16 +1,17 @@
 @model Odca.Contracts.Administration.PlatformDiagnosticsPayload
 @{
-    ViewData["Title"] = "Diagnóstico de dependências";
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("platform.diag_title", _c);
     var labels = new Dictionary<string, string>
     {
-        ["pdf.renderer"] = "Renderizador PDF interno",
-        ["documents.pdf-text"] = "Extração de texto de PDF (pdftotext)",
-        ["documents.pdf-render"] = "Renderização de páginas (pdftoppm)",
-        ["documents.ocr"] = "OCR de páginas escaneadas (tesseract)",
-        ["documents.pdf-info"] = "Metadados de PDF (pdfinfo)",
-        ["security.scanner"] = "Scanner de malware (clamscan)",
-        ["notifications.transport"] = "Transporte de notificações (FilePickup/SMTP)",
-        ["signatures.external-envelope"] = "Envelope de assinatura externa"
+        ["pdf.renderer"] = L.T("platform.diag_dep_pdf_renderer", _c),
+        ["documents.pdf-text"] = L.T("platform.diag_dep_pdf_text", _c),
+        ["documents.pdf-render"] = L.T("platform.diag_dep_pdf_render", _c),
+        ["documents.ocr"] = L.T("platform.diag_dep_ocr", _c),
+        ["documents.pdf-info"] = L.T("platform.diag_dep_pdf_info", _c),
+        ["security.scanner"] = L.T("platform.diag_dep_malware", _c),
+        ["notifications.transport"] = L.T("platform.diag_dep_notif", _c),
+        ["signatures.external-envelope"] = L.T("platform.diag_dep_signatures", _c)
     };
     string Label(string key) => labels.TryGetValue(key, out var label) ? label : key;
     string StatusBadge(string status) => status switch
@@ -23,61 +24,60 @@
     };
     string StatusLabel(string status) => status switch
     {
-        "verified" => "Comprovado",
-        "accessible" => "Acessível",
-        "configured" => "Configurado",
-        "unavailable" => "Indisponível",
-        "not_applicable" => "Não aplicável",
+        "verified" => L.T("platform.diag_st_verified", _c),
+        "accessible" => L.T("platform.diag_st_accessible", _c),
+        "configured" => L.T("platform.diag_st_configured", _c),
+        "unavailable" => L.T("platform.diag_st_unavailable", _c),
+        "not_applicable" => L.T("common.na", _c),
         _ => status
     };
 }
 <section class="page-heading">
     <div>
-        <p class="eyebrow">Plataforma</p>
-        <h1>Diagnóstico de dependências</h1>
+        <p class="eyebrow">@L.T("layout.platform",_c)</p>
+        <h1>@L.T("platform.diag_title",_c)</h1>
         <p class="muted">
-            Estado real das dependências externas e das filas da plataforma, com corrente honesta:
-            configurado ≠ acessível ≠ comprovado. Nenhum valor configurado sensível é exibido — apenas presença e resultado da sonda.
+            @L.T("platform.diag_intro",_c)
         </p>
     </div>
     <div class="button-row">
-        <a class="button button-quiet" asp-controller="Home" asp-action="Index">← Voltar</a>
+        <a class="button button-quiet" asp-controller="Home" asp-action="Index">@L.T("platform.diag_back",_c)</a>
     </div>
 </section>
 <div class="panel responsive-table">
     <table>
         <thead>
-            <tr><th>Dependência</th><th>Configuração</th><th>Estado</th><th>Detalhe da sonda</th></tr>
+            <tr><th>@L.T("platform.diag_th_dependency",_c)</th><th>@L.T("platform.diag_th_config",_c)</th><th>@L.T("common.state",_c)</th><th>@L.T("platform.diag_th_probe",_c)</th></tr>
         </thead>
         <tbody>
             @foreach (var d in Model.Dependencies)
             {
                 <tr>
-                    <td data-label="Dependência"><strong>@Label(d.Key)</strong></td>
-                    <td data-label="Configuração"><code>@d.ConfigKey</code></td>
-                    <td data-label="Estado"><span class="badge @(StatusBadge(d.Status))">@StatusLabel(d.Status)</span></td>
-                    <td data-label="Detalhe da sonda">@d.Detail</td>
+                    <td data-label="@L.T("platform.diag_th_dependency",_c)"><strong>@Label(d.Key)</strong></td>
+                    <td data-label="@L.T("platform.diag_th_config",_c)"><code>@d.ConfigKey</code></td>
+                    <td data-label="@L.T("common.state",_c)"><span class="badge @(StatusBadge(d.Status))">@StatusLabel(d.Status)</span></td>
+                    <td data-label="@L.T("platform.diag_th_probe",_c)">@d.Detail</td>
                 </tr>
             }
         </tbody>
     </table>
 </div>
-<h2>Filas da plataforma</h2>
-<p class="muted">Contagens atuais por fila de trabalho (escaneamento, extração e notificações), considerando apenas tenants ativos. Itens parados ou falhos ficam visíveis aqui para triagem.</p>
+<h2>@L.T("platform.diag_queues_h",_c)</h2>
+<p class="muted">@L.T("platform.diag_queues_intro",_c)</p>
 <div class="panel responsive-table">
     <table>
         <thead>
-            <tr><th>Fila</th><th>Pendentes</th><th>Paradas</th><th>Falhas</th><th>Mais antigo pendente</th></tr>
+            <tr><th>@L.T("platform.diag_q_queue",_c)</th><th>@L.T("platform.diag_q_pending",_c)</th><th>@L.T("platform.diag_q_stalled",_c)</th><th>@L.T("platform.diag_q_failed",_c)</th><th>@L.T("platform.diag_q_oldest",_c)</th></tr>
         </thead>
         <tbody>
             @foreach (var q in Model.Queues)
             {
                 <tr>
-                    <td data-label="Fila">@q.Queue</td>
-                    <td data-label="Pendentes">@q.PendingCount</td>
-                    <td data-label="Paradas">@q.StalledCount</td>
-                    <td data-label="Falhas">@q.FailedCount</td>
-                    <td data-label="Mais antigo pendente">@(q.OldestPendingAt is { } oldest ? oldest.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "—")</td>
+                    <td data-label="@L.T("platform.diag_q_queue",_c)">@q.Queue</td>
+                    <td data-label="@L.T("platform.diag_q_pending",_c)">@q.PendingCount</td>
+                    <td data-label="@L.T("platform.diag_q_stalled",_c)">@q.StalledCount</td>
+                    <td data-label="@L.T("platform.diag_q_failed",_c)">@q.FailedCount</td>
+                    <td data-label="@L.T("platform.diag_q_oldest",_c)">@(q.OldestPendingAt is { } oldest ? CulturedTime.DateTime(oldest.ToLocalTime(), _c) : "—")</td>
                 </tr>
             }
         </tbody>

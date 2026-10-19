@@ -1,0 +1,84 @@
+# Sprint 15 — área de administração de plataforma em 4 idiomas (D-OC49) (19/10/2026)
+
+Entrega a localização completa da área de administração da plataforma medida pela heurística pt-first: a **biblioteca de modelos oficiais** (catálogo global, novo modelo, nova revisão com editor de campos/propriedades/condições), a **auditoria da plataforma** (busca/filtros/paginação/metadados), o **diagnóstico de dependências** (corrente honesta configurado≠acessível≠comprovado + filas), as **configurações operacionais** (matriz de SLA vigente) e a **página de módulos** (estados controlados por perfil tenant×plataforma) — nas 7 views, nos 4 controllers BFF e no script do editor (bolsa i18n JS) — com a auditoria de design ao vivo estendida de 28 para 39 rotas.
+
+## 1. Escopo e base
+
+- **Base**: `codex/s00-foundation` @ `69e45c0` (Sprint 14 / D-OC48).
+- **Sem nova migração**: canônico v062 intacto (`DatabaseSchema.CurrentVersion = 62`); sem mudanças em API/Domain/Worker/assets/SQL.
+- **216 chaves i18n × 4 culturas** via delta versionado `scripts/i18n/d-s15-plataforma.json` (`platform.lib.*` 34, `platform.rev.*` 45, `platform.rev_js.*/rev_prop.*` 31, `module.*` 43, `platform.diag.*` 25, `platform.audit.*` 16, `platform.sla.*` 18, `platform.tpl.*` 4) → catálogos em **3620 chaves/cultura, paridade 4/4** (delta×catálogo: 216 × 4 = 864 comparações, **0 divergências**).
+- **Política de chaves / reuso**: rótulos reutilizam o catálogo existente (flat `visao-global`/`biblioteca-modelos`/`configuracoes-operacionais`/`inicio`/`organizacao`/`usuarios-acessos`/`assinaturas`/`auditoria-plataforma`/`ajuda`/`group_contratos`; `layout.platform`, `support.eyebrow`/`support.back_panel`; `common.search/filters/clear/prev/next/details/how_it_works/how_to_use/state/situation/type/yes/prio_low/prio_normal/prio_high/prio_critical`; `dash.th_user/entity/result/action`; `studio.ft_short/long/brdoc/currency/date/number/choice`, `studio.purpose_consent`, `studio.status_published`, `studio.cat_search_label`, `studio.tpl_unmap`; `action.cancel`; `reg.plan_intermediate`; `admin.sla_business_days`). Nomes comerciais dos planos **Basic/Enterprise** permanecem literais (regra S14); unidades **h/min**, o badge **Legal Design** e o placeholder técnico **identificador_unico** também seguem literais por decisão registrada.
+- **`ModulesController` ciente de cultura**: o catálogo de módulos armazena **chaves** de localização em arrays estáticos (slug → [título, descrição, próximo passo, href?, texto do botão?]); a resolução acontece no request com a cultura ativa do `CultureMiddleware`, preservando o isolamento por perfil já existente (dicionários tenant×plataforma separados — o slug `contratos` existe nos dois com títulos distintos). O `ModuleStatusViewModel` continua como antes; um teste de domínio que instanciava o controller ganhou o `LocalizationService` no construtor (cultura ausente cai no fallback pt-BR do serviço).
+- **Bolsa i18n JS (NewRevision)**: padrão canônico do Studio (`_I18nBag`) replicado inline — bag `window.odcaI18n={culture,t}` montado com `L.Catalog(culture)` filtrando prefixos `platform.` + `common.`, serializado JSON com `JavaScriptEncoder.UnsafeRelaxedJsonEscaping` via `Html.Raw` (leção D-OC23), mais o shim `window.OdcaI18n.t(key,…args)` com substituição `{n}`; o `<script type="module">` usa `const t=(window.OdcaI18n&&window.OdcaI18n.t)||((k)=>k)` e o `confirm()` do publish vai por `window.OdcaI18n.t` direto no atributo `onclick`. O módulo compartilhado `template-editor-document.js` segue intocado (suas perdas chegam já traduzidas via `t('studio.loss_*')`).
+- **Dívida registrada dentro do escopo**: `[Required(ErrorMessage)]` segue pt-first (política cross-área); o JSON de conteúdo inicial do template criado pelo controller ("Cláusula 1", "[Conteúdo inicial — …]") é **conteúdo de documento** de domínio e fica em pt (mesma política do template do `StudioController`); a sonda `d.Detail` do diagnóstico vem da API em pt (mensagem de domínio); `console.error('Erro ao inicializar texto do modelo:')` permanece cru (console de desenvolvedor); o aria-label de breadcrumb "Navegação estrutural" é chrome global mantido literal (dívida agregada na S17 com `NavigationRegistry`/renderer).
+
+## 2. F-1 — 7 views no padrão canônico da casa
+
+`_c=(string?)Context.Items[CultureMiddleware.ItemsKey]` + `L.T(key,_c[,args])`:
+
+- `PlatformLibrary\Index.cshtml`: catálogo oficial global (intro, "+ Novo modelo", cabeçalhos, status publicado/retirado, resumo "Versões ({0})", linhas de revisão "Revisão {0} — criada em {1}" + "· publicada em {0}" em fragmentos, botões publicar/retirar com justificativa obrigatória 5–500, 4 TypeLabels + fallback do valor cru, help card "como funciona"). Datas: `Fmt`/`FmtText` com `.ToString("dd/MM/yyyy")` fixo saem → `CulturedTime.Date(value.Value.ToLocalTime(),_c)` (relógio local preservado como no HEAD).
+- `PlatformLibrary\Create.cshtml` (resíduo): eyebrow `Plataforma` literal → `layout.platform`; placeholders de nome/descrição/propósito e o hint de categorização em catálogo; as 7 opções de tipo não reutilizáveis entram em chaves `platform.lib_type_*` e "Consentimento" reusa `studio.purpose_consent`.
+- `PlatformLibrary\NewRevision.cshtml`: a view mais densa da área — h1 "Nova revisão — {0}", meta (revisão atual/tipo/chave em fragmentos com separadores encapsulados), painel de efeito da publicação com `<strong>` direto no Razor (fragmentos prefixo/núcleo/corpo, sem `Html.Raw`), resumo da mudança, editor de campos (~30 rótulos: id/rótulo/tipo de dado/opções/origem/propriedade/condição de obrigatoriedade/valores/obrigatório/incluir), "Campos Cadastrados", conteúdo estruturado com badge Legal Design e rótulo dos marcadores `{{…}}`, botão de cancelamento (`action.cancel`) e **"Publicar revisão {0}" com `confirm()` localizado**. Todo o script do editor sai do pt hard-coded: mensagem sem campos, mapa de origens curtas, condição "; obrigatório quando {0} = {1}" com join " ou ", chips obrigatório/ajuda, botões inserir/remover + títulos, catálogo de propriedades (9 nomes), opções semente ("Entrada manual, sem cadastro", "Selecione a propriedade", "Sempre, se estiver marcado como obrigatório"), 5 alertas de validação, banner "Editor limitado:" (título/a/b) e a mensagem de bloqueio de publicação. Placeholders técnicos (`identificador_unico`) literais por decisão.
+- `PlatformAudit\Index.cshtml`: título/intro, busca (placeholder com exemplo de ação), filtro por organização ("Todas as organizações"), "Por página", alerta de falha de carga do filtro de tenants, 7 cabeçalhos (Data/hora etc.), badges de resultado Sucesso/Negado/Falhou (classes CSS inalteras), detalhes com "Metadados", empty states, "Mostrando {0}–{1} de {2} eventos." / "Página {0} de {1}" com `ToString(InvariantCulture)`, datas `CulturedTime.DateTime(entry.OccurredAt.ToLocalTime(),_c)`, ajuda "como usar".
+- `PlatformDiagnostics\Index.cshtml`: título/intro (corrente honesta configurado≠acessível≠comprovado), mapa dos 8 nomes de dependência (renderizador PDF, pdftotext/pdftoppm, tesseract, pdfinfo, clamscan, FilePickup/SMTP, envelope de assinatura externa), 4 status + `not_applicable`→`common.na` (badges inalterados), cabeçalhos, "Filas da plataforma" com 5 colunas e o mais antigo pendente em `CulturedTime.DateTime(oldest.ToLocalTime(),_c)`; "← Voltar".
+- `PlatformOperations\Index.cshtml`: h1 "Políticas de SLA vigentes" + intro (fuso America/Sao_Paulo explicitado), PlanLabel (Basic/Enterprise literais, Intermediário via `reg.plan_intermediate`), ServiceLabel ×4, PriorityLabel → `common.prio_*`, `Hours()` com `ToString("0.#",InvariantCulture)` + sufixos literais " h"/" min", calendário dias úteis → `admin.sla_business_days` vs contínuo, estado Vigente/Desativada, help card "Como ler esta matriz" (escopo documental Enterprise × suporte a todos os planos; edição ainda não exposta).
+- `Modules\Index.cshtml`: eyebrow por perfil (Administração da plataforma × Área da empresa), título/descrição/próximo passo do ViewModel (localizado no controller), estados "Tela disponível"/"Em construção controlada" com texto e CTA de auditoria quando houver, seção "Como usar agora" + dica de menu; "Voltar ao painel".
+
+## 3. F-1 — 4 controllers BFF
+
+Injeção canônica de `LocalizationService` (propriedade `Culture` do `CultureMiddleware` + helper privado `L(key,args)`):
+
+| Controller | Call sites localizados | Observações |
+| --- | --- | --- |
+| `PlatformLibraryController` | 16 | `ViewData["Title"]` (biblioteca/novo modelo/nova revisão), validação de nome/resumo/justificativa, sucessos (criado em rascunho, **Revisão {0} publicada** com invariante de versões imutáveis, retirado, publicado no global) e falhas (`UserMessage(fallback localizado)`); o conteúdo JSON de documento do template segue em pt (domínio) |
+| `ModulesController` | 3 arrays estáticos (40 chaves referenciadas) | slugs → chaves; resolução no request; `OpenHref` apenas em auditoria (`/administracao/auditoria`) com texto do botão localizado; NotFound por perfil preservado |
+| `PlatformDiagnosticsController` | 1 | título localizado; fluxo 503/Challenge inalterado |
+| `PlatformOperationsController` | 1 | título reusando a chave flat `configuracoes-operacionais` |
+
+Total de call sites de localização nos 11 arquivos do escopo: **310** (views 291 + controllers 19). Teste de domínio atualizado: o helper que monta o `ModulesController` agora injeta `new LocalizationService()` (fallback pt-BR sem cultura) — sem mudança de asserção (NotFound/ViewResult por perfil).
+
+## 4. F-2 — auditoria de design estendida (d41)
+
+`scripts/qa/audit-d41-design.ps1`: tabela de rotas 28 → **39**. (1) As 4 rotas superadmin que mediam só pt-BR passam a **4 idiomas**: `atendimento-odca`, `suporte-sessoes`, `plataforma-notificacoes`, `auditoria` (+12 pares). (2) Novas rotas ×4 idiomas, caminhos conferidos contra os atributos `[Route]` reais: superadmin `biblioteca` `/administracao/biblioteca`, `biblioteca-novo` `/administracao/biblioteca/novo`, `biblioteca-revisao` `/administracao/biblioteca/services-agreement/nova-revisao` (fixture `odca.contract_templates` published revision 1), `sla-configuracoes` `/administracao/configuracoes`, `diagnostico` `/administracao/diagnostico` (+20 pares); módulos — sessão cliente `modulo-contratos`/`modulo-documentos`/`modulo-ajuda` em `/modulos/{slug}`, sessão superadmin `modulo-usuarios`/`modulo-auditoria`/`modulo-biblioteca` em `/modulos/{usuarios,auditoria,biblioteca-modelos}` (+24 pares). 95 → **151 pares** rota×idioma × 4 viewports (360/768/1280/1440) = **604 medidas** (era 380). Comentários e LogEv atualizados junto. Execução ao vivo sobre o banco descartável: **AUDIT-DONE checks=604 ok=604 · overflow=0 · authfail=0 · httpfail=0 (AUDIT-EXIT=0)** — transcript `evidence/d41-design-audit-s15-rodada-final.txt`.
+
+## 5. Evidência
+
+### GATE sobre a árvore final (executado localmente)
+
+| Etapa | Comando | Resultado |
+| --- | --- | --- |
+| Build Debug estrito | `dotnet build Odca.sln -c Debug -warnaserror` | **0W/0E** |
+| Build Release estrito | `dotnet build Odca.sln -c Release -warnaserror` | **0W/0E** |
+| Domain | `dotnet test tests/Odca.Domain.Tests` | **389/389** (helper do teste de módulos adaptado ao construtor; nenhuma asserção mudada) |
+| Integração em DB nova | `scripts/qa/run-integration-tests.ps1 -FreshDb` | **236/236, TEST-EXIT=0** (baseline S12/S13/S14 preservado; nenhum teste novo) |
+| Assets/i18n | `node scripts/check-assets.mjs` | **exit=0** — 10 assets, 19 chaves do conjunto d41, 4 catálogos (**3620 chaves/cultura, paridade 4/4**) |
+| Paridade delta↔catálogo | script efêmero (removido antes do commit) | 216 × 4 = 864 comparações, **0 divergências** |
+| Chaves usadas × catálogo | script efêmero (removido antes do commit) | 241 chaves únicas referenciadas estáticamente (views + controllers + JS) × 4 catálogos = **0 ausentes**; as 33 chaves `module.*` referenciadas indiretamente pelos arrays do `ModulesController` presentes nos 4 catálogos (garantida pela paridade) |
+| Auditoria de design d41 | `scripts/qa/audit-d41-design.ps1` | **604/604 · overflow=0 · authfail=0 · httpfail=0 · exit=0** (transcript §4) |
+| SMTP / backup | — | **não reexecutados de propósito**: sem diff em transporte, outbox, worker nem scripts desses domínios (rodadas S12 seguem válidas) |
+
+### Verificação byte-a-byte dos valores i18n (leção S12 aplicada)
+
+Delta escrito 100% ASCII com `\uXXXX` (arquivo verificado byte a byte) e validação verbatim contra o código-fonte original lido de `git show HEAD:` (acentos íntegros no transporte, 15 trechos assertados). Amostras decodificadas conferidas por bytes nos catálogos: pt-BR "Administra**ção**" = `… c3 a7 c3 a3 6f`, "Configura**çõ**es" = `… c3 a7 c3 b5 65 73`, "Poli**tí**cas" = `… c3 ad 69 63 61 73`. Varredura de marcas de double-encoding (Â/Ã+bytes altos, U+FFFD) nos 4 catálogos: **0 ocorrências**. Round-trip JSON BOM+LF sem nova linha final OK nos 4 arquivos.
+
+### Classificação QA (não é do produto)
+
+Três incidentes capturados **antes** do commit: (1) o primeiro merge pós-`git checkout` encontrou CRLF na árvore de trabalho (smudge) onde o formato canônico é BOM+LF — o merge passou a normalizar `\r\n`→`\n` na carga e revalidou BOM/LF/sem quebra final antes de escrever; (2) a checagem verbatim lia o working tree já editado em vez do commit-base — relida via `git show HEAD:` e 15 trechos reassertados; (3) o cross-check de chaves após a escrita das views revelou 2 chaves ausentes do delta (`platform.rev_js_origin_contractor`, `platform.sla_th_priority`) — adicionadas, delta regenerado (214→216) e catálogos remergiados com paridade 3620 revalidada. Além disso, a transcrição do `removeField` do NewRevision corrigida no review pré-GATE (`splice(index,index)`→`splice(index,1)` — comportamento original do HEAD). Nenhum literal de UI pt remanescente no escopo além dos registrados em §1: varredura de não-ASCII nos 11 arquivos = apenas glifos neutros (`—`, `·`, `✓`, `×`), o aria-label global de breadcrumb (dívida S17), comentários C#/JS e o conteúdo JSON de documento do template.
+
+### Confirmação de preservação estrutural
+
+Dif de multiset de tags (HEAD × árvore) nos 7 views: **0 remoções / 0 adições** em 6 arquivos; `NewRevision.cshtml` com **+2 `<span aria-hidden="true">`** (separadores "·" da meta linha encapsulados, aparência idêntica) e **+2 `<script>`** (bag i18n + shim, padrão Studio `_I18nBag`) — ambos propositais.
+
+## 6. Cobertura honesta e dívidas mantidas
+
+- **Coberto**: as 5 superfícies superadmin fixas (biblioteca, novo modelo, nova revisão, SLA/configurações, diagnóstico) + as 6 páginas de módulo (3 cliente + 3 superadmin) medidas ao vivo em 4 idiomas × 4 viewports (overflow/auth/HTTP) + as 4 superfícies superadmin legadas agora cobertas em 4 idiomas + todas as strings das 7 views e 4 controllers em catálogo (zero literais de UI no escopo verificado por varredura + checagem das chaves). Estrutura comprovadamente preservada (§5).
+- **Não coberto pela rota fixa da auditoria**: POSTs e estados internos dos fluxos (criação de modelo, publicação de revisão com confirmação, retirar/publicar com justificativa, filtros da auditoria aplicados) — cobertos por compilação estrita, varredura, dif de estrutura e suíte de integração inalterada; risco residual avaliado baixo. Aceite humano das 4 línguas pendente (como S7/S8/S13/S14).
+- **Dívida i18n pt-first restante** (particionamento S16/S17 registrado): **S16 — gestão de clientes**: `Customers` ×4 + controller, Consumption + VMs, Plans, Inbox + controller, usos de `StatusLabels`; **S17 — conta e resíduo**: `Account` ×7 + controller + VMs MFA/ChangePassword, resíduo de Solicitações, `BffErrorHandlingMiddleware`, endônimo "Português (BR)" do `_Layout`, `NavigationRegistry` (30 rótulos de menu) + renderer e o aria-label global de breadcrumb. Atributos `[Required(ErrorMessage)]` seguem pt-first (cross-área); mensagens de domínio da API permanecem em pt (`d.Detail` do diagnóstico, motivo de falha do conflito).
+- **Bloqueios externos mantidos (registrados, nenhuma inventada)**: CI oficial nunca verde publicada (branch sem push) → `.odca/progress.json` permanece **40%**; provedor de assinatura, canal SMTP real, usuários convidados + aprovação da versão, política de sessão de 15 min e retenção de backups seguem abertos (D-OC45 §4). Nenhum marco credenciável nesta rodada.
+
+## 7. Separação de evidências e portal
+
+- **Teste local**: GATE §5 + execução d41 ao vivo + transcript versionado + checagem das 241 chaves usadas×catálogo + amostras byte-a-byte + varreduras de resíduo.
+- **CI oficial**: **não verificada** — sem push nesta rodada; nenhum ID de execução inventado.
+- **Aceite humano**: pendente (área de administração de plataforma em 4 idiomas + itens anteriores).
+- **Portal / `.odca/progress.json`**: **inalterado** — baseline 40%; IDs e pesos intactos; sem CI oficial verde do SHA nem aceite real, nenhum marco sai de `pending`.

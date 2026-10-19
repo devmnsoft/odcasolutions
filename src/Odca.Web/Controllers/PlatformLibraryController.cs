@@ -13,12 +13,17 @@ namespace Odca.Web.Controllers;
 /// </summary>
 [Authorize(Roles = "SuperAdministrator")]
 [Route("administracao/biblioteca")]
-public sealed class PlatformLibraryController(OdcaApiClient api) : Controller
+public sealed class PlatformLibraryController(OdcaApiClient api, Odca.Configuration.Localization.LocalizationService loc) : Controller
 {
+    // D-OC49 (S15): padrão canônico de cultura (CultureMiddleware) e localização das mensagens BFF.
+    private string? Culture => HttpContext.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] as string;
+
+    private string L(string key, params string[] args) => loc.T(key, Culture, args);
+
     [HttpGet]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        ViewData["Title"] = "Biblioteca de modelos";
+        ViewData["Title"] = L("biblioteca-modelos");
         var token = await HttpContext.GetTokenAsync("access_token");
         if (token is null) return Challenge();
         var result = await api.GetTemplateCatalogAsync(token, ct);
@@ -33,7 +38,7 @@ public sealed class PlatformLibraryController(OdcaApiClient api) : Controller
     [HttpGet("novo")]
     public async Task<IActionResult> Create(CancellationToken ct)
     {
-        ViewData["Title"] = "Novo modelo oficial";
+        ViewData["Title"] = L("platform.template_create_title");
         var token = await HttpContext.GetTokenAsync("access_token");
         if (token is null) return Challenge();
         return View();
@@ -48,7 +53,7 @@ public sealed class PlatformLibraryController(OdcaApiClient api) : Controller
 
         if (string.IsNullOrWhiteSpace(name) || name.Trim().Length < 3)
         {
-            TempData["Error"] = "Nome deve ter pelo menos 3 caracteres.";
+            TempData["Error"] = L("platform.lib_err_name_min");
             return View("Create", new { name, description, contractType, documentPurpose });
         }
 
@@ -61,23 +66,23 @@ public sealed class PlatformLibraryController(OdcaApiClient api) : Controller
 
         if (result.Succeeded)
         {
-            TempData["Success"] = "Modelo criado em rascunho. Publique-o para torná-lo disponível às organizações.";
+            TempData["Success"] = L("platform.lib_ok_created");
             return RedirectToAction(nameof(Index));
         }
-        TempData["Error"] = result.UserMessage("Não foi possível criar o modelo.");
+        TempData["Error"] = result.UserMessage(L("platform.lib_err_create"));
         return View("Create", new { name, description, contractType, documentPurpose });
     }
 
     [HttpGet("{key}/nova-revisao")]
     public async Task<IActionResult> NewRevision(string key, CancellationToken ct)
     {
-        ViewData["Title"] = "Nova revisão de modelo";
+        ViewData["Title"] = L("platform.rev_title");
         var token = await HttpContext.GetTokenAsync("access_token");
         if (token is null) return Challenge();
         var result = await api.GetTemplateRevisionCurrentAsync(token, key, ct);
         if (!result.Succeeded)
         {
-            TempData["Error"] = result.UserMessage("Não foi possível carregar a revisão atual do modelo.");
+            TempData["Error"] = result.UserMessage(L("platform.rev_err_load"));
             return RedirectToAction(nameof(Index));
         }
         return View(result.Value!);
@@ -92,7 +97,7 @@ public sealed class PlatformLibraryController(OdcaApiClient api) : Controller
         var normalizedSummary = summary?.Trim() ?? string.Empty;
         if (normalizedSummary.Length is < 5 or > 500)
         {
-            TempData["Error"] = "Informe um resumo da mudança entre 5 e 500 caracteres.";
+            TempData["Error"] = L("platform.rev_err_summary");
             var current = await api.GetTemplateRevisionCurrentAsync(token, key, ct);
             if (current.Succeeded) return View(current.Value!);
             return RedirectToAction(nameof(Index));
@@ -103,12 +108,12 @@ public sealed class PlatformLibraryController(OdcaApiClient api) : Controller
         if (result.Succeeded)
         {
             var newRevision = expectedRevision + 1;
-            TempData["Success"] = $"Revisão {newRevision} publicada. Documentos emitidos a partir de revisões anteriores permanecem intactos (fixados à versão de origem).";
+            TempData["Success"] = L("platform.rev_ok_published", newRevision.ToString(System.Globalization.CultureInfo.InvariantCulture));
             return RedirectToAction(nameof(Index));
         }
 
         // Conflito ou falha: recarrega o estado do servidor para o superadmin repetir a partir do ponto atual.
-        TempData["Error"] = result.UserMessage("A revisão não foi publicada; verifique a mensagem do servidor.");
+        TempData["Error"] = result.UserMessage(L("platform.rev_err_conflict"));
         var reloaded = await api.GetTemplateRevisionCurrentAsync(token, key, ct);
         if (reloaded.Succeeded) return View(reloaded.Value!);
         return RedirectToAction(nameof(Index));
@@ -123,22 +128,22 @@ public sealed class PlatformLibraryController(OdcaApiClient api) : Controller
         var normalizedAction = action?.Trim().ToLowerInvariant() ?? string.Empty;
         if (normalizedAction is not ("publish" or "retire"))
         {
-            TempData["Error"] = "Ação inválida para o catálogo.";
+            TempData["Error"] = L("platform.lib_err_action");
             return RedirectToAction(nameof(Index));
         }
         var normalizedReason = reason?.Trim() ?? string.Empty;
         if (normalizedReason.Length is < 5 or > 500)
         {
-            TempData["Error"] = "Informe uma justificativa entre 5 e 500 caracteres.";
+            TempData["Error"] = L("platform.lib_err_reason");
             return RedirectToAction(nameof(Index));
         }
 
         var result = await api.SetTemplateCatalogStatusAsync(token, key, new TemplateCatalogStatusRequest(normalizedAction, normalizedReason), ct);
         TempData[result.Succeeded ? "Success" : "Error"] = result.Succeeded
             ? (normalizedAction == "retire"
-                ? "Modelo retirado do catálogo global. Novas organizações não o recebem; cópias já instaladas seguem intactas."
-                : "Modelo publicado no catálogo global. Organizações sem cópia própria passam a resolvê-lo pela linha global.")
-            : result.UserMessage("A operação não foi aplicada.");
+                ? L("platform.lib_ok_retired")
+                : L("platform.lib_ok_published"))
+            : result.UserMessage(L("platform.lib_err_apply"));
         return RedirectToAction(nameof(Index));
     }
 }

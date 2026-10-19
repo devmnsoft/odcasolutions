@@ -1,35 +1,36 @@
 @model Odca.Web.Models.ModuleStatusViewModel
 @{
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
     ViewData["Title"] = Model.Title;
 }
 <nav class="breadcrumb" aria-label="Navegação estrutural">
-    <a asp-controller="Home" asp-action="Index">Início</a><span aria-hidden="true">/</span><span>@Model.Title</span>
+    <a asp-controller="Home" asp-action="Index">@L.T("inicio",_c)</a><span aria-hidden="true">/</span><span>@Model.Title</span>
 </nav>
 <section class="page-heading">
     <div>
-        <p class="eyebrow">@(Model.IsPlatformModule ? "Administração da plataforma" : "Área da empresa")</p>
+        <p class="eyebrow">@(Model.IsPlatformModule ? L.T("module.eyebrow_platform",_c) : L.T("module.eyebrow_tenant",_c))</p>
         <h1>@Model.Title</h1>
         <p>@Model.Description</p>
     </div>
-    <a class="button button-primary" asp-controller="Home" asp-action="Index">Voltar ao painel</a>
+    <a class="button button-primary" asp-controller="Home" asp-action="Index">@L.T("support.back_panel",_c)</a>
 </section>
 <section class="panel controlled-state" role="status">
     @if (Model.OpenHref is not null)
     {
-        <span class="status-badge status-approved">Tela disponível</span>
-        <h2>Este módulo já está operando</h2>
-        <p>O módulo indicado está disponível para uso no fluxo principal, sem alterar dados enquanto você apenas consulta.</p>
+        <span class="status-badge status-approved">@L.T("module.st_available",_c)</span>
+        <h2>@L.T("module.ok_h",_c)</h2>
+        <p>@L.T("module.ok_p",_c)</p>
         <p><a class="button button-primary" href="@Model.OpenHref">@Model.OpenLinkText</a></p>
     }
     else
     {
-        <span class="status-badge status-pending">Em construção controlada</span>
-        <h2>Esta área ainda não executa alterações</h2>
-        <p>Estamos preparando este módulo sem criar integrações provisórias ou expor dados fora do seu perfil. As funcionalidades já prontas permanecem acessíveis pelo menu.</p>
+        <span class="status-badge status-pending">@L.T("module.st_construction",_c)</span>
+        <h2>@L.T("module.pending_h",_c)</h2>
+        <p>@L.T("module.pending_p",_c)</p>
     }
 </section>
 <section class="panel help-card">
-    <h2>Como usar agora</h2>
+    <h2>@L.T("module.next_h",_c)</h2>
     <p>@Model.NextStep</p>
-    <p class="muted">Se uma opção esperada não aparecer no menu, confirme seu perfil com o administrador da empresa.</p>
+    <p class="muted">@L.T("module.menu_hint",_c)</p>
 </section>

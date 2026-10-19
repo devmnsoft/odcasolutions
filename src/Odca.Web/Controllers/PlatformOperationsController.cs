@@ -13,12 +13,15 @@ namespace Odca.Web.Controllers;
 /// </summary>
 [Authorize(Roles = "SuperAdministrator")]
 [Route("administracao/configuracoes")]
-public sealed class PlatformOperationsController(OdcaApiClient api) : Controller
+public sealed class PlatformOperationsController(OdcaApiClient api, Odca.Configuration.Localization.LocalizationService loc) : Controller
 {
+    // D-OC49 (S15): padrão canônico de cultura (CultureMiddleware) e título localizado.
+    private string? Culture => HttpContext.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] as string;
+
     [HttpGet]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        ViewData["Title"] = "Configurações operacionais";
+        ViewData["Title"] = loc.T("configuracoes-operacionais", Culture);
         var token = await HttpContext.GetTokenAsync("access_token");
         if (token is null) return Challenge();
         var result = await api.GetSlaPoliciesAsync(token, ct);

@@ -1,24 +1,27 @@
 @model Odca.Contracts.Administration.TemplateRevisionCurrent
 @using Odca.Contracts.Administration
 @{
-    ViewData["Title"] = "Nova revisão de modelo";
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("platform.rev_title", _c);
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+    string Rev(int n) => n.ToString(inv);
 }
-<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-action="Index">Biblioteca de modelos</a><span>/</span><span aria-current="page">Nova revisão</span></nav>
+<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-action="Index">@L.T("biblioteca-modelos",_c)</a><span>/</span><span aria-current="page">@L.T("platform.lib_new_revision_btn",_c)</span></nav>
 <header class="page-heading">
     <div>
-        <p class="eyebrow">Administração global · Revisão de modelo</p>
-        <h1>Nova revisão — @Model.Name</h1>
-        <p class="muted">Revisão atual: @Model.CurrentRevision · tipo <code>@Model.ContractType</code> · chave <code>@Model.OfficialKey</code></p>
+        <p class="eyebrow">@L.T("platform.rev_eyebrow",_c)</p>
+        <h1>@L.T("platform.rev_h1",_c,Model.Name)</h1>
+        <p class="muted">@L.T("platform.rev_meta_current",_c,Rev(Model.CurrentRevision))<span aria-hidden="true"> · </span>@L.T("platform.rev_meta_type",_c)<code>@Model.ContractType</code><span aria-hidden="true"> · </span>@L.T("platform.rev_meta_key",_c)<code>@Model.OfficialKey</code></p>
     </div>
-    <a class="button button-quiet" asp-action="Index">← Voltar à biblioteca</a>
+    <a class="button button-quiet" asp-action="Index">@L.T("platform.rev_back",_c)</a>
 </header>
 
 @if (TempData["Success"] is string successMsg) { <div class="alert alert-success" role="status">@successMsg</div> }
 @if (TempData["Error"] is string errorMsg) { <div class="alert alert-error" role="alert">@errorMsg</div> }
 
 <section class="panel" style="margin-bottom:1.5rem; border-left:4px solid #059669;">
-    <strong>Efeito da publicação.</strong>
-    <p style="margin:.25rem 0 0;">Publicar a revisão @((Model.CurrentRevision + 1)) cria uma <strong>nova versão imutável</strong> do modelo. Minutas, versões geradas e contratos já emitidos continuam fixados à revisão @Model.CurrentRevision (snapshot imutável com referência à versão de origem) — nenhum documento existente é alterado. Novas minutas passam a nascer da revisão @((Model.CurrentRevision + 1)).</p>
+    <strong>@L.T("platform.rev_effect_title",_c)</strong>
+    <p style="margin:.25rem 0 0;">@L.T("platform.rev_effect_a",_c,Rev(Model.CurrentRevision + 1))<strong>@L.T("platform.rev_effect_strong",_c)</strong>@L.T("platform.rev_effect_b",_c,Rev(Model.CurrentRevision),Rev(Model.CurrentRevision + 1))</p>
 </section>
 
 <form method="post" asp-action="NewRevision" asp-route-key="@Model.OfficialKey" id="revisionForm" data-prevent-double-submit>
@@ -27,87 +30,87 @@
 
     <div class="card" style="margin-bottom:1.5rem;">
         <label style="display:block; font-weight:600;">
-            Resumo da mudança * <small class="muted">(obrigatório, 5–500 caracteres — fica registrado na auditoria)</small>
-            <textarea name="summary" rows="2" minlength="5" maxlength="500" required style="width:100%; margin-top:.25rem;" placeholder="Ex.: ajuste do prazo de aviso prévio na cláusula 3 e inclusão de campo de cobrança"></textarea>
+            @L.T("platform.rev_summary_label",_c) <small class="muted">@L.T("platform.rev_summary_hint",_c)</small>
+            <textarea name="summary" rows="2" minlength="5" maxlength="500" required style="width:100%; margin-top:.25rem;" placeholder="@L.T("platform.rev_summary_ph",_c)"></textarea>
         </label>
     </div>
 
     <div class="template-editor-grid">
         <div class="card">
-            <h3>Campos Variáveis do Modelo</h3>
-            <p class="muted" style="font-size:0.875rem;">Campos dinâmicos disponíveis ao operador ao preencher a minuta.</p>
+            <h3>@L.T("platform.rev_fields_h",_c)</h3>
+            <p class="muted" style="font-size:0.875rem;">@L.T("platform.rev_fields_help",_c)</p>
 
             <div style="background:#f8fafc; padding:1rem; border-radius:6px; border:1px solid #e2e8f0; margin-bottom:1rem;">
-                <h4 style="margin-top:0; font-size:0.95rem;">+ Adicionar Novo Campo</h4>
+                <h4 style="margin-top:0; font-size:0.95rem;">@L.T("platform.rev_fields_add_h",_c)</h4>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:0.5rem;">
                     <div>
-                        <label style="font-size:0.8rem; font-weight:600;">Identificador:</label>
+                        <label style="font-size:0.8rem; font-weight:600;">@L.T("platform.rev_field_id_label",_c)</label>
                         <input type="text" id="newFieldId" placeholder="identificador_unico" style="width:100%; font-size:0.85rem;" />
                     </div>
                     <div>
-                        <label style="font-size:0.8rem; font-weight:600;">Rótulo exibido:</label>
-                        <input type="text" id="newFieldLabel" placeholder="Nome Completo" style="width:100%; font-size:0.85rem;" />
+                        <label style="font-size:0.8rem; font-weight:600;">@L.T("platform.rev_field_label_label",_c)</label>
+                        <input type="text" id="newFieldLabel" placeholder="@L.T("platform.rev_field_label_ph",_c)" style="width:100%; font-size:0.85rem;" />
                     </div>
                 </div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:0.5rem;">
                     <div>
-                        <label style="font-size:0.8rem; font-weight:600;">Tipo de Dado:</label>
+                        <label style="font-size:0.8rem; font-weight:600;">@L.T("platform.rev_field_type_label",_c)</label>
                         <select id="newFieldType" style="width:100%; font-size:0.85rem;">
-                            <option value="ShortText">Texto Curto</option>
-                            <option value="LongText">Texto Longo</option>
-                            <option value="BrazilianDocument">CPF ou CNPJ</option>
-                            <option value="Currency">Moeda (R$)</option>
-                            <option value="Date">Data</option>
-                            <option value="Number">Número</option>
-                            <option value="Choice">Seleção de Opções</option>
+                            <option value="ShortText">@L.T("studio.ft_short",_c)</option>
+                            <option value="LongText">@L.T("studio.ft_long",_c)</option>
+                            <option value="BrazilianDocument">@L.T("studio.ft_brdoc",_c)</option>
+                            <option value="Currency">@L.T("studio.ft_currency",_c)</option>
+                            <option value="Date">@L.T("studio.ft_date",_c)</option>
+                            <option value="Number">@L.T("studio.ft_number",_c)</option>
+                            <option value="Choice">@L.T("studio.ft_choice",_c)</option>
                         </select>
                     </div>
                     <div>
-                        <label style="font-size:0.8rem; font-weight:600;">Opções (separadas por vírgula):</label>
-                        <input type="text" id="newFieldChoices" placeholder="Opção 1, Opção 2" style="width:100%; font-size:0.85rem;" />
+                        <label style="font-size:0.8rem; font-weight:600;">@L.T("platform.rev_field_choices_label",_c)</label>
+                        <input type="text" id="newFieldChoices" placeholder="@L.T("platform.rev_field_choices_ph",_c)" style="width:100%; font-size:0.85rem;" />
                     </div>
                 </div>
                 <div class="template-field-options">
-                    <label>Origem do preenchimento
+                    <label>@L.T("platform.rev_origin_label",_c)
                         <select id="newFieldOrigin">
-                            <option value="manual">Entrada manual</option>
-                            <option value="organization">Organização/clínica</option>
-                            <option value="patient">Paciente</option>
-                            <option value="contractor">Contratante/responsável financeiro</option>
-                            <option value="representative">Representante</option>
+                            <option value="manual">@L.T("platform.rev_origin_manual",_c)</option>
+                            <option value="organization">@L.T("platform.rev_origin_org",_c)</option>
+                            <option value="patient">@L.T("platform.rev_origin_patient",_c)</option>
+                            <option value="contractor">@L.T("platform.rev_origin_contractor",_c)</option>
+                            <option value="representative">@L.T("platform.rev_origin_representative",_c)</option>
                         </select>
                     </label>
-                    <label>Propriedade do cadastro
-                        <select id="newFieldProperty"><option value="">Não mapear</option></select>
+                    <label>@L.T("platform.rev_field_property_label",_c)
+                        <select id="newFieldProperty"><option value="">@L.T("studio.tpl_unmap",_c)</option></select>
                     </label>
-                    <label>Obrigatório quando o campo
-                        <select id="newFieldController"><option value="">Sempre, se estiver marcado como obrigatório</option></select>
+                    <label>@L.T("platform.rev_field_when_label",_c)
+                        <select id="newFieldController"><option value="">@L.T("platform.rev_always_required",_c)</option></select>
                     </label>
-                    <label>Valores que ativam a condição
-                        <input type="text" id="newFieldWhenValues" placeholder="Sim" />
+                    <label>@L.T("platform.rev_when_values_label",_c)
+                        <input type="text" id="newFieldWhenValues" placeholder="@L.T("common.yes",_c)" />
                     </label>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem;">
-                    <label style="font-size:0.85rem;"><input type="checkbox" id="newFieldRequired" checked /> Campo Obrigatório</label>
-                    <button type="button" id="addFieldBtn" class="button button-quiet" style="font-size:0.85rem;">+ Incluir Campo</button>
+                    <label style="font-size:0.85rem;"><input type="checkbox" id="newFieldRequired" checked /> @L.T("platform.rev_required_check",_c)</label>
+                    <button type="button" id="addFieldBtn" class="button button-quiet" style="font-size:0.85rem;">@L.T("platform.rev_add_field_btn",_c)</button>
                 </div>
             </div>
 
-            <h4>Campos Cadastrados:</h4>
+            <h4>@L.T("platform.rev_fields_registered",_c)</h4>
             <div id="fieldsList" style="display:flex; flex-direction:column; gap:0.5rem; max-height:250px; overflow-y:auto; padding-right:0.25rem;"></div>
             <textarea name="fieldsJson" id="fieldsJsonInput" style="display:none;">@Model.Fields</textarea>
         </div>
 
         <div class="card" style="display:flex; flex-direction:column;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-                <h3 style="margin:0;">Conteúdo Estruturado do Modelo</h3>
+                <h3 style="margin:0;">@L.T("platform.rev_content_h",_c)</h3>
                 <span class="badge badge-muted">Legal Design</span>
             </div>
-            <p class="muted" style="font-size:0.875rem;">Texto das cláusulas da nova revisão. Clique em um campo à esquerda para inseri-lo no texto.</p>
+            <p class="muted" style="font-size:0.875rem;">@L.T("platform.rev_content_help",_c)</p>
             <div id="editorLossBanner" class="error" role="alert" style="display:none; font-size:0.85rem; margin-bottom:0.75rem;"></div>
 
             <label style="font-weight:600; font-size:0.85rem; margin-bottom:0.25rem;">
-                Texto Simples com Marcadores (ex: Use {{identificador_do_campo}} para variáveis):
+                @L.T("platform.rev_text_label",_c)
             </label>
             <textarea id="textEditor" rows="14" style="width:100%; font-family:monospace; font-size:0.9rem; line-height:1.4; padding:0.75rem; border-radius:4px; border:1px solid #cbd5e1;"></textarea>
             <textarea name="contentJson" id="contentJsonInput" style="display:none;">@Model.Content</textarea>
@@ -115,17 +118,34 @@
     </div>
 
     <div class="button-row" style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #e2e8f0; padding-top:1rem; margin-top:1.5rem;">
-        <a class="button button-quiet" asp-action="Index">Cancelar</a>
+        <a class="button button-quiet" asp-action="Index">@L.T("action.cancel",_c)</a>
         <button type="submit" class="button" style="background:#059669; color:#fff;"
-                onclick="return confirm('Publicar a revisão @(Model.CurrentRevision + 1)? Documentos emitidos a partir de revisões anteriores não são alterados.')"
+                onclick="return confirm(window.OdcaI18n.t('platform.rev_publish_confirm', @(Model.CurrentRevision + 1)));"
                 data-prevent-double-submit>
-            ✓ Publicar revisão @(Model.CurrentRevision + 1)
+            ✓ @L.T("platform.rev_publish_btn",_c,Rev(Model.CurrentRevision + 1))
         </button>
     </div>
 </form>
 
+@{
+    // D-OC49 (S15): bolsa de traducoes para o script do editor, mesmo padrao do Studio
+    // (_I18nBag): JSON com escapamento seguro de JavaScript via Html.Raw (D-OC23).
+    var cultureBag = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey] ?? "pt-BR";
+    var bag = L.Catalog(cultureBag)
+        .Where(kv => kv.Key.StartsWith("platform.", StringComparison.Ordinal) || kv.Key.StartsWith("common.", StringComparison.Ordinal))
+        .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
+    var jsonOpts = new System.Text.Json.JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+    var cultureJson = System.Text.Json.JsonSerializer.Serialize(cultureBag, jsonOpts);
+    var bagJson = System.Text.Json.JsonSerializer.Serialize(bag, jsonOpts);
+}
+<script>window.odcaI18n={culture:@Html.Raw(cultureJson),t:@Html.Raw(bagJson)};</script>
+<script>
+(function(){var b=window.odcaI18n||{culture:"pt-BR",t:{}};window.OdcaI18n={culture:b.culture,t:function(key){var m=b.t[key];if(m==null)return key;var args=[].slice.call(arguments,1);if(!args.length)return m;return m.replace(/\{(\d+)\}/g,function(_,i){var v=args[Number(i)];return v!=null?v:_+i+"";});}};})();
+</script>
+
 <script type="module">
     import { collectEditorLosses, convertTextToStructuredJson, structuredJsonToText } from '@Url.Content("~/js/template-editor-document.js")';
+    const t = (window.OdcaI18n && window.OdcaI18n.t) || ((k) => k);
     let fieldsData = [];
     try { fieldsData = JSON.parse(document.getElementById('fieldsJsonInput').value || '[]'); } catch (e) { fieldsData = []; }
     let fieldsDirty = false;
@@ -135,7 +155,7 @@
         list.replaceChildren();
         if (fieldsData.length === 0) {
             const p = document.createElement('p');
-            p.className = 'muted'; p.style.fontSize = '0.85rem'; p.textContent = 'Nenhum campo variável configurado.';
+            p.className = 'muted'; p.style.fontSize = '0.85rem'; p.textContent = t('platform.rev_js_no_fields');
             list.appendChild(p);
         }
         fieldsData.forEach((f, idx) => {
@@ -150,14 +170,14 @@
             infoDiv.appendChild(code);
             const span = document.createElement('span');
             span.style.cssText = 'font-size:0.75rem; color:#64748b; margin-left:0.5rem;';
-            const originLabel = { organization: "Organização", patient: "Paciente", contractor: "Contratante", representative: "Representante", manual: "Manual" };
+            const originLabel = { organization: t('platform.rev_js_origin_org'), patient: t('platform.rev_origin_patient'), contractor: t('platform.rev_js_origin_contractor'), representative: t('platform.rev_origin_representative'), manual: t('platform.rev_js_origin_manual') };
             const origin = f.origin || f.Origin || "manual";
             const property = f.sourceProperty || f.SourceProperty;
             const controller = f.requiredWhenFieldId || f.RequiredWhenFieldId;
             const whenValues = f.requiredWhenAnyOf || f.RequiredWhenAnyOf || [];
-            const condition = controller ? `; obrigatório quando ${controller} = ${whenValues.join(" ou ")}` : "";
+            const condition = controller ? t('platform.rev_js_cond', controller, whenValues.join(t('platform.rev_js_cond_join'))) : "";
             const help = f.help || f.Help || "";
-            span.textContent = `[${f.type}${f.required ? ", Obrigatório" : ""}, ${originLabel[origin] || origin}${property ? " · " + property : ""}${condition}${help ? " · ajuda: " + help : ""}]`;
+            span.textContent = `[${f.type}${f.required ? ", " + t('platform.rev_js_required') : ""}, ${originLabel[origin] || origin}${property ? " · " + property : ""}${condition}${help ? " ·" + t('platform.rev_js_help_prefix') + help : ""}]`;
             infoDiv.appendChild(span);
             item.appendChild(infoDiv);
             const btnDiv = document.createElement('div');
@@ -165,13 +185,13 @@
             const insertBtn = document.createElement('button');
             insertBtn.type = 'button'; insertBtn.className = 'button button-quiet';
             insertBtn.style.cssText = 'padding:2px 6px; font-size:0.75rem;';
-            insertBtn.textContent = 'Inserir'; insertBtn.title = 'Inserir no cursor do texto';
+            insertBtn.textContent = t('platform.rev_js_insert'); insertBtn.title = t('platform.rev_js_insert_title');
             insertBtn.addEventListener('click', () => insertFieldToken(f.id));
             btnDiv.appendChild(insertBtn);
             const removeBtn = document.createElement('button');
             removeBtn.type = 'button'; removeBtn.className = 'button button-quiet';
             removeBtn.style.cssText = 'padding:2px 6px; font-size:0.75rem; color:#ef4444;';
-            removeBtn.textContent = '×'; removeBtn.title = 'Remover campo';
+            removeBtn.textContent = '×'; removeBtn.title = t('platform.rev_js_remove_title');
             removeBtn.addEventListener('click', () => removeField(idx));
             btnDiv.appendChild(removeBtn);
             item.appendChild(btnDiv);
@@ -199,23 +219,23 @@
     });
 
     const propertyCatalog = {
-        patient: [["fullName", "Nome"], ["preferredName", "Nome social"], ["birthDate", "Nascimento"], ["identifierValue", "Documento"], ["identifierType", "Tipo de documento"], ["email", "E-mail"], ["phone", "Telefone"], ["address", "Endereço"]],
-        organization: [["displayName", "Nome"], ["businessCode", "Documento"]],
-        representative: [["fullName", "Nome"], ["identifierValue", "Documento"], ["relationship", "Relação"]],
-        contractor: [["fullName", "Nome"], ["identifierValue", "Documento"], ["email", "E-mail"], ["phone", "Telefone"], ["address", "Endereço"]]
+        patient: [["fullName", t('platform.rev_prop_fullname')], ["preferredName", t('platform.rev_prop_preferredname')], ["birthDate", t('platform.rev_prop_birthdate')], ["identifierValue", t('platform.rev_prop_identifier')], ["identifierType", t('platform.rev_prop_identifiertype')], ["email", t('platform.rev_prop_email')], ["phone", t('platform.rev_prop_phone')], ["address", t('platform.rev_prop_address')]],
+        organization: [["displayName", t('platform.rev_prop_fullname')], ["businessCode", t('platform.rev_prop_identifier')]],
+        representative: [["fullName", t('platform.rev_prop_fullname')], ["identifierValue", t('platform.rev_prop_identifier')], ["relationship", t('platform.rev_prop_relationship')]],
+        contractor: [["fullName", t('platform.rev_prop_fullname')], ["identifierValue", t('platform.rev_prop_identifier')], ["email", t('platform.rev_prop_email')], ["phone", t('platform.rev_prop_phone')], ["address", t('platform.rev_prop_address')]]
     };
     const originInput = document.getElementById('newFieldOrigin');
     const propertyInput = document.getElementById('newFieldProperty');
     const controllerInput = document.getElementById('newFieldController');
     const refreshPropertyChoices = () => {
         const origin = originInput.value;
-        propertyInput.replaceChildren(new Option(origin === "manual" ? "Entrada manual, sem cadastro" : "Selecione a propriedade", ""));
+        propertyInput.replaceChildren(new Option(origin === "manual" ? t('platform.rev_js_manual_nomap') : t('platform.rev_js_select_property'), ""));
         for (const [value, label] of propertyCatalog[origin] || []) propertyInput.append(new Option(label, value));
         propertyInput.disabled = origin === "manual";
     };
     const refreshControllers = () => {
         const current = controllerInput.value;
-        controllerInput.replaceChildren(new Option("Sempre, se estiver marcado como obrigatório", ""));
+        controllerInput.replaceChildren(new Option(t('platform.rev_always_required'), ""));
         for (const field of fieldsData) controllerInput.append(new Option(field.label || field.id, field.id));
         if ([...controllerInput.options].some(option => option.value === current)) controllerInput.value = current;
     };
@@ -236,15 +256,15 @@
         const type = typeInput.value;
         const required = reqInput.checked;
         const rawChoices = (choicesInput.value || '').split(',').map(s => s.trim()).filter(Boolean);
-        if (!id) { alert('Informe o identificador ou rótulo do campo.'); return; }
-        if (fieldsData.some(f => f.id === id)) { alert('Já existe um campo com este identificador.'); return; }
+        if (!id) { alert(t('platform.rev_js_err_id')); return; }
+        if (fieldsData.some(f => f.id === id)) { alert(t('platform.rev_js_err_dup_id')); return; }
         const origin = originInput.value || "manual";
         const property = propertyInput.value;
         const controller = controllerInput.value;
         const whenValues = (document.getElementById('newFieldWhenValues').value || '').split(',').map(item => item.trim()).filter(Boolean);
-        if (origin !== 'manual' && !property) { alert('Selecione a propriedade do cadastro.'); return; }
-        if (controller === id) { alert('Um campo não pode condicionar a si mesmo.'); return; }
-        if (controller && whenValues.length === 0) { alert('Informe ao menos um valor que torna o campo obrigatório.'); return; }
+        if (origin !== 'manual' && !property) { alert(t('platform.rev_js_err_no_property')); return; }
+        if (controller === id) { alert(t('platform.rev_js_err_self_condition')); return; }
+        if (controller && whenValues.length === 0) { alert(t('platform.rev_js_err_no_when_values')); return; }
         const help = (document.getElementById('newFieldHelp')?.value || '').trim();
         const newF = { id, label, type, required, origin };
         if (property) newF.sourceProperty = property;
@@ -266,7 +286,7 @@
         const token = `{{${fieldId}}}`;
         const startPos = editor.selectionStart; const endPos = editor.selectionEnd;
         editor.value = editor.value.substring(0, startPos) + token + editor.value.substring(endPos);
-        editor.selectionStart = startPos + token.length; editor.selectionEnd = startPos + token.length;
+        editor.selectionStart = startPos + token.length; editor.selectionEnd = endPos;
         editor.focus();
     }
 
@@ -285,8 +305,8 @@
             const issues = collectEditorLosses(parsed);
             if (issues.length > 0) {
                 const banner = document.getElementById('editorLossBanner');
-                banner.innerHTML = '<strong>Editor limitado:</strong> este modelo usa recursos que o texto simples não preserva: <ul style="margin:0.25rem 0 0 1.1rem; padding:0;">' +
-                    issues.map(i => `<li>${i}</li>`).join('') + '</ul> Sem alteração no texto, o original é mantido na nova revisão.';
+                banner.innerHTML = '<strong>' + t('platform.rev_js_banner_title') + '</strong>' + t('platform.rev_js_banner_a') + '<ul style="margin:0.25rem 0 0 1.1rem; padding:0;">' +
+                    issues.map(i => `<li>${i}</li>`).join('') + '</ul>' + t('platform.rev_js_banner_b');
                 banner.style.display = 'block';
             }
         } catch (e) { console.error('Erro ao inicializar texto do modelo:', e); }
@@ -307,7 +327,7 @@
                     e.preventDefault();
                     const banner = document.getElementById('editorLossBanner');
                     banner.style.display = 'block';
-                    banner.textContent = 'A alteração não foi aplicada. O editor não preserva esta estrutura; a publicação foi bloqueada para não converter o modelo.';
+                    banner.textContent = t('platform.rev_js_blocked');
                     return;
                 }
                 document.getElementById('contentJsonInput').value = originalContentRaw;

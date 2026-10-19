@@ -1,60 +1,61 @@
 @model Odca.Contracts.Administration.TemplateCatalogResponse
 @using Odca.Contracts.Administration
 @{
-    ViewData["Title"] = "Biblioteca de modelos";
-    string Fmt(DateTimeOffset? value) => value?.ToLocalTime().ToString("dd/MM/yyyy") ?? "—";
+    var _c = (string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];
+    ViewData["Title"] = L.T("biblioteca-modelos", _c);
+    string Fmt(DateTimeOffset? value) => value is null ? "—" : CulturedTime.Date(value.Value.ToLocalTime(), _c);
     string FmtText(string? value) =>
         string.IsNullOrWhiteSpace(value) ? "—" :
         (DateTimeOffset.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var parsed) ? Fmt(parsed) : value);
     string TypeLabel(string value) => value switch
     {
-        "consent" => "Consentimento",
-        "contract" => "Contrato",
-        "term" => "Termo",
-        "release" => "Autorização",
+        "consent" => L.T("studio.purpose_consent", _c),
+        "contract" => L.T("common.contract", _c),
+        "term" => L.T("platform.lib_type_term", _c),
+        "release" => L.T("platform.lib_type_release", _c),
         _ => value
     };
 }
-<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-controller="Home" asp-action="Index">Visão global</a><span>/</span><span aria-current="page">Biblioteca de modelos</span></nav>
-<header class="page-heading"><div><p class="eyebrow">Administração global</p><h1>Biblioteca de modelos</h1><p>Catálogo oficial mantido pela plataforma: nove modelos carregados por código e publicados para todas as organizações. Publicar e retirar exigem justificativa e ficam auditados.</p></div><a class="button button-primary" asp-action="Create">+ Novo modelo</a></header>
+<nav class="breadcrumb" aria-label="Navegação estrutural"><a asp-controller="Home" asp-action="Index">@L.T("visao-global",_c)</a><span>/</span><span aria-current="page">@L.T("biblioteca-modelos",_c)</span></nav>
+<header class="page-heading"><div><p class="eyebrow">@L.T("support.eyebrow",_c)</p><h1>@L.T("biblioteca-modelos",_c)</h1><p>@L.T("platform.lib_intro",_c)</p></div><a class="button button-primary" asp-action="Create">@L.T("platform.lib_new",_c)</a></header>
 @if(TempData["Success"] is string ok){<div class="alert alert-success" role="status">@ok</div>}
 @if(TempData["Error"] is string err){<div class="alert alert-error" role="alert">@err</div>}
 <div class="responsive-table panel"><table>
-<thead><tr><th>Modelo</th><th>Tipo</th><th>Situação</th><th>Revisão</th><th>Criado em</th><th>Publicado em</th><th>Gestão do catálogo</th></tr></thead>
+<thead><tr><th>@L.T("platform.lib_th_model",_c)</th><th>@L.T("common.type",_c)</th><th>@L.T("common.situation",_c)</th><th>@L.T("platform.lib_th_revision",_c)</th><th>@L.T("platform.lib_th_created",_c)</th><th>@L.T("platform.lib_th_published",_c)</th><th>@L.T("platform.lib_th_management",_c)</th></tr></thead>
 <tbody>
 @foreach(var item in Model.Items)
 {
     var published = item.Status == "published";
     <tr>
-      <td data-label="Modelo"><strong>@item.Name</strong><small>@item.OfficialKey</small>@if(!string.IsNullOrWhiteSpace(item.Description)){<small>@item.Description</small>}</td>
-      <td data-label="Tipo">@TypeLabel(item.ContractType)</td>
-      <td data-label="Situação"><span class="status-badge">@(published ? "Publicado" : "Retirado")</span></td>
-      <td data-label="Revisão">@item.CurrentRevision</td>
-      <td data-label="Criado em">@Fmt(item.CreatedAt)</td>
-      <td data-label="Publicado em">@Fmt(item.PublishedAt)</td>
-      <td data-label="Gestão do catálogo">
+      <td data-label="@L.T("platform.lib_th_model",_c)"><strong>@item.Name</strong><small>@item.OfficialKey</small>@if(!string.IsNullOrWhiteSpace(item.Description)){<small>@item.Description</small>}</td>
+      <td data-label="@L.T("common.type",_c)">@TypeLabel(item.ContractType)</td>
+      <td data-label="@L.T("common.situation",_c)"><span class="status-badge">@(published ? L.T("studio.status_published",_c) : L.T("platform.lib_status_retired",_c))</span></td>
+      <td data-label="@L.T("platform.lib_th_revision",_c)">@item.CurrentRevision</td>
+      <td data-label="@L.T("platform.lib_th_created",_c)">@Fmt(item.CreatedAt)</td>
+      <td data-label="@L.T("platform.lib_th_published",_c)">@Fmt(item.PublishedAt)</td>
+      <td data-label="@L.T("platform.lib_th_management",_c)">
         <details>
-          <summary>Versões (@item.Versions.Count)</summary>
+          <summary>@L.T("platform.lib_versions_summary",_c,item.Versions.Count.ToString(System.Globalization.CultureInfo.InvariantCulture))</summary>
           <ul style="padding-left:1rem;margin:.5rem 0">
           @foreach(var v in item.Versions)
           {
-            <li>Revisão @v.VersionNumber — criada em @FmtText(v.CreatedAt)@(string.IsNullOrEmpty(v.PublishedAt) ? "" : $" · publicada em {FmtText(v.PublishedAt)}")</li>
+            <li>@L.T("platform.lib_rev_line",_c,v.VersionNumber.ToString(System.Globalization.CultureInfo.InvariantCulture),FmtText(v.CreatedAt))@(string.IsNullOrEmpty(v.PublishedAt) ? "" : L.T("platform.lib_rev_published_on",_c,FmtText(v.PublishedAt)))</li>
           }
           </ul>
         </details>
         @if (published)
         {
-          <a class="button button-quiet" style="display:block; margin-bottom:.5rem;" asp-action="NewRevision" asp-route-key="@item.OfficialKey">Nova revisão</a>
+          <a class="button button-quiet" style="display:block; margin-bottom:.5rem;" asp-action="NewRevision" asp-route-key="@item.OfficialKey">@L.T("platform.lib_new_revision_btn",_c)</a>
         }
         <form method="post" asp-action="Status" asp-route-key="@item.OfficialKey" data-prevent-double-submit>
           @Html.AntiForgeryToken()
           <input type="hidden" name="action" value="@(published ? "retire" : "publish")" />
-          <label>Justificativa (@(published ? "retirada" : "publicação"))<input name="reason" minlength="5" maxlength="500" required /></label>
-          <button class="button @(published ? "button-secondary" : "button-primary")" type="submit">@(published ? "Retirar do catálogo" : "Publicar no catálogo")</button>
+          <label>@(published ? L.T("platform.lib_reason_retire",_c) : L.T("platform.lib_reason_publish",_c))<input name="reason" minlength="5" maxlength="500" required /></label>
+          <button class="button @(published ? "button-secondary" : "button-primary")" type="submit">@(published ? L.T("platform.lib_retire_btn",_c) : L.T("platform.lib_publish_btn",_c))</button>
         </form>
       </td>
     </tr>
 }
 </tbody>
 </table></div>
-<details class="help-card"><summary>Como funciona</summary><p>A retirada não apaga nada: a linha global passa a ficar arquivada e novas organizações deixam de recebê-la; as cópias já instaladas e os contratos já emitidos permanecem intactos. A publicação devolve o modelo ao catálogo para resolução pelas organizações sem cópia própria. Cada operação registra um evento de auditoria com a justificativa informada.</p></details>
+<details class="help-card"><summary>@L.T("common.how_it_works",_c)</summary><p>@L.T("platform.lib_help_body",_c)</p></details>
