@@ -27,7 +27,11 @@ public sealed record StudioDocumentItem(
     string? ResponsibleName = null,
     int? TemplateVersion = null,
     bool PatientActive = true);
-public sealed record StudioDocumentPage(IReadOnlyList<StudioDocumentItem> Items, int Page, int PageSize, int Total);
+// D-OC53 (Sprint 19/F-D): anotação do modo em que a busca profunda rodou — "ai" quando o
+// provedor interpretou a frase, "keywords" no fallback determinístico. Nunca ausente quando
+// houve termo de busca: a interface declara o modo ao usuário.
+public sealed record StudioSemanticSearchInfo(string Engine, string[] Terms);
+public sealed record StudioDocumentPage(IReadOnlyList<StudioDocumentItem> Items, int Page, int PageSize, int Total, StudioSemanticSearchInfo? Semantic = null);
 public sealed record DraftCreatedResponse(Guid Id, Guid ContractId);
 public sealed record DraftResponse(Guid Id, Guid ContractId, string Title, Guid SourceTemplateId, Guid SourceTemplateVersionId, JsonElement Content, JsonElement Fields, JsonElement Values, long Version, Guid? LastClientRevision, DateTimeOffset UpdatedAt, bool RequiresOdcaApproval = false);
 public sealed record SaveDraftRequest(JsonElement Content, JsonElement Fields, JsonElement Values, long ExpectedVersion, Guid ClientRevision);

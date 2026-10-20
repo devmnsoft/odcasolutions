@@ -1,0 +1,104 @@
+{
+  "studio.ai_score_h": {
+    "pt-BR": "Risco do contrato",
+    "en-US": "Contract risk",
+    "es-ES": "Riesgo del contrato",
+    "fr-FR": "Risque du contrat"
+  },
+  "studio.ai_score_value": {
+    "pt-BR": "{0} de 100",
+    "en-US": "{0} out of 100",
+    "es-ES": "{0} de 100",
+    "fr-FR": "{0} sur 100"
+  },
+  "studio.ai_factor_atypical": {
+    "pt-BR": "cláusula fora do padrão",
+    "en-US": "clause outside the standard set",
+    "es-ES": "cláusula fuera del estándar",
+    "fr-FR": "clause hors référentiel standard"
+  },
+  "studio.ai_template_h": {
+    "pt-BR": "Comparação com o padrão",
+    "en-US": "Comparison against the standard template",
+    "es-ES": "Comparación con la plantilla estándar",
+    "fr-FR": "Comparaison avec le modèle standard"
+  },
+  "studio.ai_template_present": {
+    "pt-BR": "presentes",
+    "en-US": "present",
+    "es-ES": "presentes",
+    "fr-FR": "présentes"
+  },
+  "studio.ai_template_missing": {
+    "pt-BR": "ausentes",
+    "en-US": "missing",
+    "es-ES": "ausentes",
+    "fr-FR": "absentes"
+  },
+  "studio.ai_template_unexpected": {
+    "pt-BR": "fora do padrão",
+    "en-US": "outside the standard set",
+    "es-ES": "fuera del estándar",
+    "fr-FR": "hors référentiel standard"
+  },
+  "studio.ai_module_not_enabled": {
+    "pt-BR": "A análise com IA não está incluída no plano da sua organização.",
+    "en-US": "AI analysis is not included in your organization's plan.",
+    "es-ES": "El análisis con IA no está incluido en el plan de su organización.",
+    "fr-FR": "L'analyse par IA n'est pas incluse dans le plan de votre organisation."
+  },
+  "studio.ai_reused": {
+    "pt-BR": "Mesma análise da versão — nenhum novo processamento.",
+    "en-US": "Same analysis for this version — no new processing.",
+    "es-ES": "Mismo análisis de esta versión — sin nuevo procesamiento.",
+    "fr-FR": "Même analyse pour cette version — aucun nouveau traitement."
+  },
+  "documents.search_mode_ai": {
+    "pt-BR": "Busca interpretada com IA sobre o texto extraído.",
+    "en-US": "Search interpreted with AI over the extracted text.",
+    "es-ES": "Búsqueda interpretada con IA sobre el texto extraído.",
+    "fr-FR": "Recherche interprétée par IA sur le texte extrait."
+  },
+  "documents.search_mode_keywords": {
+    "pt-BR": "Busca por palavras-chave no texto extraído.",
+    "en-US": "Keyword search over the extracted text.",
+    "es-ES": "Búsqueda por palabras clave en el texto extraído.",
+    "fr-FR": "Recherche par mots-clés dans le texte extrait."
+  },
+  "documents.stage_all": {
+    "pt-BR": "Todos os estágios",
+    "en-US": "All stages",
+    "es-ES": "Todas las etapas",
+    "fr-FR": "Toutes les étapes"
+  },
+  "ren.ai_title": {
+    "pt-BR": "Sugestão apoiada por IA:",
+    "en-US": "AI-assisted suggestion:",
+    "es-ES": "Sugerencia apoyada por IA:",
+    "fr-FR": "Suggestion assistée par IA :"
+  },
+  "ren.ai_renew": {
+    "pt-BR": "renovar",
+    "en-US": "renew",
+    "es-ES": "renovar",
+    "fr-FR": "renouveler"
+  },
+  "ren.ai_review": {
+    "pt-BR": "renovar sob revisão das condições",
+    "en-US": "renew under review of conditions",
+    "es-ES": "renovar bajo revisión de condiciones",
+    "fr-FR": "renouveler sous revue des conditions"
+  },
+  "ren.ai_renegotiate": {
+    "pt-BR": "renegociar condições antes de renovar",
+    "en-US": "renegotiate conditions before renewing",
+    "es-ES": "renegociar condiciones antes de renovar",
+    "fr-FR": "renégocier les conditions avant renouvellement"
+  },
+  "ren.ai_note": {
+    "pt-BR": "organizada a partir da última análise — a decisão é sua.",
+    "en-US": "compiled from the latest analysis — the decision is yours.",
+    "es-ES": "compilada desde el último análisis — la decisión es suya.",
+    "fr-FR": "compilée depuis la dernière analyse — la décision vous appartient."
+  }
+}

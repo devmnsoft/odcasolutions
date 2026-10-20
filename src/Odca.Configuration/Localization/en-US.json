@@ -4033,5 +4033,22 @@
   "studio.ai_clause_liability_limit": "Liability limitation",
   "studio.ai_clause_indemnity": "Indemnification",
   "studio.ai_clause_jurisdiction": "Venue and jurisdiction",
-  "api.gate.release_ai": "Artificial intelligence analysis is not available in this release yet."
+  "api.gate.release_ai": "Artificial intelligence analysis is not available in this release yet.",
+  "studio.ai_score_h": "Contract risk",
+  "studio.ai_score_value": "{0} out of 100",
+  "studio.ai_factor_atypical": "clause outside the standard set",
+  "studio.ai_template_h": "Comparison against the standard template",
+  "studio.ai_template_present": "present",
+  "studio.ai_template_missing": "missing",
+  "studio.ai_template_unexpected": "outside the standard set",
+  "studio.ai_module_not_enabled": "AI analysis is not included in your organization's plan.",
+  "studio.ai_reused": "Same analysis for this version — no new processing.",
+  "documents.search_mode_ai": "Search interpreted with AI over the extracted text.",
+  "documents.search_mode_keywords": "Keyword search over the extracted text.",
+  "ren.ai_title": "AI-assisted suggestion:",
+  "ren.ai_renew": "renew",
+  "ren.ai_review": "renew under review of conditions",
+  "ren.ai_renegotiate": "renegotiate conditions before renewing",
+  "ren.ai_note": "compiled from the latest analysis — the decision is yours.",
+  "documents.stage_all": "All stages"
 }

@@ -4033,5 +4033,22 @@
   "studio.ai_clause_liability_limit": "Limitación de responsabilidad",
   "studio.ai_clause_indemnity": "Indemnización",
   "studio.ai_clause_jurisdiction": "Fuero y jurisdicción",
-  "api.gate.release_ai": "El análisis con inteligencia artificial aún no está disponible en esta versión."
+  "api.gate.release_ai": "El análisis con inteligencia artificial aún no está disponible en esta versión.",
+  "studio.ai_score_h": "Riesgo del contrato",
+  "studio.ai_score_value": "{0} de 100",
+  "studio.ai_factor_atypical": "cláusula fuera del estándar",
+  "studio.ai_template_h": "Comparación con la plantilla estándar",
+  "studio.ai_template_present": "presentes",
+  "studio.ai_template_missing": "ausentes",
+  "studio.ai_template_unexpected": "fuera del estándar",
+  "studio.ai_module_not_enabled": "El análisis con IA no está incluido en el plan de su organización.",
+  "studio.ai_reused": "Mismo análisis de esta versión — sin nuevo procesamiento.",
+  "documents.search_mode_ai": "Búsqueda interpretada con IA sobre el texto extraído.",
+  "documents.search_mode_keywords": "Búsqueda por palabras clave en el texto extraído.",
+  "ren.ai_title": "Sugerencia apoyada por IA:",
+  "ren.ai_renew": "renovar",
+  "ren.ai_review": "renovar bajo revisión de condiciones",
+  "ren.ai_renegotiate": "renegociar condiciones antes de renovar",
+  "ren.ai_note": "compilada desde el último análisis — la decisión es suya.",
+  "documents.stage_all": "Todas las etapas"
 }

@@ -25,10 +25,19 @@ public sealed record AiAnalysis(
 public interface IAiService
 {
     Task<AiAnalysis> AnalyzeContractAsync(AiContractInput input, CancellationToken ct);
+
+    /// <summary>
+    /// D-OC53 (Sprint 19/F-D): interpreta uma frase de busca em pistas estruturadas para a
+    /// central de documentos. Provedor ausente ⇒ <see cref="SearchQueryParser.FromText"/>
+    /// (fallback determinístico); qualquer falha degrada ao mesmo fallback — nunca lança.
+    /// </summary>
+    Task<AiInterpretation> InterpretSearchQueryAsync(string query, CancellationToken ct);
 }
 
 /// <summary>Provedor padrão (configuração ausente ou Provider=none): análise indisponível, sem efeito colateral.</summary>
 public sealed class NullAiService : IAiService
 {
     public Task<AiAnalysis> AnalyzeContractAsync(AiContractInput input, CancellationToken ct) => Task.FromResult(AiAnalysis.Unavailable("none"));
+
+    public Task<AiInterpretation> InterpretSearchQueryAsync(string query, CancellationToken ct) => Task.FromResult(new AiInterpretation(SearchQueryParser.FromText(query), false));
 }

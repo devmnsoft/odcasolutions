@@ -28,9 +28,10 @@ public sealed class HierarchicalAdministrationTests(DatabaseFixture database) : 
              ORDER BY (SELECT min(e.limit_value) FROM odca.plan_entitlements e
                         WHERE e.plan_version_id = p.id AND e.entitlement_code = 'active_seats')
             """)).AsList();
-        // v038 tornou module.reviews capacidade exclusiva do Enterprise; o catálogo
-        // publicado declara seis módulos para basic/intermediate e sete para enterprise.
-        Assert.Equal(new[] { ("basic", 2, 6), ("intermediate", 2, 6), ("enterprise", 2, 7) },
+        // v038 tornou module.reviews capacidade exclusiva do Enterprise; v063 (D-OC53) habilita
+        // module.ia_analysis nos três planos — catálogo publicado declara 7 para basic/intermediate
+        // e 8 para enterprise.
+        Assert.Equal(new[] { ("basic", 2, 7), ("intermediate", 2, 7), ("enterprise", 2, 8) },
             published.Select(item => (item.Code, item.Version, item.Modules)).ToArray());
         Assert.Equal(1, await connection.ExecuteScalarAsync<int>(
             "SELECT version FROM odca.plan_versions WHERE id = @id", new { id = BasicV1 }));

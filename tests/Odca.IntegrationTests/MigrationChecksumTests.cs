@@ -658,7 +658,7 @@ public sealed class MigrationChecksumTests
         // destinatario — a outbox preserva o idioma normalizado no enfileiramento (subject
         // ja chega localizado no payload; o transporte compo o corpo nesse idioma) e as
         // funcoes de lembrete escrevem titulo/corpo+formato de data no idioma do alvo.
-        Assert.True(string.Equals(snapshot, canonical, StringComparison.Ordinal), "o release v062 precisa ser byte-idêntico ao canônico");
+        Assert.DoesNotContain("ODCA-MIGRATION 063", snapshot, StringComparison.Ordinal);
         var block = MigrationBlock(canonical, 62);
         Assert.Contains("ADD COLUMN IF NOT EXISTS language varchar(16) NOT NULL DEFAULT 'pt-BR'", block, StringComparison.Ordinal);
         Assert.Contains("CHECK (language IN ('pt-BR','en-US','fr-FR','es-ES'))", block, StringComparison.Ordinal);
@@ -667,5 +667,31 @@ public sealed class MigrationChecksumTests
         Assert.Contains("odca.user_notification_settings s ON s.tenant_id=r.tenant_id AND s.user_id=r.recipient_id", block, StringComparison.Ordinal);
         Assert.Contains("'Due on '||to_char(o.due_date,'MM/DD/YYYY')", block, StringComparison.Ordinal);
         Assert.Contains("VALUES(62,'Notificacoes: idioma do conteudo por preferencia do destinatario (outbox.language)','11168e2afba1b6d9449696aa52e88f294c1556372631bceefa19277528465380')", block, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReleaseV063AddsAiAnalysisPersistenceAndModuleWithoutRewritingEarlierMigrations()
+    {
+        var canonical = File.ReadAllText(FindSql()).Replace("\r\n", "\n");
+        var previous = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v062.sql")).Replace("\r\n", "\n");
+        var snapshot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindSql())!, "releases", "odca-v063.sql")).Replace("\r\n", "\n");
+        DatabaseMigrator.ValidateChecksums(previous);
+        DatabaseMigrator.ValidateChecksums(snapshot);
+        DatabaseMigrator.ValidateChecksums(canonical);
+        for (var version = 1; version <= 62; version++)
+            Assert.Equal(MigrationBlock(previous, version), MigrationBlock(canonical, version));
+        // D-OC53 (Sprint 19/F-0): persistencia append-only da analise IA por versao imutavel
+        // (hash de conteudo liga analise↔extração; RLS por tenant; grant restrito a leitura e
+        // insercao para odca_app), modulo ia_analysis nos planos publicados v2, extensao do
+        // CHECK de bloqueios administrativos e recriacao de organization_feature_state com o
+        // novo modulo na whitelist.
+        Assert.True(string.Equals(snapshot, canonical, StringComparison.Ordinal), "o release v063 precisa ser byte-idêntico ao canônico");
+        var block = MigrationBlock(canonical, 63);
+        Assert.Contains("CREATE TABLE IF NOT EXISTS odca.document_ai_analyses (", block, StringComparison.Ordinal);
+        Assert.Contains("content_hash char(64) NOT NULL CHECK(content_hash ~ '^[a-f0-9]{64}$')", block, StringComparison.Ordinal);
+        Assert.Contains("GRANT SELECT, INSERT ON odca.document_ai_analyses TO odca_app", block, StringComparison.Ordinal);
+        Assert.Contains("'module.ia_analysis'", block, StringComparison.Ordinal);
+        Assert.Contains("'imports', 'ia_analysis'));", block, StringComparison.Ordinal);
+        Assert.Contains("VALUES(63,'IA avancada: persistencia de analises por versao + modulo ia_analysis por plano','23559ecd3608160f66691e850c7e1ddca51574c815ca2777358e214c493ffd0f')", block, StringComparison.Ordinal);
     }
 }

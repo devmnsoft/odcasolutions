@@ -59,6 +59,12 @@
         @L.T("documents.filter_search", _culture)
         <input name="search" value="@Model.Search" placeholder="@L.T("documents.filter_search_ph", _culture)" />
     </label>
+    @if (!string.IsNullOrWhiteSpace(Model.Search) && Model.Documents.Semantic is { } semantic)
+    {
+        <div class="muted" style="font-size: 0.8rem; grid-column: 1 / -1;" role="status">
+            @(semantic.Engine == "ai" ? L.T("documents.search_mode_ai", _culture) : L.T("documents.search_mode_keywords", _culture))
+        </div>
+    }
     <label>
         @L.T("documents.filter_reference", _culture)
         <input name="reference" value="@Model.Reference" placeholder="@L.T("documents.filter_reference_ph", _culture)" />

@@ -6983,3 +6983,159 @@ VALUES(62,'Notificacoes: idioma do conteudo por preferencia do destinatario (out
 ON CONFLICT(version) DO NOTHING;
 COMMIT;
 -- ODCA-END 062
+-- ODCA-MIGRATION 063 CHECKSUM 23559ecd3608160f66691e850c7e1ddca51574c815ca2777358e214c493ffd0f
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext('odca.schema.migrations'));
+
+DO $odca$
+DECLARE
+    expected_checksum constant char(64) := '23559ecd3608160f66691e850c7e1ddca51574c815ca2777358e214c493ffd0f';
+    recorded_checksum char(64);
+BEGIN
+    SELECT checksum INTO recorded_checksum FROM odca.schema_migrations WHERE version = 63;
+    IF recorded_checksum IS NOT NULL AND recorded_checksum <> expected_checksum THEN
+        RAISE EXCEPTION 'ODCA migration 063 checksum mismatch: stored %, expected %', recorded_checksum, expected_checksum;
+    END IF;
+END
+$odca$;
+
+-- D-OC53 (Sprint 19/F-0): analise de IA persistida por versao imutavel do documento
+-- (append-only; content_hash = SHA-256 do texto extraido analisado, mesmo vinculo do
+-- endpoint de analise). O payload jsonb carrega resumo, achados, score com fatores e o
+-- delta contra as 8 clausulas padrao declaradas em Odca.AI.
+
+CREATE TABLE IF NOT EXISTS odca.document_ai_analyses (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(), tenant_id uuid NOT NULL, contract_id uuid NOT NULL,
+ document_id uuid NOT NULL, document_version_id uuid NOT NULL,
+ content_hash char(64) NOT NULL CHECK(content_hash ~ '^[a-f0-9]{64}$'),
+ analyzed_chars integer NOT NULL CHECK(analyzed_chars>=0), provider text NOT NULL, model text,
+ score_value integer NOT NULL CHECK(score_value BETWEEN 0 AND 100), analysis jsonb NOT NULL,
+ created_by uuid REFERENCES odca.users(id), created_at timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(tenant_id,id), FOREIGN KEY(tenant_id,contract_id) REFERENCES odca.contracts(tenant_id,id),
+ FOREIGN KEY(tenant_id,document_id) REFERENCES odca.contract_documents(tenant_id,id),
+ FOREIGN KEY(tenant_id,document_version_id) REFERENCES odca.document_versions(tenant_id,id));
+CREATE INDEX IF NOT EXISTS ix_document_ai_analyses_version ON odca.document_ai_analyses(document_version_id, created_at DESC);
+ALTER TABLE odca.document_ai_analyses ENABLE ROW LEVEL SECURITY; ALTER TABLE odca.document_ai_analyses FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON odca.document_ai_analyses TO odca_app USING (tenant_id = nullif(current_setting('odca.tenant_id',true),'')::uuid) WITH CHECK (tenant_id = nullif(current_setting('odca.tenant_id',true),'')::uuid);
+GRANT SELECT, INSERT ON odca.document_ai_analyses TO odca_app;
+
+-- D-OC53 (Sprint 19/F-E): modulo ia_analysis nos planos padrao publicados v2 (os mesmos
+-- planos que ja carregam os outros 7 modulos); a checagem de integridade passa a exigir 8.
+
+INSERT INTO odca.plan_entitlements(plan_version_id, entitlement_code, limit_value, enabled)
+SELECT p.id, 'module.ia_analysis', NULL, TRUE FROM odca.plan_versions p
+ WHERE p.version = 2 AND p.code IN ('basic','intermediate','enterprise')
+ON CONFLICT(plan_version_id, entitlement_code) DO NOTHING;
+
+DO $ia$
+DECLARE n integer;
+BEGIN
+    SELECT count(*) INTO n
+      FROM odca.plan_entitlements AS e
+      JOIN odca.plan_versions AS p ON p.id = e.plan_version_id
+     WHERE p.version = 2 AND p.code IN ('basic','intermediate','enterprise')
+       AND e.enabled AND e.entitlement_code = 'module.ia_analysis';
+    IF n < 3 THEN
+        RAISE EXCEPTION 'published plans missing module ia_analysis enablement';
+    END IF;
+END
+$ia$;
+
+-- O bloqueio administrativo passa a ser possivel tambem para o novo modulo (a tabela
+-- validava apenas os 7 codigos anteriores).
+
+ALTER TABLE odca.organization_feature_blocks DROP CONSTRAINT IF EXISTS organization_feature_blocks_code_ck;
+ALTER TABLE odca.organization_feature_blocks ADD CONSTRAINT organization_feature_blocks_code_ck CHECK (feature_code IN (
+    'patients', 'contract_drafts', 'templates', 'documents', 'reviews', 'signatures', 'imports', 'ia_analysis'));
+
+-- Whitelist de modulos ampliada de 7 para 8 (novos tenants/planos novos continuam
+-- validados na mesma funcao; ia_analysis segue a regra plan_restricted dos demais).
+
+DROP FUNCTION IF EXISTS odca.organization_feature_state(uuid,text);
+CREATE OR REPLACE FUNCTION odca.organization_feature_state(requested_tenant_id uuid, requested_feature text)
+RETURNS text
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, odca
+AS $$
+DECLARE
+    quota_code text;
+    resource_name text;
+    plan_id uuid;
+    declares_modules boolean;
+    contracted bigint;
+    used bigint;
+BEGIN
+    IF requested_feature IS NULL OR requested_feature NOT IN (
+        'patients', 'contract_drafts', 'templates', 'documents', 'reviews', 'signatures', 'imports', 'ia_analysis') THEN
+        RETURN 'unknown_feature';
+    END IF;
+    IF EXISTS (
+        SELECT 1 FROM odca.organization_feature_blocks AS block
+         WHERE block.tenant_id = requested_tenant_id
+           AND block.feature_code = requested_feature) THEN
+        RETURN 'administratively_blocked';
+    END IF;
+
+    SELECT subscription.plan_version_id INTO plan_id
+      FROM odca.subscriptions AS subscription
+     WHERE subscription.tenant_id = requested_tenant_id
+       AND subscription.status = 'active'
+     LIMIT 1;
+
+    declares_modules := plan_id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM odca.plan_entitlements AS entitlement_row
+         WHERE entitlement_row.plan_version_id = plan_id
+           AND entitlement_row.entitlement_code LIKE 'module.%');
+
+    IF declares_modules AND NOT EXISTS (
+        SELECT 1 FROM odca.plan_entitlements AS entitlement_row
+         WHERE entitlement_row.plan_version_id = plan_id
+           AND entitlement_row.entitlement_code = 'module.' || requested_feature
+           AND entitlement_row.enabled) THEN
+        RETURN 'plan_restricted';
+    END IF;
+
+    quota_code := CASE requested_feature
+        WHEN 'signatures' THEN 'signature_envelopes_monthly'
+        WHEN 'imports' THEN 'ocr_pages_monthly'
+        ELSE NULL
+    END;
+    IF quota_code IS NULL THEN
+        RETURN 'allowed';
+    END IF;
+    resource_name := CASE quota_code
+        WHEN 'ocr_pages_monthly' THEN 'ocr_credit'
+        ELSE 'signature_credit'
+    END;
+    SELECT entitlement_row.limit_value INTO contracted
+      FROM odca.subscriptions AS subscription
+      JOIN odca.plan_entitlements AS entitlement_row
+        ON entitlement_row.plan_version_id = subscription.plan_version_id
+     WHERE subscription.tenant_id = requested_tenant_id
+       AND subscription.status = 'active'
+       AND entitlement_row.entitlement_code = quota_code
+       AND entitlement_row.enabled
+     LIMIT 1;
+    IF contracted IS NULL OR contracted <= 0 THEN
+        IF declares_modules THEN
+            RETURN 'quota_exhausted';
+        END IF;
+        RETURN 'plan_restricted';
+    END IF;
+    used := odca.monthly_franchise_used(requested_tenant_id, resource_name);
+    IF used >= contracted THEN
+        RETURN 'quota_exhausted';
+    END IF;
+    RETURN 'allowed';
+END;
+$$;
+REVOKE ALL ON FUNCTION odca.organization_feature_state(uuid,text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION odca.organization_feature_state(uuid,text) TO odca_app;
+
+INSERT INTO odca.schema_migrations(version,name,checksum)
+VALUES(63,'IA avancada: persistencia de analises por versao + modulo ia_analysis por plano','23559ecd3608160f66691e850c7e1ddca51574c815ca2777358e214c493ffd0f')
+ON CONFLICT(version) DO NOTHING;
+COMMIT;
+-- ODCA-END 063

@@ -5,7 +5,9 @@ using Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Npgsql;
+using Odca.AI;
 using Odca.Api.Controllers;
 using Odca.Application.Contracts;
 using Odca.Contracts.Reviews;
@@ -395,7 +397,7 @@ public sealed class DocumentCentralAndStudioTests(DatabaseFixture database) : IC
     {
         var config = new ConfigurationBuilder().Build();
         var catalog = new StubTemplateCatalogRepository();
-        var controller = new ContractStudioController(ds, config, catalog, new DisabledSignatureEnvelopeProvider());
+        var controller = new ContractStudioController(ds, config, catalog, new DisabledSignatureEnvelopeProvider(), new NullAiService(), Options.Create(new AiOptions()));
         controller.ControllerContext = new ControllerContext { HttpContext = TestControllerContexts.Create(actorId) };
         return controller;
     }

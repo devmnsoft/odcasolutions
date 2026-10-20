@@ -4,7 +4,9 @@ using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Npgsql;
+using Odca.AI;
 using Odca.Api;
 using Odca.Api.Controllers;
 using Odca.Application.Contracts;
@@ -279,7 +281,7 @@ public sealed class NotificationFeedTests(DatabaseFixture database) : IClassFixt
 
     private static ContractStudioController CreateController(NpgsqlDataSource ds, Guid actor)
     {
-        var controller = new ContractStudioController(ds, new ConfigurationBuilder().Build(), new StubTemplateCatalogRepository(), new DisabledSignatureEnvelopeProvider());
+        var controller = new ContractStudioController(ds, new ConfigurationBuilder().Build(), new StubTemplateCatalogRepository(), new DisabledSignatureEnvelopeProvider(), new NullAiService(), Options.Create(new AiOptions()));
         controller.ControllerContext = new ControllerContext { HttpContext = TestControllerContexts.Create(actor) };
         return controller;
     }

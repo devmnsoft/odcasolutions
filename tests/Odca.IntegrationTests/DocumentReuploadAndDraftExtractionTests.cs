@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Npgsql;
+using Odca.AI;
 using Odca.Api.Controllers;
 using Odca.Application.Contracts;
 using Odca.Contracts.Studio;
@@ -387,7 +389,7 @@ public sealed class DocumentReuploadAndDraftExtractionTests(DatabaseFixture data
     private static ContractStudioController CreateStudioController(NpgsqlDataSource dataSource, Guid actorId)
     {
         var config = new ConfigurationBuilder().Build();
-        var controller = new ContractStudioController(dataSource, config, new StubTemplateCatalogRepository(), new DisabledSignatureEnvelopeProvider());
+        var controller = new ContractStudioController(dataSource, config, new StubTemplateCatalogRepository(), new DisabledSignatureEnvelopeProvider(), new NullAiService(), Options.Create(new AiOptions()));
         controller.ControllerContext = new ControllerContext { HttpContext = TestControllerContexts.Create(actorId) };
         return controller;
     }

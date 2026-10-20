@@ -4,11 +4,14 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Npgsql;
+using Odca.AI;
 using Odca.Api.Controllers;
 using Odca.Application.Contracts;
 using Odca.Contracts.DocumentImports;
 using Odca.Contracts.Patients;
+using Odca.Contracts.Renewals;
 using Odca.Contracts.Studio;
 using Odca.Infrastructure.Operations;
 using Odca.Infrastructure.Patients;
@@ -26,6 +29,7 @@ public sealed class DapperMaterializationTests(DatabaseFixture database) : IClas
     private static readonly Guid Patient3Id = Guid.Parse("74000000-0000-0000-0000-000000000103");
     private static readonly Guid Contract1Id = Guid.Parse("74000000-0000-0000-0000-000000000201");
     private static readonly Guid Contract2Id = Guid.Parse("74000000-0000-0000-0000-000000000202");
+    private static readonly Guid RenewalContractId = Guid.Parse("74000000-0000-0000-0000-000000000203");
     private static readonly Guid TemplateId = Guid.Parse("74000000-0000-0000-0000-000000000301");
     private static readonly Guid Import1Id = Guid.Parse("74000000-0000-0000-0000-000000000401");
     private static readonly Guid Import2Id = Guid.Parse("74000000-0000-0000-0000-000000000402");
@@ -191,6 +195,40 @@ public sealed class DapperMaterializationTests(DatabaseFixture database) : IClas
         Assert.Equal(TimeSpan.Zero, firstDoc.UpdatedAt.Offset);
     }
 
+    [Fact]
+    public async Task RenewalListMaterializesItemsWithAiSuggestionColumnFromRealPostgreSql()
+    {
+        await SeedAsync();
+
+        // Contrato com data final dentro da janela de 3 meses => lista devolve linha (a suíte anterior
+        // nunca materializava RenewalListItem com dados: listas vazias não constroem o deserializer Dapper).
+        await using (var admin = new NpgsqlConnection(database.AdminConnectionString))
+        {
+            await admin.OpenAsync();
+            await admin.ExecuteAsync("""
+                INSERT INTO odca.contracts(id, tenant_id, title, reference, contract_type, end_date)
+                VALUES (@Id, @TenantId, 'Contrato Mat Renovacao', 'REF-MAT-REN', 'service', (CURRENT_DATE + 15)::date)
+                ON CONFLICT (tenant_id, id) DO UPDATE SET end_date = EXCLUDED.end_date;
+                """, new { Id = RenewalContractId, TenantId });
+        }
+
+        await using var dataSource = NpgsqlDataSource.Create(database.AppConnectionString);
+        var controller = new RenewalCenterController(dataSource)
+        {
+            ControllerContext = new ControllerContext { HttpContext = TestControllerContexts.Create(ActorId) }
+        };
+
+        // Regressão S19/D-OC53: o construtor do record ganhou AiSuggestion e a projeção seguia sem a coluna;
+        // com linhas no resultado o Dapper exigia construtor compatível e o endpoint 503ava. A projeção deve
+        // selecionar a coluna NULL explícita para que colunas e parâmetros do construtor correspondam 1:1.
+        var res = Assert.IsType<OkObjectResult>(await controller.List(TenantId, from: null, to: null, ownerId: null, contractType: null, counterparty: null, status: null, priority: null, mine: false, withoutOwner: false, page: 1, pageSize: 20, ct: default));
+        var page = Assert.IsType<RenewalPage>(res.Value);
+        var item = Assert.Single(page.Items, x => x.ContractId == RenewalContractId);
+
+        Assert.Equal("expiring", item.Status);
+        Assert.Null(item.AiSuggestion); // sem análise persistida não se inventa veredito
+    }
+
     private static ContractImportsController CreateImportsController(NpgsqlDataSource ds, Guid actorId)
     {
         var config = new ConfigurationBuilder().Build();
@@ -203,7 +241,7 @@ public sealed class DapperMaterializationTests(DatabaseFixture database) : IClas
     {
         var config = new ConfigurationBuilder().Build();
         var catalog = new StubTemplateCatalogRepository();
-        var controller = new ContractStudioController(ds, config, catalog, new DisabledSignatureEnvelopeProvider());
+        var controller = new ContractStudioController(ds, config, catalog, new DisabledSignatureEnvelopeProvider(), new NullAiService(), Options.Create(new AiOptions()));
         controller.ControllerContext = new ControllerContext { HttpContext = TestControllerContexts.Create(actorId) };
         return controller;
     }

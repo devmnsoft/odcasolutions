@@ -1,13 +1,19 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using Dapper;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Npgsql;
+using Odca.AI;
 using Odca.Application.Documents;
 
 namespace Odca.Worker;
 
-public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration configuration, ILogger<DocumentWorker> logger) : BackgroundService
+public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration configuration, IServiceScopeFactory serviceScopeFactory, ILogger<DocumentWorker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -72,7 +78,7 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
             new { lease }, cancellationToken: ct));
         if (job is null) return;
         await connection.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenant,false)", new { tenant = job.TenantId.ToString() }, cancellationToken: ct));
-        var version = await connection.QuerySingleAsync<VersionItem>(new CommandDefinition("SELECT id AS Id,tenant_id AS TenantId,storage_key AS StorageKey,detected_type AS DetectedType FROM odca.document_versions WHERE id=@id", new { id = job.VersionId }, cancellationToken: ct));
+        var version = await connection.QuerySingleAsync<VersionItem>(new CommandDefinition("SELECT id AS Id,tenant_id AS TenantId,document_id AS DocumentId,uploaded_by AS UploadedBy,storage_key AS StorageKey,detected_type AS DetectedType FROM odca.document_versions WHERE id=@id", new { id = job.VersionId }, cancellationToken: ct));
         try
         {
             var extracted = await Extract(version, ct);
@@ -117,6 +123,11 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
             await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.extraction_jobs SET status='ready_for_review',completed_at=now(),lease_token=NULL,lease_expires_at=NULL WHERE id=@id AND lease_token=@lease", new { id = job.Id, lease = job.LeaseToken }, tx, cancellationToken: ct));
             await connection.ExecuteAsync(new CommandDefinition("UPDATE odca.contract_imports SET status='awaiting_review',current_step='contract_data',attempt_count=@attempt,updated_at=now(),safe_diagnostic_code=NULL WHERE tenant_id=@tenant AND extraction_job_id=@id AND status NOT IN('confirmed','cancelled')", new { tenant = job.TenantId, id = job.Id, attempt = 1 }, tx, cancellationToken: ct));
             await tx.CommitAsync(ct);
+            // D-OC53 (Sprint 19/F-E): analise IA automatica apos o commit da extracao - totalmente
+            // independente: qualquer falha so pula a analise, nunca reverte a extracao.
+            try { await AnalyzeExtractedAsync(job, version, extracted.Text, ct); }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (Exception exception) { logger.LogWarning("IA pos-extracao nao executada no lote {JobId}: {ErrorType}", job.Id, exception.GetType().Name); }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (ExtractorNotConfiguredException)
@@ -598,6 +609,77 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
         }
     }
 
-    private sealed record VersionItem(Guid Id, Guid TenantId, string StorageKey, string DetectedType);
+    // D-OC53 (Sprint 19/F-E): analise IA automatica apos a extracao concluir. Gate global + modulo
+    // ia_analysis do plano + texto presente; idempotente por hash de conteudo (retry de lease nao
+    // duplica). O evento contract_events 'ai_analysis_completed' audita a execucao.
+    private async Task AnalyzeExtractedAsync(JobItem job, VersionItem version, string text, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+        if (!configuration.GetValue("Features:AiAnalysis", false)) return;
+
+        var body = text.Trim();
+        var contentHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(body))).ToLowerInvariant();
+
+        await using var connection = await dataSource.OpenConnectionAsync(ct);
+        var row = await connection.QuerySingleOrDefaultAsync<GateRow>(new CommandDefinition("""
+            SELECT odca.organization_feature_state(t.id, 'ia_analysis') AS State,
+                   coalesce(t.preferred_language, 'pt-BR') AS Language
+              FROM odca.tenants t WHERE t.id = @tenant
+            """, new { tenant = job.TenantId }, cancellationToken: ct));
+        if (row is null || row.State is not null and not "allowed") return;
+
+        var exists = await connection.ExecuteScalarAsync<int>(new CommandDefinition(
+            "SELECT count(*)::int FROM odca.document_ai_analyses WHERE tenant_id=@tenant AND document_version_id=@version AND content_hash=@hash",
+            new { tenant = job.TenantId, version = job.VersionId, hash = contentHash }, cancellationToken: ct));
+        if (exists > 0) return;
+
+        await using var scope = serviceScopeFactory.CreateAsyncScope();
+        var ai = scope.ServiceProvider.GetRequiredService<IAiService>();
+        var aiOptions = scope.ServiceProvider.GetRequiredService<IOptions<AiOptions>>().Value;
+        var analysis = await ai.AnalyzeContractAsync(new AiContractInput(body, body.Length, row.Language), ct);
+        if (!analysis.Available) return;
+
+        var score = RiskScorer.Score(analysis);
+        var comparison = TemplateComparisonBuilder.Build(analysis);
+        var payload = JsonSerializer.Serialize(new
+        {
+            summary = analysis.Summary,
+            overallRisk = analysis.OverallRisk,
+            findings = analysis.Findings.Select(f => new { code = f.Code, risk = f.Risk, evidence = f.Evidence }).ToArray(),
+            categories = analysis.Categories.ToArray(),
+            score = score.Factors.Count == 0 && score.Value == 0 ? null : new
+            {
+                value = score.Value,
+                factors = score.Factors.Select(f => new { code = f.Code, severity = f.Severity, weight = f.Weight }).ToArray()
+            },
+            templateComparison = new
+            {
+                expected = comparison.Expected.ToArray(),
+                detected = comparison.Detected.ToArray(),
+                missing = comparison.Missing.ToArray(),
+                unexpected = comparison.Unexpected.ToArray()
+            },
+            providerName = analysis.ProviderName,
+            model = string.IsNullOrWhiteSpace(aiOptions.Model) ? null : aiOptions.Model.Trim()
+        }, WorkerJsonOptions);
+
+        await using var tx = await connection.BeginTransactionAsync(ct);
+        await connection.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenant,true)", new { tenant = job.TenantId.ToString() }, tx, cancellationToken: ct));
+        await connection.ExecuteAsync(new CommandDefinition("""
+            INSERT INTO odca.document_ai_analyses(tenant_id, contract_id, document_id, document_version_id, content_hash, analyzed_chars, provider, model, score_value, analysis, created_by)
+            VALUES(@tenant, @contract, @document, @version, @hash, @chars, @provider, @model, @score, @analysis::jsonb, @actor)
+            """, new { tenant = job.TenantId, contract = job.ContractId, document = version.DocumentId, version = job.VersionId, hash = contentHash, chars = body.Length, provider = ProviderCode(aiOptions), model = string.IsNullOrWhiteSpace(aiOptions.Model) ? null : aiOptions.Model.Trim(), score = score.Value, analysis = payload, actor = version.UploadedBy }, tx, cancellationToken: ct));
+        await connection.ExecuteAsync(new CommandDefinition("""
+            INSERT INTO odca.contract_events(tenant_id, contract_id, actor_id, event_type, details)
+            VALUES(@tenant, @contract, @actor, 'ai_analysis_completed', @details::jsonb)
+            """, new { tenant = job.TenantId, contract = job.ContractId, actor = version.UploadedBy, details = JsonSerializer.Serialize(new { provider = analysis.ProviderName, score = score.Value }, WorkerJsonOptions) }, tx, cancellationToken: ct));
+        await tx.CommitAsync(ct);
+    }
+
+    private static string ProviderCode(AiOptions options) => string.IsNullOrWhiteSpace(options.Provider) ? "none" : options.Provider.Trim().ToLowerInvariant();
+
+    private static readonly JsonSerializerOptions WorkerJsonOptions = new(JsonSerializerDefaults.Web);
+    private sealed record GateRow(string State, string Language);
+    private sealed record VersionItem(Guid Id, Guid TenantId, Guid DocumentId, Guid UploadedBy, string StorageKey, string DetectedType);
     private sealed record JobItem(Guid Id, Guid TenantId, Guid ContractId, Guid VersionId, Guid LeaseToken);
 }

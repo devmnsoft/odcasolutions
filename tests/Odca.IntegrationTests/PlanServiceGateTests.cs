@@ -64,13 +64,14 @@ public sealed class PlanServiceGateTests(DatabaseFixture database) : IClassFixtu
             await using var admin = new NpgsqlConnection(database.AdminConnectionString);
             await admin.OpenAsync();
 
-            // Catálogo canônico 6/6/7: v038 desativa module.reviews em basic-v2 e intermediate-v2.
+            // Catálogo canônico 7/7/8: v038 desativa module.reviews em basic-v2 e intermediate-v2;
+            // v063 (D-OC53) habilita module.ia_analysis nos três planos publicados.
             var enabledModules = await admin.ExecuteScalarAsync<int>(
                 """
                 SELECT count(*)::int FROM odca.plan_entitlements
                  WHERE plan_version_id=@v AND entitlement_code LIKE 'module.%' AND enabled
                 """, new { v = versionId });
-            var expectedModules = code == "enterprise" ? 7 : 6;
+            var expectedModules = code == "enterprise" ? 8 : 7;
             Assert.True(enabledModules == expectedModules, $"{code}: modulos habilitados={enabledModules} esperado={expectedModules}");
             var reviewsEnabled = await admin.ExecuteScalarAsync<bool>(
                 "SELECT enabled FROM odca.plan_entitlements WHERE plan_version_id=@v AND entitlement_code='module.reviews'",

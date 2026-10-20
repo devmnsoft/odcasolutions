@@ -129,6 +129,10 @@ public sealed partial class OdcaApiClient(HttpClient client, IHttpContextAccesso
     public Task<ApiCallResult<JsonElement>> GetDocumentAiAnalysisAsync(string token, Guid tenantId, Guid contractId, Guid documentId, Guid versionId, CancellationToken ct) =>
         SendAsync<JsonElement>(CreateAuthorized(HttpMethod.Get, $"api/v1/organizations/{tenantId}/contracts/{contractId}/documents/{documentId}/versions/{versionId}/ai-analysis", token), false, ct);
 
+    // D-OC53 (Sprint 19): gera nova analise e a persiste (idempotente por hash de conteudo no servidor).
+    public Task<ApiCallResult<JsonElement>> AnalyzeDocumentAiAsync(string token, Guid tenantId, Guid contractId, Guid documentId, Guid versionId, CancellationToken ct) =>
+        SendAsync<JsonElement>(CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/contracts/{contractId}/documents/{documentId}/versions/{versionId}/ai-analysis", token), false, ct);
+
     public async Task<ApiCallResult<JsonElement>> ApplyDraftExtractionAsync(string token, Guid tenantId, Guid draftId, ApplyDraftExtractionRequest request, CancellationToken ct)
     {
         using var message = CreateAuthorized(HttpMethod.Post, $"api/v1/organizations/{tenantId}/studio/drafts/{draftId}/apply-extraction", token);

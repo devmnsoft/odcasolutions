@@ -659,33 +659,70 @@ if (studio) {
       }, 2500);
     } catch (error) { statusEl.textContent = error.message; }
   };
-  // D-OC52 (Sprint 18): análise IA do texto extraído, por versão exata do documento. Estados
-  // honestos (carregando/indisponível/sem texto), rótulos via bolsa i18n e códigos desconhecidos
-  // exibidos crus — a UI nunca inventa interpretação.
+  // D-OC52 (Sprint 18) + D-OC53 (Sprint 19): analise IA do texto extraído por versão exata.
+  // O botão gera/persiste a análise (POST); novo clique reaproveita o último resultado da mesma
+  // versão (cache do cliente; o servidor também deduplica por hash de conteúdo). Estados honestos,
+  // rótulos via bag i18n, score 0-100 com fatores e delta vs cláusulas padrão — sem inventar.
   const aiClauseKey = { price_change:"studio.ai_clause_price_change", termination_notice:"studio.ai_clause_termination_notice", penalty:"studio.ai_clause_penalty", exclusivity:"studio.ai_clause_exclusivity", data_protection:"studio.ai_clause_data_protection", liability_limit:"studio.ai_clause_liability_limit", indemnity:"studio.ai_clause_indemnity", jurisdiction:"studio.ai_clause_jurisdiction" };
   const riskKey = risk => t(`studio.ai_risk_${risk === "low" ? "low" : risk === "high" ? "high" : "medium"}`);
-  const startAiAnalysis = async (documentId, versionId, row) => {
-    const panel = document.createElement("div"); panel.setAttribute("role","status"); panel.className="muted";
-    panel.textContent=t("studio.ai_loading"); row.after(panel);
-    let data;
-    try { data = await request(`${studio.dataset.aiBase}${documentId}/versoes/${versionId}/analise-ia`); }
-    catch (error) { panel.textContent=error.message; return; }
+  const aiFactorLabel = code => code === "atypical_clause" ? t("studio.ai_factor_atypical") : aiClauseKey[code] ? t(aiClauseKey[code]) : /^overall_(low|medium|high)$/.test(code) ? riskKey(code.slice(8)) : code;
+  const aiCache = new Map();
+  const renderAiResult = (data, panel, reused) => {
     panel.replaceChildren();
     if (!data || !data.available) {
-      const p=document.createElement("p"); p.className=data && data.reason==="no_text"?"warning":"muted";
-      p.textContent=data && data.reason==="no_text"?t("studio.ai_no_text"):t("studio.ai_unavailable");
+      const p=document.createElement("p");
+      p.className=data && (data.reason === "no_text" || data.reason === "module_not_enabled") ? "warning" : "muted";
+      p.textContent=data && data.reason === "no_text"?t("studio.ai_no_text"):data && data.reason === "module_not_enabled"?t("studio.ai_module_not_enabled"):t("studio.ai_unavailable");
       panel.append(p); return;
     }
+    if (reused){const note=document.createElement("p");note.className="muted";note.textContent=t("studio.ai_reused");panel.append(note);}
     const heading=document.createElement("p"); heading.textContent=t("studio.ai_result_h");
     if (data.overallRisk){const chip=document.createElement("span");chip.className="status-chip";chip.textContent=riskKey(data.overallRisk);heading.append(" ",chip);}
     panel.append(heading);
     if (data.summary){const summary=document.createElement("p");summary.textContent=data.summary;panel.append(summary);}
+    if (data.score && typeof data.score.value === "number"){
+      const scoreBox=document.createElement("div"); scoreBox.className="suggestion";
+      const title=document.createElement("strong");
+      title.textContent=`${t("studio.ai_score_h")}: ${t("studio.ai_score_value", data.score.value)}`;
+      scoreBox.append(title);
+      if (Array.isArray(data.score.factors) && data.score.factors.length){
+        const factors=document.createElement("p"); factors.className="muted";
+        for(const f of data.score.factors){ factors.append(`${aiFactorLabel(f.code)} (+${f.weight}) `); }
+        scoreBox.append(factors);
+      }
+      panel.append(scoreBox);
+    }
+    if (data.templateComparison){
+      const tc=data.templateComparison;
+      const tcBox=document.createElement("div"); tcBox.className="suggestion";
+      const tcTitle=document.createElement("strong"); tcTitle.textContent=t("studio.ai_template_h"); tcBox.append(tcTitle);
+      const groups=[["detected","\u2713","studio.ai_template_present"],["missing","\u25CB","studio.ai_template_missing"],["unexpected","!","studio.ai_template_unexpected"]];
+      for(const [key,mark,keyName] of groups){
+        const codes=tc[key]||[]; if(!codes.length) continue;
+        const line=document.createElement("p"); line.className="muted";
+        line.append(t(keyName)+": ");
+        for(const code of codes){ const chip=document.createElement("span"); chip.className="status-chip"; chip.textContent=`${mark} ${aiClauseKey[code]?t(aiClauseKey[code]):code}`; line.append(chip," "); }
+        tcBox.append(line);
+      }
+      panel.append(tcBox);
+    }
     const findingsTitle=document.createElement("strong");findingsTitle.textContent=t("studio.ai_findings_title");panel.append(findingsTitle);
     if(!data.findings.length){const none=document.createElement("p");none.className="success";none.textContent=t("studio.ai_no_findings");panel.append(none);}
     else{for(const finding of data.findings){const card=document.createElement("article");card.className="suggestion";const label=document.createElement("strong");label.textContent=aiClauseKey[finding.code]?t(aiClauseKey[finding.code]):finding.code;const chip=document.createElement("span");chip.className="status-chip";chip.textContent=riskKey(finding.risk);const evidence=document.createElement("p");evidence.className="muted";evidence.textContent=finding.evidence||"";card.append(label," ",chip,evidence);panel.append(card);}}
     if(data.categories.length){const categoriesTitle=document.createElement("strong");categoriesTitle.textContent=t("studio.ai_categories_title");const chips=document.createElement("p");for(const category of data.categories){const chip=document.createElement("span");chip.className="status-chip";chip.textContent=category;chips.append(chip," ");}panel.append(categoriesTitle,chips);}
     const footer=document.createElement("small");footer.className="muted";footer.textContent=t("studio.ai_footer",data.providerName||"?",Number(data.analyzedChars||0).toLocaleString(uiCulture),(data.contentHash||"").slice(0,12));
     panel.append(footer);
+  };
+  const startAiAnalysis = async (documentId, versionId, row) => {
+    const cacheKey=documentId+"/"+versionId;
+    const panel = document.createElement("div"); panel.setAttribute("role","status"); panel.className="muted";
+    if (aiCache.has(cacheKey)) { renderAiResult(aiCache.get(cacheKey), panel, true); row.after(panel); return; }
+    panel.textContent=t("studio.ai_loading"); row.after(panel);
+    let data;
+    try { data = await request(`${studio.dataset.aiBase}${documentId}/versoes/${versionId}/analise-ia`, { method: "POST" }); }
+    catch (error) { panel.textContent=error.message; return; }
+    if (data && data.available) aiCache.set(cacheKey, data);
+    renderAiResult(data, panel, false);
   };
   studio.querySelector("[data-apply]").addEventListener("click", async () => {
     const resultEl = studio.querySelector("[data-apply-result]");

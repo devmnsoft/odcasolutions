@@ -545,6 +545,7 @@
       "odca.worker": {
         "type": "Project",
         "dependencies": {
+          "Odca.AI": "[1.0.0, )",
           "Odca.Application": "[1.0.0, )",
           "Odca.Configuration": "[1.0.0, )",
           "Odca.Infrastructure": "[1.0.0, )"

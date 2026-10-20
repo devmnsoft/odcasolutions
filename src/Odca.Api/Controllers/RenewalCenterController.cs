@@ -1,9 +1,12 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
+using Odca.AI;
 using Odca.Api.Localization;
+using Odca.Contracts.Ai;
 using Odca.Contracts.Renewals;
 
 namespace Odca.Api.Controllers;
@@ -43,11 +46,18 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
               AND (@status::text IS NOT NULL OR Status<>'outside_window')
             """;
         var total = await c.ExecuteScalarAsync<int>(new CommandDefinition(projection + "SELECT count(*)::int FROM projected " + filter, args, tx, cancellationToken: ct));
-        var items = await c.QueryAsync<RenewalListItem>(new CommandDefinition(projection + "SELECT ContractId,RequestId,Name,Counterparty,OwnerName,EndDate,DecisionDueOn,Status,NextAction,DaysRemaining,ContractVersion,Priority,Kind FROM projected " + filter + " ORDER BY COALESCE(DecisionDueOn,EndDate),Name LIMIT @pageSize OFFSET @offset", args, tx, cancellationToken: ct));
+        var items = await c.QueryAsync<RenewalListItem>(new CommandDefinition(projection + "SELECT ContractId,RequestId,Name,Counterparty,OwnerName,EndDate,DecisionDueOn,Status,NextAction,DaysRemaining,ContractVersion,Priority,Kind,NULL::text AS AiSuggestion FROM projected " + filter + " ORDER BY COALESCE(DecisionDueOn,EndDate),Name LIMIT @pageSize OFFSET @offset", args, tx, cancellationToken: ct));
         var counts = await c.QuerySingleAsync<CountRow>(new CommandDefinition(projection + "SELECT count(*) FILTER(WHERE Status='expiring')::int AS Expiring,count(*) FILTER(WHERE Status='expired')::int AS Expired,count(*) FILTER(WHERE Status='draft')::int AS Preparing,count(*) FILTER(WHERE Status='in_review')::int AS InReview,count(*) FILTER(WHERE Status='formalized')::int AS Scheduled,count(*) FILTER(WHERE Status='cancelled')::int AS NotRenewing,count(*) FILTER(WHERE Status='indeterminate')::int AS Indeterminate FROM projected " + filter, args, tx, cancellationToken: ct));
         await tx.CommitAsync(ct);
         // D-OC28: rótulos fixos de NextAction emitidos pela query são localizados na fronteira da API.
-        var localized = items.Select(item => item with { NextAction = LocalizeNextAction(item.NextAction) }).ToList();
+        // D-OC53 (Sprint 19/F-C): sugestao apoiada por IA - ultima analise persistida por contrato
+        // exibido na pagina; sem analise persistida o campo permanece nulo (nenhum veredito inventado).
+        var aiSuggestions = await LoadRenewalSuggestionsAsync(c, tenantId, items.Select(i => i.ContractId).Distinct().ToArray(), ct);
+        var localized = items.Select(item => item with
+        {
+            NextAction = LocalizeNextAction(item.NextAction),
+            AiSuggestion = aiSuggestions.TryGetValue(item.ContractId, out var suggestion) ? suggestion : null
+        }).ToList();
         return Ok(new RenewalPage(localized, new(counts.Expiring, counts.Expired, counts.Preparing, counts.InReview, counts.Scheduled, counts.NotRenewing, counts.Indeterminate), page, pageSize, total, Today: today));
     }
 
@@ -306,5 +316,36 @@ public sealed class RenewalCenterController(NpgsqlDataSource dataSource) : Contr
     private sealed record RenewalEventRow(string EventType,DateTime OccurredAt,string? ActorName);
     private sealed record RenewalEvidenceRow(Guid VersionId,int VersionNumber,string DisplayName,string SecurityStatus,DateTime UploadedAt);
     private static DateTimeOffset ToUtcOffset(DateTime dt) => dt.Kind == DateTimeKind.Utc ? new DateTimeOffset(dt, TimeSpan.Zero) : new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc), TimeSpan.Zero);
-    private static DateTimeOffset? ToUtcOffset(DateTime? dt) => dt.HasValue ? ToUtcOffset(dt.Value) : null;
+    private static DateTimeOffset? ToUtcOffset(DateTime? dt) => dt.HasValue ? ToUtcOffset(dt.Value) : null;
+    private static async Task<Dictionary<Guid, string>> LoadRenewalSuggestionsAsync(NpgsqlConnection c, Guid tenantId, Guid[] contractIds, CancellationToken ct)
+    {
+        var result = new Dictionary<Guid, string>();
+        if (contractIds.Length == 0) return result;
+        // A transacao terminou: restabelece o contexto de tenant em escopo de sessao para a leitura com RLS.
+        await c.ExecuteAsync(new CommandDefinition("SELECT set_config('odca.tenant_id',@tenant,false)", new { tenant = tenantId.ToString() }, cancellationToken: ct));
+        var rows = await c.QueryAsync<SuggestionRow>(new CommandDefinition("""
+            SELECT DISTINCT ON (a.contract_id) a.contract_id AS ContractId, a.analysis::text AS Payload
+              FROM odca.document_ai_analyses a
+             WHERE a.tenant_id = @tenantId AND a.contract_id = ANY(@ids)
+             ORDER BY a.contract_id, a.created_at DESC, a.id DESC
+            """, new { tenantId, ids = contractIds }, cancellationToken: ct));
+        foreach (var row in rows)
+        {
+            try
+            {
+                var payload = JsonSerializer.Deserialize<SuggestionPayload>(row.Payload, SuggestionJsonOptions);
+                if (payload is null) continue;
+                var findings = (payload.Findings ?? []).Select(f => new AiClauseFinding(f.Code, f.Risk, f.Evidence)).ToArray();
+                var analysis = new AiAnalysis(true, null, payload.Summary, payload.OverallRisk, findings, [], "http");
+                var suggestion = RenewalSuggestionBuilder.FromAnalysis(analysis);
+                if (suggestion is not null && !result.ContainsKey(row.ContractId)) result[row.ContractId] = suggestion.Action;
+            }
+            catch (JsonException) { /* payload corrompido nao quebra o centro: trata como sem analise */ }
+        }
+        return result;
+    }
+
+    private static readonly JsonSerializerOptions SuggestionJsonOptions = new(JsonSerializerDefaults.Web);
+    private sealed record SuggestionRow(Guid ContractId, string Payload);
+    private sealed record SuggestionPayload(string? Summary, string? OverallRisk, AiClauseFindingDto[]? Findings);
 }

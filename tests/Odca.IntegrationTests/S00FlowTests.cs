@@ -284,12 +284,13 @@ public sealed class S00FlowTests(DatabaseFixture database) : IClassFixture<Datab
             basic => Assert.Equal(("basic", 3, 10_000_000_000), (basic.Code, basic.ActiveSeats, basic.StorageBytes)),
             intermediate => Assert.Equal(("intermediate", 10, 100_000_000_000), (intermediate.Code, intermediate.ActiveSeats, intermediate.StorageBytes)),
             enterprise => Assert.Equal(("enterprise", 30, 500_000_000_000), (enterprise.Code, enterprise.ActiveSeats, enterprise.StorageBytes)));
-        // v038 tornou module.reviews capacidade exclusiva do Enterprise; o catálogo
-        // publicado declara seis módulos para basic/intermediate e sete para enterprise.
+        // v038 tornou module.reviews capacidade exclusiva do Enterprise; v063 (D-OC53) habilita
+        // module.ia_analysis nos três planos publicados — catálogo declara 7 para basic/intermediate
+        // e 8 para enterprise.
         Assert.All(catalog, plan => Assert.Equal(2, plan.Version));
-        Assert.Equal(6, catalog[0].EnabledModules?.Length);
-        Assert.Equal(6, catalog[1].EnabledModules?.Length);
-        Assert.Equal(7, catalog[2].EnabledModules?.Length);
+        Assert.Equal(7, catalog[0].EnabledModules?.Length);
+        Assert.Equal(7, catalog[1].EnabledModules?.Length);
+        Assert.Equal(8, catalog[2].EnabledModules?.Length);
     }
 
     [Fact]

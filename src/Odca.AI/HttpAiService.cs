@@ -58,6 +58,62 @@ public sealed class HttpAiService(HttpClient http, IOptions<AiOptions> options) 
         }
     }
 
+    public async Task<AiInterpretation> InterpretSearchQueryAsync(string query, CancellationToken ct)
+    {
+        var fallback = SearchQueryParser.FromText(query);
+        var configured = options.Value;
+        if (string.IsNullOrWhiteSpace(query)) return new AiInterpretation(fallback, false);
+        try
+        {
+            var phrase = query.Trim();
+            if (phrase.Length > 400) phrase = phrase[..400];
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, "chat/completions");
+            if (!string.IsNullOrWhiteSpace(configured.ApiKey))
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", configured.ApiKey);
+            }
+            var payload = new Dictionary<string, object>
+            {
+                ["temperature"] = 0,
+                ["max_tokens"] = 200,
+                ["response_format"] = new { type = "json_object" },
+                ["messages"] = new object[]
+                {
+                    new { role = "system", content = SearchQueryPrompt() },
+                    new { role = "user", content = phrase }
+                }
+            };
+            if (!string.IsNullOrWhiteSpace(configured.Model)) payload["model"] = configured.Model.Trim();
+            request.Content = JsonContent.Create(payload);
+
+            // Busca não pode parar na fila: teto curto para a interpretação (queda vira keywords).
+            var boundedSeconds = Math.Max(2, Math.Min(configured.TimeoutSeconds, 8));
+            using var limited = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            limited.CancelAfter(TimeSpan.FromSeconds(boundedSeconds));
+            using var response = await http.SendAsync(request, limited.Token);
+            if (!response.IsSuccessStatusCode) return new AiInterpretation(fallback, false);
+
+            var body = await response.Content.ReadAsStringAsync(limited.Token);
+            var content = ExtractMessageContent(body);
+            var parsed = content is null ? null : SearchQueryParser.ParseProviderJson(content);
+            return parsed is null
+                ? new AiInterpretation(fallback, false)
+                : new AiInterpretation(parsed, true);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException or JsonException or UriFormatException)
+        {
+            return new AiInterpretation(fallback, false);
+        }
+    }
+
+    internal static string SearchQueryPrompt() =>
+        "Você interpreta frases de busca de uma central de documentos contratuais. " +
+        "Responda APENAS com um objeto JSON válido, sem comentários, no formato: " +
+        "{\"terms\":[\"termo de busca curto\"],\"penaltyMinPercent\":10}. " +
+        "terms: até 8 termos curtos (palavra ou frase curta em minúsculas) que capturem o que o usuário procura no texto dos contratos. " +
+        "penaltyMinPercent: número entre 0 e 100 SOMENTE quando a frase declara um percentual mínimo de multa/penalidade (ex.: \"multa superior a 10%\" ⇒ 10); caso contrário null.";
+
     internal static string SystemPrompt(string culture)
     {
         var language = culture switch

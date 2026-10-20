@@ -10,6 +10,7 @@ using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using Odca.Configuration.Localization;
@@ -18,6 +19,7 @@ using Odca.Application.Contracts;
 using Odca.Application.Documents;
 using Odca.Application.Signatures;
 using Odca.Application.Tenancy;
+using Odca.AI;
 using Odca.Contracts.Studio;
 
 namespace Odca.Api.Controllers;
@@ -25,7 +27,7 @@ namespace Odca.Api.Controllers;
 [ApiController]
 [Authorize(Policy = "PasswordChanged")]
 [Route("api/v1/organizations/{tenantId:guid}/studio")]
-public sealed partial class ContractStudioController(NpgsqlDataSource dataSource, IConfiguration configuration, ITemplateCatalogRepository templateCatalog, ISignatureEnvelopeProvider envelopeProvider) : ControllerBase
+public sealed partial class ContractStudioController(NpgsqlDataSource dataSource, IConfiguration configuration, ITemplateCatalogRepository templateCatalog, ISignatureEnvelopeProvider envelopeProvider, IAiService ai, IOptions<AiOptions> aiOptions) : ControllerBase
 {
     [HttpGet("templates")]
     public async Task<IActionResult> Templates(Guid tenantId, [FromQuery] string? search, [FromQuery] string? type, [FromQuery] string? scope, [FromQuery] string? purpose, [FromQuery] int page = 1, [FromQuery] int pageSize = 12, CancellationToken ct = default)
@@ -396,11 +398,65 @@ public sealed partial class ContractStudioController(NpgsqlDataSource dataSource
         queryParams.Add("limit", pageSize);
 
         var filters = new List<string> { "c.tenant_id = @tenantId" };
+        StudioSemanticSearchInfo? semanticInfo = null;
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            queryParams.Add("search", $"%{search.Trim()}%");
-            filters.Add("(c.title ILIKE @search OR c.reference ILIKE @search OR p.full_name ILIKE @search OR p.identifier_value ILIKE @search)");
+            var phrase = search.Trim();
+            queryParams.Add("search", $"%{phrase}%");
+            // D-OC53 (Sprint 19/F-D): a busca chega ao texto extraido de cada versao. Os termos
+            // (deterministicos no modo palavras-chave; interpretados pelo provedor no modo IA)
+            // entram como OR: ampliam recall e jamais retiram um resultado que casava antes.
+            var hints = SearchQueryParser.FromText(phrase);
+            var engine = "keywords";
+            var gateOn = configuration.GetValue("Features:AiAnalysis", false);
+            var httpActive = string.Equals(aiOptions.Value.Provider, "http", StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrWhiteSpace(aiOptions.Value.Endpoint)
+                && !string.IsNullOrWhiteSpace(aiOptions.Value.ApiKey);
+            if (gateOn && httpActive)
+            {
+                var moduleState = await c.ExecuteScalarAsync<string>(new CommandDefinition(
+                    "SELECT odca.organization_feature_state(@tenantId, 'ia_analysis')", new { tenantId }, tx, cancellationToken: ct));
+                if (moduleState is not null and not "allowed")
+                {
+                    var interpretation = await ai.InterpretSearchQueryAsync(phrase, ct);
+                    if (interpretation.ProviderUsed) engine = "ai";
+                    hints = interpretation.Hints;
+                }
+            }
+
+            var termFilters = new List<string>();
+            for (var i = 0; i < hints.Terms.Count; i++)
+            {
+                queryParams.Add("kw" + i, $"%{hints.Terms[i]}%");
+                termFilters.Add($"er.raw_text ILIKE @kw{i}");
+            }
+            var textCondition = string.Join(" OR ", termFilters.Append("er.raw_text ILIKE @search"));
+            filters.Add($"""
+                (c.title ILIKE @search OR c.reference ILIKE @search OR p.full_name ILIKE @search
+                    OR p.identifier_value ILIKE @search
+                    OR EXISTS (SELECT 1 FROM odca.document_versions dv
+                               JOIN odca.extraction_results er ON er.tenant_id = dv.tenant_id AND er.version_id = dv.id
+                              WHERE dv.tenant_id = c.tenant_id AND dv.contract_id = c.id AND ({textCondition}))
+                )
+                """);
+
+            if (hints.PenaltyMinPercent is double penaltyMin)
+            {
+                queryParams.Add("penaltyMin", penaltyMin);
+                // Limite declarado: formulacao canonica "multa(s)/penalidade(s) ... X %", precisao de uma casa
+                // decimal; aplicada nos dois modos (o percentual vem do parser deterministico quando o
+                // provedor nao declara).
+                filters.Add(@"
+                    EXISTS (SELECT 1 FROM odca.document_versions dv
+                            JOIN odca.extraction_results er ON er.tenant_id = dv.tenant_id AND er.version_id = dv.id
+                           WHERE dv.tenant_id = c.tenant_id AND dv.contract_id = c.id
+                             AND (regexp_match(er.raw_text, '(?:multa|penalidade)[^0-9]{0,40}([0-9]+)(?:[.,]([0-9]))?\s*%', 'i'))[1] IS NOT NULL
+                             AND ((regexp_match(er.raw_text, '(?:multa|penalidade)[^0-9]{0,40}([0-9]+)(?:[.,]([0-9]))?\s*%', 'i'))[1])::numeric
+                               + coalesce(((regexp_match(er.raw_text, '(?:multa|penalidade)[^0-9]{0,40}([0-9]+)(?:[.,]([0-9]))?\s*%', 'i'))[2])::numeric, 0) / 10.0
+                               > @penaltyMin)");
+            }
+            semanticInfo = new StudioSemanticSearchInfo(engine, [.. hints.Terms]);
         }
 
         if (!string.IsNullOrWhiteSpace(type))
@@ -614,7 +670,7 @@ public sealed partial class ContractStudioController(NpgsqlDataSource dataSource
                 r.PatientActive);
         }).ToList();
 
-        return Ok(new StudioDocumentPage(items, page, pageSize, total));
+        return Ok(new StudioDocumentPage(items, page, pageSize, total, semanticInfo));
     }
 
     [HttpGet("drafts/{draftId:guid}/conference")]

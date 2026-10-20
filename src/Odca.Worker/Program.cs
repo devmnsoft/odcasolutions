@@ -1,3 +1,4 @@
+using Odca.AI;
 using Odca.Worker;
 using Npgsql;
 using Odca.Configuration;
@@ -11,6 +12,9 @@ var localConfiguration = LocalRuntimeConfiguration.Add(builder.Configuration, bu
 Console.WriteLine($"Configuração: ambiente={localConfiguration.Environment}; caminho={localConfiguration.Path ?? "não utilizado"}.");
 // D-OC31 A.4: seleção condicional das chaves (dev: filesystem; produção: postgres v054).
 builder.Services.AddOdcaDataProtection(builder.Configuration);
+// D-OC53 (Sprint 19/F-E): provedor de IA para a analise automatica pos-extracao;
+// sem configuracao valida cai em "none" (no-op honesto). A chave nunca e commitada.
+builder.Services.AddOdcaAi(builder.Configuration);
 // D-OC46 (Sprint 12/F-1): catálogos embarcados para o idioma preferido dos lembretes
 // e do corpo SMTP (fallback pt-BR, camada canônica).
 builder.Services.AddSingleton<LocalizationService>();

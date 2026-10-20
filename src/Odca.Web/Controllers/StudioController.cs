@@ -606,6 +606,23 @@ public sealed class StudioController(OdcaApiClient api, IConfiguration configura
         return StatusCode(422, new { title = r.ErrorTitle, detail = r.ErrorDetail });
     }
 
+    // D-OC53 (Sprint 19): mesma resolucao de rascunho/contrato no servidor; o POST gera nova
+    // analise e a persiste (o GET continua lendo a ultima persistida ou uma unica ao vivo).
+    [HttpPost("minutas/{draftId:guid}/documentos/{documentId:guid}/versoes/{versionId:guid}/analise-ia")]
+    public async Task<IActionResult> AnalyzeDocumentAi(Guid tenantId, Guid draftId, Guid documentId, Guid versionId, CancellationToken ct)
+    {
+        var token = await HttpContext.GetTokenAsync("access_token"); if (token is null) return Unauthorized();
+        var draft = await api.GetStudioDraftAsync(token, tenantId, draftId, ct);
+        if (!draft.Succeeded) return draft.Status == ApiCallStatus.NotFound ? NotFound() : StatusCode(422, new { title = draft.ErrorTitle });
+        var r = await api.AnalyzeDocumentAiAsync(token, tenantId, draft.Value!.ContractId, documentId, versionId, ct);
+        if (r.Succeeded) return Json(r.Value);
+        if (r.Status == ApiCallStatus.NotFound) return NotFound();
+        if (r.Status == ApiCallStatus.Forbidden) return Forbid();
+        if (r.Status == ApiCallStatus.Unavailable || r.Status == ApiCallStatus.Timeout)
+            return StatusCode(503, new { title = r.ErrorTitle, detail = r.ErrorDetail });
+        return StatusCode(422, new { title = r.ErrorTitle, detail = r.ErrorDetail });
+    }
+
     [HttpPost("minutas/{draftId:guid}/aplicar-extracao")]
     public async Task<IActionResult> ApplyExtraction(Guid tenantId, Guid draftId, [FromBody] ApplyDraftExtractionRequest request, CancellationToken ct)
     {

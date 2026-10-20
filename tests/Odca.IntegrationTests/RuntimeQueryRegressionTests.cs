@@ -54,6 +54,17 @@ public sealed class RuntimeQueryRegressionTests
     }
 
     [Fact]
+    public void RenewalListProjectionSelectsNullAiSuggestionColumnForRecordConstructor()
+    {
+        var source = ReadSource("Odca.Api", "Controllers", "RenewalCenterController.cs");
+
+        // O record RenewalListItem tem construtor único com AiSuggestion como último parâmetro;
+        // a projeção da lista precisa declarar a coluna explícita (colunas == parâmetros, 1:1).
+        Assert.Contains("NULL::text AS AiSuggestion FROM projected", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Kind FROM projected", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ConsumptionHistoryMapsNullableReasonAndProviderTimestampBeforePublicContract()
     {
         var source = ReadSource("Odca.Infrastructure", "Consumption", "NpgsqlConsumptionRepository.cs");

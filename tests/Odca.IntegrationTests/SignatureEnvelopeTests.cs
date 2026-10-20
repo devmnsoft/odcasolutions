@@ -4,7 +4,9 @@ using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Npgsql;
+using Odca.AI;
 using Odca.Api.Controllers;
 using Odca.Application.Contracts;
 using Odca.Application.Signatures;
@@ -353,7 +355,7 @@ public sealed class SignatureEnvelopeTests(DatabaseFixture database) : IClassFix
 
     private static ContractStudioController CreateController(NpgsqlDataSource ds, Guid actor, ISignatureEnvelopeProvider provider)
     {
-        var controller = new ContractStudioController(ds, new ConfigurationBuilder().Build(), new StubTemplateCatalogRepository(), provider);
+        var controller = new ContractStudioController(ds, new ConfigurationBuilder().Build(), new StubTemplateCatalogRepository(), provider, new NullAiService(), Options.Create(new AiOptions()));
         controller.ControllerContext = new ControllerContext { HttpContext = TestControllerContexts.Create(actor) };
         return controller;
     }

@@ -9,6 +9,7 @@ public static class OrganizationFeatureCatalog
     public const string Reviews = "reviews";
     public const string Signatures = "signatures";
     public const string Imports = "imports";
+    public const string AiAnalysis = "ia_analysis";
 
     public static readonly IReadOnlyList<string> Codes =
     [
@@ -18,7 +19,8 @@ public static class OrganizationFeatureCatalog
         Documents,
         Reviews,
         Signatures,
-        Imports
+        Imports,
+        AiAnalysis
     ];
 
     public static string DisplayName(string code) => code switch
@@ -30,6 +32,7 @@ public static class OrganizationFeatureCatalog
         Reviews => "Revisões",
         Signatures => "Assinatura",
         Imports => "Importações",
+        AiAnalysis => "Análise IA",
         _ => code
     };
 
