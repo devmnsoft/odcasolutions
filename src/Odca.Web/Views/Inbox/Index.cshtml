@@ -132,7 +132,7 @@
             <input type="hidden" name="scope" value="@Model.Scope" />
             <input type="hidden" name="kind" value="@Model.Kind" />
             <input type="hidden" name="urgency" value="@Model.Urgency" />
-            <input type="text" name="name" required placeholder="@L.T("inbox.view_name_ph", _culture)" maxlength="80" />
+            <input type="text" name="name" required aria-label="@L.T("obl.view_name", _culture)" placeholder="@L.T("inbox.view_name_ph", _culture)" maxlength="80" />
             <button class="button button-quiet" type="submit">@L.T("inbox.save_view_btn", _culture)</button>
         </form>
     </details>

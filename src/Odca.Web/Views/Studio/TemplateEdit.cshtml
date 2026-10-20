@@ -118,17 +118,17 @@
                 <h4 style="margin-top: 0; font-size: 0.95rem;">@L.T("studio.tpl_add_field_h",_culture)</h4>
                 <div class="tpl-pair">
                     <div>
-                        <label style="font-size: 0.8rem; font-weight: 600;">@L.T("studio.tpl_field_id_label",_culture)</label>
+                        <label for="newFieldId" style="font-size: 0.8rem; font-weight: 600;">@L.T("studio.tpl_field_id_label",_culture)</label>
                         <input type="text" id="newFieldId" placeholder="identificador_unico" style="width: 100%; font-size: 0.85rem;" />
                     </div>
                     <div>
-                        <label style="font-size: 0.8rem; font-weight: 600;">@L.T("studio.tpl_field_label_label",_culture)</label>
+                        <label for="newFieldLabel" style="font-size: 0.8rem; font-weight: 600;">@L.T("studio.tpl_field_label_label",_culture)</label>
                         <input type="text" id="newFieldLabel" placeholder="@L.T("studio.tpl_label_ph",_culture)" style="width: 100%; font-size: 0.85rem;" />
                     </div>
                 </div>
                 <div class="tpl-pair">
                     <div>
-                        <label style="font-size: 0.8rem; font-weight: 600;">@L.T("studio.tpl_field_type_label",_culture)</label>
+                        <label for="newFieldType" style="font-size: 0.8rem; font-weight: 600;">@L.T("studio.tpl_field_type_label",_culture)</label>
                         <select id="newFieldType" style="width: 100%; font-size: 0.85rem;">
                             <option value="ShortText">@L.T("studio.ft_short",_culture)</option>
                             <option value="LongText">@L.T("studio.ft_long",_culture)</option>
@@ -140,7 +140,7 @@
                         </select>
                     </div>
                     <div>
-                        <label style="font-size: 0.8rem; font-weight: 600;">@L.T("studio.tpl_choices_label",_culture)</label>
+                        <label for="newFieldChoices" style="font-size: 0.8rem; font-weight: 600;">@L.T("studio.tpl_choices_label",_culture)</label>
                         <input type="text" id="newFieldChoices" placeholder="@L.T("studio.tpl_choices_ph",_culture)" style="width: 100%; font-size: 0.85rem;" />
                     </div>
                 </div>
@@ -201,7 +201,7 @@
             </p>
             <div id="editorLossBanner" class="error" role="alert" style="display:none; font-size: 0.85rem; margin-bottom: 0.75rem;"></div>
 
-            <label style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.25rem;">
+            <label for="textEditor" style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.25rem;">
                 @L.T("studio.tpl_texteditor_label",_culture)
             </label>
             <textarea id="textEditor" rows="14" style="width: 100%; font-family: monospace; font-size: 0.9rem; line-height: 1.4; padding: 0.75rem; border-radius: 4px; border: 1px solid #cbd5e1;"></textarea>
@@ -233,7 +233,7 @@
 
             @if (!isNew && !isPublished && !isArchived)
             {
-                <button type="submit" formaction="@Url.Action("PublishTemplate", "Studio", new { tenantId, templateId = Model.TemplateId })" class="button" style="background: #059669; color: #fff;" onclick="return confirm(window.OdcaI18n.t('studio.tpl_publish_confirm'));">
+                <button type="submit" formaction="@Url.Action("PublishTemplate", "Studio", new { tenantId, templateId = Model.TemplateId })" class="button" style="background: var(--success); color: #fff;" onclick="return confirm(window.OdcaI18n.t('studio.tpl_publish_confirm'));">
                     @L.T("studio.tpl_publish",_culture)
                 </button>
             }
@@ -320,7 +320,7 @@
             const removeBtn = document.createElement('button');
             removeBtn.type = 'button';
             removeBtn.className = 'button button-quiet';
-            removeBtn.style.cssText = 'padding: 2px 6px; font-size: 0.75rem; color: #ef4444;';
+            removeBtn.style.cssText = 'padding: 2px 6px; font-size: 0.75rem; color: var(--danger);';
             removeBtn.textContent = '×';
             removeBtn.title = t('studio.tpl_remove_title');
             removeBtn.addEventListener('click', () => removeField(idx));

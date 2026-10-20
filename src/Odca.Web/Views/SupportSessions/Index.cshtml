@@ -47,7 +47,7 @@
                 <small>@L.T("support.duration_hint",_c)</small></label>
         </div>
         <label>@L.T("common.reason",_c)<textarea name="Reason" rows="2" minlength="5" maxlength="1000" required placeholder="@L.T("support.reason_ph",_c)"></textarea></label>
-        <div class="form-actions"><button class="button button-primary" type="submit">@L.T("support.open_btn",_c)</button></div>
+        <div class="form-actions-row"><button class="button button-primary" type="submit">@L.T("support.open_btn",_c)</button></div>
     </form>
     <details class="help-card">
         <summary>@L.T("support.help_title",_c)</summary>
@@ -68,6 +68,7 @@
     }
     @if (Model.Sessions.Length > 0)
     {
+        <div class="table-wrap">
         <table class="data-table">
             <thead>
                 <tr><th>@L.T("common.org",_c)</th><th>@L.T("common.reason",_c)</th><th>@L.T("common.situation",_c)</th><th>@L.T("support.col_start",_c)</th><th>@L.T("support.col_expires",_c)</th><th>@L.T("support.col_opened_by",_c)</th><th class="actions">@L.T("common.actions",_c)</th></tr>
@@ -117,5 +118,6 @@
             }
             </tbody>
         </table>
+        </div>
     }
 </section>

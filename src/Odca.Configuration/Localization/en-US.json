@@ -4050,5 +4050,11 @@
   "ren.ai_review": "renew under review of conditions",
   "ren.ai_renegotiate": "renegotiate conditions before renewing",
   "ren.ai_note": "compiled from the latest analysis — the decision is yours.",
-  "documents.stage_all": "All stages"
+  "documents.stage_all": "All stages",
+  "layout.org_active": "Active",
+  "layout.org_suspended": "Suspended",
+  "layout.no_org": "No organization",
+  "layout.not_confirmed": "Not confirmed",
+  "layout.session_not_accepted": "Session not accepted",
+  "layout.access_not_confirmed": "Access not confirmed"
 }

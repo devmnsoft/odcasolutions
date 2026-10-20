@@ -4050,5 +4050,11 @@
   "ren.ai_review": "renovar bajo revisión de condiciones",
   "ren.ai_renegotiate": "renegociar condiciones antes de renovar",
   "ren.ai_note": "compilada desde el último análisis — la decisión es suya.",
-  "documents.stage_all": "Todas las etapas"
+  "documents.stage_all": "Todas las etapas",
+  "layout.org_active": "Activa",
+  "layout.org_suspended": "Suspensa",
+  "layout.no_org": "Sin organización",
+  "layout.not_confirmed": "No confirmada",
+  "layout.session_not_accepted": "Sesión no aceptada",
+  "layout.access_not_confirmed": "Acceso no confirmado"
 }

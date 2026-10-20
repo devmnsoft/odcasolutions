@@ -1,0 +1,38 @@
+{
+  "layout.org_active": {
+    "pt-BR": "Ativa",
+    "en-US": "Active",
+    "es-ES": "Activa",
+    "fr-FR": "Active"
+  },
+  "layout.org_suspended": {
+    "pt-BR": "Suspensa",
+    "en-US": "Suspended",
+    "es-ES": "Suspensa",
+    "fr-FR": "Suspendue"
+  },
+  "layout.no_org": {
+    "pt-BR": "Sem organização",
+    "en-US": "No organization",
+    "es-ES": "Sin organización",
+    "fr-FR": "Sans organisation"
+  },
+  "layout.not_confirmed": {
+    "pt-BR": "Não confirmada",
+    "en-US": "Not confirmed",
+    "es-ES": "No confirmada",
+    "fr-FR": "Non confirmée"
+  },
+  "layout.session_not_accepted": {
+    "pt-BR": "Sessão não aceita",
+    "en-US": "Session not accepted",
+    "es-ES": "Sesión no aceptada",
+    "fr-FR": "Session non acceptée"
+  },
+  "layout.access_not_confirmed": {
+    "pt-BR": "Acesso não confirmado",
+    "en-US": "Access not confirmed",
+    "es-ES": "Acceso no confirmado",
+    "fr-FR": "Accès non confirmé"
+  }
+}

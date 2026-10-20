@@ -1,0 +1,6637 @@
+{
+ "rows": [
+  {
+   "cls": "015em",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "06em",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "08em",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "10294f",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "102a43",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "12px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "14px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "18243b",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "1849a9",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "18em",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "1fr",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "1px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "1rem",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "240px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "245bdb",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "25rem",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "28deg",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "28px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "2px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "2rem",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "30vw",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "34rem",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "35rem",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "3px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "3rem",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "45rem",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "4em",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "4px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "4rem",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "5e7181",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "5em",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "5rem",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "5vw",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "680px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "6b7280",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "6em",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "6px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "6rem",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "75rem",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "78a9ff",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "850px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "8em",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "8px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "8rem",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "9aa9bc",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "9rem",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "access-state",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "action-600",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "action-menu",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "action-menu-panel",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "actions",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Impersonation\\Cliente.cshtml",
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "actions-row",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml"
+   ]
+  },
+  {
+   "cls": "Active",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "active-filters",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Agenda\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "added",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "aebdcc",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "alert",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Login.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Aprovacoes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Create.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Impersonation\\Cliente.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Form.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\NewRevision.cshtml",
+    "src\\Odca.Web\\Views\\PlatformNotifications\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Nova.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml",
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "alert-error",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Aprovacoes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Create.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Impersonation\\Cliente.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Form.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\NewRevision.cshtml",
+    "src\\Odca.Web\\Views\\PlatformNotifications\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Nova.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml",
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "alert-success",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Login.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Aprovacoes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\NewRevision.cshtml",
+    "src\\Odca.Web\\Views\\PlatformNotifications\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml",
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "align-center",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "align-content",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "align-items",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "align-justify",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "align-right",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "and",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "app-content",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "app-shell",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "app-topbar",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "Arial",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "auth-card",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Login.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Accept.cshtml"
+   ]
+  },
+  {
+   "cls": "auth-intro",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Login.cshtml"
+   ]
+  },
+  {
+   "cls": "auth-layout",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Login.cshtml"
+   ]
+  },
+  {
+   "cls": "auto",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "avatar",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "avoid",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "b42318",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "b6d7fe",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "background",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "badge",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\NewDocument.cshtml",
+    "src\\Odca.Web\\Views\\Home\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\CustomerHome.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformDiagnostics\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\NewRevision.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml"
+   ]
+  },
+  {
+   "cls": "badge-danger",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml"
+   ]
+  },
+  {
+   "cls": "badge-info",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml"
+   ]
+  },
+  {
+   "cls": "badge-muted",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\NewDocument.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\CustomerHome.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\NewRevision.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml"
+   ]
+  },
+  {
+   "cls": "badge-primary",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Documents\\NewDocument.cshtml"
+   ]
+  },
+  {
+   "cls": "badge-success",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml"
+   ]
+  },
+  {
+   "cls": "badge-warning",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml"
+   ]
+  },
+  {
+   "cls": "badgeClass",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml"
+   ]
+  },
+  {
+   "cls": "banner-notice-success",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "banner-notice-warning",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Agenda\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplatePreview.cshtml"
+   ]
+  },
+  {
+   "cls": "block",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "blocked",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "body",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "border",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "border-bottom",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "border-collapse",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "border-color",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "border-left",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "border-left-color",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "border-radius",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "border-top",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "brand",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "brand-mark",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "brand-name",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "breadcrumb",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Aprovacoes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Create.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Users.cshtml",
+    "src\\Odca.Web\\Views\\Impersonation\\Cliente.cshtml",
+    "src\\Odca.Web\\Views\\Modules\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Acoes.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Nova.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\NewRevision.cshtml",
+    "src\\Odca.Web\\Views\\PlatformNotifications\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformOperations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Nova.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplatePreview.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml",
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "breadcrumb-trail",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml"
+   ]
+  },
+  {
+   "cls": "break-after",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "break-inside",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "btn-history-drawer",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml"
+   ]
+  },
+  {
+   "cls": "button",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\ChangePassword.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Conta.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Login.cshtml",
+    "src\\Odca.Web\\Views\\Account\\MfaChallenge.cshtml",
+    "src\\Odca.Web\\Views\\Account\\MfaEnrollment.cshtml",
+    "src\\Odca.Web\\Views\\Account\\NotificationPreferences.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml",
+    "src\\Odca.Web\\Views\\Account\\RecoveryCodes.cshtml",
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Aprovacoes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Agenda\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Create.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Users.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\NewDocument.cshtml",
+    "src\\Odca.Web\\Views\\Home\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Impersonation\\Cliente.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Modules\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Acoes.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Nova.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\ConfirmEmail.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\CustomerHome.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\Register.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\RegistrationStarted.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Accept.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Form.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Plans\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformDiagnostics\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Create.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\NewRevision.cshtml",
+    "src\\Odca.Web\\Views\\PlatformNotifications\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Privacy\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\AccessDenied.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\ServiceUnavailable.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\_ConfirmDialog.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\_Toasts.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Nova.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplatePreview.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml",
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml",
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "button-block",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Login.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\Register.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Accept.cshtml"
+   ]
+  },
+  {
+   "cls": "button-danger",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Aprovacoes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Acoes.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "button-link",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Create.cshtml",
+    "src\\Odca.Web\\Views\\Home\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Form.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Privacy\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml",
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "button-primary",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\ChangePassword.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Conta.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Login.cshtml",
+    "src\\Odca.Web\\Views\\Account\\MfaChallenge.cshtml",
+    "src\\Odca.Web\\Views\\Account\\MfaEnrollment.cshtml",
+    "src\\Odca.Web\\Views\\Account\\RecoveryCodes.cshtml",
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Aprovacoes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Agenda\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Create.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Users.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\NewDocument.cshtml",
+    "src\\Odca.Web\\Views\\Home\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Impersonation\\Cliente.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Modules\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Acoes.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Nova.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\ConfirmEmail.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\CustomerHome.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\Register.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\RegistrationStarted.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Accept.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Form.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Plans\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Create.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Privacy\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\AccessDenied.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\ServiceUnavailable.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\_ConfirmDialog.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\_Toasts.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Nova.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplatePreview.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml",
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml",
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "button-quiet",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\NotificationPreferences.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml",
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Agenda\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\NewDocument.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Acoes.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Nova.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\CustomerHome.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformDiagnostics\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Create.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\NewRevision.cshtml",
+    "src\\Odca.Web\\Views\\PlatformNotifications\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\AccessDenied.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\ServiceUnavailable.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\_Toasts.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Nova.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplatePreview.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml"
+   ]
+  },
+  {
+   "cls": "button-row",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Conta.cshtml",
+    "src\\Odca.Web\\Views\\Account\\NotificationPreferences.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\NewDocument.cshtml",
+    "src\\Odca.Web\\Views\\Home\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Acoes.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\CustomerHome.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\PlatformDiagnostics\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\NewRevision.cshtml",
+    "src\\Odca.Web\\Views\\PlatformNotifications\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml"
+   ]
+  },
+  {
+   "cls": "button-secondary",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Conta.cshtml",
+    "src\\Odca.Web\\Views\\Account\\MfaEnrollment.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml"
+   ]
+  },
+  {
+   "cls": "button-small",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\MfaEnrollment.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\NewDocument.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\CustomerHome.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\_Toasts.cshtml",
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "cad3df",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "callout",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml"
+   ]
+  },
+  {
+   "cls": "callout-info",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "callouts",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "cancel-form",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Renewals\\Detail.cshtml"
+   ]
+  },
+  {
+   "cls": "card",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\AccessDenied.cshtml",
+    "src\\Odca.Web\\Views\\Account\\ChangePassword.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Conta.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Login.cshtml",
+    "src\\Odca.Web\\Views\\Account\\MfaChallenge.cshtml",
+    "src\\Odca.Web\\Views\\Account\\MfaEnrollment.cshtml",
+    "src\\Odca.Web\\Views\\Account\\NotificationPreferences.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml",
+    "src\\Odca.Web\\Views\\Account\\RecoveryCodes.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Create.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\NewDocument.cshtml",
+    "src\\Odca.Web\\Views\\Home\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\ConfirmEmail.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\CustomerHome.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\Register.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\RegistrationStarted.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Accept.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Form.cshtml",
+    "src\\Odca.Web\\Views\\Plans\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\NewRevision.cshtml",
+    "src\\Odca.Web\\Views\\Privacy\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\AccessDenied.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\ServiceUnavailable.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\_Toasts.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml"
+   ]
+  },
+  {
+   "cls": "card-grid",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "center",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "check-item",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "check-label",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Customers\\Create.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Form.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "check-line",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "check-list",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "checkbox-line",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Nova.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\Register.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "chip-warning",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml"
+   ]
+  },
+  {
+   "cls": "clamp",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "clear-button-link",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "clear-filters",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "collapse",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "color",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "comment",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml"
+   ]
+  },
+  {
+   "cls": "comment-card",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml"
+   ]
+  },
+  {
+   "cls": "compact-guide",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "compare-controls",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "compare-counts",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "compare-summary",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml"
+   ]
+  },
+  {
+   "cls": "comparison",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "Completed",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml"
+   ]
+  },
+  {
+   "cls": "conference",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "confirm-dialog",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_ConfirmDialog.cshtml"
+   ]
+  },
+  {
+   "cls": "confirm-dialog-body",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_ConfirmDialog.cshtml"
+   ]
+  },
+  {
+   "cls": "confirmation-box",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml"
+   ]
+  },
+  {
+   "cls": "conflict-banner",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml"
+   ]
+  },
+  {
+   "cls": "consumption-panel",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "contents",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "context-card",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "context-label",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "context-tabs",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "controlled-state",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Modules\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml"
+   ]
+  },
+  {
+   "cls": "cover",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "current",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml"
+   ]
+  },
+  {
+   "cls": "current-view",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "cursor",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "d",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\PlatformDiagnostics\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "D",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "d9e2ec",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "dashboard-heading",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Home\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\CustomerHome.cshtml",
+    "src\\Odca.Web\\Views\\Plans\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "dashed",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "data-table",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\NotificationPreferences.cshtml",
+    "src\\Odca.Web\\Views\\Impersonation\\Cliente.cshtml",
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "dce3ec",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "decimal",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "decision-actions",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml"
+   ]
+  },
+  {
+   "cls": "DeliveryStatus",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "DeliveryStatusClass",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "detail-actions",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Renewals\\Detail.cshtml"
+   ]
+  },
+  {
+   "cls": "detail-card",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Renewals\\Detail.cshtml"
+   ]
+  },
+  {
+   "cls": "detail-dl",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Renewals\\Detail.cshtml"
+   ]
+  },
+  {
+   "cls": "detail-grid",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Renewals\\Detail.cshtml"
+   ]
+  },
+  {
+   "cls": "detail-table",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Renewals\\Detail.cshtml"
+   ]
+  },
+  {
+   "cls": "details-content",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "details-subpanel",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "dialog-actions",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\AccessDenied.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\ServiceUnavailable.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\_Toasts.cshtml"
+   ]
+  },
+  {
+   "cls": "dialog-close",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "dialog-content",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\AccessDenied.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\ServiceUnavailable.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\_Toasts.cshtml"
+   ]
+  },
+  {
+   "cls": "diff-after",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "diff-before",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "diff-filters",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "diff-row",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "display",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "doc",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "doc-entry",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "doc-entry-head",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "document",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "document-callout",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "document-callout--info",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "document-callout-label",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "document-cover",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "document-cover-meta",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "document-cover-organization",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "document-cover-tax-id",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "document-cover-title",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "document-field",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "document-field-empty",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "document-page-break",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "document-pane",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml"
+   ]
+  },
+  {
+   "cls": "document-paper",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml"
+   ]
+  },
+  {
+   "cls": "document-shell",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml"
+   ]
+  },
+  {
+   "cls": "document-toc",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "document-toc-item",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "document-toc-list",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "document-toc-title",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "done",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml"
+   ]
+  },
+  {
+   "cls": "drawer-header",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "drawer-open",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\navigation.js"
+   ]
+  },
+  {
+   "cls": "drawer-panel",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "drawer-scrim",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "editor-toolbar",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "eef6ff",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "empty-state",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml",
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Aprovacoes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Agenda\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Users.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Home\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\CustomerHome.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Accept.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformNotifications\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "entry",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "error",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\NewDocument.cshtml",
+    "src\\Odca.Web\\Views\\Home\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\CustomerHome.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\NewRevision.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml"
+   ]
+  },
+  {
+   "cls": "exact",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "eyebrow",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\ChangePassword.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Conta.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Login.cshtml",
+    "src\\Odca.Web\\Views\\Account\\MfaChallenge.cshtml",
+    "src\\Odca.Web\\Views\\Account\\MfaEnrollment.cshtml",
+    "src\\Odca.Web\\Views\\Account\\NotificationPreferences.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml",
+    "src\\Odca.Web\\Views\\Account\\RecoveryCodes.cshtml",
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Aprovacoes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Agenda\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Create.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Users.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\NewDocument.cshtml",
+    "src\\Odca.Web\\Views\\Home\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Impersonation\\Cliente.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Modules\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Acoes.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Nova.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\ConfirmEmail.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\CustomerHome.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\Register.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\RegistrationStarted.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Accept.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Form.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Plans\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformDiagnostics\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Create.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\NewRevision.cshtml",
+    "src\\Odca.Web\\Views\\PlatformNotifications\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformOperations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Privacy\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Nova.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplatePreview.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml",
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "f0aaa4",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "F0FFF4",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "fff",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "fff1f0",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "FFF3F3",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "FFFBEB",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "field-action",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Login.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\Register.cshtml"
+   ]
+  },
+  {
+   "cls": "field-editor",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "field-error",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Imports\\Index.cshtml",
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "field-formula",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "field-group",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "field-group-title",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "field-help",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "field-input",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "field-label",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml"
+   ]
+  },
+  {
+   "cls": "field-search",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "field-stack",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml"
+   ]
+  },
+  {
+   "cls": "field-with-action",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Login.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\Register.cshtml"
+   ]
+  },
+  {
+   "cls": "fieldset",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "filter-bar",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Agenda\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "filter-chip",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "filter-panel",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "fixed",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "flex",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "flex-wrap",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "focus-visible",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "font-family",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "font-size",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "font-style",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "font-weight",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "form-actions-row",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Conta.cshtml",
+    "src\\Odca.Web\\Views\\Account\\NotificationPreferences.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Aprovacoes.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Create.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Nova.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Form.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Create.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Nova.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplatePreview.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml",
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "form-alt",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\MfaEnrollment.cshtml"
+   ]
+  },
+  {
+   "cls": "form-grid",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Create.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\NewDocument.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Form.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml",
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "form-grid-full",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Form.cshtml"
+   ]
+  },
+  {
+   "cls": "form-inline",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "form-stack",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Create.cshtml",
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "formalize-form",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Renewals\\Detail.cshtml"
+   ]
+  },
+  {
+   "cls": "gap",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "Georgia",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "getting-started",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml"
+   ]
+  },
+  {
+   "cls": "grid",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "grid-template-columns",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "h1",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "h2",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "h3",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "heading-actions",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "help",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\NewDocument.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Form.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml"
+   ]
+  },
+  {
+   "cls": "help-card",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Conta.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Aprovacoes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Customers\\Create.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Modules\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Plans\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformNotifications\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformOperations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml",
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "help-panel",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Imports\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml"
+   ]
+  },
+  {
+   "cls": "help-text",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\MfaEnrollment.cshtml"
+   ]
+  },
+  {
+   "cls": "Helvetica",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "hidden",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "history-drawer",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml"
+   ]
+  },
+  {
+   "cls": "history-drawer-backdrop",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml"
+   ]
+  },
+  {
+   "cls": "history-drawer-header",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml"
+   ]
+  },
+  {
+   "cls": "hover",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "how-to",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml"
+   ]
+  },
+  {
+   "cls": "html",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "icon-button",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "import-list",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Imports\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "import-manual-form",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml"
+   ]
+  },
+  {
+   "cls": "import-progress",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml"
+   ]
+  },
+  {
+   "cls": "import-row",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Imports\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "important",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "inbox-summary-cards",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "inline-filter",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Customers\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "inline-form",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Impersonation\\Cliente.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "inset",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "inside",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "InvitationStatusClass",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "invite",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "is",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml",
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "is-current",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Documents\\NewDocument.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml"
+   ]
+  },
+  {
+   "cls": "is-done",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "is-open",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\team.js"
+   ]
+  },
+  {
+   "cls": "isCurrent",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "isPublished",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml"
+   ]
+  },
+  {
+   "cls": "isSelected",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml"
+   ]
+  },
+  {
+   "cls": "italic",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "item",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformNotifications\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "journey",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Documents\\NewDocument.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml"
+   ]
+  },
+  {
+   "cls": "JStr",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml"
+   ]
+  },
+  {
+   "cls": "justify",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "justify-content",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "kind-tag",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "label",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "lang-form",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "legal-document",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "legal-document-preview",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\TemplatePreview.cshtml"
+   ]
+  },
+  {
+   "cls": "letter-spacing",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "li",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "limit",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "limit-state",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "line-height",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "line-through",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "list-header",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Agenda\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "list-style",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "list-toolbar",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "m",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml"
+   ]
+  },
+  {
+   "cls": "margin",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "margin-bottom",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "max-width",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "media",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "member",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "MemberStatusClass",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "menu-action",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "menu-action-label",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "menu-caption",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "message",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml"
+   ]
+  },
+  {
+   "cls": "metric",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Home\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\CustomerHome.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "metric-card",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml"
+   ]
+  },
+  {
+   "cls": "metric-grid",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml"
+   ]
+  },
+  {
+   "cls": "metrics",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Home\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\CustomerHome.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "min",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "min-height",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "min-width",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "minmax",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "mobile-menu",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "Model",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml"
+   ]
+  },
+  {
+   "cls": "move-down",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml"
+   ]
+  },
+  {
+   "cls": "move-up",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml"
+   ]
+  },
+  {
+   "cls": "muted",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\ChangePassword.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Conta.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Login.cshtml",
+    "src\\Odca.Web\\Views\\Account\\MfaChallenge.cshtml",
+    "src\\Odca.Web\\Views\\Account\\MfaEnrollment.cshtml",
+    "src\\Odca.Web\\Views\\Account\\RecoveryCodes.cshtml",
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Agenda\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Create.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Users.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\NewDocument.cshtml",
+    "src\\Odca.Web\\Views\\Home\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Impersonation\\Cliente.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Modules\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Acoes.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Nova.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\CustomerHome.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\Register.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\RegistrationStarted.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Accept.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Form.cshtml",
+    "src\\Odca.Web\\Views\\Plans\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformDiagnostics\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Create.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\NewRevision.cshtml",
+    "src\\Odca.Web\\Views\\Privacy\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplatePreview.cshtml",
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml",
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "n",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml"
+   ]
+  },
+  {
+   "cls": "narrow",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\AccessDenied.cshtml",
+    "src\\Odca.Web\\Views\\Account\\ChangePassword.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Conta.cshtml",
+    "src\\Odca.Web\\Views\\Account\\MfaChallenge.cshtml",
+    "src\\Odca.Web\\Views\\Account\\MfaEnrollment.cshtml",
+    "src\\Odca.Web\\Views\\Account\\NotificationPreferences.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml",
+    "src\\Odca.Web\\Views\\Account\\RecoveryCodes.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\ConfirmEmail.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\Register.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\RegistrationStarted.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Accept.cshtml",
+    "src\\Odca.Web\\Views\\Privacy\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml"
+   ]
+  },
+  {
+   "cls": "New",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "next-action",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Agenda\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "next-step",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "NextAction",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "no-print",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "none",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "notice",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\MfaEnrollment.cshtml"
+   ]
+  },
+  {
+   "cls": "notification-link",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml"
+   ]
+  },
+  {
+   "cls": "nowrap-muted",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "null",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml",
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "obligation-actions",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Acoes.cshtml"
+   ]
+  },
+  {
+   "cls": "obligation-create-grid",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Nova.cshtml"
+   ]
+  },
+  {
+   "cls": "obligation-detail",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "obligation-detail-panel",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "obligation-filters",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "obligation-heading",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "obligation-history",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\obligations.js"
+   ]
+  },
+  {
+   "cls": "obligation-layout",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "obligation-list",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "of",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "onboarding-progress",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml"
+   ]
+  },
+  {
+   "cls": "onboarding-step",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml"
+   ]
+  },
+  {
+   "cls": "onboarding-steps",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml"
+   ]
+  },
+  {
+   "cls": "opacity",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "OpenPanel",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "outline",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "outline-offset",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "Overdue",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "overflow-x",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "overview-error",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "p",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml"
+   ]
+  },
+  {
+   "cls": "padding",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "padding-left",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "page",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "Page",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "page-break",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "page-heading",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Conta.cshtml",
+    "src\\Odca.Web\\Views\\Account\\NotificationPreferences.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Aprovacoes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Create.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Users.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\NewDocument.cshtml",
+    "src\\Odca.Web\\Views\\Impersonation\\Cliente.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml",
+    "src\\Odca.Web\\Views\\Modules\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Acoes.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Nova.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\CustomerHome.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Form.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformDiagnostics\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\NewRevision.cshtml",
+    "src\\Odca.Web\\Views\\PlatformNotifications\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformOperations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Nova.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml",
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "page-shell",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "pagination",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml",
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "panel",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Users.cshtml",
+    "src\\Odca.Web\\Views\\Impersonation\\Cliente.cshtml",
+    "src\\Odca.Web\\Views\\Modules\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformDiagnostics\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\NewRevision.cshtml",
+    "src\\Odca.Web\\Views\\PlatformOperations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplatePreview.cshtml",
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "panel-open",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\team.js"
+   ]
+  },
+  {
+   "cls": "panel-scrim",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "paper",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "partial",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "participant-number",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml"
+   ]
+  },
+  {
+   "cls": "participant-row",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml"
+   ]
+  },
+  {
+   "cls": "participant-source",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml"
+   ]
+  },
+  {
+   "cls": "participant-type",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml"
+   ]
+  },
+  {
+   "cls": "patient-details",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml"
+   ]
+  },
+  {
+   "cls": "patient-filters",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Patients\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "patient-form",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Customers\\Create.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Form.cshtml"
+   ]
+  },
+  {
+   "cls": "patient-table",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Patients\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "PatientReconfirmationRequired",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "pendency-list",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Onboarding\\CustomerHome.cshtml"
+   ]
+  },
+  {
+   "cls": "permission-matrix",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "permission-note",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "plan-card",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Plans\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "plan-grid",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Plans\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "pointer",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "pointer-events",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "position",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "print",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "print-bar",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "print-color-adjust",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "printable",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "prio-badge",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "PrioClass",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "Priority",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "privacy-note",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Privacy\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "progress-track",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml"
+   ]
+  },
+  {
+   "cls": "public-actions",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "public-topbar",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "published",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "qr-code",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\MfaEnrollment.cshtml"
+   ]
+  },
+  {
+   "cls": "r",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml"
+   ]
+  },
+  {
+   "cls": "ReadAt",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml"
+   ]
+  },
+  {
+   "cls": "reading-mode",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "ready",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "recovery-codes",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\RecoveryCodes.cshtml"
+   ]
+  },
+  {
+   "cls": "reminder-config",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "reminder-copy",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "reminder-form",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "remove-participant",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml"
+   ]
+  },
+  {
+   "cls": "removed",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "renewal-cards",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "renewal-filters",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "renewal-heading",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Agenda\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Create.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplatePreview.cshtml"
+   ]
+  },
+  {
+   "cls": "renewal-list",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Agenda\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "renewal-row",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Agenda\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "repeat",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "request-review",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml"
+   ]
+  },
+  {
+   "cls": "Resolved",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml"
+   ]
+  },
+  {
+   "cls": "responsive-table",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Users.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformDiagnostics\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformOperations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "Result",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "result-count",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "ResultClass",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "review-filters",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Users.cshtml",
+    "src\\Odca.Web\\Views\\PlatformNotifications\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "review-mobile-tabs",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml"
+   ]
+  },
+  {
+   "cls": "review-summary",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml"
+   ]
+  },
+  {
+   "cls": "review-workspace",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml"
+   ]
+  },
+  {
+   "cls": "rgba",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "right",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "Roman",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "rotate",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "row-actions",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Imports\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "row-added",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "row-modified",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "row-removed",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "s",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml"
+   ]
+  },
+  {
+   "cls": "sans-serif",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "save-state",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "save-view-form",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "save-view-panel",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "saved-view-item",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "saved-view-list",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "saved-views",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "scope",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "scope-switch",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "sec-",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "secret-list",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\MfaEnrollment.cshtml"
+   ]
+  },
+  {
+   "cls": "Section",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "section-heading",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Home\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "security_status",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "serif",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "severity",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "sheet-subnav",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml"
+   ]
+  },
+  {
+   "cls": "showApplication",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "side-link",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "side-nav",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "sidebar",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "sidebar-brand",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "sidebar-collapse",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "sidebar-collapsed",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\navigation.js"
+   ]
+  },
+  {
+   "cls": "sidebar-footer",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "sign-evidence-details",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml"
+   ]
+  },
+  {
+   "cls": "skip-link",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "solid",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "Source",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "space-between",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "span",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "sr-form",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "sr-only",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "state",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "stateBadgeClass",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "status",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml"
+   ]
+  },
+  {
+   "cls": "Status",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\PlatformDiagnostics\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformNotifications\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "status-",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\PlatformNotifications\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "status-approved",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Aprovacoes.cshtml",
+    "src\\Odca.Web\\Views\\Modules\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "status-badge",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Conta.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Aprovacoes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Users.cshtml",
+    "src\\Odca.Web\\Views\\Modules\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformNotifications\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformOperations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml"
+   ]
+  },
+  {
+   "cls": "status-cancelled",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "status-chip",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml",
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "status-dot",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "status-label",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Agenda\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "status-message",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Acoes.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "status-pending",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Modules\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "status-rejected",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Aprovacoes.cshtml"
+   ]
+  },
+  {
+   "cls": "status-warning",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "StatusBadge",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\PlatformDiagnostics\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "statusClass",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "step",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml"
+   ]
+  },
+  {
+   "cls": "step-content",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml"
+   ]
+  },
+  {
+   "cls": "step-number",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml"
+   ]
+  },
+  {
+   "cls": "step-state",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml"
+   ]
+  },
+  {
+   "cls": "step-title-row",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml"
+   ]
+  },
+  {
+   "cls": "strong",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "studio",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "studio-actions",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "studio-context",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "studio-dialog",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "studio-document",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "studio-filter",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "studio-grid",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "studio-head",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "studio-side",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "success",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Documents\\NewDocument.cshtml",
+    "src\\Odca.Web\\Views\\Home\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml",
+    "src\\Odca.Web\\Views\\Privacy\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml",
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "suggestion",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "suggestion-card",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml"
+   ]
+  },
+  {
+   "cls": "suggestion-pane",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Imports\\Review.cshtml"
+   ]
+  },
+  {
+   "cls": "summary-grid",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml"
+   ]
+  },
+  {
+   "cls": "switch",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "tab",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "Tab",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "tab-count",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "table",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\CustomerHome.cshtml"
+   ]
+  },
+  {
+   "cls": "table-scroll",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Aprovacoes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\CustomerHome.cshtml",
+    "src\\Odca.Web\\Views\\PlatformNotifications\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Version.cshtml"
+   ]
+  },
+  {
+   "cls": "table-wrap",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Home\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "tabs",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "td",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "team-overview",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "template-card",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "template-editor-grid",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\PlatformLibrary\\NewRevision.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml"
+   ]
+  },
+  {
+   "cls": "template-field-options",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\PlatformLibrary\\NewRevision.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml"
+   ]
+  },
+  {
+   "cls": "template-grid",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "TenancyDisplay",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "tenant-banner",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml"
+   ]
+  },
+  {
+   "cls": "TenantStatus",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml"
+   ]
+  },
+  {
+   "cls": "text-align",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "text-danger",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\Error.cshtml"
+   ]
+  },
+  {
+   "cls": "text-decoration",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "text-transform",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "the",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "timeline",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml"
+   ]
+  },
+  {
+   "cls": "Times",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "toast",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Toasts.cshtml"
+   ]
+  },
+  {
+   "cls": "toast-body",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Toasts.cshtml"
+   ]
+  },
+  {
+   "cls": "toast-close",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Toasts.cshtml"
+   ]
+  },
+  {
+   "cls": "toast-close-btn",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Toasts.cshtml"
+   ]
+  },
+  {
+   "cls": "toast-container",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Toasts.cshtml"
+   ]
+  },
+  {
+   "cls": "toast-error",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Toasts.cshtml"
+   ]
+  },
+  {
+   "cls": "toast-fadeout",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\dialogs.js"
+   ]
+  },
+  {
+   "cls": "toast-icon",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Toasts.cshtml"
+   ]
+  },
+  {
+   "cls": "toast-message",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Toasts.cshtml"
+   ]
+  },
+  {
+   "cls": "toast-success",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Toasts.cshtml"
+   ]
+  },
+  {
+   "cls": "toast-warning",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Toasts.cshtml"
+   ]
+  },
+  {
+   "cls": "toggle",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "toolbar",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Accept.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\_ConfirmDialog.cshtml"
+   ]
+  },
+  {
+   "cls": "topbar-context",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "totalPages",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "tpl-meta",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml"
+   ]
+  },
+  {
+   "cls": "tpl-pair",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml"
+   ]
+  },
+  {
+   "cls": "transform",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "true",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "two-column",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "unavailable",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "unavailable-dialog",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\AccessDenied.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\ServiceUnavailable.cshtml",
+    "src\\Odca.Web\\Views\\Shared\\_Toasts.cshtml"
+   ]
+  },
+  {
+   "cls": "unsaved-badge",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "uppercase",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "urgent",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "usage-bar",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "usage-breakdown",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml"
+   ]
+  },
+  {
+   "cls": "user-menu",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "user-menu-panel",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "user-name",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "validation",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\ChangePassword.cshtml",
+    "src\\Odca.Web\\Views\\Account\\Login.cshtml",
+    "src\\Odca.Web\\Views\\Account\\MfaChallenge.cshtml",
+    "src\\Odca.Web\\Views\\Account\\MfaEnrollment.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Create.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\ConfirmEmail.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\Register.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Form.cshtml",
+    "src\\Odca.Web\\Views\\Privacy\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "validation-summary",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Agenda\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml",
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Acoes.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Nova.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Accept.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Edit.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Create.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "var",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "visibility",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "Visibility",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml"
+   ]
+  },
+  {
+   "cls": "visually-hidden",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "warning",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Login.cshtml",
+    "src\\Odca.Web\\Views\\Onboarding\\RegistrationStarted.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "watermark",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml",
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "webkit-print-color-adjust",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "width",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "workspace-grid",
+   "defined": true,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml"
+   ]
+  },
+  {
+   "cls": "wrap",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "z-index",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  }
+ ],
+ "undefinedRows": [
+  {
+   "cls": "10294f",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "102a43",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "12px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "14px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "18243b",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "1849a9",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "1fr",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "1px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "240px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "245bdb",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "28deg",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "28px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "2px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "2rem",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "30vw",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "34rem",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "3px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "4px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "4rem",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "5e7181",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "5vw",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "680px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "6b7280",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "6px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "78a9ff",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "850px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "8px",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "9aa9bc",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "action-600",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "actions",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Impersonation\\Cliente.cshtml",
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "Active",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "aebdcc",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "align-content",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "align-items",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "and",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "Arial",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "auto",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "avoid",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "b42318",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "b6d7fe",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "background",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "badgeClass",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml"
+   ]
+  },
+  {
+   "cls": "block",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "body",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "border",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "border-bottom",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "border-collapse",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "border-color",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "border-left",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "border-left-color",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "border-radius",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "border-top",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "break-after",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "break-inside",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "cad3df",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "callouts",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "center",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "clamp",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "collapse",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "color",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "comparison",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "Completed",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml"
+   ]
+  },
+  {
+   "cls": "conference",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "contents",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "cover",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "cursor",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "d",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\PlatformDiagnostics\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "D",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "d9e2ec",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "dashed",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "dce3ec",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "decimal",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "DeliveryStatus",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "DeliveryStatusClass",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "display",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "doc",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "document",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "eef6ff",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "entry",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "exact",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "f0aaa4",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "F0FFF4",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "fff",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "fff1f0",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "FFF3F3",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "FFFBEB",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "fieldset",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "fixed",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "flex",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "flex-wrap",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "focus-visible",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "font-family",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "font-size",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "font-style",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "font-weight",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "gap",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "Georgia",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "grid",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "grid-template-columns",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "h1",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "h2",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "h3",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "Helvetica",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "hidden",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "hover",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "html",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "important",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "inset",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "inside",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "InvitationStatusClass",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "invite",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "is",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml",
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "isCurrent",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Inbox\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "isPublished",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\TemplateEdit.cshtml"
+   ]
+  },
+  {
+   "cls": "isSelected",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml"
+   ]
+  },
+  {
+   "cls": "italic",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "item",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Patients\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformNotifications\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "JStr",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml"
+   ]
+  },
+  {
+   "cls": "justify",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "justify-content",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "label",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "letter-spacing",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "li",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "line-height",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "line-through",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "list-style",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "m",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml"
+   ]
+  },
+  {
+   "cls": "margin",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "margin-bottom",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "max-width",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "media",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "member",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "MemberStatusClass",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "message",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml"
+   ]
+  },
+  {
+   "cls": "min",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "min-height",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "min-width",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "minmax",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "Model",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml"
+   ]
+  },
+  {
+   "cls": "n",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml"
+   ]
+  },
+  {
+   "cls": "New",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "NextAction",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "none",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "null",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml",
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "obligation-detail",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "of",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "opacity",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "OpenPanel",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "outline",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "outline-offset",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "Overdue",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "overflow-x",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "p",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Patients\\Details.cshtml"
+   ]
+  },
+  {
+   "cls": "padding",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "padding-left",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "page",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "Page",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "PatientReconfirmationRequired",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "pointer",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "pointer-events",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "position",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "print",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "print-color-adjust",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "printable",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "PrioClass",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "Priority",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Renewals\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "published",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\PlatformLibrary\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "r",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml"
+   ]
+  },
+  {
+   "cls": "ReadAt",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Account\\Notifications.cshtml"
+   ]
+  },
+  {
+   "cls": "repeat",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "Resolved",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Sheet.cshtml"
+   ]
+  },
+  {
+   "cls": "Result",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "ResultClass",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\PlatformAudit\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "rgba",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "right",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "Roman",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "rotate",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "s",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml"
+   ]
+  },
+  {
+   "cls": "sans-serif",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "scope",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "sec-",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "Section",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "security_status",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "serif",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "severity",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\wwwroot\\js\\studio.js"
+   ]
+  },
+  {
+   "cls": "showApplication",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Shared\\_Layout.cshtml"
+   ]
+  },
+  {
+   "cls": "solid",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "Source",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Actions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "space-between",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "span",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "stateBadgeClass",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "status",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Obligations\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml"
+   ]
+  },
+  {
+   "cls": "Status",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml",
+    "src\\Odca.Web\\Views\\PlatformDiagnostics\\Index.cshtml",
+    "src\\Odca.Web\\Views\\PlatformNotifications\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "status-",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\AdminSolicitacoes\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Consumption\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml",
+    "src\\Odca.Web\\Views\\PlatformNotifications\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml",
+    "src\\Odca.Web\\Views\\Reviews\\Index.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Detalhes.cshtml",
+    "src\\Odca.Web\\Views\\Solicitacoes\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "StatusBadge",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\PlatformDiagnostics\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "statusClass",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\SupportSessions\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "step",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Onboarding\\GettingStarted.cshtml"
+   ]
+  },
+  {
+   "cls": "strong",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "switch",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Documents\\Index.cshtml"
+   ]
+  },
+  {
+   "cls": "Tab",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "td",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]",
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "TenancyDisplay",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "TenantStatus",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Customers\\Details.cshtml"
+   ]
+  },
+  {
+   "cls": "text-align",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "text-decoration",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "text-transform",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "the",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "Times",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "totalPages",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Organizations\\Team.cshtml"
+   ]
+  },
+  {
+   "cls": "transform",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "true",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\Edit.cshtml"
+   ]
+  },
+  {
+   "cls": "uppercase",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "var",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "visibility",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "Visibility",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Reviews\\Detail.cshtml"
+   ]
+  },
+  {
+   "cls": "webkit-print-color-adjust",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "width",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "wrap",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Studio\\CompareVersions.cshtml [style interno]"
+   ]
+  },
+  {
+   "cls": "z-index",
+   "defined": false,
+   "files": [
+    "src\\Odca.Web\\Views\\Contracts\\Print.cshtml [style interno]"
+   ]
+  }
+ ]
+}

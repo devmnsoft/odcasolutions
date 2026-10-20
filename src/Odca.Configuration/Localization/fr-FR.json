@@ -4050,5 +4050,11 @@
   "ren.ai_review": "renouveler sous revue des conditions",
   "ren.ai_renegotiate": "renégocier les conditions avant renouvellement",
   "ren.ai_note": "compilée depuis la dernière analyse — la décision vous appartient.",
-  "documents.stage_all": "Toutes les étapes"
+  "documents.stage_all": "Toutes les étapes",
+  "layout.org_active": "Active",
+  "layout.org_suspended": "Suspendue",
+  "layout.no_org": "Sans organisation",
+  "layout.not_confirmed": "Non confirmée",
+  "layout.session_not_accepted": "Session non acceptée",
+  "layout.access_not_confirmed": "Accès non confirmé"
 }
