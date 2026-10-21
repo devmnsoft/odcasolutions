@@ -41,4 +41,4 @@
 
 | Run | SHA | Status |
 | --- | --- | --- |
-| _(run sobre o SHA desta sprint — preencher após o push)_ | | |
+| `39651426314` | `a657723` (S24) | **success** — `build-test` (Restore/Build/Assets/**Tests**) e `secret-scan` todos success; **primeira execução oficial verde da história do repositório** para a branch `codex/s00-foundation` (registrado após a conclusão da run, conforme regra da casa) |
