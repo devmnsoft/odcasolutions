@@ -680,6 +680,15 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
 
     private static readonly JsonSerializerOptions WorkerJsonOptions = new(JsonSerializerDefaults.Web);
     private sealed record GateRow(string State, string Language);
-    private sealed record VersionItem(Guid Id, Guid TenantId, Guid DocumentId, Guid UploadedBy, string StorageKey, string DetectedType);
+    // S22/D-OC56: a S19 estendeu o registro para 6 parametros (contexto documental da extracao/IA)
+    // sem atualizar a projecao de 4 colunas do claim de scan (ScanOne); o Dapper nao localizava
+    // construtor compativel e TODA varredura falhava em tempo de execucao (dress rehearsal r1).
+    // O construtor secundario ancora exatamente os alias da projecao do claim; a projecao da
+    // extracao (6 colunas) continua usando o construtor primario.
+    internal sealed record VersionItem(Guid Id, Guid TenantId, Guid DocumentId, Guid UploadedBy, string StorageKey, string DetectedType)
+    {
+        public VersionItem(Guid Id, Guid TenantId, string StorageKey, string DetectedType)
+            : this(Id, TenantId, Guid.Empty, Guid.Empty, StorageKey, DetectedType) { }
+    }
     private sealed record JobItem(Guid Id, Guid TenantId, Guid ContractId, Guid VersionId, Guid LeaseToken);
 }

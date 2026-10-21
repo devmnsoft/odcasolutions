@@ -1,0 +1,7 @@
+﻿
+2026-10-21 12:49:37 P0 build Debug ok (binarios atuais)
+2026-10-21 12:49:37 STAGE-START D34-JORNADA script=validate-d34-an-web.ps1
+2026-10-21 13:02:31 STAGE-PASS D34-JORNADA exit=0 dur_s=773  tail=2026-10-21 13:02:20.878 WC-inicio n_args=15 || 2026-10-21 13:02:21.280 WC-done exit=0 apos_ms=401 || [PASS] N2 imagem sem OcrExecutable falha com codigo estavel extractor-not-configured status=failed  || code=extractor-not-configured || [PASS] N3 worker principal de volta (config completa) pid=29628 || RESULTADO: TODOS OS CHECKS PASSARAM
+2026-10-21 13:02:32 STAGE-START D39-SEGURANCA script=validate-d39-s5-web.ps1
+2026-10-21 13:04:25 STAGE-PASS D39-SEGURANCA exit=0 dur_s=113  tail=[PASS] F1b desafio resolvido devolve ao ponto de origem returnUrl=/administracao/suporte-sessoes/abrir || [PASS] F1c apos reautenticacao a mesma escrita tem sucesso code=302 active=1 opened_audit=2 || [PASS] F2 escrita stale na API responde 403 puro status=403 body={"type":"https://tools.ietf.org/html/rfc9110#section-1 || 5.5.4","title":"Forbidden","status":403,"traceId":"0HNPFHIV48Q15:0 || [PASS] F2b leitura nao exige MFA recente (lista segue 200) status=200 || === D39 WEB PROOF: fails=0 (evidence: C:\Users\NCELL-DEV-020\AppData\Local\Temp\opencode\evidence\d39-proof.txt) ===
+2026-10-21 13:04:25 REHEARSAL-FIM stage_fails=0 ts=2026-10-21T13:04:25.3007759-03:00

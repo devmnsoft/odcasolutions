@@ -1,0 +1,22 @@
+﻿
+2026-10-21 12:13:07 P0 build Debug ok (binarios atuais)
+2026-10-21 12:15:20 LEGACY: stack dev pronta em https://localhost:7143 (apos ~48s)
+2026-10-21 12:15:20 STAGE-START C-SLA script=validate-c-web.ps1
+2026-10-21 12:16:00 STAGE-PASS C-SLA exit=0 dur_s=39  tail=PASS  cleanup.solicitacoes_removidas || PASS  cleanup.usuario_qa_removido || PASS  cleanup.final || PASS  cleanup.seed_intacto || === validate-c-web: PASS=98 FAIL=0 ===
+2026-10-21 12:16:04 MFA-SEED: OPERADOR reinscrito; recovery code sintetico pronto (ODCA-D40-QA-MFA)
+2026-10-21 12:16:04 STAGE-START ACEITE script=validate-acceptance-matrix.ps1
+2026-10-21 12:16:35 STAGE-PASS ACEITE exit=0 dur_s=31  PASS: 15 | FAIL: 0 | BLOCKED: 0 tail=============================================================== ||  RESUMO FINAL || ============================================================== ||  PASS: 15 | FAIL: 0 | BLOCKED: 0 || Fim: 12:16:35
+2026-10-21 12:16:45 LEGACY: stack dev derrubada (porta livre=True)
+2026-10-21 12:16:45 STAGE-START D34-JORNADA script=validate-d34-an-web.ps1
+2026-10-21 12:38:26 STAGE-FAIL D34-JORNADA exit=1 dur_s=1301  tail=[FAIL] N1 PDF escaneado sem renderer falha com codigo estavel pdf-no-text-layer status=n/a code= || 2026-10-21 12:38:13.749 WC-inicio n_args=19 || 2026-10-21 12:38:14.472 WC-done exit=0 apos_ms=724 || [FAIL] N2 imagem sem OcrExecutable falha com codigo estavel extractor-not-configured status=n/a code= || [PASS] N3 worker principal de volta (config completa) pid=18568 || RESULTADO: 8 CHECK(S) FALHARAM
+2026-10-21 12:38:26 STAGE-START D37-ASSINATURA script=validate-d37-signature-web.ps1
+2026-10-21 12:39:42 STAGE-PASS D37-ASSINATURA exit=0 dur_s=76  tail=[PASS] E4 sync sem estado externo -> 200 updated=false (segue sent) status=200 || [PASS] E5 sync com estado accepted -> 200 updated=true/status=accepted status=200 || [PASS] E6 sync repetido com o mesmo evento -> updated=false (dedup deterministica) status=200 || [PASS] E7 GET envelope -> 200 accepted + auditoria de eventos (sent+accepted) status=200 || [PASS] E8 envio apos accepted -> 409 envelope.accepted (sem novo consumo) status=409 mvts=1 env=1 evt=2 || PROVA-FIM fails=0 ts=2026-10-21T12:39:41-03:00
+2026-10-21 12:39:42 STAGE-START D38-ATENDIMENTO script=validate-d38-s4-web.ps1
+2026-10-21 12:40:37 STAGE-PASS D38-ATENDIMENTO exit=0 dur_s=55  tail=[PASS] O5 pagina de acoes: titulo + versao esperada + antiforgery presentes len=16340 || [PASS] O6 acao start (v1) -> 302 + status in_progress v2 code=302 st=in_progress|2 || [PASS] O7 conflito 409 (versao 1 obsoleta): pagina 200 c/ aviso, valor preservado, versao atualizada p/ 2, status  || intocado code=200 st=in_progress|2 || [PASS] O8 resubmit cancel (v2) -> 302 + status cancelled + trilha start/cancel code=302 st=cancelled|3 evt=2 || PROVA-FIM fails=0 ts=2026-10-21T12:40:36-03:00
+2026-10-21 12:40:37 STAGE-START D39-SEGURANCA script=validate-d39-s5-web.ps1
+2026-10-21 12:41:05 STAGE-FAIL D39-SEGURANCA exit=1 dur_s=28  tail=[PASS] S2 web pronta  || [PASS] A1 login API superadmin exige inscricao MFA requiresMfaEnrollment=True || [PASS] A2 inscricao MFA devolveu chave manual manualKey len=32 || [PASS] A3 confirmacao MFA emitiu token verificado mfaVerified=True tok_len=877 || [PASS] W1a login web do superadmin redirecionou para o desafio MFA 302 /mfa/desafio || [PASS] W1b desafio MFA resolvido e sessao web estabelecida challenge=True cookie=True
+2026-10-21 12:41:05 STAGE-START S10-BACKUP script=run-backup-restore.ps1
+2026-10-21 12:41:30 STAGE-PASS S10-BACKUP exit=0 dur_s=25  tail=CHECK paridade rls.tenants_as_app_no_context               ok src=109 rst=109 || CHECK funcao security definer executavel apos restore      ok resultado=false || DROP DATABASE || CHECK banco de restauracao removido                        ok  || BACKUP-RESTORE-DONE checks=26 ok=26 fail=0 || transcript versionado: evidence/d44-backup-restore-rodada-final.txt
+2026-10-21 12:41:30 STAGE-START S10-SMTP script=rehearse-smtp-transport.ps1
+2026-10-21 12:42:12 STAGE-PASS S10-SMTP exit=0 dur_s=42  tail=to=[ensaio-smtpp@rehearsal.test] bytes=442 file=01.eml || LOG[sink.log] [2026-10-21T15:41:59.479Z] S: 250 OK: message queued || LOG[sink.log] [2026-10-21T15:42:01.736Z] C erro 127.0.0.1:61644: read ECONNRESET || LOG[sink.log] [2026-10-21T15:42:01.739Z] C fechou 127.0.0.1:61644 || SMTP-REHEARSAL-DONE checks=17 ok=17 fail=0 || transcript versionado: evidence/d44-smtp-transport-rodada-final.txt
+2026-10-21 12:42:12 REHEARSAL-FIM stage_fails=2 ts=2026-10-21T12:42:12.7901049-03:00

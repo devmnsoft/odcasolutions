@@ -154,6 +154,18 @@ public sealed class RuntimeQueryRegressionTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void DocumentWorkerScanClaimProjectionMatchesVersionItemSecondaryConstructor()
+    {
+        var source = ReadSource("Odca.Worker", "DocumentWorker.cs");
+
+        // S22/D-OC56: a projecao do claim de scan tem 4 colunas e o record VersionItem tem 6
+        // parametros desde a S19; os alias devem ancorar o construtor secundario nome por nome,
+        // caso contrario o Dapper falha ao materializar a primeira linha de qualquer varredura.
+        Assert.Contains("id AS Id,tenant_id AS TenantId,storage_key AS StorageKey,detected_type AS DetectedType FROM odca.claim_document_scan()", source, StringComparison.Ordinal);
+        Assert.Contains("public VersionItem(Guid Id, Guid TenantId, string StorageKey, string DetectedType)", source, StringComparison.Ordinal);
+    }
+
     private static string ReadSource(params string[] path)
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

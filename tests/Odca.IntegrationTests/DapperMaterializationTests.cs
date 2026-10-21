@@ -16,6 +16,7 @@ using Odca.Contracts.Studio;
 using Odca.Infrastructure.Operations;
 using Odca.Infrastructure.Patients;
 using Odca.Infrastructure.Signatures;
+using Odca.Worker;
 
 namespace Odca.IntegrationTests;
 
@@ -33,6 +34,7 @@ public sealed class DapperMaterializationTests(DatabaseFixture database) : IClas
     private static readonly Guid TemplateId = Guid.Parse("74000000-0000-0000-0000-000000000301");
     private static readonly Guid Import1Id = Guid.Parse("74000000-0000-0000-0000-000000000401");
     private static readonly Guid Import2Id = Guid.Parse("74000000-0000-0000-0000-000000000402");
+    private static readonly Guid ScanTenantId = Guid.Parse("74000000-0000-0000-0000-000000000070");
 
     [Fact]
     public async Task PatientSummaryMaterializesCorrectlyFromRealPostgreSql()
@@ -227,6 +229,66 @@ public sealed class DapperMaterializationTests(DatabaseFixture database) : IClas
 
         Assert.Equal("expiring", item.Status);
         Assert.Null(item.AiSuggestion); // sem análise persistida não se inventa veredito
+    }
+
+    [Fact]
+    public async Task DocumentScanClaimMaterializesVersionItemFromRealPostgreSql()
+    {
+        await SeedAsync();
+
+        var scanVersionId = Guid.NewGuid();
+        var scanContractId = Guid.NewGuid();
+        var scanDocumentId = Guid.NewGuid();
+        var storageKey = "scan-" + scanVersionId.ToString("N");
+        await using var admin = new NpgsqlConnection(database.AdminConnectionString);
+        await admin.OpenAsync();
+        await admin.ExecuteAsync("""
+            INSERT INTO odca.tenants(id, business_code, display_name, status, timezone)
+            VALUES (@TenantId, @Code, 'Tenant Varredura D-OC56', 'active', 'America/Sao_Paulo');
+            INSERT INTO odca.subscriptions(id, tenant_id, plan_version_id, commercial_state, status, created_by)
+            VALUES (gen_random_uuid(), @TenantId, '30000000-0000-0000-0000-000000000011', 'active', 'active', @ActorId);
+            INSERT INTO odca.contracts(id, tenant_id, title, reference)
+            VALUES (@ContractId, @TenantId, 'Contrato Varredura D-OC56', 'REF-D56-SCAN');
+            INSERT INTO odca.contract_documents(id, tenant_id, contract_id, title, created_by)
+            VALUES (@DocumentId, @TenantId, @ContractId, 'Documento Varredura D-OC56', @ActorId);
+            INSERT INTO odca.document_versions(
+                id, tenant_id, contract_id, document_id, version_number, uploaded_by, uploaded_at,
+                display_name, detected_type, byte_size, sha256, storage_key, security_status)
+            VALUES (@ScanVersionId, @TenantId, @ContractId, @DocumentId, 1, @ActorId, '-infinity',
+                    'varredura.pdf', 'pdf', 10, repeat('d', 64), @StorageKey, 'pending');
+            """, new
+        {
+            TenantId = ScanTenantId,
+            Code = ScanTenantId.ToString("N")[..20],
+            ActorId,
+            ContractId = scanContractId,
+            DocumentId = scanDocumentId,
+            ScanVersionId = scanVersionId,
+            StorageKey = storageKey
+        });
+
+        Assert.Equal("allowed", await admin.ExecuteScalarAsync<string>(
+            "SELECT odca.organization_feature_state(@tenantId, 'imports')", new { tenantId = ScanTenantId }));
+
+        // Regressão S22/D-OC56: ScanOne projeta 4 colunas para um record de 6 parâmetros; sem o
+        // construtor secundário o Dapper lança InvalidOperationException ao materializar a primeira
+        // linha e nenhuma versão avançava de 'pending' (pegue no dress rehearsal r1 sobre a S21).
+        // O claim roda pela role da aplicação (rota real do worker); os retries seguem o padrão
+        // FranchiseMetering porque a fila de varredura é global na base compartilhada da suíte.
+        await using var dataSource = NpgsqlDataSource.Create(database.AppConnectionString);
+        await using var connection = await dataSource.OpenConnectionAsync();
+        DocumentWorker.VersionItem? item = null;
+        for (var attempt = 0; attempt < 30 && item?.Id != scanVersionId; attempt++)
+        {
+            item = await connection.QuerySingleOrDefaultAsync<DocumentWorker.VersionItem>(new CommandDefinition(
+                "SELECT id AS Id,tenant_id AS TenantId,storage_key AS StorageKey,detected_type AS DetectedType FROM odca.claim_document_scan()", cancellationToken: default));
+        }
+
+        Assert.NotNull(item);
+        Assert.Equal(scanVersionId, item!.Id);
+        Assert.Equal(ScanTenantId, item.TenantId);
+        Assert.Equal(storageKey, item.StorageKey);
+        Assert.Equal("pdf", item.DetectedType);
     }
 
     private static ContractImportsController CreateImportsController(NpgsqlDataSource ds, Guid actorId)

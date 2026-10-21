@@ -186,9 +186,9 @@ if ($hasV060 -ne 2) {
   LogEv 'P0a base ja com v060 (nenhuma acao)'
 }
 $vMax = Db "SELECT max(version)::int FROM odca.schema_migrations;"
-# S11/D-OC45: a base descartavel segue o canonico completo (v061 desde a S9); a assercao
-# antiga travava em v060 e abortava a prova no checkpoint apos W1b antes do bloco v061 existir.
-Check 'P0a schema_migrations em v061' ($vMax -eq '61') ('max=' + $vMax)
+# S22/D-OC56: o canonico vigente e v063 (v062 idioma outbox, v063 IA avancada); a assercao
+# congelada em v061 (S11/D-OC45) abortava a prova no checkpoint P0a apos o bloco avancar.
+Check 'P0a schema_migrations em v063' ($vMax -eq '63') ('max=' + $vMax)
 
 # ---------- P0b. superadministrador sintetico da prova (hash clonado do operador) + estado limpo ----------
 $seedSql = @"

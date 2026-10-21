@@ -1,0 +1,46 @@
+Configura‡Æo: ambiente=Development; caminho=C:\MNSOFT\odcasolutions\src\Odca.Api\development-runtime.json.
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\MNSOFT\odcasolutions\src\Odca.Worker
+fail: Odca.Worker.DocumentWorker[0]
+      Falha isolada no processamento documental; o ciclo continuar .
+      System.InvalidOperationException: A parameterless default constructor or one matching signature (System.Guid id, System.Guid tenantid, System.String storagekey, System.String detectedtype) is required for Odca.Worker.DocumentWorker+VersionItem materialization
+         at Dapper.SqlMapper.GenerateDeserializerFromMap(Type type, DbDataReader reader, Int32 startBound, Int32 length, Boolean returnNullIfFirstMissing, ILGenerator il) in /_/Dapper/SqlMapper.cs:line 3574
+         at Dapper.SqlMapper.GetTypeDeserializerImpl(Type type, DbDataReader reader, Int32 startBound, Int32 length, Boolean returnNullIfFirstMissing) in /_/Dapper/SqlMapper.cs:line 3405
+         at Dapper.SqlMapper.TypeDeserializerCache.GetReader(DbDataReader reader, Int32 startBound, Int32 length, Boolean returnNullIfFirstMissing) in /_/Dapper/SqlMapper.TypeDeserializerCache.cs:line 151
+         at Dapper.SqlMapper.TypeDeserializerCache.GetReader(Type type, DbDataReader reader, Int32 startBound, Int32 length, Boolean returnNullIfFirstMissing) in /_/Dapper/SqlMapper.TypeDeserializerCache.cs:line 50
+         at Dapper.SqlMapper.GetTypeDeserializer(Type type, DbDataReader reader, Int32 startBound, Int32 length, Boolean returnNullIfFirstMissing) in /_/Dapper/SqlMapper.cs:line 3359
+         at Dapper.SqlMapper.GetDeserializer(Type type, DbDataReader reader, Int32 startBound, Int32 length, Boolean returnNullIfFirstMissing) in /_/Dapper/SqlMapper.cs:line 1981
+         at Dapper.SqlMapper.QueryRowAsync[T](IDbConnection cnn, Row row, Type effectiveType, CommandDefinition command)
+         at Odca.Worker.DocumentWorker.ScanOne(CancellationToken ct) in C:\MNSOFT\odcasolutions\src\Odca.Worker\DocumentWorker.cs:line 36
+         at Odca.Worker.DocumentWorker.ScanOne(CancellationToken ct) in C:\MNSOFT\odcasolutions\src\Odca.Worker\DocumentWorker.cs:line 69
+         at Odca.Worker.DocumentWorker.ExecuteAsync(CancellationToken stoppingToken) in C:\MNSOFT\odcasolutions\src\Odca.Worker\DocumentWorker.cs:line 25
+fail: Odca.Worker.DocumentWorker[0]
+      Falha isolada no processamento documental; o ciclo continuar .
+      System.InvalidOperationException: A parameterless default constructor or one matching signature (System.Guid id, System.Guid tenantid, System.String storagekey, System.String detectedtype) is required for Odca.Worker.DocumentWorker+VersionItem materialization
+         at Dapper.SqlMapper.GenerateDeserializerFromMap(Type type, DbDataReader reader, Int32 startBound, Int32 length, Boolean returnNullIfFirstMissing, ILGenerator il) in /_/Dapper/SqlMapper.cs:line 3574
+         at Dapper.SqlMapper.GetTypeDeserializerImpl(Type type, DbDataReader reader, Int32 startBound, Int32 length, Boolean returnNullIfFirstMissing) in /_/Dapper/SqlMapper.cs:line 3405
+         at Dapper.SqlMapper.TypeDeserializerCache.GetReader(DbDataReader reader, Int32 startBound, Int32 length, Boolean returnNullIfFirstMissing) in /_/Dapper/SqlMapper.TypeDeserializerCache.cs:line 151
+         at Dapper.SqlMapper.TypeDeserializerCache.GetReader(Type type, DbDataReader reader, Int32 startBound, Int32 length, Boolean returnNullIfFirstMissing) in /_/Dapper/SqlMapper.TypeDeserializerCache.cs:line 50
+         at Dapper.SqlMapper.GetTypeDeserializer(Type type, DbDataReader reader, Int32 startBound, Int32 length, Boolean returnNullIfFirstMissing) in /_/Dapper/SqlMapper.cs:line 3359
+         at Dapper.SqlMapper.GetDeserializer(Type type, DbDataReader reader, Int32 startBound, Int32 length, Boolean returnNullIfFirstMissing) in /_/Dapper/SqlMapper.cs:line 1981
+         at Dapper.SqlMapper.QueryRowAsync[T](IDbConnection cnn, Row row, Type effectiveType, CommandDefinition command)
+         at Odca.Worker.DocumentWorker.ScanOne(CancellationToken ct) in C:\MNSOFT\odcasolutions\src\Odca.Worker\DocumentWorker.cs:line 36
+         at Odca.Worker.DocumentWorker.ScanOne(CancellationToken ct) in C:\MNSOFT\odcasolutions\src\Odca.Worker\DocumentWorker.cs:line 69
+         at Odca.Worker.DocumentWorker.ExecuteAsync(CancellationToken stoppingToken) in C:\MNSOFT\odcasolutions\src\Odca.Worker\DocumentWorker.cs:line 25
+fail: Odca.Worker.DocumentWorker[0]
+      Falha isolada no processamento documental; o ciclo continuar .
+      System.InvalidOperationException: A parameterless default constructor or one matching signature (System.Guid id, System.Guid tenantid, System.String storagekey, System.String detectedtype) is required for Odca.Worker.DocumentWorker+VersionItem materialization
+         at Dapper.SqlMapper.GenerateDeserializerFromMap(Type type, DbDataReader reader, Int32 startBound, Int32 length, Boolean returnNullIfFirstMissing, ILGenerator il) in /_/Dapper/SqlMapper.cs:line 3574
+         at Dapper.SqlMapper.GetTypeDeserializerImpl(Type type, DbDataReader reader, Int32 startBound, Int32 length, Boolean returnNullIfFirstMissing) in /_/Dapper/SqlMapper.cs:line 3405
+         at Dapper.SqlMapper.TypeDeserializerCache.GetReader(DbDataReader reader, Int32 startBound, Int32 length, Boolean returnNullIfFirstMissing) in /_/Dapper/SqlMapper.TypeDeserializerCache.cs:line 151
+         at Dapper.SqlMapper.TypeDeserializerCache.GetReader(Type type, DbDataReader reader, Int32 startBound, Int32 length, Boolean returnNullIfFirstMissing) in /_/Dapper/SqlMapper.TypeDeserializerCache.cs:line 50
+         at Dapper.SqlMapper.GetTypeDeserializer(Type type, DbDataReader reader, Int32 startBound, Int32 length, Boolean returnNullIfFirstMissing) in /_/Dapper/SqlMapper.cs:line 3359
+         at Dapper.SqlMapper.GetDeserializer(Type type, DbDataReader reader, Int32 startBound, Int32 length, Boolean returnNullIfFirstMissing) in /_/Dapper/SqlMapper.cs:line 1981
+         at Dapper.SqlMapper.QueryRowAsync[T](IDbConnection cnn, Row row, Type effectiveType, CommandDefinition command)
+         at Odca.Worker.DocumentWorker.ScanOne(CancellationToken ct) in C:\MNSOFT\odcasolutions\src\Odca.Worker\DocumentWorker.cs:line 36
+         at Odca.Worker.DocumentWorker.ScanOne(CancellationToken ct) in C:\MNSOFT\odcasolutions\src\Odca.Worker\DocumentWorker.cs:line 69
+         at Odca.Worker.DocumentWorker.ExecuteAsync(CancellationToken stoppingToken) in C:\MNSOFT\odcasolutions\src\Odca.Worker\DocumentWorker.cs:line 25
