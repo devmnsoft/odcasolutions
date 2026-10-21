@@ -393,9 +393,16 @@ public sealed class DocumentWorker(NpgsqlDataSource dataSource, IConfiguration c
         }
     }
 
+    // Independente de SO: no Linux o '\' nao e separador de caminho, entao o ultimo segmento
+    // e resolvido manualmente para que os nomes de pagina gerados pelo scanner comportem-se
+    // identicamente em qualquer plataforma (a CI roda em Linux - run 39635407117, D-OC57).
     internal static int ScanPageNumber(string fileName)
     {
-        var name = Path.GetFileNameWithoutExtension(fileName);
+        var name = fileName.Replace('\\', '/');
+        var slash = name.LastIndexOf('/');
+        if (slash >= 0) name = name[(slash + 1)..];
+        var dot = name.LastIndexOf('.');
+        if (dot >= 0) name = name[..dot];
         const string marker = "page-";
         if (!name.StartsWith(marker, StringComparison.Ordinal)) return -1;
         var digits = name[marker.Length..];
