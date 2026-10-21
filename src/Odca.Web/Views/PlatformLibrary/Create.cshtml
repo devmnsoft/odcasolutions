@@ -12,6 +12,7 @@
         <p class="muted">@L.T("platform.template_create_subtitle", _culture)</p>
     </div>
 </header>
+<details class="help-card"><summary>@L.T("common.how_to_use", _culture)</summary><ol><li>@L.T("platform.tplnew_manual_1", _culture)</li><li>@L.T("platform.tplnew_manual_2", _culture)</li><li>@L.T("platform.tplnew_manual_3", _culture)</li></ol></details>
 
 @if (TempData["Error"] is string errMsg && !string.IsNullOrWhiteSpace(errMsg))
 {

@@ -2,6 +2,7 @@
 @{ViewData["Title"]=L.T("obl.new",(string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey]);var tenantId=(Guid)ViewData["TenantId"]!;var _c=(string?)Context.Items[Odca.Web.Middleware.CultureMiddleware.ItemsKey];}
 <nav class="breadcrumb" aria-label="@L.T("common.breadcrumb_aria",_c)"><a asp-action="Index" asp-route-tenantId="@tenantId">@L.T("obrigacoes",_c)</a><span aria-hidden="true">/</span><span>@L.T("obl.new",_c)</span></nav>
 <header class="page-heading"><div><p class="eyebrow">@L.T("common.ops_center",_c) · @L.T("common.org_selected",_c)</p><h1>@L.T("obl.new",_c)</h1><p>@L.T("obl.new_subtitle",_c)</p></div></header>
+<details class="help-card"><summary>@L.T("common.how_to_use",_c)</summary><ol><li>@L.T("obl.manual_1",_c)</li><li>@L.T("obl.manual_2",_c)</li><li>@L.T("obl.manual_3",_c)</li></ol></details>
 @if(Model.Contracts.Count==0){<p class="validation-summary" role="alert">@L.T("obl.contracts_load_error",_c)</p>}
 else
 {<form method="post" asp-action="Create" asp-route-tenantId="@tenantId" data-prevent-double-submit>

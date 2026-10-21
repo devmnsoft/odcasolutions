@@ -1,0 +1,278 @@
+{
+  "obl.manual_1": {
+    "pt-BR": "Primeiro escolha o contrato ao qual a obrigação pertence. A lista traz os contratos disponíveis da organização.",
+    "en-US": "Start by choosing the contract this obligation belongs to. The list contains the organization's available contracts.",
+    "es-ES": "Primero seleccione el contrato al que pertenece esta obligación. La lista trae los contratos disponibles de la organización.",
+    "fr-FR": "Commencez par choisir le contrat auquel rattacher cette obligation. La liste contient les contrats disponibles de l’organisation."
+  },
+  "obl.manual_2": {
+    "pt-BR": "Informe título, descrição, responsável, data de vencimento, tipo e prioridade. Se o contrato exigir comprovação, inclua evidência, recorrência e lembretes.",
+    "en-US": "Provide the title, description, owner, due date, type and priority. If the contract demands proof, include the evidence, recurrence and reminders.",
+    "es-ES": "Informe título, descripción, responsable, fecha límite, tipo y prioridad. Si el contrato exige prueba, incluya evidencia, recurrencia y recordatorios.",
+    "fr-FR": "Indiquez le titre, la description, le responsable, l’échéance, le type et la priorité. Si le contrat exige une preuve, ajoutez preuve, récurrence et rappels."
+  },
+  "obl.manual_3": {
+    "pt-BR": "Após registrar, a obrigação aparece no centro de obrigações, na agenda e no centro de ações, com lembretes conforme os prazos escolhidos.",
+    "en-US": "Once registered, the obligation appears in the obligations center, the agenda and the action center, with reminders following the chosen lead time.",
+    "es-ES": "Al registrarla, la obligación aparece en el centro de obligaciones, en la agenda y en el centro de acciones, con recordatorios según los plazos elegidos.",
+    "fr-FR": "Une fois enregistrée, l’obligation apparaît dans le centre des obligations, dans l’agenda et dans le centre d’actions, avec les rappels selon les délais choisis."
+  },
+  "notif.manual_1": {
+    "pt-BR": "Só aparecem aqui notificações direcionadas a você. Itens com ponto estão sem leitura; “marcar como lida” limpa um por vez e “marcar todas como lidas” limpa tudo.",
+    "en-US": "Only notifications addressed to you are listed here. Dotted items are unread; “mark as read” clears one at a time and “mark all as read” clears the whole box.",
+    "es-ES": "Aquí aparecen solo las notificaciones dirigidas a usted. Lo marcado con punto está sin leer; «marcar como leída» limpia una por vez y «marcar todas como leídas» limpia todo.",
+    "fr-FR": "Seules les notifications qui vous concernent s’affichent ici. Les entrées marquées d’un point sont non lues ; « marquer comme lue » en efface une à la fois et « tout marquer comme lu » tout efface."
+  },
+  "notif.manual_2": {
+    "pt-BR": "“Ver obrigação” abre o lugar onde a ação deve ser feita. Esta caixa apenas registra que você tomou conhecimento.",
+    "en-US": "“View obligation” opens the place where the action happens. This box only records that you became aware of it.",
+    "es-ES": "«Ver obligación» abre el lugar donde la acción debe hacerse. Esta caja solo registra que usted tomó conocimiento.",
+    "fr-FR": "« Voir l’obligation » ouvre l’endroit où l’action doit se faire. Cette boîte atteste simplement que vous en avez pris connaissance."
+  },
+  "notif.manual_3": {
+    "pt-BR": "Nas preferências você escolhe o que recebe e em qual idioma. As mudanças valem só para notificações novas.",
+    "en-US": "In preferences you choose what you receive and in which language. Changes apply to new notifications only.",
+    "es-ES": "En las preferencias usted elige qué recibe y en qué idioma. Los cambios solo valen para notificaciones nuevas.",
+    "fr-FR": "Dans les préférences vous choisissez ce que vous recevez et dans quelle langue. Les changements ne s’appliquent qu’aux nouvelles notifications."
+  },
+  "priv.manual_body": {
+    "pt-BR": "Use um e-mail que você consulte com frequência, escolha o tipo de solicitação e descreva o que precisa. Você receberá um protocolo para acompanhamento. Este acuso não é a resposta em si: a resposta formal segue o prazo previsto em lei.",
+    "en-US": "Use an e-mail you check often, pick the kind of request and describe what you need. You will receive a protocol to track the case. This acknowledgment is not the answer itself: the formal reply follows the legal deadline.",
+    "es-ES": "Use un correo que consulte con frecuencia, elija el tipo de solicitud y describa lo que necesita. Recibirá un protocolo para seguimiento. Este acuse no es la respuesta en sí: la respuesta formal sigue el plazo previsto en la ley.",
+    "fr-FR": "Utilisez un courriel que vous consultez souvent, choisissez le type de demande et décrivez votre besoin. Vous recevrez un protocole de suivi. Cet accusé n’est pas la réponse elle-même : la réponse formelle suit le délai prévu par la loi."
+  },
+  "platform.tplnew_manual_1": {
+    "pt-BR": "De um nome e uma descrição que refletem o uso real do modelo, junto ao tipo e à finalidade.",
+    "en-US": "Name and describe the model after its real use, together with the type and purpose.",
+    "es-ES": "De un nombre y una descripción que reflejen el uso real del modelo, junto al tipo y la finalidad.",
+    "fr-FR": "Donnez un nom et une description fidèles à l’usage réel du modèle, avec le type et la finalité."
+  },
+  "platform.tplnew_manual_2": {
+    "pt-BR": "Ao criar, o modelo fica registrado na biblioteca em estado de rascunho — ainda não disponível para as organizações.",
+    "en-US": "On creation the model is saved in the library as a draft — not yet available to organizations.",
+    "es-ES": "Al crearlo, el modelo queda registrado en la biblioteca en estado de borrador — todavía no disponible para las organizaciones.",
+    "fr-FR": "À sa création, le modèle est enregistré dans la bibliothèque en brouillon — pas encore disponible pour les organisations."
+  },
+  "platform.tplnew_manual_3": {
+    "pt-BR": "A primeira publicação cria a revisão inicial do modelo; cada revisão publicada é imutável e fica auditada com a justificativa informada.",
+    "en-US": "The first publication creates the model's initial revision; every published revision is immutable and audited with the stated justification.",
+    "es-ES": "La primera publicación crea la revisión inicial del modelo; cada revisión publicada es inmutable y queda auditada con la justificación informada.",
+    "fr-FR": "La première publication crée la révision initiale du modèle ; chaque révision publiée est immuable et auditée avec la justification fournie."
+  },
+  "platform.revnew_manual_1": {
+    "pt-BR": "Escreva o resumo do que muda nesta revisão — ele fica registrado e visível a quem usa o modelo.",
+    "en-US": "Write the summary of what changes in this revision — it is stored and visible to everyone who uses the model.",
+    "es-ES": "Escriba el resumen de qué cambia en esta revisión — queda registrado y visible a quien usa el modelo.",
+    "fr-FR": "Écrivez le résumé de ce qui change dans cette révision — il est conservé et visible pour tous les utilisateurs du modèle."
+  },
+  "platform.revnew_manual_2": {
+    "pt-BR": "Adicione os campos que o operador pode preencher: identificador único, tipo, origem e condição de exibição; marque como obrigatório os campos exigidos.",
+    "en-US": "Add the fields operators may fill in: unique identifier, type, origin and display condition; mark as required the mandatory fields.",
+    "es-ES": "Agregue los campos que el operador puede completar: identificador único, tipo, origen y condición de exhibición; marque como obligatorio los campos exigidos.",
+    "fr-FR": "Ajoutez les champs que l’opérateur peut remplir : identifiant unique, type, origine et condition d’affichage ; cochez les champs obligatoires."
+  },
+  "platform.revnew_manual_3": {
+    "pt-BR": "No texto, clique em um campo à esquerda para inserir seu código (como {{campo}}); ao preencher a minuta, o sistema substitui o código pelo valor informado.",
+    "en-US": "In the text, click a field on the left to insert its code (like {{field}}); when filling the draft, the system replaces the code with the value provided.",
+    "es-ES": "En el texto, haga clic en un campo a la izquierda para insertar su código (como {{campo}}); al completar el borrador, el sistema sustituye el código por el valor informado.",
+    "fr-FR": "Dans le texte, cliquez sur un champ à gauche pour insérer son code (comme {{champ}}) ; lors du remplissage du brouillon, le système remplace le code par la valeur fournie."
+  },
+  "platform.revnew_manual_4": {
+    "pt-BR": "Ao publicar, uma nova versão imutável é criada. Documentos e contratos já emitidos continuam fixados à revisão anterior — nenhum é alterado; novos documentos nascem da nova versão.",
+    "en-US": "On publication a new immutable version is created. Documents and contracts already issued stay pinned to the previous revision — none is changed; new documents are born from the new version.",
+    "es-ES": "Al publicar se crea una nueva versión inmutable. Los documentos y contratos ya emitidos permanecen fijos a la revisión anterior — ninguno cambia; los nuevos documentos nacen de la nueva versión.",
+    "fr-FR": "À la publication, une nouvelle version immuable est créée. Les documents et contrats déjà émis restent épinglés à la révision précédente — aucun n’est modifié ; les nouveaux documents naissent de la nouvelle version."
+  },
+  "platform.diag_manual_1": {
+    "pt-BR": "Cada linha é uma dependência externa. “Configurado” indica que existe um valor; a coluna de sonda mostra se ela respondeu agora. Quando divergem, algo está configurado mas a comunicação falha.",
+    "en-US": "Each row is one external dependency. “Configured” means a value exists; the probe column shows whether it answered just now. When they disagree, something is set up but communication fails.",
+    "es-ES": "Cada fila es una dependencia externa. «Configurado» indica que existe un valor; la columna de sonda muestra si respondió ahora. Cuando divergen, algo está configurado pero la comunicación falla.",
+    "fr-FR": "Chaque ligne est une dépendance externe. « Configurée » signifie qu’une valeur existe ; la colonne de sonde montre si elle vient de répondre. Quand les deux divergent, quelque chose est configuré mais la communication échoue."
+  },
+  "platform.diag_manual_2": {
+    "pt-BR": "Nas filas: “pendentes” ainda vão ser processadas, “atoladas” esperam mais tempo do que o normal e “falhadas” esgotaram as tentativas — podem ser reprocessadas no centro de notificações.",
+    "en-US": "In the queues: “pending” will still be processed, “stalled” are waiting longer than usual and “failed” have exhausted their attempts — they can be retried from the notifications center.",
+    "es-ES": "En las filas: «pendientes» aún serán procesadas, «atascadas» esperan más tiempo del normal y «fallidas» agotaron sus tentativas — pueden reprocesarse en el centro de notificaciones.",
+    "fr-FR": "Dans les files : « en attente » seront encore traitées, « bloquées » attendent plus longtemps que d’habitude et « en échec » ont épuisé leurs tentatives — elles peuvent être relancées depuis le centre de notifications."
+  },
+  "platform.diag_manual_3": {
+    "pt-BR": "Esta tela é somente leitura: ela não muda nada. As ações acontecem no módulo dono de cada dependência ou fila.",
+    "en-US": "This screen is read-only: it changes nothing. Actions happen in the module that owns each dependency or queue.",
+    "es-ES": "Esta pantalla es solo de lectura: no cambia nada. Las acciones ocurren en el módulo dueño de cada dependencia o fila.",
+    "fr-FR": "Cette page est en lecture seule : elle ne change rien. Les actions se font dans le module propriétaire de chaque dépendance ou file."
+  },
+  "contractlist.manual_1": {
+    "pt-BR": "Busque pelo nome e filtre pela situação (ativa, arquivada, encerrada) para reduzir a lista.",
+    "en-US": "Search by name and filter by status (active, archived, closed) to narrow the list.",
+    "es-ES": "Busque por nombre y filtre por situación (activa, archivada, cerrada) para reducir la lista.",
+    "fr-FR": "Recherchez par nom et filtrez par situation (actif, archivé, clos) pour réduire la liste."
+  },
+  "contractlist.manual_2": {
+    "pt-BR": "Abra um contrato para chegar à sua ficha: renovação, aditivo, revisão, assinatura e histórico são feitos lá.",
+    "en-US": "Open a contract to reach its sheet: renewal, amendment, review, signature and history all happen there.",
+    "es-ES": "Abra un contrato para llegar a su ficha: renovación, aditivo, revisión, firma e historial se hacen ahí.",
+    "fr-FR": "Ouvrez un contrat pour accéder à sa fiche : renouvellement, avenant, révision, signature et historique s’y traitent."
+  },
+  "contractlist.manual_3": {
+    "pt-BR": "Com permissão, “novo contrato” inicia o fluxo de elaboração; sem ela, peça a quem pode.",
+    "en-US": "With permission, “new contract” starts the drafting flow; without it, ask someone who can.",
+    "es-ES": "Con permiso, «nuevo contrato» inicia el flujo de elaboración; sin él, pídaelo a quien puede.",
+    "fr-FR": "Si vous êtes autorisé, « nouveau contrat » lance le parcours de rédaction ; sinon, demandez-le à un collaborateur habilité."
+  },
+  "sheet.manual_1": {
+    "pt-BR": "A situação e a vigência do contrato ficam sempre visíveis no topo. Os atalhos laterais levam direto a cada bloco da ficha.",
+    "en-US": "The contract's status and validity window are always visible at the top. The side shortcuts jump straight to each block of the sheet.",
+    "es-ES": "La situación y la vigencia del contrato siempre se ven arriba. Los accesos laterales llevan directo a cada bloque de la ficha.",
+    "fr-FR": "Le statut du contrat et sa période de validité sont toujours visibles en haut. Les raccourcis latéraux mènent directement à chaque bloc de la fiche."
+  },
+  "sheet.manual_2": {
+    "pt-BR": "Cada bloco abre como painel: propor renovação ou aditivo, enviar para revisão, comentar, registrar obrigações e tratar a assinatura.",
+    "en-US": "Every block opens as a panel: propose a renewal or amendment, send to review, comment, register obligations and handle the signature.",
+    "es-ES": "Cada bloque abre como panel: proponer renovación o aditivo, enviar a revisión, comentar, registrar obligaciones y tratar la firma.",
+    "fr-FR": "Chaque bloc s’ouvre en panneau : proposer un renouvellement ou un avenant, envoyer en révision, commenter, enregistrer des obligations et traiter la signature."
+  },
+  "sheet.manual_3": {
+    "pt-BR": "As ações de ciclo (duplicar, arquivar, restaurar, encerrar) ficam no fim da ficha. Cada ação fica registrada no histórico com quem a executou.",
+    "en-US": "Life-cycle actions (duplicate, archive, restore, close) sit at the bottom of the sheet. Each action is recorded in the history with who performed it.",
+    "es-ES": "Las acciones de ciclo (duplicar, archivar, restaurar, cerrar) están al pie de la ficha. Cada acción queda registrada en el historial con quién la ejecutó.",
+    "fr-FR": "Les actions de cycle (dupliquer, archiver, restaurer, clôturer) sont en bas de la fiche. Chaque action est consignée dans l’historique avec celle ou celui qui l’a exécutée."
+  },
+  "sheet.manual_4": {
+    "pt-BR": "Documento em análise de segurança não permite download até a análise terminar.",
+    "en-US": "A document under security analysis cannot be downloaded until the analysis finishes.",
+    "es-ES": "Un documento en análisis de seguridad no permite descarga hasta que el análisis termina.",
+    "fr-FR": "Un document en analyse de sécurité ne permet pas de téléchargement tant que l’analyse n’est pas terminée."
+  },
+  "agenda.manual_1": {
+    "pt-BR": "Mova entre meses com anterior, hoje e seguinte. Apenas o que entra na janela mostrada é listado — a agenda não carrega o catálogo inteiro.",
+    "en-US": "Move between months with previous, today and next. Only what falls inside the displayed window is listed — the agenda does not load the whole catalog.",
+    "es-ES": "Muévase entre meses con anterior, hoy y siguiente. Solo se lista lo que entra en la ventana mostrada — la agenda no carga el catálogo entero.",
+    "fr-FR": "Changez de mois avec précédent, aujourd’hui et suivant. Seul ce qui entre dans la fenêtre affichée est listé — l’agenda ne charge pas tout le catalogue."
+  },
+  "agenda.manual_2": {
+    "pt-BR": "Filtre pelo tipo (obrigação, revisão, renovação) e entre “minhas” e “toda a organização” para reduzir ruído.",
+    "en-US": "Filter by kind (obligation, review, renewal) and between “mine” and “whole organization” to reduce noise.",
+    "es-ES": "Filtre por tipo (obligación, revisión, renovación) y entre «las mías» y «toda la organización» para reducir ruido.",
+    "fr-FR": "Filtrez par nature (obligation, révision, renouvellement) et entre « les miennes » et « toute l’organisation » pour réduire le bruit."
+  },
+  "agenda.manual_3": {
+    "pt-BR": "Abrir um item leva você à origem. Dia vazio significa nada para aquela data — obrigações recorrentes voltam em cada vencimento.",
+    "en-US": "Opening an item takes you to its origin. An empty day means nothing for that date — recurring obligations come back at every due date.",
+    "es-ES": "Abrir un item lo lleva a su origen. Día vacío significa nada para esa fecha — las obligaciones recurrentes vuelven en cada vencimiento.",
+    "fr-FR": "Ouvrir un élément vous amène à son origine. Un jour vide signifie rien pour cette date — les obligations récurrentes reviennent à chaque échéance."
+  },
+  "actions.manual_1": {
+    "pt-BR": "Os cartões no topo contam por urgência e filtram a lista quando você clica: atrasos, suas ações, aguardando outros e conflitos.",
+    "en-US": "The cards on top count by urgency and filter the list when you click them: overdue, your actions, waiting for others and conflicts.",
+    "es-ES": "Los cartões en la parte superior cuentan por urgencia y filtran la lista cuando usted hace clic: atrasos, sus acciones, esperando otros y conflictos.",
+    "fr-FR": "Les cartes en haut comptent par urgence et filtrent la liste quand vous cliquez dessus : retards, vos actions, en attente des autres et conflits."
+  },
+  "actions.manual_2": {
+    "pt-BR": "Cada item mostra a origem e o próximo passo. Faça a ação no módulo indicado; resolvida, ela desaparece daqui.",
+    "en-US": "Each item shows the source and the next step. Do the action in the pointed module; once resolved it disappears from here.",
+    "es-ES": "Cada item muestra el origen y el próximo paso. Haga la acción en el módulo indicado; resuelta, desaparece de aquí.",
+    "fr-FR": "Chaque élément montre l’origine et l’étape suivante. Faites l’action dans le module indiqué ; une fois résolue, elle disparaît d’ici."
+  },
+  "actions.manual_3": {
+    "pt-BR": "Conflitos são compromissos sobrepostos no mesmo período. O ajuste se faz no módulo de origem.",
+    "en-US": "Conflicts are overlapping commitments in the same period. The fix happens in the module of origin.",
+    "es-ES": "Los conflictos son compromisos superpuestos en el mismo período. El ajuste se hace en el módulo de origen.",
+    "fr-FR": "Les conflits sont des engagements qui se chevauchent sur la même période. Le réglage se fait dans le module d’origine."
+  },
+  "org.manual_1": {
+    "pt-BR": "Aqui mudam nome, fuso horário e perfil de atividade da organização.",
+    "en-US": "Here you change the organization's name, time zone and activity profile.",
+    "es-ES": "Aquí cambian el nombre, la zona horaria y el perfil de actividad de la organización.",
+    "fr-FR": "Ici vous modifiez le nom, le fuseau horaire et le profil d’activité de l’organisation."
+  },
+  "org.manual_2": {
+    "pt-BR": "O salvamento usa controle de versão: se outra pessoa salvar antes, você verá um aviso e precisará recarregar a ficha antes de editar de novo.",
+    "en-US": "Saving uses version control: if someone else saves first, you will see a warning and must reload the record before editing again.",
+    "es-ES": "El guardado usa control de versiones: si otra persona guarda antes, verá un aviso y deberá recargar la ficha antes de editar de nuevo.",
+    "fr-FR": "L’enregistrement utilise un contrôle de versions : si quelqu’un d’autre enregistre avant vous, un avertissement apparaît et vous devez recharger la fiche avant de retravailler."
+  },
+  "org.manual_3": {
+    "pt-BR": "Pessoas, papéis e permissões são tratados na tela de equipe; dados de plano e consumo ficam na tela de plano e consumo.",
+    "en-US": "People, roles and permissions are handled on the team screen; plan and usage details live on the plan & usage screen.",
+    "es-ES": "Personas, roles y permisos se tratan en la pantalla de equipo; datos de plan y consumo están en la pantalla de plan y consumo.",
+    "fr-FR": "Personnes, rôles et permissions se gèrent dans l’écran Équipe ; les détails de plan et de consommation sont dans l’écran Plan et consommation."
+  },
+  "onb.manual_1": {
+    "pt-BR": "Este painel reúne o que precisa de você agora: documentos recentes, revisões aguardando sua avaliação e configurações pendentes.",
+    "en-US": "This panel gathers what needs you now: recent documents, reviews waiting for your assessment and pending settings.",
+    "es-ES": "Este panel reúne lo que necesita de usted ahora: documentos recientes, revisiones esperando su evaluación y ajustes pendientes.",
+    "fr-FR": "Ce panneau réunit ce qui vous attend maintenant : documents récents, révisions en attente de votre évaluation et réglages en suspens."
+  },
+  "onb.manual_2": {
+    "pt-BR": "Siga os primeiros passos para concluir a configuração: a lista reflete o estado real da organização.",
+    "en-US": "Follow getting started to finish the setup: the checklist reflects the real state of the organization.",
+    "es-ES": "Siga los primeros pasos para concluir la configuración: la lista refleja el estado real de la organización.",
+    "fr-FR": "Suivez les premiers pas pour terminer la configuration : la liste reflète l’état réel de l’organisation."
+  },
+  "onb.manual_3": {
+    "pt-BR": "As métricas (pessoas, plano, armazenamento) abrem as telas correspondentes para detalhes e solicitações.",
+    "en-US": "The metrics (people, plan, storage) open the matching screens for details and requests.",
+    "es-ES": "Las métricas (personas, plan, almacenamiento) abren las pantallas correspondientes para detalles y solicitudes.",
+    "fr-FR": "Les indicateurs (personnes, plan, stockage) ouvrent les écrans correspondants pour le détail et les demandes."
+  },
+  "org.accept_manual_1": {
+    "pt-BR": "Este convite concede o papel mostrado na organização indicada. Aceitar cria o vínculo imediatamente, dentro da validade exibida acima.",
+    "en-US": "This invitation grants the role shown in the named organization. Accepting creates the link immediately, within the validity shown above.",
+    "es-ES": "Esta invitación otorga el papel mostrado en la organización indicada. Aceptar crea el vínculo inmediatamente, dentro de la validez exhibida arriba.",
+    "fr-FR": "Cette invitation accorde le rôle affiché dans l’organisation citée. En l’acceptant, le lien est créé immédiatement, dans la limite de validité indiquée ci-dessus."
+  },
+  "org.accept_manual_2": {
+    "pt-BR": "Para aceitar, entre na conta que deve receber o vínculo. Se você já está em outra conta, saia e entre com a correta.",
+    "en-US": "To accept, sign in with the account that should receive the link. If you are already in another account, sign out and sign in with the right one.",
+    "es-ES": "Para aceptar, ingrese con la cuenta que debe recibir el vínculo. Si ya está en otra cuenta, salga e ingrese con la correcta.",
+    "fr-FR": "Pour accepter, connectez-vous avec le compte destiné à recevoir ce lien. Si vous êtes déjà connecté avec un autre compte, déconnectez-vous puis reconnectez-vous avec le bon."
+  },
+  "reg.manual_1": {
+    "pt-BR": "Escolha o plano com o qual deseja começar — dá para trocar depois; informe o nome do responsável e o e-mail que será usado para entrar.",
+    "en-US": "Pick the plan you want to start with — you can change it later; provide the responsible person's name and the e-mail you will use to sign in.",
+    "es-ES": "Elija el plan con el que desea comenzar — puede cambiarlo después; informe el nombre del responsable y el correo que se usará para ingresar.",
+    "fr-FR": "Choisissez le plan avec lequel vous voulez démarrer — vous pourrez le changer ensuite ; indiquez le nom de la personne responsable et le courriel qui servira à la connexion."
+  },
+  "reg.manual_2": {
+    "pt-BR": "Defina uma senha pessoal e aceite os termos. Após enviar, chega em poucos minutos um e-mail de confirmação.",
+    "en-US": "Set a personal password and accept the terms. After sending, a confirmation e-mail arrives within minutes.",
+    "es-ES": "Defina una contraseña personal y acepte los términos. Tras enviar, llega en pocos minutos un correo de confirmación.",
+    "fr-FR": "Définissez un mot de passe personnel et acceptez les conditions. Après l’envoi, un courriel de confirmation arrive en quelques minutes."
+  },
+  "reg.manual_3": {
+    "pt-BR": "O acesso só é liberado após a confirmação do e-mail, e a contratação fica pendente até a validação comercial — o resultado chega por e-mail.",
+    "en-US": "Access is only released after the e-mail is confirmed, and the hiring stays pending commercial validation — the outcome arrives by e-mail.",
+    "es-ES": "El acceso solo se libera tras confirmar el correo, y la contratación queda pendiente hasta la validación comercial — el resultado llega por correo.",
+    "fr-FR": "L’accès n’est libéré qu’après confirmation du courriel, et la souscription reste sous validation commerciale — l’issue arrive par courriel."
+  },
+  "conf.manual_body": {
+    "pt-BR": "Digite o código do e-mail que enviamos para você. Ele serve uma única vez e expira rápido: se não funcionar, confira a caixa de spam ou registre-se novamente com os mesmos dados.",
+    "en-US": "Type the code from the e-mail we sent you. It works only once and expires quickly: if it does not work, check the spam folder or register again with the same data.",
+    "es-ES": "Escriba el código del correo que le enviamos. Sirve una única vez y expira rápido: si no funciona, revise la carpeta de spam o regístrese nuevamente con los mismos datos.",
+    "fr-FR": "Saisissez le code du courriel que nous vous avons envoyé. Il ne fonctionne qu’une fois et expire rapidement : s’il ne fonctionne pas, vérifiez le dossier des courriers indésirables ou inscrivez-vous à nouveau avec les mêmes données."
+  },
+  "cust.manual_1": {
+    "pt-BR": "Busque por e-mail ou nome. Se ninguém aparecer, a pessoa ainda não tem conta ou o termo pesquisado não é exato.",
+    "en-US": "Search by e-mail or name. If nobody appears, the person has no account yet or the search term is not exact.",
+    "es-ES": "Busque por correo o nombre. Si nadie aparece, la persona todavía no tiene cuenta o el término buscado no es exacto.",
+    "fr-FR": "Recherchez par courriel ou nom. Si personne n’apparaît, la personne n’a pas encore de compte ou le terme cherché n’est pas exact."
+  },
+  "cust.manual_2": {
+    "pt-BR": "Na tabela aparecem o perfil (plataforma ODCA ou cliente) e cada vínculo com organizações, com sua situação (ativo ou bloqueado).",
+    "en-US": "The table shows the profile (ODCA platform or customer) and each organization link with its state (active or blocked).",
+    "es-ES": "En la tabla aparecen el perfil (plataforma ODCA o cliente) y cada vínculo con organizaciones, con su situación (activo o bloqueado).",
+    "fr-FR": "Le tableau montre le profil (plateforme ODCA ou client) et chaque lien d’organisation avec son état (actif ou bloqué)."
+  },
+  "cust.manual_3": {
+    "pt-BR": "Bloquear ou reabilitar vínculos se faz na tela de equipe da organização correspondente — aqui você localiza e diagnostica.",
+    "en-US": "Blocking or restoring links is done on the team screen of the corresponding organization — here you locate and diagnose.",
+    "es-ES": "Bloquear o reabilitar vínculos se hace en la pantalla de equipo de la organización correspondiente — aquí usted localiza y diagnostica.",
+    "fr-FR": "Bloquer ou rétablir un lien se fait dans l’écran Équipe de l’organisation correspondante — ici vous localisez et diagnostiquez."
+  },
+  "acct.login_manual_body": {
+    "pt-BR": "Primeiro acesso? Confirme o e-mail cadastrado e aceite seu convite antes de entrar. Contas com MFA pedem um código do aplicativo logo depois da senha. Por segurança, a sessão termina sozinha após 15 minutos.",
+    "en-US": "First access? Confirm your registered e-mail and accept your invitation before signing in. Accounts with MFA ask for an app code right after the password. For safety, the session ends by itself after 15 minutes.",
+    "es-ES": "¿Primer acceso? Confirme el correo cadastrado y acepte su invitación antes de ingresar. Las cuentas con MFA piden un código de la aplicación justo después de la contraseña. Por seguridad, la sesión termina sola después de 15 minutos.",
+    "fr-FR": "Premier accès ? Confirmez votre courriel enregistré et acceptez votre invitation avant de vous connecter. Les comptes avec MFA demandent un code d’application juste après le mot de passe. Par sécurité, la session prend fin d’elle-même après 15 minutes."
+  }
+}

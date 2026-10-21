@@ -6,6 +6,7 @@
 }
 <nav class="breadcrumb" aria-label="@L.T("common.breadcrumb_aria",_c)"><a asp-action="Index">@L.T("cust.area",_c)</a><span>/</span><span aria-current="page">@L.T("localizar-usuarios",_c)</span></nav>
 <header class="page-heading"><div><p class="eyebrow">@L.T("support.eyebrow",_c)</p><h1>@L.T("localizar-usuarios",_c)</h1><p>@L.T("cust.users_sub",_c)</p></div></header>
+<details class="help-card"><summary>@L.T("common.how_to_use",_c)</summary><ol><li>@L.T("cust.manual_1",_c)</li><li>@L.T("cust.manual_2",_c)</li><li>@L.T("cust.manual_3",_c)</li></ol></details>
 <form method="get" class="review-filters" aria-label="@L.T("common.search",_c)">
  <label>@L.T("action.search",_c)<input type="search" name="search" value="@Model.Search" placeholder="@L.T("cust.users_ph",_c)" /></label>
  <button class="button button-primary" type="submit">@L.T("documents.filter_search",_c)</button>

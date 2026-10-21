@@ -8,6 +8,7 @@
         <p class="eyebrow">@L.T("reg.eyebrow", _c)</p>
         <h1>@L.T("reg.h1", _c)</h1>
         <p class="muted">@L.T("reg.note", _c)</p>
+        <details class="help-card"><summary>@L.T("common.how_to_use", _c)</summary><ol><li>@L.T("reg.manual_1", _c)</li><li>@L.T("reg.manual_2", _c)</li><li>@L.T("reg.manual_3", _c)</li></ol></details>
         <form method="post" novalidate data-processing>
             @Html.AntiForgeryToken()
             <div asp-validation-summary="ModelOnly" class="validation" role="alert"></div>

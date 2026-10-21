@@ -15,6 +15,7 @@
     </div>
     <a class="button button-quiet" asp-action="Index">@L.T("platform.rev_back",_c)</a>
 </header>
+<details class="help-card"><summary>@L.T("common.how_to_use",_c)</summary><ol><li>@L.T("platform.revnew_manual_1",_c)</li><li>@L.T("platform.revnew_manual_2",_c)</li><li>@L.T("platform.revnew_manual_3",_c)</li><li>@L.T("platform.revnew_manual_4",_c)</li></ol></details>
 
 @if (TempData["Success"] is string successMsg) { <div class="alert alert-success" role="status">@successMsg</div> }
 @if (TempData["Error"] is string errorMsg) { <div class="alert alert-error" role="alert">@errorMsg</div> }

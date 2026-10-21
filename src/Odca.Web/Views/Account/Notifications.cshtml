@@ -8,6 +8,7 @@
 <section class="narrow">
     <header class="page-heading"><div><p class="eyebrow">@L.T("minha-conta",_culture)</p><h1>@L.T("notificacoes",_culture)</h1><p>@L.T("notif.subtitle",_culture)</p></div></header>
 
+    <details class="help-card"><summary>@L.T("common.how_to_use",_culture)</summary><ol><li>@L.T("notif.manual_1",_culture)</li><li>@L.T("notif.manual_2",_culture)</li><li>@L.T("notif.manual_3",_culture)</li></ol></details>
     <div class="card">
         @if (Model.UnreadCount > 0) { <p><span class="status-badge">@L.T("notif.unread_count",_culture,Model.UnreadCount.ToString(System.Globalization.CultureInfo.InvariantCulture))</span></p> }
         @if (Model.Items.Count == 0)

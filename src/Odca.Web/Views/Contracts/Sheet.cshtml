@@ -262,6 +262,7 @@
     <a href="#acoes">@L.T("sheet.nav_actions", _culture)</a>
     <a asp-controller="Renewals" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-counterparty="@sheet.Title">@L.T("sheet.nav_renewals_center", _culture)</a>
 </nav>
+<details class="help-card"><summary>@L.T("common.how_to_use", _culture)</summary><ol><li>@L.T("sheet.manual_1", _culture)</li><li>@L.T("sheet.manual_2", _culture)</li><li>@L.T("sheet.manual_3", _culture)</li><li>@L.T("sheet.manual_4", _culture)</li></ol></details>
 
 @if (!string.IsNullOrWhiteSpace(notice))
 {
@@ -1199,7 +1200,7 @@
                     <span class="status-label">@DocState(document.SafetyState)</span>
                     @if (document.SafetyState == "safe" && document.SecurityEngine == "simulated-scanner-dev")
                     {
-                        <span class="status-label badge-muted" title="Engine: simulated-scanner-dev">@L.T("sheet.doc_simulated", _culture)</span>
+                        <span class="status-label badge-muted" title="@L.T("sheet.doc_simulated_engine", _culture)">@L.T("sheet.doc_simulated", _culture)</span>
                     }
                     <h3>@document.Name</h3>
                 </div>

@@ -11,6 +11,7 @@
     </div>
     <a class="button" asp-action="Team" asp-route-tenantId="@Model.TenantId">@L.T("org.back_to_team", _c)</a>
 </section>
+<details class="help-card"><summary>@L.T("common.how_to_use", _c)</summary><ol><li>@L.T("org.manual_1", _c)</li><li>@L.T("org.manual_2", _c)</li><li>@L.T("org.manual_3", _c)</li></ol></details>
 
 @if (Model.VersionConflict)
 {

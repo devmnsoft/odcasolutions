@@ -72,6 +72,10 @@ for (const culture of cultures) {
   }
   const existingSet = new Set(Object.keys(current));
   const toAdd = [...merged.keys()].filter((k) => !existingSet.has(k));
+  if (toAdd.length === 0) {
+    console.log(`${culture}: +0 chaves -> total ${Object.keys(current).length}`);
+    continue;
+  }
   const lines = toAdd.map((k) => '  ' + JSON.stringify(k) + ': ' + JSON.stringify(merged.get(k)[culture]));
   const braceIdx = text.lastIndexOf('}');
   if (braceIdx < 0 || text.slice(braceIdx + 1).trim() !== '') fail(`${culture}: formato do catálogo mudou (fecha inesperado)`);

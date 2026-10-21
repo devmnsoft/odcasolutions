@@ -21,6 +21,7 @@
         }
         <h2>@L.T("acct.login_card_h",_culture)</h2>
         <p class="muted">@L.T("acct.login_card_sub",_culture)</p>
+        <details class="help-card"><summary>@L.T("common.how_to_use",_culture)</summary><p>@L.T("acct.login_manual_body",_culture)</p></details>
         <form method="post" novalidate data-processing>
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="ReturnUrl" />

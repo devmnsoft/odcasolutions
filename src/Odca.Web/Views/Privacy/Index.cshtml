@@ -9,6 +9,8 @@
         <h1>@L.T("priv.title", _culture)</h1>
         <p class="muted">@L.T("priv.intro", _culture)</p>
 
+        <details class="help-card"><summary>@L.T("common.how_to_use", _culture)</summary><p>@L.T("priv.manual_body", _culture)</p></details>
+
         @if (Model.Protocol is not null)
         {
             <div class="success" role="status">

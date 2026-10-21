@@ -40,6 +40,7 @@
     <button class="button button-primary" type="submit">@L.T("common.apply_filters",_c)</button>
     <a class="button button-quiet" asp-action="Index" asp-route-tenantId="@tenantId" asp-route-year="@Model.Page.Year" asp-route-month="@Model.Page.Month">@L.T("common.clear_filters",_c)</a>
 </form>
+<details class="help-card"><summary>@L.T("common.how_to_use",_c)</summary><ol><li>@L.T("agenda.manual_1",_c)</li><li>@L.T("agenda.manual_2",_c)</li><li>@L.T("agenda.manual_3",_c)</li></ol></details>
 @if (!string.IsNullOrWhiteSpace(emptyNotice))
 {
     <div class="banner-notice-warning" role="status">@emptyNotice
