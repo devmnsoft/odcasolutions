@@ -172,7 +172,9 @@ public sealed class RuntimeQueryRegressionTests
         while (current is not null)
         {
             var candidate = Path.Combine([current.FullName, "src", .. path]);
-            if (File.Exists(candidate)) return File.ReadAllText(candidate);
+            // Normaliza para LF: o guard compara substrings multi-linha e o checkout pode ser
+            // CRLF (Windows com autocrlf) ou LF (Linux/CI) dependendo do ambiente (D-OC58).
+            if (File.Exists(candidate)) return File.ReadAllText(candidate).Replace("\r\n", "\n");
             current = current.Parent;
         }
 

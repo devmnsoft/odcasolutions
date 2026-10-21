@@ -1,0 +1,27 @@
+﻿  Determining projects to restore...
+  Restored /repo/src/Odca.AI/Odca.AI.csproj (in 495 ms).
+  Restored /repo/src/Odca.Domain/Odca.Domain.csproj (in 495 ms).
+  Restored /repo/src/Odca.Application/Odca.Application.csproj (in 510 ms).
+  Restored /repo/src/Odca.Contracts/Odca.Contracts.csproj (in 495 ms).
+  Restored /repo/src/Odca.Configuration/Odca.Configuration.csproj (in 495 ms).
+  Restored /repo/src/Odca.Worker/Odca.Worker.csproj (in 13.1 sec).
+  Restored /repo/src/Odca.Infrastructure/Odca.Infrastructure.csproj (in 13.09 sec).
+  Restored /repo/src/Odca.Bootstrap/Odca.Bootstrap.csproj (in 13.24 sec).
+  Restored /repo/src/Odca.Web/Odca.Web.csproj (in 13.22 sec).
+  Restored /repo/src/Odca.Api/Odca.Api.csproj (in 13.1 sec).
+  Restored /repo/tests/Odca.Domain.Tests/Odca.Domain.Tests.csproj (in 19.16 sec).
+  Restored /repo/tests/Odca.IntegrationTests/Odca.IntegrationTests.csproj (in 19.19 sec).
+RESTORE-OK
+    0 Error(s)
+
+Time Elapsed 00:02:58.06
+BUILD-OK
+Test run for /repo/tests/Odca.Domain.Tests/bin/Release/net10.0/Odca.Domain.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /repo/tests/Odca.IntegrationTests/bin/Release/net10.0/Odca.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:   389, Skipped:     0, Total:   389, Duration: 7 s - Odca.Domain.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   295, Skipped:     0, Total:   295, Duration: 2 m 45 s - Odca.IntegrationTests.dll (net10.0)
+CLEAN-R2-DONE

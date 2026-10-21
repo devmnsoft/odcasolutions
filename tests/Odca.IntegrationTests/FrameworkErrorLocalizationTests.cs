@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Odca.Configuration;
 
 namespace Odca.IntegrationTests;
 
@@ -12,7 +13,11 @@ namespace Odca.IntegrationTests;
 /// no wire. O 500 usa o caminho instalado pelo D-OC27 (CustomizeProblemDetails no
 /// handler de exceção); este teste o fixa como contrato. O 429 tem, a partir deste
 /// incremento, título/detalhe localizados + código estável (o .NET 10 gera o
-/// problem+json pela fábrica registrada — o hook do D-OC27 alcança os dois status).</summary>
+/// problem+json pela fábrica registrada — o hook do D-OC27 alcança os dois status).
+/// Coleção "Environment": o host Development define/restaura ODCA_RUNTIME_CONFIG
+/// (mesma variável usada por LocalRuntimeConfigurationTests) — serializa com ela
+/// pelo mesmo padrão da casa.</summary>
+[Collection("Environment")]
 public sealed class FrameworkErrorLocalizationTests(DatabaseFixture database) : IClassFixture<DatabaseFixture>
 {
     [Theory]
@@ -80,16 +85,37 @@ public sealed class FrameworkErrorLocalizationTests(DatabaseFixture database) : 
     }
 
     /// <summary>Host em ambiente não-Testing (mesmo contrato ODCA_TEST_* do fixture) para
-    /// exercitar o caminho real do 500 (UseExceptionHandler + CustomizeProblemDetails).</summary>
-    private sealed class DevelopmentFaultApiFactory(DatabaseFixture fixture)
-        : WebApplicationFactory<global::Odca.Api.ApiAssemblyMarker>
+    /// exercitar o caminho real do 500 (UseExceptionHandler + CustomizeProblemDetails).
+    /// D-OC58: hermeticidade em checkout limpo — o ambiente Development do Program exige o
+    /// development-runtime.json (arquivo pessoal, gitignored: existe na máquina de
+    /// desenvolvimento, ausente no runner da CI). O escape previsto pelo próprio produto é a
+    /// variável ODCA_RUNTIME_CONFIG (LocalRuntimeConfiguration.ResolvePath); este host a aponta
+    /// para um JSON temporário vazio, pois toda a configuração do host de teste já vem da
+    /// coleção in-memory abaixo (que vence o arquivo, como no fluxo real). A variável é
+    /// restaurada e o arquivo removido no Dispose.</summary>
+    private sealed class DevelopmentFaultApiFactory : WebApplicationFactory<global::Odca.Api.ApiAssemblyMarker>
     {
+        private readonly DatabaseFixture _fixture;
+        private readonly string _runtimeConfigPath;
+        private readonly string? _previousRuntimeConfig;
+
+        public DevelopmentFaultApiFactory(DatabaseFixture fixture)
+        {
+            _fixture = fixture;
+            _runtimeConfigPath = Path.Combine(
+                Path.GetTempPath(), "odca-framework-error-tests", $"development-runtime-{Guid.NewGuid():N}.json");
+            _previousRuntimeConfig = Environment.GetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable);
+            Directory.CreateDirectory(Path.GetDirectoryName(_runtimeConfigPath)!);
+            File.WriteAllText(_runtimeConfigPath, "{}");
+            Environment.SetEnvironmentVariable(LocalRuntimeConfiguration.EnvironmentVariable, _runtimeConfigPath);
+        }
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Development");
             var settings = new Dictionary<string, string?>
             {
-                ["ConnectionStrings:Database"] = fixture.AppConnectionString,
+                ["ConnectionStrings:Database"] = _fixture.AppConnectionString,
                 ["Jwt:Issuer"] = "odca-api-fault-tests",
                 ["Jwt:Audience"] = "odca-api-fault-tests",
                 ["Jwt:SigningKey"] = "fault-test-key-with-at-least-thirty-two-bytes",
@@ -100,6 +126,18 @@ public sealed class FrameworkErrorLocalizationTests(DatabaseFixture database) : 
                 ["DataProtection:KeysPath"] = Path.Combine(Path.GetTempPath(), "odca-framework-error-tests", Guid.NewGuid().ToString("N"))
             };
             builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(settings));
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            if (!disposing) return;
+
+            var variable = LocalRuntimeConfiguration.EnvironmentVariable;
+            Environment.SetEnvironmentVariable(variable, _previousRuntimeConfig);
+            try { File.Delete(_runtimeConfigPath); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { } // limpeza best-effort do artefato temporário
         }
     }
 }

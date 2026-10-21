@@ -1,0 +1,647 @@
+﻿2026-10-21T17:20:47.5108092Z Current runner version: '2.338.0'
+2026-10-21T17:20:47.5135156Z ##[group]Runner Image Provisioner
+2026-10-21T17:20:47.5136201Z Hosted Compute Agent
+2026-10-21T17:20:47.5136822Z Version: 20261015.610
+2026-10-21T17:20:47.5137637Z Commit: 267fdb4e8bbec4ab5ea31367f3a00d5c480c7656
+2026-10-21T17:20:47.5138453Z Build Date: 2026-10-14T17:06:54Z
+2026-10-21T17:20:47.5139596Z Worker ID: {a5161ff5-67d2-4510-af27-e584bab32025}
+2026-10-21T17:20:47.5140855Z Region: westus
+2026-10-21T17:20:47.5141479Z Cloud: Azure
+2026-10-21T17:20:47.5142013Z ##[endgroup]
+2026-10-21T17:20:47.5143664Z ##[group]Operating System
+2026-10-21T17:20:47.5144327Z Ubuntu
+2026-10-21T17:20:47.5144916Z 24.04.5
+2026-10-21T17:20:47.5145499Z LTS
+2026-10-21T17:20:47.5146153Z ##[endgroup]
+2026-10-21T17:20:47.5146792Z ##[group]Runner Image
+2026-10-21T17:20:47.5147386Z Image: ubuntu-24.04
+2026-10-21T17:20:47.5148027Z Version: 20261018.339.1
+2026-10-21T17:20:47.5149738Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261018.339/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-21T17:20:47.5151474Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261018.339
+2026-10-21T17:20:47.5152465Z ##[endgroup]
+2026-10-21T17:20:47.5153627Z ##[group]GITHUB_TOKEN Permissions
+2026-10-21T17:20:47.5155944Z Contents: read
+2026-10-21T17:20:47.5156647Z Metadata: read
+2026-10-21T17:20:47.5157245Z ##[endgroup]
+2026-10-21T17:20:47.5159578Z Secret source: Actions
+2026-10-21T17:20:47.5160734Z Cache mode: write
+2026-10-21T17:20:47.5161669Z Prepare workflow directory
+2026-10-21T17:20:47.5630337Z Prepare all required actions
+2026-10-21T17:20:47.5677615Z Getting action download info
+2026-10-21T17:20:47.9517308Z Download action repository 'actions/checkout@v7.0.1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-10-21T17:20:48.0564382Z Download action repository 'actions/setup-dotnet@v6.0.0' (SHA:a98b56852c35b8e3190ac28c8c2271da59106c68)
+2026-10-21T17:20:48.4660774Z Download action repository 'actions/setup-node@v7.0.0' (SHA:820762786026740c76f36085b0efc47a31fe5020)
+2026-10-21T17:20:48.5483258Z Download action repository 'actions/upload-artifact@v7.0.1' (SHA:043fb46d1a93c77aae656e7c1c64a875d1fc6a0a)
+2026-10-21T17:20:48.7516725Z Complete job name: build-test
+2026-10-21T17:20:48.8076601Z ##[group]Checking docker version
+2026-10-21T17:20:48.8090517Z ##[command]/usr/bin/docker version --format '{{.Server.APIVersion}}'
+2026-10-21T17:20:48.9362609Z '1.48'
+2026-10-21T17:20:48.9383816Z Docker daemon API version: '1.48'
+2026-10-21T17:20:48.9384625Z ##[command]/usr/bin/docker version --format '{{.Client.APIVersion}}'
+2026-10-21T17:20:48.9605105Z '1.48'
+2026-10-21T17:20:48.9608856Z Docker client API version: '1.48'
+2026-10-21T17:20:48.9614525Z ##[endgroup]
+2026-10-21T17:20:48.9617675Z ##[group]Clean up resources from previous jobs
+2026-10-21T17:20:48.9623750Z ##[command]/usr/bin/docker ps --all --quiet --no-trunc --filter "label=b1c101"
+2026-10-21T17:20:48.9824100Z ##[command]/usr/bin/docker network prune --force --filter "label=b1c101"
+2026-10-21T17:20:48.9989521Z ##[endgroup]
+2026-10-21T17:20:48.9990147Z ##[group]Create local container network
+2026-10-21T17:20:49.0000601Z ##[command]/usr/bin/docker network create --label b1c101 github_network_52a5404ca9064e93900fbb643d42750f
+2026-10-21T17:20:49.0589798Z 9e93552f319b1a6ec364edc7c19db888a7231134514821c10a1681cab732461e
+2026-10-21T17:20:49.0605266Z ##[endgroup]
+2026-10-21T17:20:49.0631227Z ##[group]Starting postgres service container
+2026-10-21T17:20:49.0653928Z ##[command]/usr/bin/docker pull postgres:18.1-alpine
+2026-10-21T17:20:49.9603518Z 18.1-alpine: Pulling from library/postgres
+2026-10-21T17:20:50.2445798Z 589002ba0eae: Pulling fs layer
+2026-10-21T17:20:50.2453563Z 31055bc7acf8: Pulling fs layer
+2026-10-21T17:20:50.2454805Z a5cb70c4736c: Pulling fs layer
+2026-10-21T17:20:50.2455681Z 1259989e7057: Pulling fs layer
+2026-10-21T17:20:50.2456643Z 19b091927013: Pulling fs layer
+2026-10-21T17:20:50.2457629Z fa2542787667: Pulling fs layer
+2026-10-21T17:20:50.2458613Z b223957d2262: Pulling fs layer
+2026-10-21T17:20:50.2460307Z 63a9b713c15a: Pulling fs layer
+2026-10-21T17:20:50.2461314Z 644c7492dc07: Pulling fs layer
+2026-10-21T17:20:50.2462391Z fa2542787667: Waiting
+2026-10-21T17:20:50.2463349Z b223957d2262: Waiting
+2026-10-21T17:20:50.2464231Z 63a9b713c15a: Waiting
+2026-10-21T17:20:50.2465103Z 644c7492dc07: Waiting
+2026-10-21T17:20:50.2466046Z 1259989e7057: Waiting
+2026-10-21T17:20:50.2466984Z 19b091927013: Waiting
+2026-10-21T17:20:50.4731252Z 31055bc7acf8: Download complete
+2026-10-21T17:20:50.4788997Z a5cb70c4736c: Verifying Checksum
+2026-10-21T17:20:50.4790830Z a5cb70c4736c: Download complete
+2026-10-21T17:20:50.4892338Z 589002ba0eae: Verifying Checksum
+2026-10-21T17:20:50.4894934Z 589002ba0eae: Download complete
+2026-10-21T17:20:50.6013319Z 589002ba0eae: Pull complete
+2026-10-21T17:20:50.6535717Z 31055bc7acf8: Pull complete
+2026-10-21T17:20:50.6812458Z a5cb70c4736c: Pull complete
+2026-10-21T17:20:50.7068441Z 1259989e7057: Verifying Checksum
+2026-10-21T17:20:50.7084234Z 1259989e7057: Download complete
+2026-10-21T17:20:50.7172987Z fa2542787667: Verifying Checksum
+2026-10-21T17:20:50.7182315Z fa2542787667: Download complete
+2026-10-21T17:20:50.7273066Z 1259989e7057: Pull complete
+2026-10-21T17:20:50.9154763Z b223957d2262: Verifying Checksum
+2026-10-21T17:20:50.9156619Z b223957d2262: Download complete
+2026-10-21T17:20:50.9359737Z 63a9b713c15a: Verifying Checksum
+2026-10-21T17:20:50.9361944Z 63a9b713c15a: Download complete
+2026-10-21T17:20:51.0296322Z 19b091927013: Verifying Checksum
+2026-10-21T17:20:51.0297063Z 19b091927013: Download complete
+2026-10-21T17:20:51.1191739Z 644c7492dc07: Download complete
+2026-10-21T17:20:53.4475942Z 19b091927013: Pull complete
+2026-10-21T17:20:53.4812827Z fa2542787667: Pull complete
+2026-10-21T17:20:53.4908059Z b223957d2262: Pull complete
+2026-10-21T17:20:53.4992660Z 63a9b713c15a: Pull complete
+2026-10-21T17:20:53.5109330Z 644c7492dc07: Pull complete
+2026-10-21T17:20:53.5148917Z Digest: sha256:aa6eb304ddb6dd26df23d05db4e5cb05af8951cda3e0dc57731b771e0ef4ab29
+2026-10-21T17:20:53.5165862Z Status: Downloaded newer image for postgres:18.1-alpine
+2026-10-21T17:20:53.5178604Z docker.io/library/postgres:18.1-alpine
+2026-10-21T17:20:53.5245110Z ##[command]/usr/bin/docker create --name 0915a0cdb79245d2979ea34d4aab3b32_postgres181alpine_b1cc7d --label b1c101 --network github_network_52a5404ca9064e93900fbb643d42750f --network-alias postgres -p 5432:5432 --health-cmd "pg_isready -U postgres -d odca_test" --health-interval 5s --health-timeout 3s --health-retries 20 -e "POSTGRES_DB=odca_test" -e "POSTGRES_USER=postgres" -e "POSTGRES_PASSWORD=odca-ci-only-password" -e GITHUB_ACTIONS=true -e CI=true postgres:18.1-alpine
+2026-10-21T17:20:53.5543673Z c3c286018bce2bbf7a752b2976b61066988bfcda71c0f5cad29509df7639cbab
+2026-10-21T17:20:53.5572587Z ##[command]/usr/bin/docker start c3c286018bce2bbf7a752b2976b61066988bfcda71c0f5cad29509df7639cbab
+2026-10-21T17:20:53.8181548Z c3c286018bce2bbf7a752b2976b61066988bfcda71c0f5cad29509df7639cbab
+2026-10-21T17:20:53.8203758Z ##[command]/usr/bin/docker ps --all --filter id=c3c286018bce2bbf7a752b2976b61066988bfcda71c0f5cad29509df7639cbab --filter status=running --no-trunc --format "{{.ID}} {{.Status}}"
+2026-10-21T17:20:53.8391403Z c3c286018bce2bbf7a752b2976b61066988bfcda71c0f5cad29509df7639cbab Up Less than a second (health: starting)
+2026-10-21T17:20:53.8413995Z ##[command]/usr/bin/docker port c3c286018bce2bbf7a752b2976b61066988bfcda71c0f5cad29509df7639cbab
+2026-10-21T17:20:53.8633988Z 5432/tcp -> 0.0.0.0:5432
+2026-10-21T17:20:53.8634610Z 5432/tcp -> [::]:5432
+2026-10-21T17:20:53.8697212Z ##[endgroup]
+2026-10-21T17:20:53.8707720Z ##[group]Waiting for all services to be ready
+2026-10-21T17:20:53.8724764Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" c3c286018bce2bbf7a752b2976b61066988bfcda71c0f5cad29509df7639cbab
+2026-10-21T17:20:53.8897497Z starting
+2026-10-21T17:20:53.8926310Z postgres service is starting, waiting 2 seconds before checking again.
+2026-10-21T17:20:55.8926515Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" c3c286018bce2bbf7a752b2976b61066988bfcda71c0f5cad29509df7639cbab
+2026-10-21T17:20:55.9081298Z starting
+2026-10-21T17:20:55.9099339Z postgres service is starting, waiting 4 seconds before checking again.
+2026-10-21T17:21:00.1693155Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" c3c286018bce2bbf7a752b2976b61066988bfcda71c0f5cad29509df7639cbab
+2026-10-21T17:21:00.1848454Z healthy
+2026-10-21T17:21:00.1872129Z postgres service is healthy.
+2026-10-21T17:21:00.1872937Z ##[endgroup]
+2026-10-21T17:21:00.2255007Z ##[group]Run actions/checkout@v7.0.1
+2026-10-21T17:21:00.2255681Z with:
+2026-10-21T17:21:00.2255891Z   fetch-depth: 0
+2026-10-21T17:21:00.2256124Z   repository: devmnsoft/odcasolutions
+2026-10-21T17:21:00.2258485Z   token: ***
+2026-10-21T17:21:00.2258693Z   ssh-strict: true
+2026-10-21T17:21:00.2258904Z   ssh-user: git
+2026-10-21T17:21:00.2259335Z   persist-credentials: true
+2026-10-21T17:21:00.2259590Z   clean: true
+2026-10-21T17:21:00.2259800Z   sparse-checkout-cone-mode: true
+2026-10-21T17:21:00.2260050Z   fetch-tags: false
+2026-10-21T17:21:00.2260259Z   show-progress: true
+2026-10-21T17:21:00.2260462Z   lfs: false
+2026-10-21T17:21:00.2260677Z   submodules: false
+2026-10-21T17:21:00.2260884Z   set-safe-directory: true
+2026-10-21T17:21:00.2261126Z   allow-unsafe-pr-checkout: false
+2026-10-21T17:21:00.2261619Z env:
+2026-10-21T17:21:00.2262262Z   ODCA_TEST_ADMIN_CONNECTION: Host=localhost;Port=5432;Database=odca_test;Username=postgres;***;Include Error Detail=false
+2026-10-21T17:21:00.2263297Z   ODCA_TEST_APP_CONNECTION: Host=localhost;Port=5432;Database=odca_test;Username=odca_test_app_login;***;Include Error Detail=false
+2026-10-21T17:21:00.2263912Z   ODCA_TEST_ENVIRONMENT: ODCA_INTEGRATION_TESTS
+2026-10-21T17:21:00.2264204Z ##[endgroup]
+2026-10-21T17:21:00.3346151Z Syncing repository: devmnsoft/odcasolutions
+2026-10-21T17:21:00.3348246Z ##[group]Getting Git version info
+2026-10-21T17:21:00.3351280Z Working directory is '/home/runner/work/odcasolutions/odcasolutions'
+2026-10-21T17:21:00.3352496Z [command]/usr/bin/git version
+2026-10-21T17:21:00.3488788Z git version 2.55.0
+2026-10-21T17:21:00.3513516Z ##[endgroup]
+2026-10-21T17:21:00.3526724Z Temporarily overriding HOME='/home/runner/work/_temp/3f5f1e61-1f13-4616-bba4-b7c4bfe1d50c' before making global git config changes
+2026-10-21T17:21:00.3528307Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-21T17:21:00.3535970Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/odcasolutions/odcasolutions
+2026-10-21T17:21:00.3596386Z Deleting the contents of '/home/runner/work/odcasolutions/odcasolutions'
+2026-10-21T17:21:00.3606488Z ##[group]Determining repository object format
+2026-10-21T17:21:00.3607357Z ##[endgroup]
+2026-10-21T17:21:00.3607974Z ##[group]Initializing the repository
+2026-10-21T17:21:00.3610208Z [command]/usr/bin/git init /home/runner/work/odcasolutions/odcasolutions
+2026-10-21T17:21:00.3749223Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-21T17:21:00.3750558Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-21T17:21:00.3751296Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-21T17:21:00.3752504Z hint: call:
+2026-10-21T17:21:00.3753095Z hint:
+2026-10-21T17:21:00.3753881Z hint: 	git config --global init.defaultBranch <name>
+2026-10-21T17:21:00.3754460Z hint:
+2026-10-21T17:21:00.3754999Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-21T17:21:00.3755859Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-21T17:21:00.3756526Z hint:
+2026-10-21T17:21:00.3756869Z hint: 	git branch -m <name>
+2026-10-21T17:21:00.3757258Z hint:
+2026-10-21T17:21:00.3757672Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-21T17:21:00.3758291Z Initialized empty Git repository in /home/runner/work/odcasolutions/odcasolutions/.git/
+2026-10-21T17:21:00.3780049Z [command]/usr/bin/git remote add origin https://github.com/devmnsoft/odcasolutions
+2026-10-21T17:21:00.3848641Z ##[endgroup]
+2026-10-21T17:21:00.3849390Z ##[group]Disabling automatic garbage collection
+2026-10-21T17:21:00.3863026Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-21T17:21:00.3917781Z ##[endgroup]
+2026-10-21T17:21:00.3918393Z ##[group]Setting up auth
+2026-10-21T17:21:00.3918864Z Removing SSH command configuration
+2026-10-21T17:21:00.3921498Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-21T17:21:00.3977628Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-21T17:21:00.4407450Z Removing HTTP extra header
+2026-10-21T17:21:00.4413651Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-21T17:21:00.4461209Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-21T17:21:00.4734650Z Removing includeIf entries pointing to credentials config files
+2026-10-21T17:21:00.4740461Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-21T17:21:00.4837612Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-21T17:21:00.5113333Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-8f40ff30-2217-4692-9fb2-3a45108bbfa7.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-21T17:21:00.5168649Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/odcasolutions/odcasolutions/.git.path /home/runner/work/_temp/git-credentials-8f40ff30-2217-4692-9fb2-3a45108bbfa7.config
+2026-10-21T17:21:00.5215405Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/odcasolutions/odcasolutions/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-8f40ff30-2217-4692-9fb2-3a45108bbfa7.config
+2026-10-21T17:21:00.5266209Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-8f40ff30-2217-4692-9fb2-3a45108bbfa7.config
+2026-10-21T17:21:00.5312993Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-8f40ff30-2217-4692-9fb2-3a45108bbfa7.config
+2026-10-21T17:21:00.5358111Z ##[endgroup]
+2026-10-21T17:21:00.5358526Z ##[group]Fetching the repository
+2026-10-21T17:21:00.5366516Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/*
+2026-10-21T17:21:01.7821906Z From https://github.com/devmnsoft/odcasolutions
+2026-10-21T17:21:01.7823253Z  * [new branch]      codex/auditar-estado-atual-do-odca-solutions -> origin/codex/auditar-estado-atual-do-odca-solutions
+2026-10-21T17:21:01.7824503Z  * [new branch]      codex/avancar-odca-solutions-para-versao-mvp -> origin/codex/avancar-odca-solutions-para-versao-mvp
+2026-10-21T17:21:01.7826055Z  * [new branch]      codex/completar-jornada-de-preparacao-para-assinatura -> origin/codex/completar-jornada-de-preparacao-para-assinatura
+2026-10-21T17:21:01.7828576Z  * [new branch]      codex/concluir-configuracao-local-do-odca-solutions -> origin/codex/concluir-configuracao-local-do-odca-solutions
+2026-10-21T17:21:01.7830816Z  * [new branch]      codex/concluir-recuperacao-funcional-das-telas -> origin/codex/concluir-recuperacao-funcional-das-telas
+2026-10-21T17:21:01.7832623Z  * [new branch]      codex/corrige-a-inicializacao-local-do-projeto -> origin/codex/corrige-a-inicializacao-local-do-projeto
+2026-10-21T17:21:01.7834781Z  * [new branch]      codex/corrige-erro-cs1503-e-evolui-jornada-documental -> origin/codex/corrige-erro-cs1503-e-evolui-jornada-documental
+2026-10-21T17:21:01.7837089Z  * [new branch]      codex/corrigir-acesso-ao-odca-solutions -> origin/codex/corrigir-acesso-ao-odca-solutions
+2026-10-21T17:21:01.7839233Z  * [new branch]      codex/corrigir-acesso-local-de-desenvolvimento -> origin/codex/corrigir-acesso-local-de-desenvolvimento
+2026-10-21T17:21:01.7841193Z  * [new branch]      codex/corrigir-ambiguidade-entre-tipos-program -> origin/codex/corrigir-ambiguidade-entre-tipos-program
+2026-10-21T17:21:01.7843434Z  * [new branch]      codex/corrigir-ca1716-e-evoluir-importacao-assistida -> origin/codex/corrigir-ca1716-e-evoluir-importacao-assistida
+2026-10-21T17:21:01.7845482Z  * [new branch]      codex/corrigir-ca1848-e-bloqueio-worker -> origin/codex/corrigir-ca1848-e-bloqueio-worker
+2026-10-21T17:21:01.7847456Z  * [new branch]      codex/corrigir-cadastro-e-consulta-de-acessos-de-teste -> origin/codex/corrigir-cadastro-e-consulta-de-acessos-de-teste
+2026-10-21T17:21:01.7850009Z  * [new branch]      codex/corrigir-carregamento-de-organizacoes-e-telas -> origin/codex/corrigir-carregamento-de-organizacoes-e-telas
+2026-10-21T17:21:01.7852005Z  * [new branch]      codex/corrigir-diagnosticos-ca1859-e-enc0085 -> origin/codex/corrigir-diagnosticos-ca1859-e-enc0085
+2026-10-21T17:21:01.7853773Z  * [new branch]      codex/corrigir-e-evoluir-fluxo-de-revisao -> origin/codex/corrigir-e-evoluir-fluxo-de-revisao
+2026-10-21T17:21:01.7855453Z  * [new branch]      codex/corrigir-e-evoluir-odca-solutions -> origin/codex/corrigir-e-evoluir-odca-solutions
+2026-10-21T17:21:01.7857119Z  * [new branch]      codex/corrigir-e-evoluir-odca-solutions-3vlgf0 -> origin/codex/corrigir-e-evoluir-odca-solutions-3vlgf0
+2026-10-21T17:21:01.7859367Z  * [new branch]      codex/corrigir-e-evoluir-odca-solutions-4n4qan -> origin/codex/corrigir-e-evoluir-odca-solutions-4n4qan
+2026-10-21T17:21:01.7860947Z  * [new branch]      codex/corrigir-e-evoluir-odca-solutions-h4vcz5 -> origin/codex/corrigir-e-evoluir-odca-solutions-h4vcz5
+2026-10-21T17:21:01.7862006Z  * [new branch]      codex/corrigir-e-evoluir-odca-solutions-haw3c2 -> origin/codex/corrigir-e-evoluir-odca-solutions-haw3c2
+2026-10-21T17:21:01.7863010Z  * [new branch]      codex/corrigir-e-evoluir-odca-solutions-ksxbvk -> origin/codex/corrigir-e-evoluir-odca-solutions-ksxbvk
+2026-10-21T17:21:01.7864002Z  * [new branch]      codex/corrigir-e-evoluir-odca-solutions-vs9xz3 -> origin/codex/corrigir-e-evoluir-odca-solutions-vs9xz3
+2026-10-21T17:21:01.7865267Z  * [new branch]      codex/corrigir-erro-ca1859-e-melhorar-jornada -> origin/codex/corrigir-erro-ca1859-e-melhorar-jornada
+2026-10-21T17:21:01.7866356Z  * [new branch]      codex/corrigir-erro-ca1859-em-testaccessprovisioner -> origin/codex/corrigir-erro-ca1859-em-testaccessprovisioner
+2026-10-21T17:21:01.7867486Z  * [new branch]      codex/corrigir-erro-cs7036-e-evoluir-central-operacional -> origin/codex/corrigir-erro-cs7036-e-evoluir-central-operacional
+2026-10-21T17:21:01.7868510Z  * [new branch]      codex/corrigir-erro-nu1004-no-restore -> origin/codex/corrigir-erro-nu1004-no-restore
+2026-10-21T17:21:01.7869869Z  * [new branch]      codex/corrigir-erros-ca1859-e-ca1711 -> origin/codex/corrigir-erros-ca1859-e-ca1711
+2026-10-21T17:21:01.7871321Z  * [new branch]      codex/corrigir-erros-cs1503-e-ca1859 -> origin/codex/corrigir-erros-cs1503-e-ca1859
+2026-10-21T17:21:01.7872911Z  * [new branch]      codex/corrigir-erros-de-compilacao-e-analise-estatica -> origin/codex/corrigir-erros-de-compilacao-e-analise-estatica
+2026-10-21T17:21:01.7874953Z  * [new branch]      codex/corrigir-erros-de-compilacao-e-analise-estatica-dz591h -> origin/codex/corrigir-erros-de-compilacao-e-analise-estatica-dz591h
+2026-10-21T17:21:01.7876171Z  * [new branch]      codex/corrigir-erros-de-compilacao-e-execucao -> origin/codex/corrigir-erros-de-compilacao-e-execucao
+2026-10-21T17:21:01.7877073Z  * [new branch]      codex/corrigir-erros-de-compilacao-e-execucao-lq94hk -> origin/codex/corrigir-erros-de-compilacao-e-execucao-lq94hk
+2026-10-21T17:21:01.7878382Z  * [new branch]      codex/corrigir-erros-de-compilacao-no-contractstudiocontroller -> origin/codex/corrigir-erros-de-compilacao-no-contractstudiocontroller
+2026-10-21T17:21:01.7879785Z  * [new branch]      codex/corrigir-erros-de-materializacao-do-dapper -> origin/codex/corrigir-erros-de-materializacao-do-dapper
+2026-10-21T17:21:01.7881131Z  * [new branch]      codex/corrigir-erros-de-runtime-em-dapper/npgsql -> origin/codex/corrigir-erros-de-runtime-em-dapper/npgsql
+2026-10-21T17:21:01.7882769Z  * [new branch]      codex/corrigir-erros-e-validar-fluxos -> origin/codex/corrigir-erros-e-validar-fluxos
+2026-10-21T17:21:01.7883719Z  * [new branch]      codex/corrigir-erros-no-projeto-odca-solutions -> origin/codex/corrigir-erros-no-projeto-odca-solutions
+2026-10-21T17:21:01.7884543Z  * [new branch]      codex/corrigir-falha-de-configuracao-jwt -> origin/codex/corrigir-falha-de-configuracao-jwt
+2026-10-21T17:21:01.7885356Z  * [new branch]      codex/corrigir-falha-de-configuracao-jwt-v0oc8w -> origin/codex/corrigir-falha-de-configuracao-jwt-v0oc8w
+2026-10-21T17:21:01.7886205Z  * [new branch]      codex/corrigir-falha-de-inicializacao-da-api -> origin/codex/corrigir-falha-de-inicializacao-da-api
+2026-10-21T17:21:01.7887088Z  * [new branch]      codex/corrigir-falha-de-inicializacao-da-api-illna3 -> origin/codex/corrigir-falha-de-inicializacao-da-api-illna3
+2026-10-21T17:21:01.7888033Z  * [new branch]      codex/corrigir-falha-de-inicializacao-da-api-p94ys9 -> origin/codex/corrigir-falha-de-inicializacao-da-api-p94ys9
+2026-10-21T17:21:01.7888964Z  * [new branch]      codex/corrigir-falha-de-inicializacao-das-rotas -> origin/codex/corrigir-falha-de-inicializacao-das-rotas
+2026-10-21T17:21:01.7890297Z  * [new branch]      codex/corrigir-inconsistencia-de-versoes-de-pacotes -> origin/codex/corrigir-inconsistencia-de-versoes-de-pacotes
+2026-10-21T17:21:01.7891249Z  * [new branch]      codex/corrigir-inicializacao-local-do-odca-solutions -> origin/codex/corrigir-inicializacao-local-do-odca-solutions
+2026-10-21T17:21:01.7892167Z  * [new branch]      codex/corrigir-problemas-de-execucao-do-software -> origin/codex/corrigir-problemas-de-execucao-do-software
+2026-10-21T17:21:01.7893066Z  * [new branch]      codex/corrigir-seed-test-access.sql-para-postgresql -> origin/codex/corrigir-seed-test-access.sql-para-postgresql
+2026-10-21T17:21:01.7893936Z  * [new branch]      codex/corrigir-testes-e-lacunas-de-identidade -> origin/codex/corrigir-testes-e-lacunas-de-identidade
+2026-10-21T17:21:01.7894873Z  * [new branch]      codex/entregar-evolucao-da-central-operacional -> origin/codex/entregar-evolucao-da-central-operacional
+2026-10-21T17:21:01.7895810Z  * [new branch]      codex/estabilizar-jornada-operacional-do-odca-legal-med -> origin/codex/estabilizar-jornada-operacional-do-odca-legal-med
+2026-10-21T17:21:01.7896815Z  * [new branch]      codex/evolua-design-e-funcionalidades-da-odca-solutions -> origin/codex/evolua-design-e-funcionalidades-da-odca-solutions
+2026-10-21T17:21:01.7897794Z  * [new branch]      codex/evoluir-fluxo-de-criacao-e-revisao-de-contratos -> origin/codex/evoluir-fluxo-de-criacao-e-revisao-de-contratos
+2026-10-21T17:21:01.7898832Z  * [new branch]      codex/evoluir-odca-legal-med-para-documento-final -> origin/codex/evoluir-odca-legal-med-para-documento-final
+2026-10-21T17:21:01.7899892Z  * [new branch]      codex/evoluir-odca-solutions-para-mvp -> origin/codex/evoluir-odca-solutions-para-mvp
+2026-10-21T17:21:01.7900692Z  * [new branch]      codex/evoluir-odca-solutions-para-mvp-funcional -> origin/codex/evoluir-odca-solutions-para-mvp-funcional
+2026-10-21T17:21:01.7901608Z  * [new branch]      codex/evoluir-odca-solutions-para-versionamento-mvp -> origin/codex/evoluir-odca-solutions-para-versionamento-mvp
+2026-10-21T17:21:01.7902674Z  * [new branch]      codex/evoluir-projeto-odca-e-implementar-central-de-documentos -> origin/codex/evoluir-projeto-odca-e-implementar-central-de-documentos
+2026-10-21T17:21:01.7903651Z  * [new branch]      codex/fechar-avanco-do-mvp-do-odca-solutions -> origin/codex/fechar-avanco-do-mvp-do-odca-solutions
+2026-10-21T17:21:01.7904669Z  * [new branch]      codex/fechar-mvp-operacional-do-odca-solutions -> origin/codex/fechar-mvp-operacional-do-odca-solutions
+2026-10-21T17:21:01.7905381Z  * [new branch]      codex/fix-first-start-runtime -> origin/codex/fix-first-start-runtime
+2026-10-21T17:21:01.7906061Z  * [new branch]      codex/implementar-acesso-de-teste-validado -> origin/codex/implementar-acesso-de-teste-validado
+2026-10-21T17:21:01.7906990Z  * [new branch]      codex/implementar-alteracoes-no-odca-solutions -> origin/codex/implementar-alteracoes-no-odca-solutions
+2026-10-21T17:21:01.7907946Z  * [new branch]      codex/implementar-cadastro-de-superadministrador-e-cliente -> origin/codex/implementar-cadastro-de-superadministrador-e-cliente
+2026-10-21T17:21:01.7908969Z  * [new branch]      codex/implementar-central-de-renovacoes-e-aditivos -> origin/codex/implementar-central-de-renovacoes-e-aditivos
+2026-10-21T17:21:01.7910194Z  * [new branch]      codex/implementar-central-do-cliente-e-consumo -> origin/codex/implementar-central-do-cliente-e-consumo
+2026-10-21T17:21:01.7911096Z  * [new branch]      codex/implementar-central-inteligente-de-contratos -> origin/codex/implementar-central-inteligente-de-contratos
+2026-10-21T17:21:01.7912027Z  * [new branch]      codex/implementar-ciclo-de-evolucao-do-odca-solutions -> origin/codex/implementar-ciclo-de-evolucao-do-odca-solutions
+2026-10-21T17:21:01.7912958Z  * [new branch]      codex/implementar-ciclo-de-importacao-de-contratos -> origin/codex/implementar-ciclo-de-importacao-de-contratos
+2026-10-21T17:21:01.7914305Z  * [new branch]      codex/implementar-correcao-de-inicializacao-e-evolucao-visual -> origin/codex/implementar-correcao-de-inicializacao-e-evolucao-visual
+2026-10-21T17:21:01.7916022Z  * [new branch]      codex/implementar-evolucao-da-aplicacao-odca -> origin/codex/implementar-evolucao-da-aplicacao-odca
+2026-10-21T17:21:01.7917491Z  * [new branch]      codex/implementar-evolucao-do-odca-solutions -> origin/codex/implementar-evolucao-do-odca-solutions
+2026-10-21T17:21:01.7919394Z  * [new branch]      codex/implementar-evolucao-do-odca-solutions-qza23r -> origin/codex/implementar-evolucao-do-odca-solutions-qza23r
+2026-10-21T17:21:01.7921169Z  * [new branch]      codex/implementar-funcionalidades-do-odca-solutions -> origin/codex/implementar-funcionalidades-do-odca-solutions
+2026-10-21T17:21:01.7922844Z  * [new branch]      codex/implementar-importacao-assistida-de-contratos -> origin/codex/implementar-importacao-assistida-de-contratos
+2026-10-21T17:21:01.7924359Z  * [new branch]      codex/implementar-jornada-de-cliente-odca -> origin/codex/implementar-jornada-de-cliente-odca
+2026-10-21T17:21:01.7925886Z  * [new branch]      codex/implementar-jornada-documental-odca-legal-med -> origin/codex/implementar-jornada-documental-odca-legal-med
+2026-10-21T17:21:01.7927668Z  * [new branch]      codex/implementar-proximo-incremento-do-odca-legal-med -> origin/codex/implementar-proximo-incremento-do-odca-legal-med
+2026-10-21T17:21:01.7928830Z  * [new branch]      codex/realizar-auditoria-inicial-do-mvp -> origin/codex/realizar-auditoria-inicial-do-mvp
+2026-10-21T17:21:01.7929941Z  * [new branch]      codex/runtime-config-no-projeto-api -> origin/codex/runtime-config-no-projeto-api
+2026-10-21T17:21:01.7930567Z  * [new branch]      codex/s00-foundation -> origin/codex/s00-foundation
+2026-10-21T17:21:01.7931051Z  * [new branch]      codex/s02-contracts-center -> origin/codex/s02-contracts-center
+2026-10-21T17:21:01.7931835Z  * [new branch]      codex/tornar-todas-telas-do-cliente-funcionais -> origin/codex/tornar-todas-telas-do-cliente-funcionais
+2026-10-21T17:21:01.7932634Z  * [new branch]      codex/validar-ambiente-e-build-do-odca -> origin/codex/validar-ambiente-e-build-do-odca
+2026-10-21T17:21:01.7933373Z  * [new branch]      codex/verificar-e-corrigir-build-e-login -> origin/codex/verificar-e-corrigir-build-e-login
+2026-10-21T17:21:01.7934404Z  * [new branch]      dependabot/github_actions/actions/setup-node-7.1.0 -> origin/dependabot/github_actions/actions/setup-node-7.1.0
+2026-10-21T17:21:01.7935551Z  * [new branch]      dependabot/github_actions/actions/upload-artifact-7.0.2 -> origin/dependabot/github_actions/actions/upload-artifact-7.0.2
+2026-10-21T17:21:01.7936782Z  * [new branch]      dependabot/nuget/src/Odca.Api/Microsoft.AspNetCore.Authentication.JwtBearer-10.0.13 -> origin/dependabot/nuget/src/Odca.Api/Microsoft.AspNetCore.Authentication.JwtBearer-10.0.13
+2026-10-21T17:21:01.7938177Z  * [new branch]      dependabot/nuget/src/Odca.Api/Microsoft.AspNetCore.OpenApi-10.0.13 -> origin/dependabot/nuget/src/Odca.Api/Microsoft.AspNetCore.OpenApi-10.0.13
+2026-10-21T17:21:01.7939402Z  * [new branch]      dependabot/nuget/src/Odca.Web/QRCoder-1.8.1 -> origin/dependabot/nuget/src/Odca.Web/QRCoder-1.8.1
+2026-10-21T17:21:01.7940278Z  * [new branch]      dependabot/nuget/tests/Odca.Domain.Tests/multi-45d74c8809 -> origin/dependabot/nuget/tests/Odca.Domain.Tests/multi-45d74c8809
+2026-10-21T17:21:01.7941496Z  * [new branch]      dependabot/nuget/tests/Odca.IntegrationTests/Microsoft.AspNetCore.Mvc.Testing-10.0.13 -> origin/dependabot/nuget/tests/Odca.IntegrationTests/Microsoft.AspNetCore.Mvc.Testing-10.0.13
+2026-10-21T17:21:01.7942649Z  * [new branch]      feat/acesso-local-operador-indisponivel -> origin/feat/acesso-local-operador-indisponivel
+2026-10-21T17:21:01.7943349Z  * [new branch]      feat/avisos-confirmacao-renovacao -> origin/feat/avisos-confirmacao-renovacao
+2026-10-21T17:21:01.7943941Z  * [new branch]      feat/dev-superadmin-script -> origin/feat/dev-superadmin-script
+2026-10-21T17:21:01.7944589Z  * [new branch]      feat/documentos-importacao-confirmacoes -> origin/feat/documentos-importacao-confirmacoes
+2026-10-21T17:21:01.7945340Z  * [new branch]      feat/ficha-acionavel-minuta-contexto -> origin/feat/ficha-acionavel-minuta-contexto
+2026-10-21T17:21:01.7946678Z  * [new branch]      feat/ficha-revisao-historico-chave -> origin/feat/ficha-revisao-historico-chave
+2026-10-21T17:21:01.7947791Z  * [new branch]      feat/official-studio-templates -> origin/feat/official-studio-templates
+2026-10-21T17:21:01.7948771Z  * [new branch]      feat/superadmin-ops-rules -> origin/feat/superadmin-ops-rules
+2026-10-21T17:21:01.7949870Z  * [new branch]      fix/ca1848-contract-imports-logger -> origin/fix/ca1848-contract-imports-logger
+2026-10-21T17:21:01.7951766Z [command]/usr/bin/git branch --list --remote origin/codex/s00-foundation
+2026-10-21T17:21:01.7952425Z   origin/codex/s00-foundation
+2026-10-21T17:21:01.7953462Z [command]/usr/bin/git rev-parse refs/remotes/origin/codex/s00-foundation
+2026-10-21T17:21:01.7976313Z cf0f74b86533fa5cd36e72cfead19dd88a784b4b
+2026-10-21T17:21:01.7980986Z ##[endgroup]
+2026-10-21T17:21:01.7981408Z ##[group]Determining the checkout info
+2026-10-21T17:21:01.7982370Z ##[endgroup]
+2026-10-21T17:21:01.7987185Z [command]/usr/bin/git sparse-checkout disable
+2026-10-21T17:21:01.8067914Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-21T17:21:01.8118929Z ##[group]Checking out the ref
+2026-10-21T17:21:01.8126973Z [command]/usr/bin/git checkout --progress --force -B codex/s00-foundation refs/remotes/origin/codex/s00-foundation
+2026-10-21T17:21:01.9278226Z Switched to a new branch 'codex/s00-foundation'
+2026-10-21T17:21:01.9295869Z branch 'codex/s00-foundation' set up to track 'origin/codex/s00-foundation'.
+2026-10-21T17:21:01.9307179Z ##[endgroup]
+2026-10-21T17:21:01.9375199Z [command]/usr/bin/git log -1 --format=%H
+2026-10-21T17:21:01.9418635Z cf0f74b86533fa5cd36e72cfead19dd88a784b4b
+2026-10-21T17:21:01.9680828Z ##[group]Run actions/setup-dotnet@v6.0.0
+2026-10-21T17:21:01.9681153Z with:
+2026-10-21T17:21:01.9681361Z   global-json-file: global.json
+2026-10-21T17:21:01.9681612Z   cache: false
+2026-10-21T17:21:01.9681799Z env:
+2026-10-21T17:21:01.9682572Z   ODCA_TEST_ADMIN_CONNECTION: Host=localhost;Port=5432;Database=odca_test;Username=postgres;***;Include Error Detail=false
+2026-10-21T17:21:01.9683548Z   ODCA_TEST_APP_CONNECTION: Host=localhost;Port=5432;Database=odca_test;Username=odca_test_app_login;***;Include Error Detail=false
+2026-10-21T17:21:01.9684365Z   ODCA_TEST_ENVIRONMENT: ODCA_INTEGRATION_TESTS
+2026-10-21T17:21:01.9684655Z ##[endgroup]
+2026-10-21T17:21:02.1110868Z [command]/home/runner/work/_actions/actions/setup-dotnet/v6.0.0/externals/install-dotnet.sh --skip-non-versioned-files --runtime dotnet --channel LTS
+2026-10-21T17:21:02.3358199Z dotnet-install: .NET Core Runtime with version '10.0.13' is already installed.
+2026-10-21T17:21:02.3384617Z [command]/home/runner/work/_actions/actions/setup-dotnet/v6.0.0/externals/install-dotnet.sh --skip-non-versioned-files --channel 10.0.4xx
+2026-10-21T17:21:02.7435971Z dotnet-install: .NET Core SDK with version '10.0.402' is already installed.
+2026-10-21T17:21:02.7629790Z ##[group]Run actions/setup-node@v7.0.0
+2026-10-21T17:21:02.7630140Z with:
+2026-10-21T17:21:02.7630337Z   node-version: 24.18.0
+2026-10-21T17:21:02.7630563Z   check-latest: false
+2026-10-21T17:21:02.7632877Z   token: ***
+2026-10-21T17:21:02.7633115Z   package-manager-cache: true
+2026-10-21T17:21:02.7633370Z env:
+2026-10-21T17:21:02.7656723Z   ODCA_TEST_ADMIN_CONNECTION: Host=localhost;Port=5432;Database=odca_test;Username=postgres;***;Include Error Detail=false
+2026-10-21T17:21:02.7657761Z   ODCA_TEST_APP_CONNECTION: Host=localhost;Port=5432;Database=odca_test;Username=odca_test_app_login;***;Include Error Detail=false
+2026-10-21T17:21:02.7658367Z   ODCA_TEST_ENVIRONMENT: ODCA_INTEGRATION_TESTS
+2026-10-21T17:21:02.7658672Z   DOTNET_ROOT: /usr/share/dotnet
+2026-10-21T17:21:02.7658953Z ##[endgroup]
+2026-10-21T17:21:02.9008043Z Attempting to download 24.18.0...
+2026-10-21T17:21:03.8054885Z Acquiring 24.18.0 - x64 from https://github.com/actions/node-versions/releases/download/24.18.0-28070977815/node-24.18.0-linux-x64.tar.gz
+2026-10-21T17:21:04.2871839Z Extracting ...
+2026-10-21T17:21:04.3025361Z [command]/usr/bin/tar xz --strip 1 --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/3a5bdb2a-3a6c-417c-9dbe-abb58f023a89 -f /home/runner/work/_temp/98fcfd68-e424-4233-956c-c5d066a655ac
+2026-10-21T17:21:05.5355424Z Adding to the cache ...
+2026-10-21T17:21:07.4893601Z ##[group]Environment details
+2026-10-21T17:21:07.7362305Z node: v24.18.0
+2026-10-21T17:21:07.7362772Z npm: 11.16.0
+2026-10-21T17:21:07.7364610Z yarn: 1.22.22
+2026-10-21T17:21:07.7365118Z ##[endgroup]
+2026-10-21T17:21:07.7555506Z ##[group]Run dotnet restore Odca.sln --locked-mode
+2026-10-21T17:21:07.7555988Z [36;1mdotnet restore Odca.sln --locked-mode[0m
+2026-10-21T17:21:07.7642261Z shell: /usr/bin/bash -e {0}
+2026-10-21T17:21:07.7642526Z env:
+2026-10-21T17:21:07.7643264Z   ODCA_TEST_ADMIN_CONNECTION: Host=localhost;Port=5432;Database=odca_test;Username=postgres;***;Include Error Detail=false
+2026-10-21T17:21:07.7644273Z   ODCA_TEST_APP_CONNECTION: Host=localhost;Port=5432;Database=odca_test;Username=odca_test_app_login;***;Include Error Detail=false
+2026-10-21T17:21:07.7644877Z   ODCA_TEST_ENVIRONMENT: ODCA_INTEGRATION_TESTS
+2026-10-21T17:21:07.7645181Z   DOTNET_ROOT: /usr/share/dotnet
+2026-10-21T17:21:07.7645448Z ##[endgroup]
+2026-10-21T17:21:13.5202714Z   Determining projects to restore...
+2026-10-21T17:21:15.4741408Z   Restored /home/runner/work/odcasolutions/odcasolutions/src/Odca.Domain/Odca.Domain.csproj (in 264 ms).
+2026-10-21T17:21:17.3969809Z   Restored /home/runner/work/odcasolutions/odcasolutions/src/Odca.Worker/Odca.Worker.csproj (in 2.24 sec).
+2026-10-21T17:21:17.3977140Z   Restored /home/runner/work/odcasolutions/odcasolutions/src/Odca.Bootstrap/Odca.Bootstrap.csproj (in 2.23 sec).
+2026-10-21T17:21:17.4110852Z   Restored /home/runner/work/odcasolutions/odcasolutions/src/Odca.Infrastructure/Odca.Infrastructure.csproj (in 7 ms).
+2026-10-21T17:21:17.4170908Z   Restored /home/runner/work/odcasolutions/odcasolutions/src/Odca.Contracts/Odca.Contracts.csproj (in 1 ms).
+2026-10-21T17:21:17.4203434Z   Restored /home/runner/work/odcasolutions/odcasolutions/src/Odca.Web/Odca.Web.csproj (in 14 ms).
+2026-10-21T17:21:17.4230511Z   Restored /home/runner/work/odcasolutions/odcasolutions/src/Odca.Configuration/Odca.Configuration.csproj (in 2 ms).
+2026-10-21T17:21:17.4281883Z   Restored /home/runner/work/odcasolutions/odcasolutions/src/Odca.Application/Odca.Application.csproj (in 3 ms).
+2026-10-21T17:21:17.4340449Z   Restored /home/runner/work/odcasolutions/odcasolutions/src/Odca.AI/Odca.AI.csproj (in 2 ms).
+2026-10-21T17:21:17.4521105Z   Restored /home/runner/work/odcasolutions/odcasolutions/src/Odca.Api/Odca.Api.csproj (in 16 ms).
+2026-10-21T17:21:17.4577916Z   Restored /home/runner/work/odcasolutions/odcasolutions/tests/Odca.Domain.Tests/Odca.Domain.Tests.csproj (in 1.96 sec).
+2026-10-21T17:21:17.4682257Z   Restored /home/runner/work/odcasolutions/odcasolutions/tests/Odca.IntegrationTests/Odca.IntegrationTests.csproj (in 2.3 sec).
+2026-10-21T17:21:17.5303719Z ##[group]Run dotnet build Odca.sln --configuration Release --no-restore
+2026-10-21T17:21:17.5304295Z [36;1mdotnet build Odca.sln --configuration Release --no-restore[0m
+2026-10-21T17:21:17.5358334Z shell: /usr/bin/bash -e {0}
+2026-10-21T17:21:17.5358603Z env:
+2026-10-21T17:21:17.5359615Z   ODCA_TEST_ADMIN_CONNECTION: Host=localhost;Port=5432;Database=odca_test;Username=postgres;***;Include Error Detail=false
+2026-10-21T17:21:17.5360604Z   ODCA_TEST_APP_CONNECTION: Host=localhost;Port=5432;Database=odca_test;Username=odca_test_app_login;***;Include Error Detail=false
+2026-10-21T17:21:17.5361195Z   ODCA_TEST_ENVIRONMENT: ODCA_INTEGRATION_TESTS
+2026-10-21T17:21:17.5361503Z   DOTNET_ROOT: /usr/share/dotnet
+2026-10-21T17:21:17.5361745Z ##[endgroup]
+2026-10-21T17:21:24.5521201Z   Odca.Domain -> /home/runner/work/odcasolutions/odcasolutions/src/Odca.Domain/bin/Release/net10.0/Odca.Domain.dll
+2026-10-21T17:21:25.6655237Z   Odca.Configuration -> /home/runner/work/odcasolutions/odcasolutions/src/Odca.Configuration/bin/Release/net10.0/Odca.Configuration.dll
+2026-10-21T17:21:25.6891905Z   Odca.AI -> /home/runner/work/odcasolutions/odcasolutions/src/Odca.AI/bin/Release/net10.0/Odca.AI.dll
+2026-10-21T17:21:26.4785949Z   Odca.Contracts -> /home/runner/work/odcasolutions/odcasolutions/src/Odca.Contracts/bin/Release/net10.0/Odca.Contracts.dll
+2026-10-21T17:21:29.2544827Z   Odca.Application -> /home/runner/work/odcasolutions/odcasolutions/src/Odca.Application/bin/Release/net10.0/Odca.Application.dll
+2026-10-21T17:21:31.1615584Z   Odca.Infrastructure -> /home/runner/work/odcasolutions/odcasolutions/src/Odca.Infrastructure/bin/Release/net10.0/Odca.Infrastructure.dll
+2026-10-21T17:21:50.0667896Z   Odca.Bootstrap -> /home/runner/work/odcasolutions/odcasolutions/src/Odca.Bootstrap/bin/Release/net10.0/Odca.Bootstrap.dll
+2026-10-21T17:21:50.5200420Z   Odca.Web -> /home/runner/work/odcasolutions/odcasolutions/src/Odca.Web/bin/Release/net10.0/Odca.Web.dll
+2026-10-21T17:21:50.5720103Z   Odca.Worker -> /home/runner/work/odcasolutions/odcasolutions/src/Odca.Worker/bin/Release/net10.0/Odca.Worker.dll
+2026-10-21T17:21:50.7080030Z   Odca.Api -> /home/runner/work/odcasolutions/odcasolutions/src/Odca.Api/bin/Release/net10.0/Odca.Api.dll
+2026-10-21T17:21:55.2067781Z   Odca.IntegrationTests -> /home/runner/work/odcasolutions/odcasolutions/tests/Odca.IntegrationTests/bin/Release/net10.0/Odca.IntegrationTests.dll
+2026-10-21T17:21:56.7671405Z   Odca.Domain.Tests -> /home/runner/work/odcasolutions/odcasolutions/tests/Odca.Domain.Tests/bin/Release/net10.0/Odca.Domain.Tests.dll
+2026-10-21T17:21:56.8084199Z 
+2026-10-21T17:21:56.8090682Z Build succeeded.
+2026-10-21T17:21:56.8091443Z     0 Warning(s)
+2026-10-21T17:21:56.8092104Z     0 Error(s)
+2026-10-21T17:21:56.8101346Z 
+2026-10-21T17:21:56.8102055Z Time Elapsed 00:00:38.89
+2026-10-21T17:21:56.8686090Z ##[group]Run npm run build
+2026-10-21T17:21:56.8686396Z [36;1mnpm run build[0m
+2026-10-21T17:21:56.8740478Z shell: /usr/bin/bash -e {0}
+2026-10-21T17:21:56.8740750Z env:
+2026-10-21T17:21:56.8741750Z   ODCA_TEST_ADMIN_CONNECTION: Host=localhost;Port=5432;Database=odca_test;Username=postgres;***;Include Error Detail=false
+2026-10-21T17:21:56.8742769Z   ODCA_TEST_APP_CONNECTION: Host=localhost;Port=5432;Database=odca_test;Username=odca_test_app_login;***;Include Error Detail=false
+2026-10-21T17:21:56.8743629Z   ODCA_TEST_ENVIRONMENT: ODCA_INTEGRATION_TESTS
+2026-10-21T17:21:56.8743941Z   DOTNET_ROOT: /usr/share/dotnet
+2026-10-21T17:21:56.8744185Z ##[endgroup]
+2026-10-21T17:21:57.0020483Z 
+2026-10-21T17:21:57.0050313Z > odca-solutions-assets@0.1.0 build
+2026-10-21T17:21:57.0088127Z > node scripts/check-assets.mjs
+2026-10-21T17:21:57.0119525Z 
+2026-10-21T17:21:57.1119686Z Validated 10 web asset(s), 19 i18n key(s) across 4 catalog(s), and the decimal and template round trips.
+2026-10-21T17:21:57.1265789Z ##[group]Run dotnet test Odca.sln --configuration Release --no-build --results-directory artifacts/test-results --logger "trx;LogFileName=tests.trx"
+2026-10-21T17:21:57.1266896Z [36;1mdotnet test Odca.sln --configuration Release --no-build --results-directory artifacts/test-results --logger "trx;LogFileName=tests.trx"[0m
+2026-10-21T17:21:57.1321376Z shell: /usr/bin/bash -e {0}
+2026-10-21T17:21:57.1321643Z env:
+2026-10-21T17:21:57.1322391Z   ODCA_TEST_ADMIN_CONNECTION: Host=localhost;Port=5432;Database=odca_test;Username=postgres;***;Include Error Detail=false
+2026-10-21T17:21:57.1323399Z   ODCA_TEST_APP_CONNECTION: Host=localhost;Port=5432;Database=odca_test;Username=odca_test_app_login;***;Include Error Detail=false
+2026-10-21T17:21:57.1323999Z   ODCA_TEST_ENVIRONMENT: ODCA_INTEGRATION_TESTS
+2026-10-21T17:21:57.1324304Z   DOTNET_ROOT: /usr/share/dotnet
+2026-10-21T17:21:57.1324542Z ##[endgroup]
+2026-10-21T17:21:58.7251716Z Test run for /home/runner/work/odcasolutions/odcasolutions/tests/Odca.Domain.Tests/bin/Release/net10.0/Odca.Domain.Tests.dll (.NETCoreApp,Version=v10.0)
+2026-10-21T17:21:58.9091983Z Test run for /home/runner/work/odcasolutions/odcasolutions/tests/Odca.IntegrationTests/bin/Release/net10.0/Odca.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+2026-10-21T17:21:59.4667139Z A total of 1 test files matched the specified pattern.
+2026-10-21T17:21:59.4704075Z A total of 1 test files matched the specified pattern.
+2026-10-21T17:22:02.1761390Z Results File: /home/runner/work/odcasolutions/odcasolutions/artifacts/test-results/tests.trx
+2026-10-21T17:22:02.1764158Z 
+2026-10-21T17:22:02.1807516Z Passed!  - Failed:     0, Passed:   389, Skipped:     0, Total:   389, Duration: 1 s - Odca.Domain.Tests.dll (net10.0)
+2026-10-21T17:22:27.8646536Z [xUnit.net 00:00:27.86]     Odca.IntegrationTests.FrameworkErrorLocalizationTests.UnhandledExceptionIsPresentedInTheRequestedCulture(culture: "pt-BR", expectedTitle: "Erro interno do servidor.") [FAIL]
+2026-10-21T17:22:27.8691952Z [xUnit.net 00:00:27.86]     Odca.IntegrationTests.FrameworkErrorLocalizationTests.UnhandledExceptionIsPresentedInTheRequestedCulture(culture: "en-US", expectedTitle: "Internal server error.") [FAIL]
+2026-10-21T17:22:29.2304298Z   Failed Odca.IntegrationTests.FrameworkErrorLocalizationTests.UnhandledExceptionIsPresentedInTheRequestedCulture(culture: "pt-BR", expectedTitle: "Erro interno do servidor.") [5 ms]
+2026-10-21T17:22:29.2305600Z   Error Message:
+2026-10-21T17:22:29.2310929Z    System.InvalidOperationException : Configuração local não encontrada. Ambiente=Development; caminho=/home/runner/work/odcasolutions/odcasolutions/src/Odca.Api/development-runtime.json. Na raiz do repositório, execute .\scripts\setup-local.ps1 e depois inicie novamente.
+2026-10-21T17:22:29.2315117Z ---- System.IO.FileNotFoundException : The configuration file 'development-runtime.json' was not found and is not optional. The expected physical path was '/home/runner/work/odcasolutions/odcasolutions/src/Odca.Api/development-runtime.json'.
+2026-10-21T17:22:29.2317013Z   Stack Trace:
+2026-10-21T17:22:29.2319536Z      at Odca.Configuration.LocalRuntimeConfiguration.Add(ConfigurationManager configuration, IHostEnvironment environment, String[] args) in /home/runner/work/odcasolutions/odcasolutions/src/Odca.Configuration/LocalRuntimeConfiguration.cs:line 62
+2026-10-21T17:22:29.2322197Z    at Program.<Main>$(String[] args) in /home/runner/work/odcasolutions/odcasolutions/src/Odca.Api/Program.cs:line 22
+2026-10-21T17:22:29.2323304Z    at InvokeStub_Program.<Main>$(Object, Span`1)
+2026-10-21T17:22:29.2325214Z    at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+2026-10-21T17:22:29.2326285Z --- End of stack trace from previous location ---
+2026-10-21T17:22:29.2326899Z    at Microsoft.Extensions.Hosting.HostFactoryResolver.HostingListener.CreateHost()
+2026-10-21T17:22:29.2328128Z    at Microsoft.Extensions.Hosting.HostFactoryResolver.<>c__DisplayClass10_0.<ResolveHostFactory>b__0(String[] args)
+2026-10-21T17:22:29.2328919Z    at Microsoft.AspNetCore.Mvc.Testing.DeferredHostBuilder.Build()
+2026-10-21T17:22:29.2330165Z    at Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory`1.CreateHost(IHostBuilder builder)
+2026-10-21T17:22:29.2331072Z    at Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory`1.ConfigureHostBuilder(IHostBuilder hostBuilder)
+2026-10-21T17:22:29.2331847Z    at Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory`1.StartServer()
+2026-10-21T17:22:29.2332673Z    at Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory`1.CreateDefaultClient(DelegatingHandler[] handlers)
+2026-10-21T17:22:29.2333698Z    at Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory`1.CreateDefaultClient(Uri baseAddress, DelegatingHandler[] handlers)
+2026-10-21T17:22:29.2334736Z    at Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory`1.CreateClient(WebApplicationFactoryClientOptions options)
+2026-10-21T17:22:29.2335556Z    at Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory`1.CreateClient()
+2026-10-21T17:22:29.2337442Z    at Odca.IntegrationTests.FrameworkErrorLocalizationTests.UnhandledExceptionIsPresentedInTheRequestedCulture(String culture, String expectedTitle) in /home/runner/work/odcasolutions/odcasolutions/tests/Odca.IntegrationTests/FrameworkErrorLocalizationTests.cs:line 67
+2026-10-21T17:22:29.2340881Z    at Odca.IntegrationTests.FrameworkErrorLocalizationTests.UnhandledExceptionIsPresentedInTheRequestedCulture(String culture, String expectedTitle) in /home/runner/work/odcasolutions/odcasolutions/tests/Odca.IntegrationTests/FrameworkErrorLocalizationTests.cs:line 79
+2026-10-21T17:22:29.2343377Z --- End of stack trace from previous location ---
+2026-10-21T17:22:29.2343940Z ----- Inner Stack Trace -----
+2026-10-21T17:22:29.2344494Z    at Microsoft.Extensions.Configuration.FileConfigurationProvider.Load(Boolean reload)
+2026-10-21T17:22:29.2345629Z    at Microsoft.Extensions.Configuration.ConfigurationManager.Microsoft.Extensions.Configuration.IConfigurationBuilder.Add(IConfigurationSource source)
+2026-10-21T17:22:29.2347401Z    at Odca.Configuration.LocalRuntimeConfiguration.Add(ConfigurationManager configuration, IHostEnvironment environment, String[] args) in /home/runner/work/odcasolutions/odcasolutions/src/Odca.Configuration/LocalRuntimeConfiguration.cs:line 55
+2026-10-21T17:22:29.2349636Z   Failed Odca.IntegrationTests.FrameworkErrorLocalizationTests.UnhandledExceptionIsPresentedInTheRequestedCulture(culture: "en-US", expectedTitle: "Internal server error.") [10 ms]
+2026-10-21T17:22:29.2350536Z   Error Message:
+2026-10-21T17:22:29.2352220Z    System.InvalidOperationException : Configuração local não encontrada. Ambiente=Development; caminho=/home/runner/work/odcasolutions/odcasolutions/src/Odca.Api/development-runtime.json. Na raiz do repositório, execute .\scripts\setup-local.ps1 e depois inicie novamente.
+2026-10-21T17:22:29.2354431Z ---- System.IO.FileNotFoundException : The configuration file 'development-runtime.json' was not found and is not optional. The expected physical path was '/home/runner/work/odcasolutions/odcasolutions/src/Odca.Api/development-runtime.json'.
+2026-10-21T17:22:29.2355460Z   Stack Trace:
+2026-10-21T17:22:29.2356696Z      at Odca.Configuration.LocalRuntimeConfiguration.Add(ConfigurationManager configuration, IHostEnvironment environment, String[] args) in /home/runner/work/odcasolutions/odcasolutions/src/Odca.Configuration/LocalRuntimeConfiguration.cs:line 62
+2026-10-21T17:22:29.2358126Z    at Program.<Main>$(String[] args) in /home/runner/work/odcasolutions/odcasolutions/src/Odca.Api/Program.cs:line 22
+2026-10-21T17:22:29.2358996Z    at InvokeStub_Program.<Main>$(Object, Span`1)
+2026-10-21T17:22:29.2360352Z    at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+2026-10-21T17:22:29.2361165Z --- End of stack trace from previous location ---
+2026-10-21T17:22:29.2361912Z    at Microsoft.Extensions.Hosting.HostFactoryResolver.HostingListener.CreateHost()
+2026-10-21T17:22:29.2362803Z    at Microsoft.Extensions.Hosting.HostFactoryResolver.<>c__DisplayClass10_0.<ResolveHostFactory>b__0(String[] args)
+2026-10-21T17:22:29.2363582Z    at Microsoft.AspNetCore.Mvc.Testing.DeferredHostBuilder.Build()
+2026-10-21T17:22:29.2364276Z    at Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory`1.CreateHost(IHostBuilder builder)
+2026-10-21T17:22:29.2365146Z    at Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory`1.ConfigureHostBuilder(IHostBuilder hostBuilder)
+2026-10-21T17:22:29.2365923Z    at Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory`1.StartServer()
+2026-10-21T17:22:29.2366725Z    at Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory`1.CreateDefaultClient(DelegatingHandler[] handlers)
+2026-10-21T17:22:29.2367773Z    at Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory`1.CreateDefaultClient(Uri baseAddress, DelegatingHandler[] handlers)
+2026-10-21T17:22:29.2368842Z    at Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory`1.CreateClient(WebApplicationFactoryClientOptions options)
+2026-10-21T17:22:29.2369943Z    at Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory`1.CreateClient()
+2026-10-21T17:22:29.2371587Z    at Odca.IntegrationTests.FrameworkErrorLocalizationTests.UnhandledExceptionIsPresentedInTheRequestedCulture(String culture, String expectedTitle) in /home/runner/work/odcasolutions/odcasolutions/tests/Odca.IntegrationTests/FrameworkErrorLocalizationTests.cs:line 67
+2026-10-21T17:22:29.2373976Z    at Odca.IntegrationTests.FrameworkErrorLocalizationTests.UnhandledExceptionIsPresentedInTheRequestedCulture(String culture, String expectedTitle) in /home/runner/work/odcasolutions/odcasolutions/tests/Odca.IntegrationTests/FrameworkErrorLocalizationTests.cs:line 79
+2026-10-21T17:22:29.2375295Z --- End of stack trace from previous location ---
+2026-10-21T17:22:29.2375647Z ----- Inner Stack Trace -----
+2026-10-21T17:22:29.2376178Z    at Microsoft.Extensions.Configuration.FileConfigurationProvider.Load(Boolean reload)
+2026-10-21T17:22:29.2377305Z    at Microsoft.Extensions.Configuration.ConfigurationManager.Microsoft.Extensions.Configuration.IConfigurationBuilder.Add(IConfigurationSource source)
+2026-10-21T17:22:29.2379332Z    at Odca.Configuration.LocalRuntimeConfiguration.Add(ConfigurationManager configuration, IHostEnvironment environment, String[] args) in /home/runner/work/odcasolutions/odcasolutions/src/Odca.Configuration/LocalRuntimeConfiguration.cs:line 55
+2026-10-21T17:22:31.4034370Z WARNING: Overwriting results file: /home/runner/work/odcasolutions/odcasolutions/artifacts/test-results/tests.trx
+2026-10-21T17:22:31.4116501Z Results File: /home/runner/work/odcasolutions/odcasolutions/artifacts/test-results/tests.trx
+2026-10-21T17:22:31.4121677Z 
+2026-10-21T17:22:31.4164603Z Failed!  - Failed:     2, Passed:   293, Skipped:     0, Total:   295, Duration: 30 s - Odca.IntegrationTests.dll (net10.0)
+2026-10-21T17:22:31.4932489Z ##[error]Process completed with exit code 1.
+2026-10-21T17:22:31.5020677Z ##[group]Run actions/upload-artifact@v7.0.1
+2026-10-21T17:22:31.5021002Z with:
+2026-10-21T17:22:31.5021199Z   name: test-results
+2026-10-21T17:22:31.5021433Z   path: artifacts/test-results/**/*.trx
+2026-10-21T17:22:31.5021714Z   if-no-files-found: warn
+2026-10-21T17:22:31.5021991Z   compression-level: 6
+2026-10-21T17:22:31.5022213Z   overwrite: false
+2026-10-21T17:22:31.5022430Z   include-hidden-files: false
+2026-10-21T17:22:31.5022668Z   archive: true
+2026-10-21T17:22:31.5022857Z env:
+2026-10-21T17:22:31.5023523Z   ODCA_TEST_ADMIN_CONNECTION: Host=localhost;Port=5432;Database=odca_test;Username=postgres;***;Include Error Detail=false
+2026-10-21T17:22:31.5024805Z   ODCA_TEST_APP_CONNECTION: Host=localhost;Port=5432;Database=odca_test;Username=odca_test_app_login;***;Include Error Detail=false
+2026-10-21T17:22:31.5025406Z   ODCA_TEST_ENVIRONMENT: ODCA_INTEGRATION_TESTS
+2026-10-21T17:22:31.5025713Z   DOTNET_ROOT: /usr/share/dotnet
+2026-10-21T17:22:31.5025956Z ##[endgroup]
+2026-10-21T17:22:31.6595967Z With the provided path, there will be 1 file uploaded
+2026-10-21T17:22:31.6597520Z Artifact name is valid!
+2026-10-21T17:22:31.6598327Z Root directory input is valid!
+2026-10-21T17:22:32.0258247Z Uploading artifact: test-results.zip
+2026-10-21T17:22:32.0301339Z Beginning upload of artifact content to blob storage
+2026-10-21T17:22:32.5089861Z Uploaded bytes 80428
+2026-10-21T17:22:32.5885530Z Finished uploading artifact content to blob storage!
+2026-10-21T17:22:32.5887256Z SHA256 digest of uploaded artifact is 03bb9b9acaeb91e741b4bf760945ff6186d5e6064b8eda46ad65bdc04ca6b56a
+2026-10-21T17:22:32.5888537Z Finalizing artifact upload
+2026-10-21T17:22:33.0130127Z Artifact test-results successfully finalized. Artifact ID 12366585179
+2026-10-21T17:22:33.0131351Z Artifact test-results has been successfully uploaded! Final size is 80428 bytes. Artifact ID is 12366585179
+2026-10-21T17:22:33.0134674Z Artifact download URL: https://github.com/devmnsoft/odcasolutions/actions/runs/39642957579/artifacts/12366585179
+2026-10-21T17:22:33.0346499Z Post job cleanup.
+2026-10-21T17:22:33.1320074Z [command]/usr/bin/git version
+2026-10-21T17:22:33.1382872Z git version 2.55.0
+2026-10-21T17:22:33.1425693Z Temporarily overriding HOME='/home/runner/work/_temp/4fe5402b-8cc7-4f0c-abf9-0a147329e6cd' before making global git config changes
+2026-10-21T17:22:33.1427646Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-21T17:22:33.1432338Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/odcasolutions/odcasolutions
+2026-10-21T17:22:33.1478155Z Removing SSH command configuration
+2026-10-21T17:22:33.1486923Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-21T17:22:33.1538159Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-21T17:22:33.1822024Z Removing HTTP extra header
+2026-10-21T17:22:33.1828142Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-21T17:22:33.1877059Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-21T17:22:33.2153217Z Removing includeIf entries pointing to credentials config files
+2026-10-21T17:22:33.2161061Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-21T17:22:33.2207275Z includeif.gitdir:/home/runner/work/odcasolutions/odcasolutions/.git.path
+2026-10-21T17:22:33.2209355Z includeif.gitdir:/home/runner/work/odcasolutions/odcasolutions/.git/worktrees/*.path
+2026-10-21T17:22:33.2210539Z includeif.gitdir:/github/workspace/.git.path
+2026-10-21T17:22:33.2211554Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-21T17:22:33.2218548Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/odcasolutions/odcasolutions/.git.path
+2026-10-21T17:22:33.2256622Z /home/runner/work/_temp/git-credentials-8f40ff30-2217-4692-9fb2-3a45108bbfa7.config
+2026-10-21T17:22:33.2294686Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/odcasolutions/odcasolutions/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-8f40ff30\-2217\-4692\-9fb2\-3a45108bbfa7\.config
+2026-10-21T17:22:33.2350928Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/odcasolutions/odcasolutions/.git/worktrees/*.path
+2026-10-21T17:22:33.2420050Z /home/runner/work/_temp/git-credentials-8f40ff30-2217-4692-9fb2-3a45108bbfa7.config
+2026-10-21T17:22:33.2424880Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/odcasolutions/odcasolutions/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-8f40ff30\-2217\-4692\-9fb2\-3a45108bbfa7\.config
+2026-10-21T17:22:33.2497740Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-10-21T17:22:33.2554419Z /github/runner_temp/git-credentials-8f40ff30-2217-4692-9fb2-3a45108bbfa7.config
+2026-10-21T17:22:33.2566570Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-8f40ff30\-2217\-4692\-9fb2\-3a45108bbfa7\.config
+2026-10-21T17:22:33.2618636Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-21T17:22:33.2657279Z /github/runner_temp/git-credentials-8f40ff30-2217-4692-9fb2-3a45108bbfa7.config
+2026-10-21T17:22:33.2666730Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-8f40ff30\-2217\-4692\-9fb2\-3a45108bbfa7\.config
+2026-10-21T17:22:33.2717600Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-21T17:22:33.2986100Z Removing credentials config '/home/runner/work/_temp/git-credentials-8f40ff30-2217-4692-9fb2-3a45108bbfa7.config'
+2026-10-21T17:22:33.3114430Z Print service container logs: 0915a0cdb79245d2979ea34d4aab3b32_postgres181alpine_b1cc7d
+2026-10-21T17:22:33.3119795Z ##[command]/usr/bin/docker logs --details c3c286018bce2bbf7a752b2976b61066988bfcda71c0f5cad29509df7639cbab
+2026-10-21T17:22:33.3273037Z  sh: locale: not found
+2026-10-21T17:22:33.3273783Z  The files belonging to this database system will be owned by user "postgres".
+2026-10-21T17:22:33.3274779Z  This user must also own the server process.
+2026-10-21T17:22:33.3275545Z  2026-10-21 17:20:54.315 UTC [38] WARNING:  no usable system locales were found
+2026-10-21T17:22:33.3276380Z  initdb: warning: enabling "trust" authentication for local connections
+2026-10-21T17:22:33.3277185Z  initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+2026-10-21T17:22:33.3280755Z  2026-10-21 17:20:55.173 UTC [1] LOG:  starting PostgreSQL 18.1 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+2026-10-21T17:22:33.3281936Z  2026-10-21 17:20:55.173 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-10-21T17:22:33.3282769Z  2026-10-21 17:20:55.173 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2026-10-21T17:22:33.3283698Z  2026-10-21 17:20:55.174 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-10-21T17:22:33.3284700Z  2026-10-21 17:20:55.178 UTC [66] LOG:  database system was shut down at 2026-10-21 17:20:55 UTC
+2026-10-21T17:22:33.3285653Z  2026-10-21 17:20:55.182 UTC [1] LOG:  database system is ready to accept connections
+2026-10-21T17:22:33.3286876Z  2026-10-21 17:22:06.355 UTC [172] ERROR:  insert or update on table "member_roles" violates foreign key constraint "member_roles_tenant_role_fk"
+2026-10-21T17:22:33.3288057Z  2026-10-21 17:22:06.355 UTC [172] DETAIL:  Key is not present in table "roles".
+2026-10-21T17:22:33.3289306Z  2026-10-21 17:22:06.355 UTC [172] STATEMENT:  INSERT INTO odca.member_roles (tenant_id, user_id, role_id, assigned_by)
+2026-10-21T17:22:33.3290152Z  	VALUES (
+2026-10-21T17:22:33.3290537Z  	    '50000000-0000-0000-0000-000000000001',
+2026-10-21T17:22:33.3291011Z  	    '20000000-0000-0000-0000-000000000001',
+2026-10-21T17:22:33.3291468Z  	    '60000000-0000-0000-0000-000000000002',
+2026-10-21T17:22:33.3291912Z  	    '20000000-0000-0000-0000-000000000001')
+2026-10-21T17:22:33.3292610Z  2026-10-21 17:22:14.265 UTC [202] ERROR:  target user is not an active member of the session tenant
+2026-10-21T17:22:33.3294218Z  2026-10-21 17:22:14.265 UTC [202] CONTEXT:  PL/pgSQL function start_support_impersonation(uuid,uuid,uuid,integer) line 40 at RAISE
+2026-10-21T17:22:33.3295480Z  2026-10-21 17:22:14.265 UTC [202] STATEMENT:  SELECT * FROM odca.start_support_impersonation($1, $2, $3, $4)
+2026-10-21T17:22:33.3296467Z  2026-10-21 17:22:14.280 UTC [202] ERROR:  session already has an active impersonation
+2026-10-21T17:22:33.3297645Z  2026-10-21 17:22:14.280 UTC [202] CONTEXT:  PL/pgSQL function start_support_impersonation(uuid,uuid,uuid,integer) line 24 at RAISE
+2026-10-21T17:22:33.3298848Z  2026-10-21 17:22:14.280 UTC [202] STATEMENT:  SELECT * FROM odca.start_support_impersonation($1, $2, $3, $4)
+2026-10-21T17:22:33.3300174Z  2026-10-21 17:22:16.049 UTC [225] ERROR:  duplicate key value violates unique constraint "contract_drafts_tenant_id_contract_id_key"
+2026-10-21T17:22:33.3301438Z  2026-10-21 17:22:16.049 UTC [225] STATEMENT:  INSERT INTO odca.contract_drafts(id,tenant_id,contract_id,source_template_id,source_template_version_id,content,fields,values,created_by,updated_by,patient_id,patient_row_version,patient_selection_snapshot)
+2026-10-21T17:22:33.3302520Z  	VALUES($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8::jsonb,$9,$9,$10,
+2026-10-21T17:22:33.3302961Z  	  (SELECT row_version FROM odca.patients WHERE tenant_id=$2 AND id=$10),
+2026-10-21T17:22:33.3303363Z  	  odca.patient_document_snapshot($2,$10))
+2026-10-21T17:22:33.3303733Z  2026-10-21 17:22:17.650 UTC [231] ERROR:  session not found or not active
+2026-10-21T17:22:33.3304609Z  2026-10-21 17:22:17.650 UTC [231] CONTEXT:  PL/pgSQL function close_support_session(uuid,uuid,boolean) line 9 at RAISE
+2026-10-21T17:22:33.3305298Z  2026-10-21 17:22:17.650 UTC [231] STATEMENT:  SELECT odca.close_support_session($1, $2, $3)
+2026-10-21T17:22:33.3305817Z  2026-10-21 17:22:17.702 UTC [232] ERROR:  active support session already exists
+2026-10-21T17:22:33.3306490Z  2026-10-21 17:22:17.702 UTC [232] CONTEXT:  PL/pgSQL function open_support_session(uuid,uuid,character varying,integer) line 18 at RAISE
+2026-10-21T17:22:33.3307209Z  2026-10-21 17:22:17.702 UTC [232] STATEMENT:  SELECT odca.open_support_session($1, $2, $3, $4)
+2026-10-21T17:22:33.3307709Z  2026-10-21 17:22:18.456 UTC [238] ERROR:  not a platform administrator
+2026-10-21T17:22:33.3308354Z  2026-10-21 17:22:18.456 UTC [238] CONTEXT:  PL/pgSQL function open_support_session(uuid,uuid,character varying,integer) line 8 at RAISE
+2026-10-21T17:22:33.3309415Z  2026-10-21 17:22:18.456 UTC [238] STATEMENT:  SELECT odca.open_support_session($1, $2, $3, $4)
+2026-10-21T17:22:33.3310003Z  2026-10-21 17:22:23.527 UTC [163] ERROR:  tenant role cannot receive platform permission
+2026-10-21T17:22:33.3310644Z  2026-10-21 17:22:23.527 UTC [163] CONTEXT:  PL/pgSQL function reject_platform_permission_on_tenant_role() line 7 at RAISE
+2026-10-21T17:22:33.3311465Z  2026-10-21 17:22:23.527 UTC [163] STATEMENT:  INSERT INTO odca.role_permissions(role_id, permission_code) VALUES ($1, 'platform.audit.read')
+2026-10-21T17:22:33.3312300Z  2026-10-21 17:22:31.107 UTC [309] ERROR:  duplicate key value violates unique constraint "tenants_business_code_key"
+2026-10-21T17:22:33.3313040Z  2026-10-21 17:22:31.107 UTC [309] STATEMENT:  INSERT INTO odca.tenants(id, business_code, display_name, status, timezone)
+2026-10-21T17:22:33.3313608Z  	VALUES ($1, $2, $3, $4, 'America/Sao_Paulo')
+2026-10-21T17:22:33.3313888Z  
+2026-10-21T17:22:33.3314171Z  The database cluster will be initialized with locale "en_US.utf8".
+2026-10-21T17:22:33.3314618Z  The default database encoding has accordingly been set to "UTF8".
+2026-10-21T17:22:33.3315046Z  The default text search configuration will be set to "english".
+2026-10-21T17:22:33.3315385Z  
+2026-10-21T17:22:33.3315579Z  Data page checksums are enabled.
+2026-10-21T17:22:33.3315825Z  
+2026-10-21T17:22:33.3316136Z  fixing permissions on existing directory /var/lib/postgresql/18/docker ... ok
+2026-10-21T17:22:33.3316553Z  creating subdirectories ... ok
+2026-10-21T17:22:33.3317043Z  selecting dynamic shared memory implementation ... posix
+2026-10-21T17:22:33.3317401Z  selecting default "max_connections" ... 100
+2026-10-21T17:22:33.3317721Z  selecting default "shared_buffers" ... 128MB
+2026-10-21T17:22:33.3318046Z  selecting default time zone ... UTC
+2026-10-21T17:22:33.3318318Z  creating configuration files ... ok
+2026-10-21T17:22:33.3318594Z  running bootstrap script ... ok
+2026-10-21T17:22:33.3318883Z  performing post-bootstrap initialization ... ok
+2026-10-21T17:22:33.3319629Z  syncing data to disk ... ok
+2026-10-21T17:22:33.3319899Z  
+2026-10-21T17:22:33.3320079Z  
+2026-10-21T17:22:33.3320340Z  Success. You can now start the database server using:
+2026-10-21T17:22:33.3320644Z  
+2026-10-21T17:22:33.3320897Z      pg_ctl -D /var/lib/postgresql/18/docker -l logfile start
+2026-10-21T17:22:33.3321218Z  
+2026-10-21T17:22:33.3321783Z  waiting for server to start....2026-10-21 17:20:54.886 UTC [44] LOG:  starting PostgreSQL 18.1 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+2026-10-21T17:22:33.3322610Z  2026-10-21 17:20:54.887 UTC [44] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-10-21T17:22:33.3323197Z  2026-10-21 17:20:54.890 UTC [50] LOG:  database system was shut down at 2026-10-21 17:20:54 UTC
+2026-10-21T17:22:33.3323716Z  2026-10-21 17:20:54.894 UTC [44] LOG:  database system is ready to accept connections
+2026-10-21T17:22:33.3324101Z   done
+2026-10-21T17:22:33.3324283Z  server started
+2026-10-21T17:22:33.3324482Z  CREATE DATABASE
+2026-10-21T17:22:33.3324678Z  
+2026-10-21T17:22:33.3324843Z  
+2026-10-21T17:22:33.3325318Z  /usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
+2026-10-21T17:22:33.3325725Z  
+2026-10-21T17:22:33.3326098Z  waiting for server to shut down....2026-10-21 17:20:55.048 UTC [44] LOG:  received fast shutdown request
+2026-10-21T17:22:33.3326633Z  2026-10-21 17:20:55.049 UTC [44] LOG:  aborting any active transactions
+2026-10-21T17:22:33.3327211Z  2026-10-21 17:20:55.051 UTC [44] LOG:  background worker "logical replication launcher" (PID 53) exited with exit code 1
+2026-10-21T17:22:33.3327762Z  2026-10-21 17:20:55.054 UTC [48] LOG:  shutting down
+2026-10-21T17:22:33.3328151Z  2026-10-21 17:20:55.054 UTC [48] LOG:  checkpoint starting: shutdown immediate
+2026-10-21T17:22:33.3329608Z  2026-10-21 17:20:55.070 UTC [48] LOG:  checkpoint complete: wrote 943 buffers (5.8%), wrote 3 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.012 s, sync=0.003 s, total=0.017 s; sync files=303, longest=0.001 s, average=0.001 s; distance=4352 kB, estimate=4352 kB; lsn=0/1B9F348, redo lsn=0/1B9F348
+2026-10-21T17:22:33.3330843Z  2026-10-21 17:20:55.084 UTC [44] LOG:  database system is shut down
+2026-10-21T17:22:33.3331215Z   done
+2026-10-21T17:22:33.3331402Z  server stopped
+2026-10-21T17:22:33.3331606Z  
+2026-10-21T17:22:33.3331843Z  PostgreSQL init process complete; ready for start up.
+2026-10-21T17:22:33.3332144Z  
+2026-10-21T17:22:33.3338745Z Stop and remove container: 0915a0cdb79245d2979ea34d4aab3b32_postgres181alpine_b1cc7d
+2026-10-21T17:22:33.3344800Z ##[command]/usr/bin/docker rm --force c3c286018bce2bbf7a752b2976b61066988bfcda71c0f5cad29509df7639cbab
+2026-10-21T17:22:33.5434213Z c3c286018bce2bbf7a752b2976b61066988bfcda71c0f5cad29509df7639cbab
+2026-10-21T17:22:33.5467228Z Remove container network: github_network_52a5404ca9064e93900fbb643d42750f
+2026-10-21T17:22:33.5472601Z ##[command]/usr/bin/docker network rm github_network_52a5404ca9064e93900fbb643d42750f
+2026-10-21T17:22:33.6398708Z github_network_52a5404ca9064e93900fbb643d42750f
+2026-10-21T17:22:33.6483304Z Cleaning up orphan processes
+2026-10-21T17:22:33.6856054Z Terminate orphan process: pid (2990) (dotnet)
+2026-10-21T17:22:33.6880869Z Terminate orphan process: pid (2991) (dotnet)
+2026-10-21T17:22:33.6916274Z Terminate orphan process: pid (2992) (dotnet)
+2026-10-21T17:22:33.6953180Z Terminate orphan process: pid (3173) (VBCSCompiler)

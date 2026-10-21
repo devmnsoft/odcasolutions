@@ -27,6 +27,7 @@
 - **Réplica negativa (mesmo ambiente, árvore sem a correção)**: worktree no SHA `31b70db`, mesmo container/PG/comandos, fato isolado via `--filter` → **1 falha / 0 passes** com `Expected: 1, Actual: -1` (`evidence/d57-ci-linux-prefix-sem-fix-falha.txt`) — confirma que era este fato o responsável pelo failure do passo `Tests`.
 - **GATE local (Windows)** sobre a árvore corrigida: builds sln 13 projetos `-warnaserror` Release+Debug 0W/0E; Domain 389/389; Integration `-FreshDb` 295/295 TEST-EXIT=0 (transcript da bateria preservado fora do repositório; contagens idênticas às da S22 + nenhum teste novo nesta sprint).
 - Limitação registrada com honestidade: a réplica reproduz o ambiente e a sequência do runner, mas o resultado que vale para creditação é o da execução oficial do GitHub sobre o novo SHA (monitorada após o push; ID da run registrado abaixo ao concluir).
+- **Limitação da réplica verde descoberta nesta sequência (registrada em 21/10/2026)**: a réplica montava o diretório de trabalho Windows (`C:\MNSOFT\odcasolutions`), que carrega além do checkout os arquivos pessoais gitignored — em especial `src/Odca.Api/development-runtime.json`. Ela portanto prova a correção de plataforma (a varredura de `ScanPageNumber` era o alvo) mas **não** a limpeza do checkout; essa falha de escopo ficou visível na run oficial `39642957579` (§ monitoramento) e foi tratada na Sprint 24 / D-OC58, cujas réplicas usam worktree (somente arquivos rastreados = árvore limpa real).
 
 ## 5. Entrega
 
@@ -40,4 +41,5 @@
 | Run | SHA | Status |
 | --- | --- | --- |
 | `39635407117` | `31b70db` (S22) | failure no passo `Tests` (falha que motivou a Sprint 23 — causa raiz §2) |
-| _(novo run sobre o SHA da S23 — preencher ao concluir)_ | | |
+| `39642957579` | `cf0f74b` (S23) | failure no passo `Tests` — **avanço real**: o fato de `ScanPageNumber` passou; restaram 2 falhas (Integration 293/295, Domain 389/389 verde): `FrameworkErrorLocalizationTests.UnhandledExceptionIsPresentedInTheRequestedCulture` pt-BR/en-US por falta do `development-runtime.json` no checkout limpo (arquivo pessoal gitignored, exigido pelo ambiente Development) — log oficial versionado em `evidence/d58-ci-run-39642957579-build-test-falha-framework-error.txt`; causa tratada na Sprint 24 / D-OC58 |
+| _(run sobre o SHA da S24 — registro no D-OC58)_ | | |

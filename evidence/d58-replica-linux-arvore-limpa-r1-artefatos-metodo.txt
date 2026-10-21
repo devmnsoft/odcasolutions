@@ -1,0 +1,57 @@
+﻿  Determining projects to restore...
+  Restored /repo/src/Odca.AI/Odca.AI.csproj (in 749 ms).
+  Restored /repo/src/Odca.Configuration/Odca.Configuration.csproj (in 736 ms).
+  Restored /repo/src/Odca.Application/Odca.Application.csproj (in 764 ms).
+  Restored /repo/src/Odca.Contracts/Odca.Contracts.csproj (in 736 ms).
+  Restored /repo/src/Odca.Domain/Odca.Domain.csproj (in 749 ms).
+  Restored /repo/src/Odca.Infrastructure/Odca.Infrastructure.csproj (in 34.66 sec).
+  Restored /repo/src/Odca.Worker/Odca.Worker.csproj (in 34.66 sec).
+  Restored /repo/src/Odca.Web/Odca.Web.csproj (in 34.65 sec).
+  Restored /repo/src/Odca.Bootstrap/Odca.Bootstrap.csproj (in 35.35 sec).
+  Restored /repo/src/Odca.Api/Odca.Api.csproj (in 34.66 sec).
+  Restored /repo/tests/Odca.IntegrationTests/Odca.IntegrationTests.csproj (in 53.99 sec).
+  Restored /repo/tests/Odca.Domain.Tests/Odca.Domain.Tests.csproj (in 53.96 sec).
+RESTORE-OK
+    0 Error(s)
+
+Time Elapsed 00:03:31.11
+BUILD-OK
+Test run for /repo/tests/Odca.Domain.Tests/bin/Release/net10.0/Odca.Domain.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /repo/tests/Odca.IntegrationTests/bin/Release/net10.0/Odca.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.A total of 1 test files matched the specified pattern.
+
+
+Passed!  - Failed:     0, Passed:   389, Skipped:     0, Total:   389, Duration: 1 s - Odca.Domain.Tests.dll (net10.0)
+[xUnit.net 00:00:39.79]     Odca.IntegrationTests.RuntimeQueryRegressionTests.ContractImportListSeparatesSqlFragmentsTypesNullableRequesterAndUsesStableOrder [FAIL]
+  Failed Odca.IntegrationTests.RuntimeQueryRegressionTests.ContractImportListSeparatesSqlFragmentsTypesNullableRequesterAndUsesStableOrder [16 ms]
+  Error Message:
+   Assert.Contains() Failure: Sub-string not found
+String:    "using System.Security.Claims;\r\nusing Dapp"┬À┬À┬À
+Not found: "+ Environment.NewLine\n            + filte"┬À┬À┬À
+  Stack Trace:
+     at Odca.IntegrationTests.RuntimeQueryRegressionTests.ContractImportListSeparatesSqlFragmentsTypesNullableRequesterAndUsesStableOrder() in /repo/tests/Odca.IntegrationTests/RuntimeQueryRegressionTests.cs:line 139
+   at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)
+   at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+[xUnit.net 00:01:09.63]     Odca.IntegrationTests.DapperMaterializationTests.DocumentScanClaimMaterializesVersionItemFromRealPostgreSql [FAIL]
+  Failed Odca.IntegrationTests.DapperMaterializationTests.DocumentScanClaimMaterializesVersionItemFromRealPostgreSql [109 ms]
+  Error Message:
+   Npgsql.PostgresException : 23505: duplicate key value violates unique constraint "tenants_pkey"
+
+DETAIL: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+  Stack Trace:
+     at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteNonQuery(Boolean async, CancellationToken cancellationToken)
+   at Dapper.SqlMapper.ExecuteImplAsync(IDbConnection cnn, CommandDefinition command, Object param) in /_/Dapper/SqlMapper.Async.cs:line 663
+   at Odca.IntegrationTests.DapperMaterializationTests.DocumentScanClaimMaterializesVersionItemFromRealPostgreSql() in /repo/tests/Odca.IntegrationTests/DapperMaterializationTests.cs:line 245
+   at Odca.IntegrationTests.DapperMaterializationTests.DocumentScanClaimMaterializesVersionItemFromRealPostgreSql() in /repo/tests/Odca.IntegrationTests/DapperMaterializationTests.cs:line 291
+--- End of stack trace from previous location ---
+
+Failed!  - Failed:     2, Passed:   293, Skipped:     0, Total:   295, Duration: 2 m 29 s - Odca.IntegrationTests.dll (net10.0)
+CLEAN-DONE
