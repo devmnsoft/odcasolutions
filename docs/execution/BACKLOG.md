@@ -809,3 +809,11 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [ ] CI oficial deste SHA: pendente (a ser disparada apos push e monitorada via API).
 - [ ] Aceite humano (aprovacao dos textos/campos/PDFs): pendente (impedimento para creditar `templates`).
 - [ ] Portal `.odca/progress.json`: inalterado. Credito do marco `templates` exige evidencia no commit funcional + CI oficial do mesmo SHA verde + aceite real humano.
+## Sprint 28 - D-OC62 - endurecimento de producao (isolamento RLS) (23/10/2026)
+- [x] Prova D-OC62: 7/0 em r1. Isolamento RLS AxB em nivel HTTP (403 para tenants estranhos, 200 para o proprio). Reafirma J2-1 (notificacoes do proprio tenant, 200).
+- [x] Script `scripts/qa/validate-d62-producao.ps1` (HTTP-level, stack unica).
+- [x] GATE: sem mudanca de produto; GATE da S25 permanece valido.
+- [x] Prova local D-OC62: r1 7/0. Evidencias em `evidence/d62-*`.
+- [ ] CI oficial deste SHA: pendente (a ser disparada apos push e monitorada via API).
+- [ ] Aceite humano: pendente (impedimento para creditar `production`).
+- [ ] Portal `.odca/progress.json`: inalterado. Credito do marco `production` exige SMTP real, storage real, isolamento e recupera??o comprovados + aceite real humano.

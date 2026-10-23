@@ -1401,3 +1401,9 @@ Ainda pendentes nesta entrega: transporte de e-mail de produção/worker com lea
 - **F-1 (auditoria do catalogo)**: validacao tecnica do catalogo de estreia: 10 templates globais publicados, todos com versao vigente, conteudo nao vazio e campos obrigatorios rotulados (0 com problema); nenhum contem placeholder (lorem/TODO/placeholder/XXX); 9 templates oficiais identificados por `official_key` com `official_revision >= 1`; tipos cobertos: amendment, consent, lease, nda, service, services, supply.
 - **Limitacoes mantidas**: aprovacao dos textos/campos/PDFs e decisao de conteudo (aceite humano) pendente; provedor real de IA `none`; CI oficial nao verificada (push pendente); aceite humano pendente.
 - **Portal**: `.odca/progress.json` inalterado. Sem credito do marco `templates` nesta entrega: a auditoria tecnica e evidencia parcial; o credito exige a aprovacao humana do catalogo de estreia.
+## Incremento: Sprint 28 - endurecimento tecnico de producao (isolamento RLS AxB) (D-OC62) (23/10/2026)
+
+- **Base**: `codex/s00-foundation` @ `3d8c941` (Sprint 27 / D-OC61). Sem nova migracao (v063 intacto). Sem mudanca de produto (apenas prova). Prova local D-OC62 (r1): **7/0**.
+- **F-1 (isolamento RLS)**: prova HTTP-level de isolamento multi-tenant: token de um tenant tenta ler dados de outros tenants (A e B) e e recusado (403); leitura do proprio tenant funciona (200). Complementa os testes de integracao (`SeedTenantIsolationScenarioAsync`) com evidencia end-to-end via API.
+- **Limitacoes mantidas**: SMTP real, storage real e recuperação (restore validado) pendentes (infra real); aceite humano pendente.
+- **Portal**: `.odca/progress.json` inalterado. Sem credito do marco `production` nesta entrega: a prova valida isolamento, mas o marco exige SMTP real, storage real e recuperação comprovados.
