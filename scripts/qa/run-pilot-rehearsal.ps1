@@ -10,6 +10,7 @@
 #   S10-SMTP       rehearse-smtp-transport.ps1        (transporte SMTP por protocolo real, worker real - S10/D-OC44; autocontido)
 #   D59-JORNADA    validate-d59-jornada-completa.ps1  (jornada operacional completa validada JUNTA:
 #              paciente -> documento -> revisao -> assinatura externa -> agenda -> renovacao - S25/D-OC59)
+#   D60-ASSINATURA validate-d60-assinatura-completa.ps1 (assinatura externa completa: negativas + documento final - S26/D-OC60)
 # S11/D-OC45 acrescentou os dois estagios S10: o ensaio consolidado passa a ser o DRESS REHEARSAL
 # da candidata final (todas as provas atuais numa unica execucao sequencial).
 # Cada estagio sobe/derra a propria stack e grava o proprio transcript em evidence/; uma falha de
@@ -53,7 +54,8 @@ $stages = @(
   @{ Id = 'D39-SEGURANCA'; Script = 'validate-d39-s5-web.ps1';        Mode = 'exit' },
   @{ Id = 'S10-BACKUP';    Script = 'run-backup-restore.ps1';          Mode = 'exit' },
   @{ Id = 'S10-SMTP';      Script = 'rehearse-smtp-transport.ps1';     Mode = 'exit' },
-  @{ Id = 'D59-JORNADA';   Script = 'validate-d59-jornada-completa.ps1'; Mode = 'exit' }
+  @{ Id = 'D59-JORNADA';   Script = 'validate-d59-jornada-completa.ps1'; Mode = 'exit' },
+  @{ Id = 'D60-ASSINATURA'; Script = 'validate-d60-assinatura-completa.ps1'; Mode = 'exit' }
 )
 
 if ($Only) {

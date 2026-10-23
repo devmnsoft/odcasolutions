@@ -792,3 +792,12 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [ ] CI oficial deste SHA: pendente (a ser disparada apos push e monitorada via API).
 - [ ] Aceite humano: pendente (impedimento para creditar operations).
 - [ ] Portal .odca/progress.json: inalterado (baseline 40%, IDs e pesos intactos). Credito do marco operations exige evidencia no commit funcional + CI oficial do mesmo SHA verde + aceite real humano.
+
+## Sprint 26 - D-OC60 - assinatura externa completa (23/10/2026)
+- [x] Prova D-OC60: 64/0 em r13 (~40 min). J14 download do documento final da versao externally_signed (200, PDF, 1823 bytes) + integridade (hash baixado == hash confirmado). J15 segunda versao -> envio -> declined -> sync idempotente -> versao NAO externally_signed -> reenvio consome nova unidade (mvts 1 -> 3). J16 segundo envelope com 3 eventos (sent->declined->sent), versao aceita permanece externally_signed.
+- [x] Script novo `scripts/qa/validate-d60-assinatura-completa.ps1` (reuso da jornada D-OC59 + J14/J15/J16). Orquestrador atualizado com 10o estagio `D60-ASSINATURA`.
+- [x] GATE: sem mudanca de produto; GATE da S25 (Release/Debug 0W/0E, Domain 389/389, Integration 298/298) permanece valido.
+- [x] Prova local D-OC60: r13 64/0. Evidencias em `evidence/d60-*`.
+- [ ] CI oficial deste SHA: pendente (a ser disparada apos push e monitorada via API).
+- [ ] Aceite humano: pendente (impedimento para creditar `signature`).
+- [ ] Portal `.odca/progress.json`: inalterado (baseline 40%, IDs e pesos intactos). Credito do marco `signature` exige evidencia no commit funcional + CI oficial do mesmo SHA verde + aceite real humano.
