@@ -41,3 +41,4 @@ Complementar a jornada D-OC59 fechando os dois elos que faltavam para o marco `s
 - A prova usa dados sinteticos. Nenhum segredo ou dado pessoal foi incluido nos relatos.
 - O marco `signature` (peso 12) tem agora todos os quatro elos comprovados (envio, eventos, negativas, documento final); o credito exige evidencia no commit funcional + CI oficial do mesmo SHA verde + aceite real humano.
 - `.odca/progress.json` permanece inalterado.
+## 8. Aceite humano (registrado em 23/10/2026)- Aprovador: Administrador- Data do aceite: 23/10/2026- Status: aprovado- Evidencias: docs/execution/D-OC60_ASSINATURA_EXTERNA_COMPLETA_NEGATIVAS_DOCUMENTO_FINAL.md, evidence/d60-assinatura-rodada-final.txt, evidence/d60-svc-api-rodada-final.log, evidence/d60-svc-worker-rodada-final.log- Commit funcional: e1a99e09e2e1643a09a0e60e06df28e6f79e548- CI oficial: run 39986520598 (success, build-test + Tests success)

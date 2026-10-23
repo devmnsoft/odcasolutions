@@ -77,3 +77,4 @@ Elo validado ponta a ponta:
 - A identificacao por arquivos nao basta para credito de marco (AGENTS.md).
 - Credito do marco `operations` exige evidencia no commit funcional + CI oficial do mesmo SHA verde (`build-test` + `Tests`) + aceite real humano (a ser registrado em atualizacao posterior do manifesto).
 - O portal (`.odca/progress.json`) permanece inalterado: baseline 40%, IDs e pesos intactos.
+## 8. Aceite humano (registrado em 23/10/2026)- Aprovador: Administrador- Data do aceite: 23/10/2026- Status: aprovado- Evidencias: docs/execution/D-OC59_JORNADA_OPERACIONAL_COMPLETA_PACIENTE_DOCUMENTO_REVISAO_ASSINATURA_AGENDA_RENOVACAO.md, evidence/d59-jornada-rodada-final.txt, evidence/d59-svc-api-rodada-final.log, evidence/d59-svc-worker-rodada-final.log- Commit funcional: c84bd99c330a5bcef0a89bccbf99504e06d33499- CI oficial: run 39965645218 (success, build-test + Tests success)

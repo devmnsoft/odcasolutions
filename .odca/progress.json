@@ -1,4 +1,4 @@
-{
+﻿{
   "schema_version": 1,
   "baseline": {
     "percent": 40,
@@ -28,14 +28,16 @@
       "title": "Assinatura externa completa",
       "weight": 12,
       "criterion": "Envio, eventos, negativas e documento final comprovados.",
-      "status": "pending",
-      "completed_commit": null,
-      "ci_run_id": null,
+      "status":  "completed",
+      "completed_commit":  "be1a99e09e2e1643a09a0e60e06df28e6f79e548",
+      "ci_run_id":  39986520598,
       "required_test_step": "Tests",
       "acceptance": {
-        "approved": false,
-        "approved_by": null,
-        "evidence_paths": []
+        "approved":  true,
+        "approved_by":  "Administrador",
+        "evidence_paths":  [
+                                              "docs/execution/D-OC60_ASSINATURA_EXTERNA_COMPLETA_NEGATIVAS_DOCUMENTO_FINAL.md", "evidence/d60-assinatura-rodada-final.txt", "evidence/d60-svc-api-rodada-final.log", "evidence/d60-svc-worker-rodada-final.log"
+                                          ]
       }
     },
     {
@@ -43,14 +45,16 @@
       "title": "Jornada contratual completa",
       "weight": 8,
       "criterion": "Paciente, documento, revisão, agenda e renovações validados juntos.",
-      "status": "pending",
-      "completed_commit": null,
-      "ci_run_id": null,
+      "status":  "completed",
+      "completed_commit":  "c84bd99c330a5bcef0a89bccbf99504e06d33499",
+      "ci_run_id":  39965645218,
       "required_test_step": "Tests",
       "acceptance": {
-        "approved": false,
-        "approved_by": null,
-        "evidence_paths": []
+        "approved":  true,
+        "approved_by":  "Administrador",
+        "evidence_paths":  [
+                                              "docs/execution/D-OC59_JORNADA_OPERACIONAL_COMPLETA_PACIENTE_DOCUMENTO_REVISAO_ASSINATURA_AGENDA_RENOVACAO.md", "evidence/d59-jornada-rodada-final.txt", "evidence/d59-svc-api-rodada-final.log", "evidence/d59-svc-worker-rodada-final.log"
+                                          ]
       }
     },
     {
