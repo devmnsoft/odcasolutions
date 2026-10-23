@@ -298,6 +298,31 @@ public sealed class NotificationFeedTests(DatabaseFixture database) : IClassFixt
 
     private static string Json(object? value) => JsonSerializer.Serialize(value, JsonOptions);
 
+    /// <summary>
+    /// D-OC59 (Sprint 25/F-1): o prazo de revisao chega do navegador com o fuso local
+    /// (datetime-local + offset da maquina). O Npgsql recusa DateTimeOffset com offset
+    /// diferente de zero em timestamptz; sem normalizacao a solicitacao morria com 500 em
+    /// host fora de UTC. O teste fixa o instante e confere o prazo persistido em UTC.
+    /// </summary>
+    [Fact]
+    public async Task ReviewSubmissionAcceptsNonUtcDueAtOffset()
+    {
+        var seed = await SeedAsync();
+        await using var ds = NpgsqlDataSource.Create(database.AppConnectionString);
+        var controller = CreateController(ds, seed.Actor);
+        var dueAt = new DateTimeOffset(2026, 11, 15, 9, 0, 0, TimeSpan.FromHours(-3));
+
+        var result = await controller.Submit(seed.Tenant, new SubmitReviewRequest(seed.Version, seed.Reviewer, dueAt, "Revisao com fuso local", Guid.NewGuid()), CancellationToken.None);
+        Assert.IsType<OkObjectResult>(result);
+
+        await using var admin = new NpgsqlConnection(database.AdminConnectionString);
+        await admin.OpenAsync();
+        var persisted = await admin.ExecuteScalarAsync<DateTime>(
+            "SELECT due_at FROM odca.contract_review_requests WHERE tenant_id=@tenant AND generated_version_id=@version",
+            new { tenant = seed.Tenant, version = seed.Version });
+        Assert.Equal(dueAt.UtcDateTime, DateTime.SpecifyKind(persisted, DateTimeKind.Utc), TimeSpan.FromSeconds(1));
+    }
+
     private sealed class StubTemplateCatalogRepository : ITemplateCatalogRepository
     {
         public Task<TemplateCatalogPage> ListAsync(Guid tenantId, string? search, string? contractType, string? scope, string? documentPurpose, int page, int pageSize, CancellationToken cancellationToken) =>

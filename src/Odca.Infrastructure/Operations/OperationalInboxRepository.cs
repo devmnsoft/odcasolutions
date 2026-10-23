@@ -183,7 +183,15 @@ public sealed class OperationalInboxRepository(NpgsqlDataSource dataSource)
                   LEFT JOIN odca.users ou ON ou.id = c.owner_id
                  WHERE c.tenant_id = @tenantId
                    AND c.end_date IS NOT NULL
-                   AND c.end_date <= @renewalWindowEnd
+                   -- O corte de janela tem de seguir a data do AVISO (due_on), nao o vencimento:
+                   -- com aviso de 30 dias o vencimento cai no mes seguinte e o item sumia da agenda.
+                   AND COALESCE(
+                         CASE
+                           WHEN c.renewal_notice_amount IS NULL OR c.end_date IS NULL THEN c.end_date
+                           WHEN c.renewal_notice_unit = 'calendar_months'
+                             THEN (c.end_date - (c.renewal_notice_amount || ' months')::interval)::date
+                           ELSE (c.end_date - c.renewal_notice_amount)::date
+                         END, c.end_date) <= @renewalWindowEnd
                    AND @canReadRenewals
                    AND (@canReadTenantRenewals OR c.owner_id = @viewerId)
                    AND (CAST(@contractId AS uuid) IS NULL OR c.id = @contractId)

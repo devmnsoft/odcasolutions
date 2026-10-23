@@ -1557,6 +1557,11 @@ public sealed partial class ContractStudioController(NpgsqlDataSource dataSource
     {
         var actor=Actor();if(actor is null)return Unauthorized();
         if(request.GeneratedVersionId==Guid.Empty||request.ReviewerId==Guid.Empty||request.IdempotencyKey==Guid.Empty)return this.Invalid("api.studio.review_submit_fields_invalid");
+        // D-OC59 (Sprint 25/F-1): o prazo de revisao chega do navegador com o fuso local (ex.:
+        // 2026-11-15T09:00-03:00). O Npgsql recusa DateTimeOffset com offset != 0 em timestamptz,
+        // o que derrubava a solicitacao com 500 em host fora de UTC. Normaliza para UTC antes de
+        // persistir; a comparacao de replay abaixo continua por instante (DateTimeOffset ==).
+        var dueAt=request.DueAt?.ToUniversalTime();
         await using var c=await dataSource.OpenConnectionAsync(ct);if(!await Allowed(c,actor.Value,tenantId,"tenant.reviews.request",ct))return Forbid();await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tenantId,actor.Value,tx,ct);
         var prior=await c.QuerySingleOrDefaultAsync<SubmittedReviewRow>(new CommandDefinition("""
             SELECT r.id AS ReviewId,r.generated_version_id AS GeneratedVersionId,r.status AS Status,
@@ -1584,7 +1589,7 @@ public sealed partial class ContractStudioController(NpgsqlDataSource dataSource
           UPDATE odca.contract_change_requests SET generated_version_id=@versionId,review_id=@reviewId,status='in_review',row_version=row_version+1,updated_at=now()
            WHERE tenant_id=@tenantId AND contract_id=@contractId AND draft_id=(SELECT draft_id FROM odca.generated_contract_versions WHERE tenant_id=@tenantId AND id=@versionId)
              AND status='draft';
-          """,new{reviewId,tenantId,contractId=v.ContractId,versionId=v.Id,actor,request.DueAt,Instructions=request.Instructions?.Trim(),content=v.Content,sha256=v.Sha256,request.IdempotencyKey,request.ReviewerId},tx,cancellationToken:ct));
+          """,new{reviewId,tenantId,contractId=v.ContractId,versionId=v.Id,actor,dueAt,Instructions=request.Instructions?.Trim(),content=v.Content,sha256=v.Sha256,request.IdempotencyKey,request.ReviewerId},tx,cancellationToken:ct));
         // D-OC31 B.1: e-mail ao revisor na mesma transação do envio; deduplicação por
         // source_id determinístico (evento + chave de idempotência).
         // D-OC34 B.10: assunto genérico por tipo (o título livre do contrato não vai no subject).

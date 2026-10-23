@@ -1,0 +1,7 @@
+Configura‡Æo: ambiente=Development; caminho=C:\MNSOFT\odcasolutions\src\Odca.Api\development-runtime.json.
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\MNSOFT\odcasolutions\src\Odca.Worker

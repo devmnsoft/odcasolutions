@@ -166,6 +166,29 @@ public sealed class RuntimeQueryRegressionTests
         Assert.Contains("public VersionItem(Guid Id, Guid TenantId, string StorageKey, string DetectedType)", source, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void RenewalAgendaWindowCutsByNoticeDateNotContractEnd()
+    {
+        var source = ReadSource("Odca.Infrastructure", "Operations", "OperationalInboxRepository.cs");
+
+        // S25/D-OC59: com aviso de 30 dias o vencimento cai no mes seguinte ao aviso; cortar a
+        // janela pelo end_date escondia a renovacao da agenda exatamente quando o aviso venceu.
+        // O corte deve seguir a data do aviso (due_on) materializada no SELECT.
+        Assert.DoesNotContain("AND c.end_date <= @renewalWindowEnd", source, StringComparison.Ordinal);
+        Assert.Contains("END, c.end_date) <= @renewalWindowEnd", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReviewSubmissionNormalizesDueAtToUtcBeforePersisting()
+    {
+        var source = ReadSource("Odca.Api", "Controllers", "ContractStudioController.cs");
+
+        // S25/D-OC59: dueAt com offset nao-UTC derrubava o Submit de revisao com
+        // ArgumentException do Npgsql (timestamp with time zone exige offset 0).
+        Assert.Contains("request.DueAt?.ToUniversalTime()", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("@dueAt=request.DueAt", source, StringComparison.Ordinal);
+    }
+
     private static string ReadSource(params string[] path)
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);
