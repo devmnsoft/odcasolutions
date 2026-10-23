@@ -801,3 +801,11 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [ ] CI oficial deste SHA: pendente (a ser disparada apos push e monitorada via API).
 - [ ] Aceite humano: pendente (impedimento para creditar `signature`).
 - [ ] Portal `.odca/progress.json`: inalterado (baseline 40%, IDs e pesos intactos). Credito do marco `signature` exige evidencia no commit funcional + CI oficial do mesmo SHA verde + aceite real humano.
+## Sprint 27 - D-OC61 - auditoria do catalogo de estreia (23/10/2026)
+- [x] Prova D-OC61: 6/0 em r8. 10 templates globais publicados, todos com versao/conteudo/campos rotulados, 0 placeholders, 9 oficiais com official_revision>=1, tipos: amendment, consent, lease, nda, service, services, supply.
+- [x] Script `scripts/qa/validate-d61-catalogo-estreia.ps1` (somente leitura, DB-level).
+- [x] GATE: sem mudanca de produto; GATE da S25 permanece valido.
+- [x] Prova local D-OC61: r8 6/0. Evidencias em `evidence/d61-*`.
+- [ ] CI oficial deste SHA: pendente (a ser disparada apos push e monitorada via API).
+- [ ] Aceite humano (aprovacao dos textos/campos/PDFs): pendente (impedimento para creditar `templates`).
+- [ ] Portal `.odca/progress.json`: inalterado. Credito do marco `templates` exige evidencia no commit funcional + CI oficial do mesmo SHA verde + aceite real humano.
