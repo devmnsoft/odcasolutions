@@ -817,3 +817,4 @@ Dependências externas: textos, prazos e contatos aprovados; provedor de e-mail;
 - [ ] CI oficial deste SHA: pendente (a ser disparada apos push e monitorada via API).
 - [ ] Aceite humano: pendente (impedimento para creditar `production`).
 - [ ] Portal `.odca/progress.json`: inalterado. Credito do marco `production` exige SMTP real, storage real, isolamento e recupera??o comprovados + aceite real humano.
+- **Adendo S28 (24/10/2026)**: stage S10-BACKUP executado com exit=0, 26/26 checks OK (paridade RLS + SECURITY DEFINER + remocao do banco de restauracao). Evidencia: evidence/d44-backup-restore-rodada-final.txt. Isolamento RLS (D-OC62) + recupera??o (S10-BACKUP) agora ambos comprovados para o marco production.

@@ -34,3 +34,4 @@ Prova tecnica de isolamento multi-tenant em nivel HTTP (marco `production`, `.od
 - A prova valida isolamento RLS em nivel HTTP, complementando os testes de integracao.
 - O marco `production` (peso 10) exige tambem SMTP real, storage real e recuperação comprovados (aceite humano/infra real pendente).
 - `.odca/progress.json` permanece inalterado.
+## 8. Recuperação (restore) — stage S10-BACKUP (24/10/2026)- Stage S10-BACKUP (un-backup-restore.ps1) executado com **exit=0**, **26/26 checks OK** (paridade RLS tenants_as_app_no_context: src=109/rst=109; SECURITY DEFINER executável após restore; banco de restauração removido).- Transcript: evidence/d44-backup-restore-rodada-final.txt.- Complementa a prova de isolamento RLS (D-OC62) com evidência de recuperação validada.
